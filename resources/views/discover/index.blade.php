@@ -1,0 +1,255 @@
+@extends('layouts.app')
+
+@section('title', 'Discover Unmapped Objects')
+
+@section('content')
+<div x-data="discoverObjects()">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Discover Unmapped Objects</h1>
+        <p class="text-gray-600 mt-2">Find and import objects in your S3 bucket that aren't yet tracked in ORCA</p>
+    </div>
+    
+    <!-- Scan button -->
+    <div class="mb-6">
+        <button @click="scanBucket"
+                :disabled="scanning"
+                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+            <template x-if="!scanning">
+                <span><i class="fas fa-search mr-2"></i> Scan Bucket</span>
+            </template>
+            <template x-if="scanning">
+                <span><i class="fas fa-spinner fa-spin mr-2"></i> Scanning...</span>
+            </template>
+        </button>
+    </div>
+    
+    <!-- Results -->
+    <div x-show="scanned" x-cloak>
+        <!-- Summary -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold">
+                        Found <span x-text="unmappedObjects.length" class="text-blue-600"></span> unmapped object(s)
+                    </h2>
+                    <p class="text-gray-600 text-sm mt-1">Select objects to import into ORCA</p>
+                </div>
+                
+                <div class="flex space-x-3" x-show="unmappedObjects.length > 0">
+                    <button @click="selectAll"
+                            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-check-double mr-2"></i> Select All
+                    </button>
+                    
+                    <button @click="deselectAll"
+                            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        <i class="fas fa-times mr-2"></i> Deselect All
+                    </button>
+                    
+                    <button @click="importSelected"
+                            :disabled="selectedObjects.length === 0 || importing"
+                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <template x-if="!importing">
+                            <span>
+                                <i class="fas fa-file-import mr-2"></i> 
+                                Import <span x-text="selectedObjects.length"></span> Selected
+                            </span>
+                        </template>
+                        <template x-if="importing">
+                            <span><i class="fas fa-spinner fa-spin mr-2"></i> Importing...</span>
+                        </template>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Object list -->
+        <div x-show="unmappedObjects.length > 0" class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left">
+                                <input type="checkbox"
+                                       @change="$event.target.checked ? selectAll() : deselectAll()"
+                                       :checked="selectedObjects.length === unmappedObjects.length && unmappedObjects.length > 0"
+                                       class="rounded text-blue-600 focus:ring-blue-500">
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Preview
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Filename
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Type
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Size
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Last Modified
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="object in unmappedObjects" :key="object.key">
+                            <tr :class="selectedObjects.includes(object.key) ? 'bg-blue-50' : ''">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input type="checkbox"
+                                           :value="object.key"
+                                           x-model="selectedObjects"
+                                           class="rounded text-blue-600 focus:ring-blue-500">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <template x-if="object.mime_type.startsWith('image/')">
+                                        <img :src="object.url" 
+                                             :alt="object.filename"
+                                             class="w-16 h-16 object-cover rounded">
+                                    </template>
+                                    <template x-if="!object.mime_type.startsWith('image/')">
+                                        <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+                                            <i class="fas fa-file text-2xl text-gray-400"></i>
+                                        </div>
+                                    </template>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900" x-text="object.filename"></div>
+                                    <div class="text-xs text-gray-500 font-mono truncate max-w-xs" x-text="object.key"></div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded" x-text="object.mime_type"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" x-text="formatFileSize(object.size)">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" x-text="formatDate(object.last_modified)">
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- No results -->
+        <div x-show="unmappedObjects.length === 0" class="bg-white rounded-lg shadow-lg p-12 text-center">
+            <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">All Clear!</h3>
+            <p class="text-gray-600">All objects in your S3 bucket are already tracked in ORCA.</p>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function discoverObjects() {
+    return {
+        scanning: false,
+        scanned: false,
+        importing: false,
+        unmappedObjects: [],
+        selectedObjects: [],
+        
+        async scanBucket() {
+            this.scanning = true;
+            this.scanned = false;
+            this.unmappedObjects = [];
+            this.selectedObjects = [];
+            
+            try {
+                const response = await fetch('{{ route('discover.scan') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                this.unmappedObjects = data.objects || [];
+                this.scanned = true;
+                
+                window.showToast(`Found ${data.count} unmapped object(s)`);
+            } catch (error) {
+                console.error('Scan error:', error);
+                window.showToast('Failed to scan bucket', 'error');
+            } finally {
+                this.scanning = false;
+            }
+        },
+        
+        selectAll() {
+            this.selectedObjects = this.unmappedObjects.map(obj => obj.key);
+        },
+        
+        deselectAll() {
+            this.selectedObjects = [];
+        },
+        
+        async importSelected() {
+            if (this.selectedObjects.length === 0) return;
+            
+            const confirmed = confirm(`Import ${this.selectedObjects.length} object(s)? This will create database records and generate thumbnails for images.`);
+            if (!confirmed) return;
+            
+            this.importing = true;
+            
+            try {
+                const response = await fetch('{{ route('discover.import') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        keys: this.selectedObjects
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                window.showToast(data.message);
+                
+                // Remove imported objects from the list
+                this.unmappedObjects = this.unmappedObjects.filter(
+                    obj => !this.selectedObjects.includes(obj.key)
+                );
+                this.selectedObjects = [];
+                
+                // Redirect to assets after a delay
+                setTimeout(() => {
+                    window.location.href = '{{ route('assets.index') }}';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Import error:', error);
+                window.showToast('Failed to import objects', 'error');
+            } finally {
+                this.importing = false;
+            }
+        },
+        
+        formatFileSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return `${size.toFixed(2)} ${units[unitIndex]}`;
+        },
+        
+        formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+    };
+}
+</script>
+@endpush
+@endsection

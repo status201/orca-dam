@@ -1,0 +1,263 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Asset;
+use App\Models\Tag;
+use App\Services\S3Service;
+use App\Services\RekognitionService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
+class AssetController extends Controller
+{
+    use AuthorizesRequests;
+
+    protected S3Service $s3Service;
+    protected RekognitionService $rekognitionService;
+
+    public function __construct(S3Service $s3Service, RekognitionService $rekognitionService)
+    {
+        $this->middleware('auth');
+        $this->s3Service = $s3Service;
+        $this->rekognitionService = $rekognitionService;
+    }
+
+    /**
+     * Display a listing of assets
+     */
+    public function index(Request $request)
+    {
+        $query = Asset::with(['tags', 'user'])
+            ->latest();
+
+        // Apply search
+        if ($search = $request->input('search')) {
+            $query->search($search);
+        }
+
+        // Apply tag filter
+        if ($tagIds = $request->input('tags')) {
+            $query->withTags(is_array($tagIds) ? $tagIds : explode(',', $tagIds));
+        }
+
+        // Apply type filter
+        if ($type = $request->input('type')) {
+            $query->ofType($type);
+        }
+
+        // Apply user filter (admins only)
+        if (Auth::user()->isAdmin() && $userId = $request->input('user')) {
+            $query->byUser($userId);
+        }
+
+        $assets = $query->paginate(24);
+        $tags = Tag::orderBy('name')->get();
+
+        return view('assets.index', compact('assets', 'tags'));
+    }
+
+    /**
+     * Show the form for creating a new asset
+     */
+    public function create()
+    {
+        $this->authorize('create', Asset::class);
+        return view('assets.create');
+    }
+
+    /**
+     * Store newly uploaded assets
+     */
+    public function store(Request $request)
+    {
+        $this->authorize('create', Asset::class);
+
+        $request->validate([
+            'files.*' => 'required|file|max:102400', // 100MB max
+        ]);
+
+        $uploadedAssets = [];
+
+        foreach ($request->file('files') as $file) {
+            // Upload to S3
+            $fileData = $this->s3Service->uploadFile($file);
+
+            // Create asset record
+            $asset = Asset::create([
+                's3_key' => $fileData['s3_key'],
+                'filename' => $fileData['filename'],
+                'mime_type' => $fileData['mime_type'],
+                'size' => $fileData['size'],
+                'width' => $fileData['width'],
+                'height' => $fileData['height'],
+                'user_id' => Auth::id(),
+            ]);
+
+            // Generate thumbnail for images
+            if ($asset->isImage()) {
+                $thumbnailKey = $this->s3Service->generateThumbnail($asset->s3_key);
+                if ($thumbnailKey) {
+                    $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
+                }
+
+                // Auto-tag with AI if enabled
+                if ($this->rekognitionService->isEnabled()) {
+                    dispatch(function () use ($asset) {
+                        $this->rekognitionService->autoTagAsset($asset);
+                    })->afterResponse();
+                }
+            }
+
+            $uploadedAssets[] = $asset;
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => count($uploadedAssets) . ' file(s) uploaded successfully',
+                'assets' => $uploadedAssets,
+            ]);
+        }
+
+        return redirect()->route('assets.index')
+            ->with('success', count($uploadedAssets) . ' file(s) uploaded successfully');
+    }
+
+    /**
+     * Display the specified asset
+     */
+    public function show(Asset $asset)
+    {
+        $this->authorize('view', $asset);
+        $asset->load(['tags', 'user']);
+        
+        return view('assets.show', compact('asset'));
+    }
+
+    /**
+     * Show the form for editing the specified asset
+     */
+    public function edit(Asset $asset)
+    {
+        $this->authorize('update', $asset);
+        $asset->load('tags');
+        $tags = Tag::orderBy('name')->get();
+        
+        return view('assets.edit', compact('asset', 'tags'));
+    }
+
+    /**
+     * Update the specified asset
+     */
+    public function update(Request $request, Asset $asset)
+    {
+        $this->authorize('update', $asset);
+
+        $request->validate([
+            'alt_text' => 'nullable|string|max:500',
+            'caption' => 'nullable|string|max:1000',
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+        ]);
+
+        // Update metadata
+        $asset->update($request->only(['alt_text', 'caption']));
+
+        // Handle tags
+        if ($request->has('tags')) {
+            $tagIds = [];
+            foreach ($request->tags as $tagName) {
+                $tag = Tag::firstOrCreate(
+                    ['name' => strtolower(trim($tagName))],
+                    ['type' => 'user']
+                );
+                $tagIds[] = $tag->id;
+            }
+            
+            // Keep AI tags, replace user tags
+            $aiTagIds = $asset->aiTags()->pluck('tags.id')->toArray();
+            $asset->tags()->sync(array_merge($aiTagIds, $tagIds));
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Asset updated successfully',
+                'asset' => $asset->fresh(['tags']),
+            ]);
+        }
+
+        return redirect()->route('assets.show', $asset)
+            ->with('success', 'Asset updated successfully');
+    }
+
+    /**
+     * Remove the specified asset
+     */
+    public function destroy(Asset $asset)
+    {
+        $this->authorize('delete', $asset);
+
+        // Delete from S3
+        $this->s3Service->deleteFile($asset->s3_key);
+        
+        if ($asset->thumbnail_s3_key) {
+            $this->s3Service->deleteFile($asset->thumbnail_s3_key);
+        }
+
+        // Delete from database
+        $asset->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'message' => 'Asset deleted successfully',
+            ]);
+        }
+
+        return redirect()->route('assets.index')
+            ->with('success', 'Asset deleted successfully');
+    }
+
+    /**
+     * Add tags to an asset
+     */
+    public function addTags(Request $request, Asset $asset)
+    {
+        $this->authorize('update', $asset);
+
+        $request->validate([
+            'tags' => 'required|array',
+            'tags.*' => 'string|max:50',
+        ]);
+
+        $tagIds = [];
+        foreach ($request->tags as $tagName) {
+            $tag = Tag::firstOrCreate(
+                ['name' => strtolower(trim($tagName))],
+                ['type' => 'user']
+            );
+            $tagIds[] = $tag->id;
+        }
+
+        $asset->tags()->syncWithoutDetaching($tagIds);
+
+        return response()->json([
+            'message' => 'Tags added successfully',
+            'tags' => $asset->fresh()->tags,
+        ]);
+    }
+
+    /**
+     * Remove a tag from an asset
+     */
+    public function removeTag(Asset $asset, Tag $tag)
+    {
+        $this->authorize('update', $asset);
+
+        $asset->tags()->detach($tag->id);
+
+        return response()->json([
+            'message' => 'Tag removed successfully',
+        ]);
+    }
+}
