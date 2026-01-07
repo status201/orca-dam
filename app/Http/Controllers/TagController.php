@@ -9,7 +9,7 @@ class TagController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
+        #$this->middleware('auth');
     }
 
     /**
@@ -18,11 +18,15 @@ class TagController extends Controller
     public function search(Request $request)
     {
         $search = $request->input('q', '');
-        
-        $tags = Tag::search($search)
-            ->orderBy('name')
-            ->limit(20)
-            ->get(['id', 'name', 'type']);
+        $type = $request->input('type'); // Optional type filter
+
+        $query = Tag::search($search)->orderBy('name')->limit(20);
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        $tags = $query->get(['id', 'name', 'type']);
 
         return response()->json($tags);
     }
@@ -47,5 +51,60 @@ class TagController extends Controller
         }
 
         return view('tags.index', compact('tags'));
+    }
+
+    /**
+     * Update a tag (user tags only)
+     */
+    public function update(Request $request, Tag $tag)
+    {
+        // Only allow updating user tags
+        if ($tag->type !== 'user') {
+            return response()->json([
+                'message' => 'AI tags cannot be edited'
+            ], 403);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:50|unique:tags,name,' . $tag->id,
+        ]);
+
+        $tag->update([
+            'name' => strtolower(trim($request->name)),
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Tag updated successfully',
+                'tag' => $tag,
+            ]);
+        }
+
+        return redirect()->route('tags.index')->with('success', 'Tag updated successfully');
+    }
+
+    /**
+     * Delete a tag (user tags only)
+     */
+    public function destroy(Tag $tag)
+    {
+        // Only allow deleting user tags
+        if ($tag->type !== 'user') {
+            return response()->json([
+                'message' => 'AI tags cannot be deleted'
+            ], 403);
+        }
+
+        // The pivot table entries will be automatically deleted
+        // because of the relationship cascade (handled by Laravel)
+        $tag->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'message' => 'Tag deleted successfully',
+            ]);
+        }
+
+        return redirect()->route('tags.index')->with('success', 'Tag deleted successfully');
     }
 }

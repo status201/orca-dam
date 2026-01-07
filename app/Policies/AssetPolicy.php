@@ -72,4 +72,12 @@ class AssetPolicy
     {
         return $user->isAdmin();
     }
+
+    /**
+     * Determine whether the user can export assets.
+     */
+    public function export(User $user): bool
+    {
+        return $user->isAdmin();
+    }
 }

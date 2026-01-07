@@ -17,7 +17,6 @@ class AssetApiController extends Controller
 
     public function __construct(S3Service $s3Service, RekognitionService $rekognitionService)
     {
-        $this->middleware('auth:sanctum');
         $this->s3Service = $s3Service;
         $this->rekognitionService = $rekognitionService;
     }
