@@ -1,8 +1,6 @@
-@extends('layouts.app')
+<?php $__env->startSection('title', 'Tags'); ?>
 
-@section('title', 'Tags')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div x-data="tagManager()">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Tags</h1>
@@ -12,64 +10,66 @@
     <!-- Filter tabs -->
     <div class="mb-6 border-b border-gray-200">
         <nav class="-mb-px flex space-x-8">
-            <a href="{{ route('tags.index') }}" 
-               class="py-4 px-1 border-b-2 {{ !request('type') ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} font-medium text-sm">
-                All Tags ({{ $tags->count() }})
+            <a href="<?php echo e(route('tags.index')); ?>" 
+               class="py-4 px-1 border-b-2 <?php echo e(!request('type') ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'); ?> font-medium text-sm">
+                All Tags (<?php echo e($tags->count()); ?>)
             </a>
-            <a href="{{ route('tags.index', ['type' => 'user']) }}" 
-               class="py-4 px-1 border-b-2 {{ request('type') === 'user' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} font-medium text-sm">
+            <a href="<?php echo e(route('tags.index', ['type' => 'user'])); ?>" 
+               class="py-4 px-1 border-b-2 <?php echo e(request('type') === 'user' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'); ?> font-medium text-sm">
                 User Tags
             </a>
-            <a href="{{ route('tags.index', ['type' => 'ai']) }}" 
-               class="py-4 px-1 border-b-2 {{ request('type') === 'ai' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} font-medium text-sm">
+            <a href="<?php echo e(route('tags.index', ['type' => 'ai'])); ?>" 
+               class="py-4 px-1 border-b-2 <?php echo e(request('type') === 'ai' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'); ?> font-medium text-sm">
                 AI Tags
             </a>
         </nav>
     </div>
     
-    @if($tags->count() > 0)
+    <?php if($tags->count() > 0): ?>
     <!-- Tags grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-        @foreach($tags as $tag)
+        <?php $__currentLoopData = $tags; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
         <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
             <div class="flex items-start justify-between mb-2 gap-3">
-                <a href="{{ route('assets.index', ['tags' => [$tag->id]]) }}"
+                <a href="<?php echo e(route('assets.index', ['tags' => [$tag->id]])); ?>"
                    class="flex-1 min-w-0">
-                    <h3 class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate">{{ $tag->name }}</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate"><?php echo e($tag->name); ?></h3>
                 </a>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                        {{ $tag->type }}
-                        @if($tag->type === 'ai')
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap <?php echo e($tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'); ?>">
+                        <?php echo e($tag->type); ?>
+
+                        <?php if($tag->type === 'ai'): ?>
                         <i class="fas fa-robot ml-1"></i>
-                        @endif
+                        <?php endif; ?>
                     </span>
 
-                    @if($tag->type === 'user')
+                    <?php if($tag->type === 'user'): ?>
                     <!-- Edit button -->
-                    <button @click="editTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
+                    <button @click="editTag(<?php echo e($tag->id); ?>, '<?php echo e(addslashes($tag->name)); ?>')"
                             class="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded transition"
                             title="Edit tag">
                         <i class="fas fa-edit text-sm"></i>
                     </button>
 
                     <!-- Delete button -->
-                    <button @click="deleteTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
+                    <button @click="deleteTag(<?php echo e($tag->id); ?>, '<?php echo e(addslashes($tag->name)); ?>')"
                             class="text-gray-500 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition"
                             title="Delete tag">
                         <i class="fas fa-trash text-sm"></i>
                     </button>
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
             <p class="text-sm text-gray-600">
                 <i class="fas fa-images mr-1"></i>
-                {{ $tag->assets_count }} {{ Str::plural('asset', $tag->assets_count) }}
+                <?php echo e($tag->assets_count); ?> <?php echo e(Str::plural('asset', $tag->assets_count)); ?>
+
             </p>
         </div>
-        @endforeach
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
     </div>
-    @else
+    <?php else: ?>
     <div class="text-center py-12 bg-white rounded-lg shadow">
         <i class="fas fa-tags text-6xl text-gray-300 mb-4"></i>
         <h3 class="text-xl font-semibold text-gray-700 mb-2">No tags found</h3>
@@ -77,7 +77,7 @@
             Tags will appear here as you add them to your assets
         </p>
     </div>
-    @endif
+    <?php endif; ?>
 
     <!-- Edit Tag Modal -->
     <div x-show="showEditModal"
@@ -116,7 +116,7 @@
     </div>
 </div>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script>
 function tagManager() {
     return {
@@ -188,5 +188,7 @@ function tagManager() {
     };
 }
 </script>
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\gijso\Herd\orca-dam\resources\views/tags/index.blade.php ENDPATH**/ ?>

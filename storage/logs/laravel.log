@@ -1,0 +1,6 @@
+
+[2026-01-06 20:05:03] local.ERROR: Allowed memory size of 134217728 bytes exhausted (tried to allocate 97374112 bytes) {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Allowed memory size of 134217728 bytes exhausted (tried to allocate 97374112 bytes) at C:/Users/gijso/Herd/orca-dam/vendor/laravel/framework/src/Illuminate/Support/helpers.php:137)
+[stacktrace]
+#0 {main}
+"} 
+[2026-01-06 21:12:09] local.INFO: Skipping thumbnail generation for GIF: assets/43a4a269-aa34-4131-8e57-67d428605346.gif  

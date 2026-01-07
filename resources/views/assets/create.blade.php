@@ -168,20 +168,61 @@ function assetUploader() {
                 });
                 
                 xhr.addEventListener('load', () => {
-                    if (xhr.status === 200 || xhr.status === 302) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        // Success - could be 200, 201, or redirect
                         window.showToast('Files uploaded successfully!');
                         setTimeout(() => {
                             window.location.href = '{{ route('assets.index') }}';
                         }, 1000);
+                    } else if (xhr.status === 302) {
+                        // Laravel redirect after success
+                        window.location.href = '{{ route('assets.index') }}';
                     } else {
-                        window.showToast('Upload failed. Please try again.', 'error');
+                        // Error - parse error message from response if available
+                        let errorMessage = 'Upload failed. Please try again.';
+
+                        // Try to parse JSON response
+                        if (xhr.responseText && xhr.responseText.trim()) {
+                            try {
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.message) {
+                                    errorMessage = response.message;
+                                } else if (response.errors) {
+                                    errorMessage = Object.values(response.errors).flat().join(', ');
+                                }
+                            } catch (e) {
+                                // Not JSON, check for specific error codes
+                                if (xhr.status === 500) {
+                                    errorMessage = 'Server error occurred. The file might be too large or corrupt. Please try a smaller file.';
+                                } else if (xhr.status === 413) {
+                                    errorMessage = 'Files are too large. Maximum size is 100MB per file.';
+                                } else if (xhr.status === 422) {
+                                    errorMessage = 'Invalid file format or validation error.';
+                                } else if (xhr.status === 0) {
+                                    errorMessage = 'Network error or request timeout. Please try again.';
+                                }
+                            }
+                        } else {
+                            // Empty response
+                            errorMessage = 'Server error with no response. The file might be too large or the server is unreachable.';
+                        }
+
+                        console.error('Upload failed:', {
+                            status: xhr.status,
+                            statusText: xhr.statusText,
+                            responseText: xhr.responseText
+                        });
+
+                        window.showToast(errorMessage, 'error');
                         this.uploading = false;
+                        this.uploadProgress = {};
                     }
                 });
                 
                 xhr.addEventListener('error', () => {
-                    window.showToast('Upload failed. Please try again.', 'error');
+                    window.showToast('Network error. Please check your connection and try again.', 'error');
                     this.uploading = false;
+                    this.uploadProgress = {};
                 });
                 
                 xhr.open('POST', '{{ route('assets.store') }}');
@@ -192,6 +233,7 @@ function assetUploader() {
                 console.error('Upload error:', error);
                 window.showToast('Upload failed. Please try again.', 'error');
                 this.uploading = false;
+                this.uploadProgress = {};
             }
         }
     };

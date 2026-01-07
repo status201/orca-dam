@@ -1,8 +1,6 @@
-@extends('layouts.app')
+<?php $__env->startSection('title', 'Assets'); ?>
 
-@section('title', 'Assets')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div x-data="assetGrid()">
     <!-- Header with search and filters -->
     <div class="mb-6">
@@ -53,7 +51,7 @@
                 </button>
 
                 <!-- Upload button -->
-                <a href="{{ route('assets.create') }}"
+                <a href="<?php echo e(route('assets.create')); ?>"
                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center whitespace-nowrap">
                     <i class="fas fa-upload mr-2"></i> Upload
                 </a>
@@ -82,46 +80,47 @@
             </div>
             <div class="max-h-96 overflow-y-auto">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
-                    @foreach($tags as $tag)
+                    <?php $__currentLoopData = $tags; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
                         <input type="checkbox"
-                               value="{{ $tag->id }}"
+                               value="<?php echo e($tag->id); ?>"
                                x-model="selectedTags"
                                class="rounded text-blue-600 focus:ring-blue-500 flex-shrink-0 mt-0.5">
                         <div class="flex flex-col gap-1 min-w-0 flex-1">
-                            <span class="text-sm font-medium truncate">{{ $tag->name }}</span>
-                            <span class="text-xs px-2 py-0.5 rounded-full {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }} inline-block w-fit">
-                                {{ $tag->type }}
+                            <span class="text-sm font-medium truncate"><?php echo e($tag->name); ?></span>
+                            <span class="text-xs px-2 py-0.5 rounded-full <?php echo e($tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'); ?> inline-block w-fit">
+                                <?php echo e($tag->type); ?>
+
                             </span>
                         </div>
                     </label>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
             </div>
 
-            @if(count($tags) === 0)
+            <?php if(count($tags) === 0): ?>
             <p class="text-gray-500 text-sm">No tags available yet.</p>
-            @endif
+            <?php endif; ?>
         </div>
     </div>
     
     <!-- Asset grid -->
-    @if($assets->count() > 0)
+    <?php if($assets->count() > 0): ?>
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-4">
-        @foreach($assets as $asset)
+        <?php $__currentLoopData = $assets; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $asset): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
         <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
-             x-data="assetCard({{ $asset->id }})"
-             @click="window.location.href = '{{ route('assets.show', $asset) }}'">
+             x-data="assetCard(<?php echo e($asset->id); ?>)"
+             @click="window.location.href = '<?php echo e(route('assets.show', $asset)); ?>'">
             <!-- Thumbnail -->
             <div class="aspect-square bg-gray-100 relative">
-                @if($asset->isImage() && $asset->thumbnail_url)
-                    <img src="{{ $asset->thumbnail_url }}"
-                         alt="{{ $asset->filename }}"
+                <?php if($asset->isImage() && $asset->thumbnail_url): ?>
+                    <img src="<?php echo e($asset->thumbnail_url); ?>"
+                         alt="<?php echo e($asset->filename); ?>"
                          class="w-full h-full object-cover"
                          loading="lazy">
-                @else
+                <?php else: ?>
                     <div class="w-full h-full flex items-center justify-center">
-                        @php
+                        <?php
                             $icon = $asset->getFileIcon();
                             $colorClass = match($icon) {
                                 'fa-file-pdf' => 'text-red-500',
@@ -136,27 +135,27 @@
                                 'fa-file-lines' => 'text-gray-500',
                                 default => 'text-gray-400'
                             };
-                        @endphp
-                        <i class="fas {{ $icon }} text-9xl {{ $colorClass }} opacity-60"></i>
+                        ?>
+                        <i class="fas <?php echo e($icon); ?> text-9xl <?php echo e($colorClass); ?> opacity-60"></i>
                     </div>
-                @endif
+                <?php endif; ?>
 
                 <!-- Overlay with actions -->
                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <button @click.stop="downloadAsset('{{ route('assets.download', $asset) }}')"
+                    <button @click.stop="downloadAsset('<?php echo e(route('assets.download', $asset)); ?>')"
                             :disabled="downloading"
                             :class="downloading ? 'bg-green-600' : 'bg-white hover:bg-gray-100'"
                             :title="downloading ? 'Downloading...' : 'Download'"
                             class="text-gray-900 px-3 py-2 rounded-lg transition-all duration-300 mr-2">
                         <i :class="downloading ? 'fas fa-spinner fa-spin text-white' : 'fas fa-download'"></i>
                     </button>
-                    <button @click.stop="copyAssetUrl('{{ $asset->url }}')"
+                    <button @click.stop="copyAssetUrl('<?php echo e($asset->url); ?>')"
                             :class="copied ? 'bg-green-600' : 'bg-white hover:bg-gray-100'"
                             :title="copied ? 'Copied!' : 'Copy URL'"
                             class="text-gray-900 px-3 py-2 rounded-lg transition-all duration-300 mr-2">
                         <i :class="copied ? 'fas fa-check text-white' : 'fas fa-copy'"></i>
                     </button>
-                    <a href="{{ route('assets.edit', $asset) }}"
+                    <a href="<?php echo e(route('assets.edit', $asset)); ?>"
                        @click.stop
                        class="bg-white text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                        title="Edit">
@@ -167,68 +166,72 @@
             
             <!-- Info -->
             <div class="p-3">
-                <p class="text-sm font-medium text-gray-900 truncate" title="{{ $asset->filename }}">
-                    {{ $asset->filename }}
+                <p class="text-sm font-medium text-gray-900 truncate" title="<?php echo e($asset->filename); ?>">
+                    <?php echo e($asset->filename); ?>
+
                 </p>
                 <div class="text-xs text-gray-500 mt-1 space-y-0.5">
-                    <p><i class="fas fa-hdd mr-1"></i>{{ $asset->formatted_size }}</p>
-                    <p title="{{ $asset->updated_at }}"><i class="fas fa-clock mr-1"></i>{{ $asset->updated_at->diffForHumans() }}</p>
-                    <p class="truncate" title="{{ $asset->user->name }}"><i class="fas fa-user mr-1"></i>{{ $asset->user->name }}</p>
+                    <p><i class="fas fa-hdd mr-1"></i><?php echo e($asset->formatted_size); ?></p>
+                    <p title="<?php echo e($asset->updated_at); ?>"><i class="fas fa-clock mr-1"></i><?php echo e($asset->updated_at->diffForHumans()); ?></p>
+                    <p class="truncate" title="<?php echo e($asset->user->name); ?>"><i class="fas fa-user mr-1"></i><?php echo e($asset->user->name); ?></p>
                 </div>
 
-                @if($asset->tags->count() > 0)
+                <?php if($asset->tags->count() > 0): ?>
                 <div class="flex flex-wrap gap-1 mt-2">
-                    @foreach($asset->tags->take(2) as $tag)
-                    <span class="text-xs px-2 py-0.5 rounded-full {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                        {{ $tag->name }}
-                    </span>
-                    @endforeach
+                    <?php $__currentLoopData = $asset->tags->take(2); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tag): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <span class="text-xs px-2 py-0.5 rounded-full <?php echo e($tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'); ?>">
+                        <?php echo e($tag->name); ?>
 
-                    @if($asset->tags->count() > 2)
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                        +{{ $asset->tags->count() - 2 }}
                     </span>
-                    @endif
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+
+                    <?php if($asset->tags->count() > 2): ?>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        +<?php echo e($asset->tags->count() - 2); ?>
+
+                    </span>
+                    <?php endif; ?>
                 </div>
-                @endif
+                <?php endif; ?>
             </div>
         </div>
-        @endforeach
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
     </div>
     
     <!-- Pagination -->
     <div class="mt-8">
-        {{ $assets->links() }}
+        <?php echo e($assets->links()); ?>
+
     </div>
     
-    @else
+    <?php else: ?>
     <div class="text-center py-12">
         <i class="fas fa-images text-6xl text-gray-300 mb-4"></i>
         <h3 class="text-xl font-semibold text-gray-700 mb-2">No assets found</h3>
         <p class="text-gray-500 mb-6">
-            @if(request()->has('search') || request()->has('tags') || request()->has('type'))
+            <?php if(request()->has('search') || request()->has('tags') || request()->has('type')): ?>
                 Try adjusting your filters or
-                <a href="{{ route('assets.index') }}" class="text-blue-600 hover:underline">clear all filters</a>
-            @else
+                <a href="<?php echo e(route('assets.index')); ?>" class="text-blue-600 hover:underline">clear all filters</a>
+            <?php else: ?>
                 Get started by uploading your first asset
-            @endif
+            <?php endif; ?>
         </p>
-        <a href="{{ route('assets.create') }}" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <a href="<?php echo e(route('assets.create')); ?>" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <i class="fas fa-upload mr-2"></i> Upload Assets
         </a>
     </div>
-    @endif
+    <?php endif; ?>
 </div>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script>
 function assetGrid() {
     return {
-        search: @json(request('search', '')),
-        type: @json(request('type', '')),
-        sort: @json(request('sort', 'date_desc')),
-        selectedTags: @json(request('tags', [])),
-        initialTags: @json(request('tags', [])),
+        search: <?php echo json_encode(request('search', ''), 512) ?>,
+        type: <?php echo json_encode(request('type', ''), 512) ?>,
+        sort: <?php echo json_encode(request('sort', 'date_desc'), 512) ?>,
+        selectedTags: <?php echo json_encode(request('tags', []), 512) ?>,
+        initialTags: <?php echo json_encode(request('tags', []), 512) ?>,
         showTagFilter: false,
 
         tagsChanged() {
@@ -252,7 +255,7 @@ function assetGrid() {
                 this.selectedTags.forEach(tag => params.append('tags[]', tag));
             }
 
-            window.location.href = '{{ route('assets.index') }}' + (params.toString() ? '?' + params.toString() : '');
+            window.location.href = '<?php echo e(route('assets.index')); ?>' + (params.toString() ? '?' + params.toString() : '');
         },
 
         copyUrl(url) {
@@ -293,5 +296,7 @@ function assetCard(assetId) {
     };
 }
 </script>
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\gijso\Herd\orca-dam\resources\views/assets/index.blade.php ENDPATH**/ ?>

@@ -1,8 +1,6 @@
-@extends('layouts.app')
+<?php $__env->startSection('title', 'Discover Unmapped Objects'); ?>
 
-@section('title', 'Discover Unmapped Objects')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div x-data="discoverObjects()">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Discover Unmapped Objects</h1>
@@ -141,7 +139,7 @@
     </div>
 </div>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script>
 function discoverObjects() {
     return {
@@ -158,7 +156,7 @@ function discoverObjects() {
             this.selectedObjects = [];
             
             try {
-                const response = await fetch('{{ route('discover.scan') }}', {
+                const response = await fetch('<?php echo e(route('discover.scan')); ?>', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -197,7 +195,7 @@ function discoverObjects() {
             this.importing = true;
             
             try {
-                const response = await fetch('{{ route('discover.import') }}', {
+                const response = await fetch('<?php echo e(route('discover.import')); ?>', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -221,7 +219,7 @@ function discoverObjects() {
                 
                 // Redirect to assets after a delay
                 setTimeout(() => {
-                    window.location.href = '{{ route('assets.index') }}';
+                    window.location.href = '<?php echo e(route('assets.index')); ?>';
                 }, 2000);
                 
             } catch (error) {
@@ -331,5 +329,7 @@ function discoverObjects() {
     };
 }
 </script>
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\gijso\Herd\orca-dam\resources\views/discover/index.blade.php ENDPATH**/ ?>

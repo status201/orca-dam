@@ -38,7 +38,7 @@
 
             <!-- Page Content -->
             <main class="flex-grow py-8 px-4 sm:px-6 lg:px-8">
-                @yield('content')
+                {{ $slot }}
             </main>
 
             <!-- Footer with waves -->
@@ -58,39 +58,6 @@
                 </div>
             </footer>
         </div>
-
-        <!-- Toast Container -->
-        <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
-
-        <script>
-        // Toast notification system
-        window.showToast = function(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-
-            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
-            const icon = type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle';
-
-            toast.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 transform transition-all duration-300 translate-x-full opacity-0`;
-            toast.innerHTML = `
-                <i class="fas ${icon}"></i>
-                <span>${message}</span>
-            `;
-
-            container.appendChild(toast);
-
-            // Animate in
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full', 'opacity-0');
-            }, 10);
-
-            // Remove after 5 seconds
-            setTimeout(() => {
-                toast.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
-        };
-        </script>
 
         @stack('scripts')
     </body>

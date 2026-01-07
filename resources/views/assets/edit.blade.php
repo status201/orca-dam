@@ -21,12 +21,28 @@
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
                 @if($asset->isImage())
-                    <img src="{{ $asset->thumbnail_url ?? $asset->url }}" 
+                    <img src="{{ $asset->thumbnail_url ?? $asset->url }}"
                          alt="{{ $asset->filename }}"
                          class="max-w-sm rounded-lg">
                 @else
                     <div class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-file text-6xl text-gray-400"></i>
+                        @php
+                            $icon = $asset->getFileIcon();
+                            $colorClass = match($icon) {
+                                'fa-file-pdf' => 'text-red-500',
+                                'fa-file-word' => 'text-blue-600',
+                                'fa-file-excel' => 'text-green-600',
+                                'fa-file-powerpoint' => 'text-orange-500',
+                                'fa-file-zipper' => 'text-yellow-600',
+                                'fa-file-code' => 'text-purple-600',
+                                'fa-file-video' => 'text-pink-600',
+                                'fa-file-audio' => 'text-indigo-600',
+                                'fa-file-csv' => 'text-teal-600',
+                                'fa-file-lines' => 'text-gray-500',
+                                default => 'text-gray-400'
+                            };
+                        @endphp
+                        <i class="fas {{ $icon }} {{ $colorClass }} opacity-60" style="font-size: 8rem;"></i>
                     </div>
                 @endif
             </div>
@@ -83,14 +99,34 @@
                     <span class="text-gray-500 font-normal">(AI tags are preserved automatically)</span>
                 </label>
                 
-                <!-- Tag input -->
+                <!-- Tag input with autocomplete -->
                 <div class="mb-3">
-                    <div class="flex space-x-2">
-                        <input type="text" 
-                               x-model="newTag"
-                               @keyup.enter.prevent="addTag"
-                               placeholder="Add a tag..."
-                               class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <div class="flex space-x-2 relative">
+                        <div class="flex-1 relative">
+                            <input type="text"
+                                   x-model="newTag"
+                                   @keyup="searchTags"
+                                   @keyup.enter.prevent="addTag"
+                                   @keydown.down.prevent="navigateDown"
+                                   @keydown.up.prevent="navigateUp"
+                                   @blur="hideSuggestions"
+                                   placeholder="Add a tag..."
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+
+                            <!-- Autocomplete suggestions -->
+                            <div x-show="showSuggestions && suggestions.length > 0"
+                                 x-cloak
+                                 class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                <template x-for="(suggestion, index) in suggestions" :key="suggestion.id">
+                                    <div @mousedown.prevent="selectSuggestion(suggestion.name)"
+                                         :class="{'bg-blue-50': index === selectedIndex}"
+                                         class="px-4 py-2 cursor-pointer hover:bg-blue-50 flex items-center justify-between">
+                                        <span x-text="suggestion.name"></span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">user</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                         <button type="button"
                                 @click="addTag"
                                 class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -157,23 +193,76 @@ function assetEditor() {
     return {
         newTag: '',
         userTags: @json($asset->userTags->pluck('name')->toArray()),
-        
+        suggestions: [],
+        showSuggestions: false,
+        selectedIndex: -1,
+        searchTimeout: null,
+
         addTag() {
             const tag = this.newTag.trim().toLowerCase();
-            
+
             if (!tag) return;
-            
+
             if (this.userTags.includes(tag)) {
                 window.showToast('Tag already exists', 'error');
                 return;
             }
-            
+
             this.userTags.push(tag);
             this.newTag = '';
+            this.hideSuggestions();
         },
-        
+
         removeTag(index) {
             this.userTags.splice(index, 1);
+        },
+
+        searchTags() {
+            clearTimeout(this.searchTimeout);
+
+            if (this.newTag.trim().length < 1) {
+                this.suggestions = [];
+                this.showSuggestions = false;
+                return;
+            }
+
+            this.searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`{{ route('tags.search') }}?q=${encodeURIComponent(this.newTag)}&type=user`);
+                    const data = await response.json();
+
+                    // Filter out tags that are already added
+                    this.suggestions = data.filter(tag => !this.userTags.includes(tag.name));
+                    this.showSuggestions = this.suggestions.length > 0;
+                    this.selectedIndex = -1;
+                } catch (error) {
+                    console.error('Tag search failed:', error);
+                }
+            }, 300);
+        },
+
+        selectSuggestion(tagName) {
+            this.newTag = tagName;
+            this.addTag();
+        },
+
+        navigateDown() {
+            if (this.selectedIndex < this.suggestions.length - 1) {
+                this.selectedIndex++;
+            }
+        },
+
+        navigateUp() {
+            if (this.selectedIndex > 0) {
+                this.selectedIndex--;
+            }
+        },
+
+        hideSuggestions() {
+            setTimeout(() => {
+                this.showSuggestions = false;
+                this.selectedIndex = -1;
+            }, 200);
         }
     };
 }
