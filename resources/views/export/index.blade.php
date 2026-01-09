@@ -107,9 +107,9 @@
                     <li>File information (name, type, size)</li>
                     <li>S3 storage details (keys, ETag)</li>
                     <li>Image dimensions (if applicable)</li>
-                    <li>Metadata (alt text, captions)</li>
+                    <li>Metadata (alt text, captions, license, copyright)</li>
                     <li>Uploader information</li>
-                    <li>All associated tags (as text)</li>
+                    <li>All User and AI tags (as text)</li>
                     <li>Public URLs for assets</li>
                     <li>Creation and update timestamps</li>
                 </ul>

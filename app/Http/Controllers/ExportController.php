@@ -96,7 +96,8 @@ class ExportController extends Controller
                 'user_id',
                 'user_name',
                 'user_email',
-                'tags',
+                'user_tags',
+                'ai_tags',
                 'url',
                 'thumbnail_url',
                 'created_at',
@@ -105,8 +106,9 @@ class ExportController extends Controller
 
             // Data rows
             foreach ($assets as $asset) {
-                // Get tags as comma-separated text
-                $tagNames = $asset->tags->pluck('name')->join(', ');
+                // Get user tags and AI tags separately
+                $userTagNames = $asset->userTags->pluck('name')->join(', ');
+                $aiTagNames = $asset->aiTags->pluck('name')->join(', ');
 
                 fputcsv($file, [
                     $asset->id,
@@ -125,7 +127,8 @@ class ExportController extends Controller
                     $asset->user_id,
                     $asset->user->name ?? '',
                     $asset->user->email ?? '',
-                    $tagNames,
+                    $userTagNames,
+                    $aiTagNames,
                     $asset->url,
                     $asset->thumbnail_url,
                     $asset->created_at?->toDateTimeString(),
