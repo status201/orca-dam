@@ -76,7 +76,9 @@ AWS_BUCKET=your-bucket-name
 AWS_URL=https://your-bucket-name.s3.amazonaws.com
 
 # Optional: Enable AI tagging
-AWS_REKOGNITION_ENABLED=true
+AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
+AWS_REKOGNITION_MAX_LABELS=5             # Maximum AI tags per asset (default: 5)
+AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de, es, etc.
 ```
 
 **Important S3 Bucket Settings:**
@@ -196,12 +198,27 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
                 "rekognition:DetectText"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "TranslateAccess",
+            "Effect": "Allow",
+            "Action": [
+                "translate:TranslateText"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "us-east-1"
+                }
+            }
         }
     ]
 }
 ```
 
 **Important:** Attach this policy to your IAM user to grant S3 access. The bucket policy (above) only handles public read access.
+
+**Note:** The `TranslateAccess` statement is only required if you enable multilingual AI tags by setting `AWS_REKOGNITION_LANGUAGE` to a language other than `en`. If you only use English tags, you can omit this permission.
 
 ---
 
@@ -214,12 +231,19 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ File size tracking
 - ✅ Grid view with pagination
 - ✅ Quick URL copying
+- ✅ License type and copyright fields
+- ✅ Alt text and captions for accessibility
 
 ### 2. Tagging System
 - ✅ Manual user tags
 - ✅ AI-powered auto-tagging (AWS Rekognition)
+- ✅ Manual AI tag generation button
+- ✅ Configurable max AI tags per asset
+- ✅ Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
 - ✅ Tag filtering and search
 - ✅ Tag browsing page
+- ✅ Remove AI tags from assets
+- ✅ Delete both user and AI tags
 
 ### 3. Search & Filter
 - ✅ Full-text search
@@ -242,6 +266,14 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Laravel Sanctum authentication
 - ✅ Pagination support
 - ✅ Search and filter API
+- ✅ Public metadata endpoint (no auth required)
+
+### 7. Export & Reporting
+- ✅ CSV export with all asset metadata
+- ✅ Separate columns for user tags and AI tags
+- ✅ Includes license type and copyright information
+- ✅ Filter by file type and tags before export
+- ✅ Timestamped export filenames
 
 ---
 
@@ -288,7 +320,24 @@ PATCH /api/assets/{id}
 {
     "alt_text": "Description",
     "caption": "Caption text",
+    "license_type": "cc_by",
+    "copyright": "© 2026 Company Name",
     "tags": ["tag1", "tag2"]
+}
+```
+
+#### Get Asset Metadata by URL (Public, No Auth Required)
+```
+GET /api/assets/meta?url=https://bucket.s3.amazonaws.com/assets/abc123.jpg
+
+Returns:
+{
+    "alt_text": "Description",
+    "caption": "Caption text",
+    "license_type": "cc_by",
+    "copyright": "© 2026 Company Name",
+    "filename": "image.jpg",
+    "url": "https://bucket.s3.amazonaws.com/assets/abc123.jpg"
 }
 ```
 
@@ -330,9 +379,18 @@ The system will:
 Set in `.env`:
 ```env
 AWS_REKOGNITION_ENABLED=true
+AWS_REKOGNITION_MAX_LABELS=5       # Maximum AI tags per asset
+AWS_REKOGNITION_LANGUAGE=en        # Language for AI tags (en, nl, fr, de, es, etc.)
 ```
 
-AI tags are generated automatically on upload and marked with a robot icon.
+AI tags are generated automatically on upload and run in a background job queue. They are marked with a purple color in the UI.
+
+**Manual AI Tagging:**
+- You can manually trigger AI tag generation on any image asset
+- Go to the asset edit page
+- Click "Generate AI Tags" button in the purple AI Tags section
+- This will queue a job to detect and translate tags
+- Existing AI tags will be replaced with new ones
 
 ### 3. Copying URLs
 Click the copy icon on any asset thumbnail or use the copy button on the asset detail page. URLs are public and permanent (configured via bucket policy for public read access).
@@ -402,9 +460,15 @@ Update validation rules and add appropriate icons/handling.
 - Review Laravel logs: `storage/logs/laravel.log`
 
 ### AI tagging not working
-- Verify Rekognition permissions in IAM
+- Verify Rekognition permissions in IAM (see AWS IAM Permissions section)
+- For multilingual tags, verify Translate permissions are granted
 - Check `AWS_REKOGNITION_ENABLED=true` in `.env`
 - Ensure bucket is in same region as Rekognition service
+- AI tags are processed via job queue - ensure queue worker is running: `php artisan queue:work`
+- Check Laravel logs for errors: `storage/logs/laravel.log`
+- Verify `AWS_REKOGNITION_MAX_LABELS` is set to an integer (default: 5)
+- For language issues, check `AWS_REKOGNITION_LANGUAGE` is a valid language code (en, nl, fr, de, es, etc.)
+- Test with manual "Generate AI Tags" button on asset edit page to see immediate errors
 
 ### Discovery not finding objects
 - Check S3 bucket name in `.env`

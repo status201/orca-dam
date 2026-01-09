@@ -81,6 +81,9 @@ The application uses a service-oriented architecture with two main services that
 - Detects labels with confidence scoring (default 75% minimum)
 - Creates/attaches AI tags (type='ai') to assets automatically
 - Only processes image assets
+- Configurable max labels per asset via `AWS_REKOGNITION_MAX_LABELS` (default: 5)
+- Supports multilingual tags via AWS Translate (configurable via `AWS_REKOGNITION_LANGUAGE`)
+- Uses Job queue (`GenerateAiTags`) for background processing
 
 ### Authorization System
 
@@ -105,10 +108,13 @@ Uses Laravel Policies for fine-grained access control:
 - Appends computed attributes: `url`, `thumbnail_url`, `formatted_size`
 - Scopes for search, filtering by tags, type, and user
 - Helper methods: `isImage()`, `getFileIcon()`, `userTags()`, `aiTags()`
+- Includes license and copyright fields: `license_type`, `copyright`
 
 **Tag Model**
 - Has type field: `user` (manual) or `ai` (auto-generated)
 - Many-to-many with Assets
+- Both user and AI tags can be deleted from assets and removed completely
+- AI tags can be removed from individual assets without deleting the tag entirely
 
 ### API Design
 
@@ -118,12 +124,13 @@ Uses Laravel Policies for fine-grained access control:
 - `GET /api/assets` - List assets with pagination, search, filters
 - `POST /api/assets` - Multi-file upload
 - `GET /api/assets/{id}` - Get single asset
-- `PATCH /api/assets/{id}` - Update metadata (alt_text, caption, tags)
+- `PATCH /api/assets/{id}` - Update metadata (alt_text, caption, tags, license_type, copyright)
 - `DELETE /api/assets/{id}` - Delete asset
 - `GET /api/assets/search` - Search with query params
+- `GET /api/assets/meta` - Get asset metadata by URL (public, no auth required)
 - `GET /api/tags` - List tags (with optional type filter)
 
-All API endpoints require `auth:sanctum` middleware.
+All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` which is public.
 
 ### Frontend Stack
 
@@ -142,8 +149,15 @@ All API endpoints require `auth:sanctum` middleware.
 4. Image dimensions extracted using memory-efficient methods
 5. Thumbnail generated (skipped for GIFs) and uploaded to S3
 6. Asset record created in database with s3_key and etag
-7. If Rekognition enabled, `RekognitionService->autoTagAsset()` runs
-8. AI tags created/attached with type='ai'
+7. If Rekognition enabled, `GenerateAiTags` job dispatched to queue
+8. Job runs `RekognitionService->autoTagAsset()` in background
+9. AI tags created/attached with type='ai', translated if language != 'en'
+
+**Manual AI Tagging**:
+- Users can manually trigger AI tagging via "Generate AI Tags" button on edit page
+- Route: `POST /assets/{asset}/ai-tag`
+- Uses same `GenerateAiTags` job for background processing
+- Replaces existing AI tags on the asset
 
 **Discovery Process** (Admin only):
 1. `DiscoverController->scan()` calls `S3Service->findUnmappedObjects()`
@@ -170,6 +184,8 @@ The application handles large files (PDFs, GIFs, videos) by:
 - `width`, `height` (for images)
 - `thumbnail_s3_key` (nullable)
 - `alt_text`, `caption` (nullable)
+- `license_type` (nullable) - License type (public_domain, cc_by, cc_by_sa, cc_by_nd, cc_by_nc, cc_by_nc_sa, cc_by_nc_nd, fair_use, all_rights_reserved)
+- `copyright` (nullable) - Copyright notice/holder
 - `user_id` - Foreign key to uploader
 - Soft deletes with `deleted_at`
 
@@ -192,7 +208,9 @@ AWS_BUCKET=                 # S3 bucket name
 AWS_URL=                    # Public S3 URL
 
 # Optional: Enable AI tagging
-AWS_REKOGNITION_ENABLED=true
+AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
+AWS_REKOGNITION_MAX_LABELS=5             # Maximum AI tags per asset (default: 5)
+AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de, es, etc.
 ```
 
 ### S3 Bucket Requirements
@@ -200,6 +218,7 @@ AWS_REKOGNITION_ENABLED=true
 - Disable ACLs (use bucket policies instead)
 - IAM user needs: s3:PutObject, s3:GetObject, s3:DeleteObject, s3:ListBucket
 - For Rekognition: rekognition:DetectLabels, rekognition:DetectText
+- For multilingual AI tags: translate:TranslateText (only if AWS_REKOGNITION_LANGUAGE != 'en')
 
 ### PHP Configuration for Large Files
 Minimum required settings (especially important for Laravel Herd users):
@@ -242,12 +261,28 @@ For Herd: Edit `~/.config/herd/bin/php84/php.ini` (Windows: `C:\Users\<username>
 
 ## Integration Points
 
+### CSV Export
+The export feature (`ExportController`) generates CSV files with comprehensive asset metadata:
+- All database fields (id, s3_key, filename, mime_type, size, dimensions, etc.)
+- User information (name, email)
+- **Separate columns for user tags and AI tags** - allows filtering/analysis by tag type
+- License type and copyright information
+- Public URLs for both full asset and thumbnail
+- Can be filtered by file type and tags before export
+- Timestamps in `Y-m-d H:i:s` format
+
 ### Rich Text Editor Integration
 See `RTE_INTEGRATION.md` for detailed examples integrating with TinyMCE, CKEditor, Quill, and custom implementations. Key points:
 - Use Laravel Sanctum tokens for authentication
 - API returns paginated results with thumbnails
 - All assets have public S3 URLs safe for embedding
 - Asset metadata includes alt_text for accessibility
+
+**Public Metadata API**:
+- `GET /api/assets/meta?url={asset_url}` - Retrieve metadata by asset URL (no authentication required)
+- Returns: alt_text, caption, license_type, copyright, filename, url
+- Useful for displaying asset information in external applications
+- Example: `https://your-app.test/api/assets/meta?url=https://bucket.s3.amazonaws.com/assets/abc123.jpg`
 
 ### External Systems
 - S3 bucket can be shared with other applications

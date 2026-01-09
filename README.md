@@ -7,10 +7,16 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔐 Multi-user support (Editors & Admins)
 - 📁 Direct S3 bucket integration
 - 🏷️ Manual and AI-powered tagging (AWS Rekognition)
+- 🌍 Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
+- 🎯 Manual AI tag generation with configurable limits
 - 🔍 Advanced search and filtering
 - 🖼️ Thumbnail generation and grid view
 - 📤 Multi-file upload with drag & drop
+- 📝 License type and copyright metadata
+- ♿ Accessibility support (alt text, captions)
+- 📊 CSV export with separate user/AI tag columns
 - 🔗 Easy URL copying for external integration
+- 🌐 Public metadata API endpoint (no auth required)
 - 🔎 Discover unmapped S3 objects
 - 📱 Responsive design
 - 🚀 API-ready for Rich Text Editor integration
@@ -54,7 +60,9 @@ AWS_BUCKET=your-bucket-name
 AWS_URL=https://your-bucket.s3.amazonaws.com
 
 # Optional: Enable AI tagging
-AWS_REKOGNITION_ENABLED=true
+AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
+AWS_REKOGNITION_MAX_LABELS=5             # Max AI tags per asset
+AWS_REKOGNITION_LANGUAGE=en              # Language: en, nl, fr, de, es, etc.
 ```
 
 5. Run migrations
@@ -136,13 +144,14 @@ For RTE integration:
 GET    /api/assets              - List assets (paginated)
 POST   /api/assets              - Upload assets
 GET    /api/assets/{id}         - Get asset details
-PATCH  /api/assets/{id}         - Update asset metadata
+PATCH  /api/assets/{id}         - Update asset metadata (alt_text, caption, license, copyright, tags)
 DELETE /api/assets/{id}         - Delete asset
 GET    /api/assets/search       - Search with filters
+GET    /api/assets/meta         - Get metadata by URL (PUBLIC, no auth)
 GET    /api/tags                - List tags for autocomplete
 ```
 
-Authentication: Laravel Sanctum (SPA token)
+Authentication: Laravel Sanctum (SPA token) - except `/api/assets/meta` which is public
 
 ## Architecture
 
@@ -150,8 +159,10 @@ Authentication: Laravel Sanctum (SPA token)
 - **Frontend:** Blade templates + Alpine.js
 - **Styling:** Tailwind CSS with custom ORCA theme
 - **Image Processing:** Intervention Image 3.x
-- **AI Tagging:** AWS Rekognition
+- **AI Tagging:** AWS Rekognition (with job queue for background processing)
+- **Translation:** AWS Translate (for multilingual AI tags)
 - **Storage:** AWS S3 (public-read bucket via bucket policy)
+- **Queue:** Database driver for background jobs (AI tagging)
 
 ## File Structure
 
@@ -162,7 +173,10 @@ orca-dam/
 │   │   ├── AssetController.php
 │   │   ├── TagController.php
 │   │   ├── DiscoverController.php
+│   │   ├── ExportController.php
 │   │   └── Api/AssetApiController.php
+│   ├── Jobs/
+│   │   └── GenerateAiTags.php
 │   ├── Services/
 │   │   ├── S3Service.php
 │   │   └── RekognitionService.php
@@ -176,7 +190,9 @@ orca-dam/
 ├── resources/views/
 │   ├── layouts/app.blade.php
 │   ├── components/
-│   └── assets/
+│   ├── assets/
+│   ├── export/
+│   └── tags/
 └── routes/
     ├── web.php
     └── api.php

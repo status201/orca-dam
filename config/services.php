@@ -38,6 +38,7 @@ return [
     'aws' => [
         'rekognition_enabled' => env('AWS_REKOGNITION_ENABLED', false),
         'rekognition_max_labels' => env('AWS_REKOGNITION_MAX_LABELS', 5),
+        'rekognition_language' => env('AWS_REKOGNITION_LANGUAGE', 'en'), // en, nl, fr, de, etc.
     ],
 
 ];

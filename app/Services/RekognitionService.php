@@ -3,28 +3,39 @@
 namespace App\Services;
 
 use Aws\Rekognition\RekognitionClient;
+use Aws\Translate\TranslateClient;
 use App\Models\Tag;
 
 class RekognitionService
 {
     protected RekognitionClient $rekognitionClient;
+    protected ?TranslateClient $translateClient = null;
     protected string $bucket;
     protected bool $enabled;
+    protected string $targetLanguage;
 
     public function __construct()
     {
         $this->bucket = config('filesystems.disks.s3.bucket');
         $this->enabled = config('services.aws.rekognition_enabled', false);
+        $this->targetLanguage = config('services.aws.rekognition_language', 'en');
 
         if ($this->enabled) {
-            $this->rekognitionClient = new RekognitionClient([
+            $awsConfig = [
                 'version' => 'latest',
                 'region' => config('filesystems.disks.s3.region'),
                 'credentials' => [
                     'key' => config('filesystems.disks.s3.key'),
                     'secret' => config('filesystems.disks.s3.secret'),
                 ],
-            ]);
+            ];
+
+            $this->rekognitionClient = new RekognitionClient($awsConfig);
+
+            // Initialize Translate client if language is not English
+            if ($this->targetLanguage !== 'en') {
+                $this->translateClient = new TranslateClient($awsConfig);
+            }
         }
     }
 
@@ -53,8 +64,15 @@ class RekognitionService
 
             $labels = [];
             foreach ($result['Labels'] as $label) {
+                $labelName = $label['Name'];
+
+                // Translate label if target language is not English
+                if ($this->targetLanguage !== 'en') {
+                    $labelName = $this->translateText($labelName);
+                }
+
                 $labels[] = [
-                    'name' => strtolower($label['Name']),
+                    'name' => strtolower($labelName),
                     'confidence' => $label['Confidence'],
                 ];
             }
@@ -134,6 +152,29 @@ class RekognitionService
         }
 
         return $labels;
+    }
+
+    /**
+     * Translate text from English to target language using AWS Translate
+     */
+    protected function translateText(string $text): string
+    {
+        if (!$this->translateClient) {
+            return $text;
+        }
+
+        try {
+            $result = $this->translateClient->translateText([
+                'SourceLanguageCode' => 'en',
+                'TargetLanguageCode' => $this->targetLanguage,
+                'Text' => $text,
+            ]);
+
+            return $result['TranslatedText'] ?? $text;
+        } catch (\Exception $e) {
+            \Log::error('AWS Translate failed: ' . $e->getMessage());
+            return $text; // Return original text if translation fails
+        }
     }
 
     /**
