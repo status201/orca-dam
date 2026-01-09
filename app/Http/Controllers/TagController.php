@@ -84,17 +84,10 @@ class TagController extends Controller
     }
 
     /**
-     * Delete a tag (user tags only)
+     * Delete a tag (user and AI tags)
      */
     public function destroy(Tag $tag)
     {
-        // Only allow deleting user tags
-        if ($tag->type !== 'user') {
-            return response()->json([
-                'message' => 'AI tags cannot be deleted'
-            ], 403);
-        }
-
         // The pivot table entries will be automatically deleted
         // because of the relationship cascade (handled by Laravel)
         $tag->delete();

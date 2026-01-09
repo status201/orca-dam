@@ -38,7 +38,7 @@ class RekognitionService
         }
 
         try {
-            $maxLabels = config('services.aws.rekognition_max_labels', 5);
+            $maxLabels = (int) config('services.aws.rekognition_max_labels', 5);
 
             $result = $this->rekognitionClient->detectLabels([
                 'Image' => [

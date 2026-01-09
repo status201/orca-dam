@@ -31,6 +31,42 @@
         </div>
         @endif
 
+        <!-- AI Tags Section (outside main form) -->
+        @if($asset->isImage())
+        <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-700">
+                    <i class="fas fa-robot mr-2"></i>AI-Generated Tags
+                </h3>
+                <form action="{{ route('assets.ai-tag', $asset) }}" method="POST">
+                    @csrf
+                    <button type="submit"
+                            class="text-sm px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                        <i class="fas fa-wand-magic-sparkles mr-1"></i> Generate AI Tags
+                    </button>
+                </form>
+            </div>
+
+            @if($asset->aiTags->count() > 0)
+            <div class="flex flex-wrap gap-2" x-data="aiTagManager()">
+                @foreach($asset->aiTags as $tag)
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
+                    {{ $tag->name }}
+                    <button type="button"
+                            @click="removeAiTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
+                            class="ml-2 hover:text-purple-900"
+                            title="Remove this AI tag">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </span>
+                @endforeach
+            </div>
+            @else
+            <p class="text-sm text-gray-600 italic">No AI tags yet. Click "Generate AI Tags" to analyze this image.</p>
+            @endif
+        </div>
+        @endif
+
         <form action="{{ route('assets.update', $asset) }}" method="POST">
             @csrf
             @method('PATCH')
@@ -210,38 +246,7 @@
                         </span>
                     </template>
                 </div>
-                
-                <!-- AI tags (read-only) -->
-                <div class="mt-4 pt-4 border-t">
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm text-gray-600">
-                            <i class="fas fa-robot mr-1"></i> AI-Generated Tags
-                        </p>
-                        @if($asset->isImage())
-                        <form action="{{ route('assets.ai-tag', $asset) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit"
-                                    class="text-sm px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-                                <i class="fas fa-wand-magic-sparkles mr-1"></i> Generate AI Tags
-                            </button>
-                        </form>
-                        @endif
-                    </div>
 
-                    @if($asset->aiTags->count() > 0)
-                    <div class="flex flex-wrap gap-2">
-                        @foreach($asset->aiTags as $tag)
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
-                            {{ $tag->name }}
-                            <i class="fas fa-lock ml-2 text-xs"></i>
-                        </span>
-                        @endforeach
-                    </div>
-                    @else
-                    <p class="text-sm text-gray-500 italic">No AI tags yet. Click "Generate AI Tags" to analyze this image.</p>
-                    @endif
-                </div>
-                
                 @error('tags')
                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
@@ -338,6 +343,38 @@ function assetEditor() {
                 this.showSuggestions = false;
                 this.selectedIndex = -1;
             }, 200);
+        }
+    };
+}
+
+function aiTagManager() {
+    return {
+        async removeAiTag(tagId, tagName) {
+            if (!confirm(`Are you sure you want to remove the AI tag "${tagName}" from this asset?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/assets/{{ $asset->id }}/tags/${tagId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.showToast('AI tag removed successfully');
+                    window.location.reload();
+                } else {
+                    window.showToast(data.message || 'Failed to remove AI tag', 'error');
+                }
+            } catch (error) {
+                console.error('Remove AI tag error:', error);
+                window.showToast('Failed to remove AI tag', 'error');
+            }
         }
     };
 }

@@ -46,20 +46,20 @@
                     </span>
 
                     @if($tag->type === 'user')
-                    <!-- Edit button -->
+                    <!-- Edit button (only for user tags) -->
                     <button @click="editTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
                             class="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded transition"
                             title="Edit tag">
                         <i class="fas fa-edit text-sm"></i>
                     </button>
+                    @endif
 
-                    <!-- Delete button -->
-                    <button @click="deleteTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
+                    <!-- Delete button (for all tags) -->
+                    <button @click="deleteTag({{ $tag->id }}, '{{ addslashes($tag->name) }}', '{{ $tag->type }}')"
                             class="text-gray-500 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition"
                             title="Delete tag">
                         <i class="fas fa-trash text-sm"></i>
                     </button>
-                    @endif
                 </div>
             </div>
             <p class="text-sm text-gray-600">
@@ -158,8 +158,9 @@ function tagManager() {
             }
         },
 
-        async deleteTag(id, name) {
-            if (!confirm(`Are you sure you want to delete the tag "${name}"? This will remove it from all assets.`)) {
+        async deleteTag(id, name, type) {
+            const tagType = type === 'ai' ? 'AI tag' : 'tag';
+            if (!confirm(`Are you sure you want to delete the ${tagType} "${name}"? This will remove it from all assets.`)) {
                 return;
             }
 
