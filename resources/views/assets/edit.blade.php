@@ -31,43 +31,7 @@
         </div>
         @endif
 
-        <!-- AI Tags Section (outside main form) -->
-        @if($asset->isImage())
-        <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-semibold text-gray-700">
-                    <i class="fas fa-robot mr-2"></i>AI-Generated Tags
-                </h3>
-                <form action="{{ route('assets.ai-tag', $asset) }}" method="POST">
-                    @csrf
-                    <button type="submit"
-                            class="text-sm px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-                        <i class="fas fa-wand-magic-sparkles mr-1"></i> Generate AI Tags
-                    </button>
-                </form>
-            </div>
-
-            @if($asset->aiTags->count() > 0)
-            <div class="flex flex-wrap gap-2" x-data="aiTagManager()">
-                @foreach($asset->aiTags as $tag)
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
-                    {{ $tag->name }}
-                    <button type="button"
-                            @click="removeAiTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
-                            class="ml-2 hover:text-purple-900"
-                            title="Remove this AI tag">
-                        <i class="fas fa-times text-xs"></i>
-                    </button>
-                </span>
-                @endforeach
-            </div>
-            @else
-            <p class="text-sm text-gray-600 italic">No AI tags yet. Click "Generate AI Tags" to analyze this image.</p>
-            @endif
-        </div>
-        @endif
-
-        <form action="{{ route('assets.update', $asset) }}" method="POST">
+        <form action="{{ route('assets.update', $asset) }}" class="mb-6" method="POST">
             @csrf
             @method('PATCH')
             
@@ -264,6 +228,46 @@
                 </button>
             </div>
         </form>
+
+        <!-- AI Tags Section (outside main form) -->
+        @if($asset->isImage())
+            <div class="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-gray-700">
+                        <i class="fas fa-robot mr-2"></i>AI-Generated Tags
+                    </h3>
+                    <form action="{{ route('assets.ai-tag', $asset) }}" method="POST" x-data="{ generating: false }" @submit="generating = true">
+                        @csrf
+                        <button type="submit"
+                                :disabled="generating"
+                                :class="generating ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'"
+                                class="text-sm px-3 py-1 text-white rounded-lg transition">
+                            <i :class="generating ? 'fas fa-spinner fa-spin' : 'fas fa-wand-magic-sparkles'" class="mr-1"></i>
+                            <span x-text="generating ? 'Generating...' : 'Generate AI Tags'"></span>
+                        </button>
+                    </form>
+                </div>
+
+                @if($asset->aiTags->count() > 0)
+                    <div class="flex flex-wrap gap-2" x-data="aiTagManager()">
+                        @foreach($asset->aiTags as $tag)
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
+                    {{ $tag->name }}
+                    <button type="button"
+                            @click="removeAiTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
+                            class="ml-2 hover:text-purple-900"
+                            title="Remove this AI tag">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </span>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-sm text-gray-600 italic">No AI tags yet. Click "Generate AI Tags" to analyze this image.</p>
+                @endif
+            </div>
+        @endif
+
     </div>
 </div>
 

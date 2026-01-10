@@ -52,7 +52,7 @@ class AssetPolicy
     /**
      * Determine whether the user can restore the asset.
      */
-    public function restore(User $user, Asset $asset): bool
+    public function restore(User $user, ?Asset $asset = null): bool
     {
         return $user->isAdmin();
     }
@@ -60,7 +60,7 @@ class AssetPolicy
     /**
      * Determine whether the user can permanently delete the asset.
      */
-    public function forceDelete(User $user, Asset $asset): bool
+    public function forceDelete(User $user, ?Asset $asset = null): bool
     {
         return $user->isAdmin();
     }
