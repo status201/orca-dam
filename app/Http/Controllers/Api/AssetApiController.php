@@ -59,7 +59,7 @@ class AssetApiController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'files.*' => 'required|file|max:102400',
+            'files.*' => 'required|file|max:512000', // 500MB max
         ]);
 
         $uploadedAssets = [];

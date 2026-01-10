@@ -14,32 +14,38 @@
 
 **Important PHP Configuration:**
 
-For handling large file uploads (PDFs, GIFs, videos), you need to increase PHP limits:
+ORCA DAM includes **chunked upload** support for large files up to 500MB. This allows uploads even with limited PHP `post_max_size` settings (as low as 16MB). The application automatically routes large files (≥10MB) through the chunked upload API.
+
+Choose the configuration that matches your server's capabilities:
+
+**Option A: Chunked Upload Mode (recommended for servers with limited POST size)**
+Perfect for shared hosting or servers with `post_max_size` restrictions:
+```ini
+memory_limit = 256M          # For image processing
+upload_max_filesize = 15M    # Per-chunk limit
+post_max_size = 16M          # Minimum for chunk handling
+max_execution_time = 300
+```
+
+**Option B: Direct Upload Mode (for unrestricted servers)**
+Higher limits allow direct uploads for better performance:
+```ini
+memory_limit = 256M
+upload_max_filesize = 500M   # Maximum file size
+post_max_size = 512M         # Slightly larger than upload_max_filesize
+max_execution_time = 300
+```
 
 **For Laravel Herd users:**
 1. Locate your Herd PHP configuration file:
    - **macOS/Linux**: `~/.config/herd/bin/php84/php.ini`
    - **Windows**: `C:\Users\<username>\.config\herd\bin\php84\php.ini`
    - **To find yours**: Run `php --ini` and check "Loaded Configuration File"
-2. Edit the following values:
-   ```ini
-   memory_limit = 256M
-   upload_max_filesize = 100M
-   post_max_size = 100M
-   max_execution_time = 300
-   max_input_time = 300
-   ```
+2. Edit the values based on Option A or B above
 3. **Restart Herd** from the system tray (Stop/Start or Restart all services)
 
 **For Apache/Nginx/php-fpm users:**
-Create a `.user.ini` file in the `public/` directory:
-```ini
-memory_limit = 256M
-upload_max_filesize = 100M
-post_max_size = 100M
-max_execution_time = 300
-```
-Then restart your web server.
+Create a `.user.ini` file in the `public/` directory with your chosen configuration, then restart your web server.
 
 **Note:** `.user.ini` files do NOT work with Laravel Herd - you must edit Herd's `php.ini` directly.
 
@@ -183,7 +189,9 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
                 "s3:GetObject",
                 "s3:DeleteObject",
                 "s3:ListBucket",
-                "s3:GetBucketLocation"
+                "s3:GetBucketLocation",
+                "s3:AbortMultipartUpload",
+                "s3:ListMultipartUploadParts"
             ],
             "Resource": [
                 "arn:aws:s3:::your-bucket-name",
@@ -226,6 +234,9 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 
 ### 1. Asset Management
 - ✅ Upload multiple files with drag & drop
+- ✅ **Chunked upload for large files (up to 500MB)**
+- ✅ **Automatic upload method selection (direct <10MB, chunked ≥10MB)**
+- ✅ **Smart retry logic with exponential backoff**
 - ✅ Automatic thumbnail generation
 - ✅ Image dimension detection
 - ✅ File size tracking
@@ -307,12 +318,72 @@ headers: {
 GET /api/assets?search=keyword&tags[]=1,2&type=image&per_page=24
 ```
 
-#### Upload Assets
+#### Upload Assets (Direct - files <10MB)
 ```
 POST /api/assets
 Content-Type: multipart/form-data
 
 files[]: File[]
+```
+
+#### Chunked Upload (Large files ≥10MB)
+```
+# 1. Initialize upload session
+POST /api/chunked-upload/init
+Content-Type: application/json
+
+{
+    "filename": "large-file.mp4",
+    "mime_type": "video/mp4",
+    "file_size": 524288000
+}
+
+Response:
+{
+    "session_token": "uuid-here",
+    "upload_id": "s3-upload-id",
+    "chunk_size": 10485760,
+    "total_chunks": 50
+}
+
+# 2. Upload each chunk
+POST /api/chunked-upload/chunk
+Content-Type: multipart/form-data
+
+session_token: "uuid-here"
+chunk_number: 1
+chunk: <chunk-blob>
+
+Response:
+{
+    "message": "Chunk uploaded successfully",
+    "part_number": 1,
+    "etag": "s3-etag",
+    "uploaded_chunks": 1,
+    "total_chunks": 50
+}
+
+# 3. Complete upload
+POST /api/chunked-upload/complete
+Content-Type: application/json
+
+{
+    "session_token": "uuid-here"
+}
+
+Response:
+{
+    "message": "Upload completed successfully",
+    "asset": { asset data with tags }
+}
+
+# Optional: Abort upload on error
+POST /api/chunked-upload/abort
+Content-Type: application/json
+
+{
+    "session_token": "uuid-here"
+}
 ```
 
 #### Get Asset
@@ -443,22 +514,33 @@ Select multiple unmapped objects in Discover to import in bulk.
 ## Customization
 
 ### Changing Upload Limits
-In `AssetController.php`:
+
+The application supports files up to 500MB by default using chunked uploads for files ≥10MB.
+
+In `AssetController.php` and `Api/AssetApiController.php`:
 ```php
-'files.*' => 'required|file|max:102400', // 100MB default (in KB)
+'files.*' => 'required|file|max:512000', // 500MB (in KB)
 ```
 
-Also update your PHP configuration:
-- **For Herd:** Edit `~/.config/herd/bin/php84/php.ini`
-- **For Apache/Nginx:** Edit `public/.user.ini`
-
+**For chunked uploads (recommended):**
+You can support large files even with limited PHP `post_max_size`:
 ```ini
-upload_max_filesize = 100M  # Match your max file size
-post_max_size = 100M        # Match or exceed upload_max_filesize
-memory_limit = 256M         # Should be at least 2.5x your max file size
+upload_max_filesize = 15M   # Per-chunk limit
+post_max_size = 16M         # Minimum for chunk handling
+memory_limit = 256M         # For image processing
 ```
 
-Then restart your web server.
+**For direct uploads only:**
+If you want to increase the direct upload limit (affects files <10MB):
+```ini
+upload_max_filesize = 100M  # Your desired max
+post_max_size = 100M        # Match upload_max_filesize
+memory_limit = 256M
+```
+
+Update in:
+- **For Herd:** `~/.config/herd/bin/php84/php.ini` (restart Herd)
+- **For Apache/Nginx:** `public/.user.ini` (restart web server)
 
 ### Changing Thumbnail Size
 In `S3Service.php`:
@@ -536,10 +618,13 @@ php artisan queue:work
 Or use supervisor/systemd for production.
 
 ### 3. Set Up Cron
-For scheduled tasks:
+For scheduled tasks (includes daily cleanup of stale upload sessions):
 ```bash
 * * * * * cd /path-to-orca && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+Scheduled tasks include:
+- Daily cleanup of abandoned chunked upload sessions (>24 hours old)
 
 ### 4. Security Checklist
 - [ ] Change default admin password

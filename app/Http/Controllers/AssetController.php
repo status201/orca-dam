@@ -100,7 +100,7 @@ class AssetController extends Controller
 
         try {
             $request->validate([
-                'files.*' => 'required|file|max:102400', // 100MB max
+                'files.*' => 'required|file|max:512000', // 500MB max
             ]);
 
             $uploadedAssets = [];

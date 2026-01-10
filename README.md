@@ -12,6 +12,9 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔍 Advanced search and filtering
 - 🖼️ Thumbnail generation and grid view
 - 📤 Multi-file upload with drag & drop
+- 🚀 **Chunked upload for large files (up to 500MB)**
+- ⚡ Automatic upload method selection (direct <10MB, chunked ≥10MB)
+- 🔄 Smart retry logic with exponential backoff
 - 📝 License type and copyright metadata
 - ♿ Accessibility support (alt text, captions)
 - 📊 CSV export with separate user/AI tag columns
@@ -21,7 +24,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🗑️ Trash & restore system with soft delete (keeps S3 objects)
 - ♻️ Permanent delete option for admins
 - 📱 Responsive design
-- 🚀 API-ready for Rich Text Editor integration
+- 🌐 API-ready for Rich Text Editor integration
 
 ## Installation
 
@@ -77,31 +80,38 @@ php artisan migrate
 php artisan db:seed --class=AdminUserSeeder
 ```
 
-7. Configure PHP memory limit (for large file uploads)
+7. Configure PHP limits
+
+ORCA DAM supports **chunked uploads** which allow uploading files up to 500MB even with limited `post_max_size` settings (as low as 16MB). The application automatically routes large files (≥10MB) through the chunked upload API.
+
+**Option A: Chunked Upload Mode (recommended for limited servers)**
+Perfect for servers with `post_max_size` limitations:
+```ini
+memory_limit = 256M          # For image processing
+upload_max_filesize = 15M    # Per-chunk limit
+post_max_size = 16M          # Minimum for chunk handling
+max_execution_time = 300
+```
+
+**Option B: Direct Upload Mode (for unrestricted servers)**
+Higher limits allow direct uploads for better performance:
+```ini
+memory_limit = 256M
+upload_max_filesize = 500M   # Maximum file size
+post_max_size = 512M         # Slightly larger than upload_max_filesize
+max_execution_time = 300
+```
 
 **For Laravel Herd users:**
-Edit Herd's `php.ini` file and set:
+Edit Herd's `php.ini` file:
 - **macOS/Linux**: `~/.config/herd/bin/php84/php.ini`
 - **Windows**: `C:\Users\<username>\.config\herd\bin\php84\php.ini`
 - **To find yours**: Run `php --ini` and check "Loaded Configuration File"
-```ini
-memory_limit = 256M
-upload_max_filesize = 100M
-post_max_size = 100M
-max_execution_time = 300
-max_input_time = 300
-```
+
 Then restart Herd from the system tray.
 
 **For Apache/Nginx users:**
-Create `public/.user.ini`:
-```ini
-memory_limit = 256M
-upload_max_filesize = 100M
-post_max_size = 100M
-max_execution_time = 300
-```
-Then restart your web server.
+Create `public/.user.ini` with the settings above, then restart your web server.
 
 8. Compile assets
 ```bash
@@ -165,13 +175,21 @@ For RTE integration:
 
 ```
 GET    /api/assets              - List assets (paginated)
-POST   /api/assets              - Upload assets
+POST   /api/assets              - Upload assets (direct, files <10MB)
 GET    /api/assets/{id}         - Get asset details
 PATCH  /api/assets/{id}         - Update asset metadata (alt_text, caption, license, copyright, tags)
 DELETE /api/assets/{id}         - Delete asset
 GET    /api/assets/search       - Search with filters
 GET    /api/assets/meta         - Get metadata by URL (PUBLIC, no auth)
 GET    /api/tags                - List tags for autocomplete
+```
+
+**Chunked Upload Endpoints** (for large files ≥10MB):
+```
+POST   /api/chunked-upload/init     - Initialize upload session
+POST   /api/chunked-upload/chunk    - Upload chunk (rate-limited: 100/min)
+POST   /api/chunked-upload/complete - Complete upload and create asset
+POST   /api/chunked-upload/abort    - Cancel and cleanup failed upload
 ```
 
 Authentication: Laravel Sanctum (SPA token) - except `/api/assets/meta` which is public
@@ -192,8 +210,11 @@ Authentication: Laravel Sanctum (SPA token) - except `/api/assets/meta` which is
 ```
 orca-dam/
 ├── app/
+│   ├── Console/Commands/
+│   │   └── CleanupStaleUploads.php
 │   ├── Http/Controllers/
 │   │   ├── AssetController.php
+│   │   ├── ChunkedUploadController.php
 │   │   ├── TagController.php
 │   │   ├── DiscoverController.php
 │   │   ├── ExportController.php
@@ -202,9 +223,11 @@ orca-dam/
 │   │   └── GenerateAiTags.php
 │   ├── Services/
 │   │   ├── S3Service.php
+│   │   ├── ChunkedUploadService.php
 │   │   └── RekognitionService.php
 │   ├── Models/
 │   │   ├── Asset.php
+│   │   ├── UploadSession.php
 │   │   ├── Tag.php
 │   │   └── User.php
 │   └── Policies/
@@ -216,9 +239,11 @@ orca-dam/
 │   ├── assets/
 │   ├── export/
 │   └── tags/
-└── routes/
-    ├── web.php
-    └── api.php
+├── routes/
+│   ├── web.php
+│   └── api.php
+└── bootstrap/
+    └── app.php (scheduled tasks)
 ```
 
 ## License

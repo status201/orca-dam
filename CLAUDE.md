@@ -62,11 +62,18 @@ php artisan route:cache
 php artisan view:cache
 ```
 
+### Maintenance Commands
+```bash
+# Cleanup stale chunked upload sessions (runs automatically daily)
+php artisan uploads:cleanup              # Default: 24 hours
+php artisan uploads:cleanup --hours=48   # Custom threshold
+```
+
 ## Architecture
 
 ### Core Services Pattern
 
-The application uses a service-oriented architecture with two main services that handle external integrations:
+The application uses a service-oriented architecture with three main services that handle external integrations and large file uploads:
 
 **S3Service** (`app/Services/S3Service.php`)
 - Manages all S3 operations using AWS SDK v3
@@ -74,6 +81,15 @@ The application uses a service-oriented architecture with two main services that
 - Generates thumbnails using Intervention Image 3.x (skips GIFs to prevent memory exhaustion)
 - Provides discovery functionality to find unmapped S3 objects
 - Uses bucket policies (not ACLs) for public read access
+
+**ChunkedUploadService** (`app/Services/ChunkedUploadService.php`)
+- Handles large file uploads (≥10MB) using AWS S3 Multipart Upload API
+- Overcomes PHP `post_max_size` limitations by splitting files into 10MB chunks
+- Supports files up to 500MB
+- Streams chunks directly to S3 without local disk storage
+- Manages upload sessions via database (`upload_sessions` table)
+- Provides idempotent chunk uploads (can retry failed chunks)
+- Extracts image dimensions after upload completion
 
 **RekognitionService** (`app/Services/RekognitionService.php`)
 - Provides AI-powered tagging via AWS Rekognition
@@ -124,7 +140,7 @@ Uses Laravel Policies for fine-grained access control:
 
 **Endpoints** (`routes/api.php`):
 - `GET /api/assets` - List assets with pagination, search, filters
-- `POST /api/assets` - Multi-file upload
+- `POST /api/assets` - Multi-file upload (direct upload for files <10MB)
 - `GET /api/assets/{id}` - Get single asset
 - `PATCH /api/assets/{id}` - Update metadata (alt_text, caption, tags, license_type, copyright)
 - `DELETE /api/assets/{id}` - Delete asset
@@ -132,7 +148,13 @@ Uses Laravel Policies for fine-grained access control:
 - `GET /api/assets/meta` - Get asset metadata by URL (public, no auth required)
 - `GET /api/tags` - List tags (with optional type filter)
 
-All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` which is public.
+**Chunked Upload Endpoints** (for large files ≥10MB):
+- `POST /api/chunked-upload/init` - Initialize multipart upload session
+- `POST /api/chunked-upload/chunk` - Upload single chunk (rate-limited: 100/min)
+- `POST /api/chunked-upload/complete` - Complete upload and create Asset
+- `POST /api/chunked-upload/abort` - Cancel upload and cleanup
+
+All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` which is public. Chunked upload endpoints have additional rate limiting (100 requests/minute).
 
 ### Frontend Stack
 
@@ -144,9 +166,9 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 
 ### Key Workflows
 
-**File Upload Process**:
-1. Client uploads via multipart/form-data
-2. `AssetController` validates file (max 102400KB default)
+**File Upload Process** (Direct Upload for files <10MB):
+1. Client uploads via multipart/form-data to `POST /assets`
+2. `AssetController` validates file (max 512000KB = 500MB)
 3. `S3Service->uploadFile()` streams file to S3 bucket
 4. Image dimensions extracted using memory-efficient methods
 5. Thumbnail generated (skipped for GIFs) and uploaded to S3
@@ -154,6 +176,29 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 7. If Rekognition enabled, `GenerateAiTags` job dispatched to queue
 8. Job runs `RekognitionService->autoTagAsset()` in background
 9. AI tags created/attached with type='ai', translated if language != 'en'
+
+**Chunked Upload Process** (For large files ≥10MB):
+1. Client splits file into 10MB chunks using JavaScript `File.slice()`
+2. Client calls `POST /api/chunked-upload/init` with file metadata
+3. Server creates `UploadSession` record and initiates S3 multipart upload
+4. Server returns `session_token`, `upload_id`, `chunk_size`, `total_chunks`
+5. Client uploads each chunk sequentially to `POST /api/chunked-upload/chunk`
+6. Each chunk is streamed directly to S3 via `S3Client->uploadPart()`
+7. Server stores part ETags in `upload_sessions.part_etags` JSON column
+8. Client retries failed chunks up to 3 times with exponential backoff
+9. After all chunks uploaded, client calls `POST /api/chunked-upload/complete`
+10. Server calls `S3Client->completeMultipartUpload()` to finalize
+11. Server extracts image dimensions from completed S3 object
+12. Server creates Asset record with all metadata
+13. Thumbnail generation and AI tagging proceed as normal
+14. Session marked as 'completed' in database
+
+**Chunked Upload Error Handling**:
+- Failed chunks trigger automatic retry (3 attempts, 1s/2s/4s backoff)
+- If all retries fail, client calls `POST /api/chunked-upload/abort`
+- Server aborts S3 multipart upload and marks session as 'aborted'
+- Stale sessions (no activity >24h) cleaned up daily via scheduled command
+- S3 lifecycle policies can provide additional cleanup (recommended: 2 days)
 
 **Manual AI Tagging**:
 - Users can manually trigger AI tagging via "Generate AI Tags" button on edit page
@@ -200,6 +245,20 @@ The application handles large files (PDFs, GIFs, videos) by:
 - `user_id` - Foreign key to uploader
 - Soft deletes with `deleted_at`
 
+**upload_sessions table** (for chunked uploads):
+- `upload_id` (unique) - S3 multipart upload ID
+- `session_token` (unique) - Client-side session identifier (UUID)
+- `filename`, `mime_type`, `file_size` - Original file metadata
+- `s3_key` - Target S3 key for completed upload
+- `chunk_size` - Size of each chunk in bytes (default: 10MB)
+- `total_chunks` - Total number of chunks to upload
+- `uploaded_chunks` - Number of successfully uploaded chunks
+- `part_etags` (JSON) - Array of {PartNumber, ETag} for S3 completion
+- `status` - Enum: pending, uploading, completed, failed, aborted
+- `user_id` - Foreign key to uploader
+- `last_activity_at` - Timestamp of last chunk upload (for cleanup)
+- Timestamps (`created_at`, `updated_at`)
+
 **tags table**:
 - `name` - Tag text (unique)
 - `type` - 'user' or 'ai'
@@ -232,13 +291,28 @@ AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de,
 - For multilingual AI tags: translate:TranslateText (only if AWS_REKOGNITION_LANGUAGE != 'en')
 
 ### PHP Configuration for Large Files
-Minimum required settings (especially important for Laravel Herd users):
+
+**Chunked Upload Mode** (recommended for servers with low `post_max_size`):
+The chunked upload system allows files up to 500MB even with PHP `post_max_size` as low as 16MB by splitting files into 10MB chunks client-side. Minimum required settings:
+```ini
+memory_limit = 256M          # For image processing
+upload_max_filesize = 15M    # Per-chunk limit (10MB chunk + overhead)
+post_max_size = 16M          # Must accommodate chunk + request data
+max_execution_time = 300     # For chunk processing
+```
+
+**Direct Upload Mode** (for servers with higher limits):
+If your server allows larger POST sizes, you can use direct uploads for better performance on smaller files:
 ```ini
 memory_limit = 256M
-upload_max_filesize = 100M
-post_max_size = 100M
+upload_max_filesize = 500M   # Maximum file size
+post_max_size = 512M         # Slightly larger than upload_max_filesize
 max_execution_time = 300
 ```
+
+**Note**: The application automatically chooses upload method based on file size:
+- Files <10MB: Direct upload via `POST /assets`
+- Files ≥10MB: Chunked upload via `/api/chunked-upload/*` endpoints
 
 For Herd: Edit `~/.config/herd/bin/php84/php.ini` (Windows: `C:\Users\<username>\.config\herd\bin\php84\php.ini`) and restart Herd.
 

@@ -37,7 +37,7 @@
                         </button>
                     </p>
                     <p class="text-sm text-gray-500 mt-2">
-                        Maximum file size: 100MB
+                        Maximum file size: 500MB
                     </p>
                 </div>
             </div>
@@ -109,132 +109,251 @@ function assetUploader() {
         selectedFiles: [],
         uploading: false,
         uploadProgress: {},
-        
+        CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
+        CHUNKED_THRESHOLD: 10 * 1024 * 1024, // Use chunked upload for files >= 10MB
+
         handleDrop(e) {
             this.dragActive = false;
             const files = Array.from(e.dataTransfer.files);
             this.addFiles(files);
         },
-        
+
         handleFiles(e) {
             const files = Array.from(e.target.files);
             this.addFiles(files);
         },
-        
+
         addFiles(files) {
             this.selectedFiles.push(...files);
         },
-        
+
         removeFile(index) {
             this.selectedFiles.splice(index, 1);
         },
-        
+
         formatFileSize(bytes) {
             const units = ['B', 'KB', 'MB', 'GB'];
             let size = bytes;
             let unitIndex = 0;
-            
+
             while (size >= 1024 && unitIndex < units.length - 1) {
                 size /= 1024;
                 unitIndex++;
             }
-            
+
             return `${size.toFixed(2)} ${units[unitIndex]}`;
         },
-        
+
         async uploadFiles() {
             if (this.selectedFiles.length === 0) return;
-            
+
             this.uploading = true;
-            const formData = new FormData();
-            
-            this.selectedFiles.forEach((file, index) => {
-                formData.append('files[]', file);
-                this.uploadProgress[index] = 0;
-            });
-            
+
             try {
+                for (let i = 0; i < this.selectedFiles.length; i++) {
+                    const file = this.selectedFiles[i];
+                    this.uploadProgress[i] = 0;
+
+                    // Use chunked upload for large files
+                    if (file.size >= this.CHUNKED_THRESHOLD) {
+                        await this.uploadFileChunked(file, i);
+                    } else {
+                        await this.uploadFileDirect(file, i);
+                    }
+                }
+
+                window.showToast('All files uploaded successfully!');
+                setTimeout(() => {
+                    window.location.href = '{{ route('assets.index') }}';
+                }, 1000);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                window.showToast(error.message || 'Upload failed. Please try again.', 'error');
+                this.uploading = false;
+            }
+        },
+
+        async uploadFileDirect(file, index) {
+            const formData = new FormData();
+            formData.append('files[]', file);
+
+            return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
-                
-                // Track upload progress
+
                 xhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable) {
-                        const percentComplete = Math.round((e.loaded / e.total) * 100);
-                        // Update all file progress bars
-                        this.selectedFiles.forEach((_, index) => {
-                            this.uploadProgress[index] = percentComplete;
-                        });
+                        this.uploadProgress[index] = Math.round((e.loaded / e.total) * 100);
                     }
                 });
-                
+
                 xhr.addEventListener('load', () => {
                     if (xhr.status >= 200 && xhr.status < 300) {
-                        // Success - could be 200, 201, or redirect
-                        window.showToast('Files uploaded successfully!');
-                        setTimeout(() => {
-                            window.location.href = '{{ route('assets.index') }}';
-                        }, 1000);
-                    } else if (xhr.status === 302) {
-                        // Laravel redirect after success
-                        window.location.href = '{{ route('assets.index') }}';
+                        resolve();
                     } else {
-                        // Error - parse error message from response if available
-                        let errorMessage = 'Upload failed. Please try again.';
-
-                        // Try to parse JSON response
-                        if (xhr.responseText && xhr.responseText.trim()) {
-                            try {
-                                const response = JSON.parse(xhr.responseText);
-                                if (response.message) {
-                                    errorMessage = response.message;
-                                } else if (response.errors) {
-                                    errorMessage = Object.values(response.errors).flat().join(', ');
-                                }
-                            } catch (e) {
-                                // Not JSON, check for specific error codes
-                                if (xhr.status === 500) {
-                                    errorMessage = 'Server error occurred. The file might be too large or corrupt. Please try a smaller file.';
-                                } else if (xhr.status === 413) {
-                                    errorMessage = 'Files are too large. Maximum size is 100MB per file.';
-                                } else if (xhr.status === 422) {
-                                    errorMessage = 'Invalid file format or validation error.';
-                                } else if (xhr.status === 0) {
-                                    errorMessage = 'Network error or request timeout. Please try again.';
-                                }
-                            }
-                        } else {
-                            // Empty response
-                            errorMessage = 'Server error with no response. The file might be too large or the server is unreachable.';
-                        }
-
-                        console.error('Upload failed:', {
-                            status: xhr.status,
-                            statusText: xhr.statusText,
-                            responseText: xhr.responseText
-                        });
-
-                        window.showToast(errorMessage, 'error');
-                        this.uploading = false;
-                        this.uploadProgress = {};
+                        reject(new Error(this.parseErrorMessage(xhr)));
                     }
                 });
-                
+
                 xhr.addEventListener('error', () => {
-                    window.showToast('Network error. Please check your connection and try again.', 'error');
-                    this.uploading = false;
-                    this.uploadProgress = {};
+                    reject(new Error('Network error. Please check your connection.'));
                 });
-                
+
                 xhr.open('POST', '{{ route('assets.store') }}');
                 xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').content);
                 xhr.send(formData);
-                
+            });
+        },
+
+        async uploadFileChunked(file, index) {
+            const totalChunks = Math.ceil(file.size / this.CHUNK_SIZE);
+
+            // Step 1: Initialize chunked upload
+            const session = await this.initiateChunkedUpload(file);
+
+            try {
+                // Step 2: Upload chunks with retry logic
+                for (let chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++) {
+                    const start = (chunkNumber - 1) * this.CHUNK_SIZE;
+                    const end = Math.min(start + this.CHUNK_SIZE, file.size);
+                    const chunk = file.slice(start, end);
+
+                    await this.uploadChunkWithRetry(session.session_token, chunk, chunkNumber);
+
+                    // Update progress (reserve 5% for completion)
+                    const progress = Math.min(95, Math.round((chunkNumber / totalChunks) * 95));
+                    this.uploadProgress[index] = progress;
+                }
+
+                // Step 3: Complete upload
+                await this.completeChunkedUpload(session.session_token);
+                this.uploadProgress[index] = 100;
+
             } catch (error) {
-                console.error('Upload error:', error);
-                window.showToast('Upload failed. Please try again.', 'error');
-                this.uploading = false;
-                this.uploadProgress = {};
+                // Abort upload on failure
+                await this.abortChunkedUpload(session.session_token);
+                throw error;
             }
+        },
+
+        async initiateChunkedUpload(file) {
+            const response = await fetch('/api/chunked-upload/init', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: file.name,
+                    mime_type: file.type,
+                    file_size: file.size,
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to initialize upload');
+            }
+
+            return await response.json();
+        },
+
+        async uploadChunkWithRetry(sessionToken, chunk, chunkNumber, retries = 3) {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    return await this.uploadChunk(sessionToken, chunk, chunkNumber);
+                } catch (error) {
+                    if (attempt === retries) {
+                        throw new Error(`Failed to upload chunk ${chunkNumber} after ${retries} attempts`);
+                    }
+                    // Exponential backoff: 1s, 2s, 4s
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+                }
+            }
+        },
+
+        async uploadChunk(sessionToken, chunk, chunkNumber) {
+            const formData = new FormData();
+            formData.append('session_token', sessionToken);
+            formData.append('chunk_number', chunkNumber);
+            formData.append('chunk', chunk);
+
+            const response = await fetch('/api/chunked-upload/chunk', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Chunk upload failed');
+            }
+
+            return await response.json();
+        },
+
+        async completeChunkedUpload(sessionToken) {
+            const response = await fetch('/api/chunked-upload/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ session_token: sessionToken }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to complete upload');
+            }
+
+            return await response.json();
+        },
+
+        async abortChunkedUpload(sessionToken) {
+            try {
+                await fetch('/api/chunked-upload/abort', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ session_token: sessionToken }),
+                });
+            } catch (error) {
+                console.error('Failed to abort upload:', error);
+            }
+        },
+
+        parseErrorMessage(xhr) {
+            let errorMessage = 'Upload failed. Please try again.';
+
+            if (xhr.responseText && xhr.responseText.trim()) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.message) {
+                        errorMessage = response.message;
+                    } else if (response.errors) {
+                        errorMessage = Object.values(response.errors).flat().join(', ');
+                    }
+                } catch (e) {
+                    if (xhr.status === 500) {
+                        errorMessage = 'Server error occurred. Please try a smaller file.';
+                    } else if (xhr.status === 413) {
+                        errorMessage = 'File is too large. Maximum size is 500MB per file.';
+                    } else if (xhr.status === 422) {
+                        errorMessage = 'Invalid file format or validation error.';
+                    }
+                }
+            }
+
+            return errorMessage;
         }
     };
 }
