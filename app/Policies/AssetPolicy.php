@@ -36,8 +36,8 @@ class AssetPolicy
      */
     public function update(User $user, Asset $asset): bool
     {
-        // Admins can update any asset, editors can only update their own
-        return $user->isAdmin() || $asset->user_id === $user->id;
+        // All authenticated users can update any asset
+        return true;
     }
 
     /**
@@ -45,8 +45,8 @@ class AssetPolicy
      */
     public function delete(User $user, Asset $asset): bool
     {
-        // Admins can delete any asset, editors can only delete their own
-        return $user->isAdmin() || $asset->user_id === $user->id;
+        // All authenticated users can delete any asset
+        return true;
     }
 
     /**

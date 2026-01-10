@@ -18,6 +18,8 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔗 Easy URL copying for external integration
 - 🌐 Public metadata API endpoint (no auth required)
 - 🔎 Discover unmapped S3 objects
+- 🗑️ Trash & restore system with soft delete (keeps S3 objects)
+- ♻️ Permanent delete option for admins
 - 📱 Responsive design
 - 🚀 API-ready for Rich Text Editor integration
 
@@ -116,25 +118,46 @@ php artisan serve  # Or use Herd
 ### User Roles
 
 **Editors:**
-- Upload and manage their own assets
-- Add tags
+- Upload and manage all assets
+- Add and remove tags
 - Search and browse all assets
 - Copy URLs
+- Soft delete assets (moves to trash)
 
 **Admins:**
 - All editor permissions
-- Manage all assets (edit/delete)
+- Access trash and restore deleted assets
+- Permanently delete assets (removes S3 objects)
 - User management
 - Discover unmapped S3 objects
+- Export to CSV
 - Batch operations
 
 ### Discovering Unmapped Objects
 
 1. Navigate to Admin > Discover
 2. Click "Scan Bucket"
-3. Review unmapped objects
+3. Review unmapped objects (soft-deleted assets marked with "Deleted" badge)
 4. Select objects to import
 5. AI tags will be automatically generated
+
+### Trash & Restore (Admin Only)
+
+**Soft Delete:**
+- Deleting an asset moves it to trash
+- S3 objects (file + thumbnail) are kept
+- Asset hidden from normal views
+
+**Restore:**
+1. Navigate to Admin > Trash
+2. Click restore button (green undo icon)
+3. Asset returns to active state
+
+**Permanent Delete:**
+1. Navigate to Admin > Trash
+2. Click permanent delete button (red trash icon)
+3. Confirm deletion
+4. Removes S3 objects AND database record (cannot be undone)
 
 ### API Endpoints
 

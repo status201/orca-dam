@@ -256,30 +256,86 @@ class AssetController extends Controller
     }
 
     /**
-     * Remove the specified asset
+     * Soft delete the specified asset (does NOT delete S3 objects)
      */
     public function destroy(Asset $asset)
     {
         $this->authorize('delete', $asset);
 
-        // Delete from S3
-        $this->s3Service->deleteFile($asset->s3_key);
-        
-        if ($asset->thumbnail_s3_key) {
-            $this->s3Service->deleteFile($asset->thumbnail_s3_key);
-        }
-
-        // Delete from database
+        // Soft delete from database only - keep S3 objects
         $asset->delete();
 
         if (request()->expectsJson()) {
             return response()->json([
-                'message' => 'Asset deleted successfully',
+                'message' => 'Asset moved to trash successfully',
             ]);
         }
 
         return redirect()->route('assets.index')
-            ->with('success', 'Asset deleted successfully');
+            ->with('success', 'Asset moved to trash successfully');
+    }
+
+    /**
+     * Show trash page with soft-deleted assets
+     */
+    public function trash()
+    {
+        $this->authorize('restore', Asset::class);
+
+        $assets = Asset::onlyTrashed()
+            ->with(['user', 'tags'])
+            ->orderBy('deleted_at', 'desc')
+            ->paginate(24);
+
+        return view('assets.trash', compact('assets'));
+    }
+
+    /**
+     * Restore a soft-deleted asset
+     */
+    public function restore($id)
+    {
+        $asset = Asset::onlyTrashed()->findOrFail($id);
+        $this->authorize('restore', $asset);
+
+        $asset->restore();
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'message' => 'Asset restored successfully',
+            ]);
+        }
+
+        return redirect()->route('assets.trash')
+            ->with('success', 'Asset restored successfully');
+    }
+
+    /**
+     * Permanently delete asset and remove S3 objects
+     */
+    public function forceDelete($id)
+    {
+        $asset = Asset::onlyTrashed()->findOrFail($id);
+        $this->authorize('forceDelete', $asset);
+
+        // Delete from S3
+        $this->s3Service->deleteFile($asset->s3_key);
+
+        if ($asset->thumbnail_s3_key) {
+            $this->s3Service->deleteFile($asset->thumbnail_s3_key);
+        }
+
+        // Permanently delete from database
+        $asset->forceDelete();
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'message' => 'Asset permanently deleted successfully',
+            ]);
+        }
+
+        return redirect()->route('assets.trash')
+            ->with('success', 'Asset permanently deleted successfully');
     }
 
     /**

@@ -27,6 +27,13 @@ Route::middleware(['auth'])->group(function () {
     // Asset download
     Route::get('assets/{asset}/download', [AssetController::class, 'download'])->name('assets.download');
 
+    // Trash routes (admin only)
+    Route::middleware(['can:restore,App\Models\Asset'])->group(function () {
+        Route::get('assets/trash/index', [AssetController::class, 'trash'])->name('assets.trash');
+        Route::post('assets/{id}/restore', [AssetController::class, 'restore'])->name('assets.restore');
+        Route::delete('assets/{id}/force-delete', [AssetController::class, 'forceDelete'])->name('assets.force-delete');
+    });
+
     // AI tagging
     Route::post('assets/{asset}/ai-tag', [AssetController::class, 'generateAiTags'])->name('assets.ai-tag');
 

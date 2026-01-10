@@ -258,8 +258,8 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Metadata extraction
 
 ### 5. User Roles
-- **Editors**: Upload, manage own assets, view all
-- **Admins**: Full access, discover feature, manage all assets
+- **Editors**: Upload and manage all assets (view, edit, soft delete)
+- **Admins**: Full access including trash management, restore/permanent delete, discover, export, and user management
 
 ### 6. API for RTE Integration
 - ✅ RESTful API endpoints
@@ -274,6 +274,13 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Includes license type and copyright information
 - ✅ Filter by file type and tags before export
 - ✅ Timestamped export filenames
+
+### 8. Trash & Restore (Admin Only)
+- ✅ Soft delete keeps S3 objects when assets are deleted
+- ✅ Trash page shows all soft-deleted assets
+- ✅ Restore assets from trash back to active state
+- ✅ Permanent delete removes database record AND S3 objects
+- ✅ Discovery marks soft-deleted assets to prevent re-import
 
 ---
 
@@ -397,6 +404,39 @@ Click the copy icon on any asset thumbnail or use the copy button on the asset d
 
 ### 4. Batch Operations
 Select multiple unmapped objects in Discover to import in bulk.
+
+### 5. Using the Trash Feature (Admin Only)
+
+**Soft Delete (Default Behavior):**
+- When you delete an asset, it's moved to trash
+- The database record is marked as deleted
+- S3 objects (file + thumbnail) are **kept** in the bucket
+- Asset is hidden from normal views
+
+**Accessing Trash:**
+1. Navigate to the "Trash" link in the top navigation (admin only)
+2. View all soft-deleted assets with deletion timestamps
+
+**Restoring Assets:**
+1. Go to Trash page
+2. Find the asset you want to restore
+3. Click the green restore button (undo icon)
+4. Asset returns to active state immediately
+
+**Permanent Delete:**
+1. Go to Trash page
+2. Click the red trash icon on an asset
+3. Confirm the deletion warning
+4. This will:
+   - Delete the S3 object (file)
+   - Delete the S3 thumbnail
+   - Permanently remove the database record
+   - **This action cannot be undone!**
+
+**Discovery Integration:**
+- When scanning S3 bucket, soft-deleted assets appear with a red "Deleted" badge
+- Shows when the asset was deleted
+- Prevents accidentally re-importing deleted assets
 
 ---
 

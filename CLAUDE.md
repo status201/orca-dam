@@ -91,13 +91,15 @@ Uses Laravel Policies for fine-grained access control:
 
 **AssetPolicy** (`app/Policies/AssetPolicy.php`)
 - All authenticated users can view and create assets
-- Editors can update/delete their own assets only
-- Admins can update/delete any asset
+- All authenticated users can update and delete any asset (soft delete)
+- Only admins can restore soft-deleted assets
+- Only admins can permanently delete assets (force delete)
 - Only admins can access the "Discover" feature (unmapped S3 objects)
+- Only admins can export assets to CSV
 
 **User Roles** (stored in `users.role` column):
-- `editor`: Can upload and manage their own assets
-- `admin`: Full access including user management and discovery
+- `editor`: Can upload and manage all assets (view, edit, soft delete)
+- `admin`: Full access including trash management, discovery, export, and user management
 
 ### Model Relationships
 
@@ -162,9 +164,18 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 **Discovery Process** (Admin only):
 1. `DiscoverController->scan()` calls `S3Service->findUnmappedObjects()`
 2. Lists all S3 objects in `assets/` prefix not in database
-3. Admin selects objects to import
-4. `DiscoverController->import()` creates Asset records
-5. Thumbnails generated and AI tags applied automatically
+3. Marks objects that belong to soft-deleted assets with red "Deleted" badge
+4. Admin selects objects to import
+5. `DiscoverController->import()` creates Asset records
+6. Prevents re-importing soft-deleted assets
+7. Thumbnails generated and AI tags applied automatically
+
+**Trash/Restore Workflow** (Admin only):
+1. **Soft Delete**: User deletes asset → Database record soft-deleted → S3 objects kept
+2. **Trash Page**: Admin views `/assets/trash/index` to see all soft-deleted assets
+3. **Restore**: Admin clicks restore → Asset returned to active state
+4. **Permanent Delete**: Admin clicks force delete → S3 objects deleted → Database record removed forever
+5. Discovery shows soft-deleted assets with "Deleted" badge to prevent accidental re-import
 
 ### Memory Management
 
@@ -251,6 +262,13 @@ For Herd: Edit `~/.config/herd/bin/php84/php.ini` (Windows: `C:\Users\<username>
 - Services return null/empty arrays on failure rather than throwing
 - Controllers validate input and return appropriate HTTP status codes
 - Laravel logs stored in `storage/logs/laravel.log`
+
+### Delete Behavior
+- **Soft Delete** (default): `Asset->delete()` marks record as deleted but keeps S3 objects
+- **Hard Delete** (admin only): `Asset->forceDelete()` removes database record AND S3 objects
+- All delete operations use Laravel's soft delete feature (`deleted_at` timestamp)
+- Soft-deleted assets are hidden from normal queries but visible in trash
+- Discovery feature marks soft-deleted assets to prevent re-import
 
 ## Testing Considerations
 

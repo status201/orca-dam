@@ -115,8 +115,21 @@
                                     </template>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="text-sm font-medium text-gray-900" x-text="object.filename"></div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-sm font-medium text-gray-900" x-text="object.filename"></div>
+                                        <template x-if="object.is_deleted">
+                                            <span class="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded-full whitespace-nowrap">
+                                                <i class="fas fa-trash-alt mr-1"></i>Deleted
+                                            </span>
+                                        </template>
+                                    </div>
                                     <div class="text-xs text-gray-500 font-mono truncate max-w-xs" x-text="object.key"></div>
+                                    <template x-if="object.is_deleted">
+                                        <div class="text-xs text-red-600 mt-1">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Soft-deleted <span x-text="formatDate(object.deleted_at)"></span>
+                                        </div>
+                                    </template>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded" x-text="object.mime_type"></span>

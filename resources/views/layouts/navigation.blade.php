@@ -31,6 +31,11 @@
                             {{ __('Export') }}
                         </x-nav-link>
                     @endcan
+                    @can('restore', App\Models\Asset::class)
+                        <x-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')">
+                            {{ __('Trash') }}
+                        </x-nav-link>
+                    @endcan
                     @can('viewAny', App\Models\User::class)
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                             {{ __('Users') }}
@@ -105,6 +110,11 @@
             @can('export', App\Models\Asset::class)
                 <x-responsive-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')">
                     {{ __('Export') }}
+                </x-responsive-nav-link>
+            @endcan
+            @can('restore', App\Models\Asset::class)
+                <x-responsive-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')">
+                    {{ __('Trash') }}
                 </x-responsive-nav-link>
             @endcan
             @can('viewAny', App\Models\User::class)

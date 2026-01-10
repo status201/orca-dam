@@ -43,10 +43,13 @@ class DiscoverController extends Controller
 
         $unmappedObjects = $this->s3Service->findUnmappedObjects();
 
-        // Enrich with metadata
+        // Enrich with metadata and check for soft-deleted assets
         $enrichedObjects = collect($unmappedObjects)->map(function ($object) {
             $metadata = $this->s3Service->getObjectMetadata($object['key']);
-            
+
+            // Check if this S3 key belongs to a soft-deleted asset
+            $deletedAsset = Asset::onlyTrashed()->where('s3_key', $object['key'])->first();
+
             return [
                 'key' => $object['key'],
                 'filename' => basename($object['key']),
@@ -54,6 +57,8 @@ class DiscoverController extends Controller
                 'last_modified' => $object['last_modified'],
                 'mime_type' => $metadata['mime_type'] ?? 'unknown',
                 'url' => $this->s3Service->getUrl($object['key']),
+                'is_deleted' => $deletedAsset !== null,
+                'deleted_at' => $deletedAsset ? $deletedAsset->deleted_at->toDateTimeString() : null,
             ];
         })->toArray();
 
@@ -78,8 +83,8 @@ class DiscoverController extends Controller
         $imported = [];
 
         foreach ($request->keys as $s3Key) {
-            // Check if already exists by s3_key
-            if (Asset::where('s3_key', $s3Key)->exists()) {
+            // Check if already exists by s3_key (including trashed)
+            if (Asset::withTrashed()->where('s3_key', $s3Key)->exists()) {
                 continue;
             }
 
@@ -89,9 +94,9 @@ class DiscoverController extends Controller
                 continue;
             }
 
-            // Check for duplicate content by ETag (MD5 hash)
+            // Check for duplicate content by ETag (MD5 hash) (including trashed)
             if (!empty($metadata['etag'])) {
-                $duplicateAsset = Asset::where('etag', $metadata['etag'])->first();
+                $duplicateAsset = Asset::withTrashed()->where('etag', $metadata['etag'])->first();
                 if ($duplicateAsset) {
                     \Log::info("Skipping duplicate file: {$s3Key} - same content as asset #{$duplicateAsset->id} ({$duplicateAsset->s3_key})");
                     continue;
