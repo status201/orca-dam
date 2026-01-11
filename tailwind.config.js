@@ -24,6 +24,10 @@ export default {
                     'teal-hover': '#0d9488',
                 },
             },
+            screens: {
+                'xxl': '1680px',
+                // => @media (min-width: 1680px) { ... }
+            }
         },
     },
 

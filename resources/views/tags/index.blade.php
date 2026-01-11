@@ -29,7 +29,7 @@
     
     @if($tags->count() > 0)
     <!-- Tags grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xxl:grid-cols-6 gap-4">
         @foreach($tags as $tag)
         <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
             <div class="flex items-start justify-between mb-2 gap-3">
