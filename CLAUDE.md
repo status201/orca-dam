@@ -447,3 +447,90 @@ See `RTE_INTEGRATION.md` for detailed examples integrating with TinyMCE, CKEdito
 - Use Discovery feature to import externally-uploaded objects
 - ETag field prevents duplicate imports of same S3 object
 - Public URLs are permanent and cacheable
+
+## System Administration
+
+ORCA DAM includes a comprehensive admin-only System page accessible via the user dropdown menu.
+
+### Accessing System Administration
+- **Route**: `/system`
+- **Authorization**: Admin users only (`role = 'admin'`)
+- **Location**: User dropdown → System (icon: cog)
+
+### System Page Features
+
+**Overview Tab:**
+- System information (PHP version, Laravel version, environment)
+- Database statistics (record counts for all tables)
+- Disk usage (storage, logs, cache, total)
+
+**Queue Tab:**
+- Real-time queue statistics (pending, failed, batches)
+- Queue management controls:
+  - Retry all failed jobs
+  - Flush failed jobs queue
+  - Restart queue workers (signals graceful restart)
+- Failed jobs table with exception details
+- Individual job retry capability
+
+**Logs Tab:**
+- Laravel log viewer (last 20-200 lines configurable)
+- Color-coded output (ERROR=red, WARNING=yellow, INFO=blue)
+- Manual refresh with line count selector
+
+**Commands Tab:**
+- Custom artisan command execution with security whitelist
+- Suggested commands with one-click execution:
+  - Cache management (clear, optimize)
+  - Queue operations (retry, flush, restart)
+  - Maintenance (uploads:cleanup, storage:link)
+  - Database (migrate:status, migrate)
+- Real-time command output display
+
+**Diagnostics Tab:**
+- System configuration overview
+- PHP settings display
+- S3 connection test
+
+### Queue Worker Management
+
+**Development:**
+Run manually in terminal:
+```bash
+php artisan queue:work --tries=3
+```
+
+**Production:**
+Use supervisor to manage persistent queue workers. See `DEPLOYMENT.md` for complete setup instructions.
+
+**Key Files:**
+- Supervisor config: `deploy/supervisor/orca-queue-worker.conf`
+- Deployment guide: `DEPLOYMENT.md`
+
+**Managing from System Page:**
+- `queue:restart` - Signal workers to gracefully restart
+- `queue:retry all` - Requeue all failed jobs
+- `queue:flush` - Delete all failed jobs
+- View pending/failed job counts and details
+
+**⚠️ Important:** Do not run `queue:work` from the web UI (causes timeouts). Use supervisor or manual terminal execution.
+
+### Security Features
+
+- Admin-only access via SystemPolicy
+- Command whitelist (prevents dangerous operations)
+- All command executions logged with user ID
+- CSRF protection on all POST requests
+- Read-only log access (no deletion)
+- Input validation on all endpoints
+
+## Deployment
+
+See `DEPLOYMENT.md` for complete production deployment instructions including:
+- Server requirements and configuration
+- Supervisor setup for queue workers
+- Web server configuration (Nginx/Apache)
+- SSL certificate setup
+- Monitoring and maintenance
+- Backup strategies
+- Troubleshooting guide

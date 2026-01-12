@@ -6,6 +6,7 @@ use App\Http\Controllers\TagController;
 use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SystemController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,6 +64,19 @@ Route::middleware(['auth'])->group(function () {
 
     // User management routes (admin only)
     Route::resource('users', UserController::class)->except(['show']);
+
+    // System administration routes (admin only)
+    Route::middleware(['can:access,App\Http\Controllers\SystemController'])->group(function () {
+        Route::get('system', [SystemController::class, 'index'])->name('system.index');
+        Route::get('system/queue-status', [SystemController::class, 'queueStatus'])->name('system.queue-status');
+        Route::get('system/logs', [SystemController::class, 'logs'])->name('system.logs');
+        Route::post('system/execute-command', [SystemController::class, 'executeCommand'])->name('system.execute-command');
+        Route::get('system/test-s3', [SystemController::class, 'testS3'])->name('system.test-s3');
+        Route::post('system/retry-job', [SystemController::class, 'retryJob'])->name('system.retry-job');
+        Route::post('system/flush-queue', [SystemController::class, 'flushQueue'])->name('system.flush-queue');
+        Route::post('system/restart-queue', [SystemController::class, 'restartQueue'])->name('system.restart-queue');
+        Route::get('system/supervisor-status', [SystemController::class, 'supervisorStatus'])->name('system.supervisor-status');
+    });
 });
 
 require __DIR__.'/auth.php';

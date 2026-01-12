@@ -64,6 +64,12 @@
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
+                        @can('access', App\Http\Controllers\SystemController::class)
+                            <x-dropdown-link :href="route('system.index')">
+                                <i class="fas fa-cog mr-2"></i>{{ __('System') }}
+                            </x-dropdown-link>
+                        @endcan
+
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -135,6 +141,12 @@
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
+
+                @can('access', App\Http\Controllers\SystemController::class)
+                    <x-responsive-nav-link :href="route('system.index')">
+                        <i class="fas fa-cog mr-2"></i>{{ __('System') }}
+                    </x-responsive-nav-link>
+                @endcan
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">
