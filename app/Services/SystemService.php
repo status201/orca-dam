@@ -149,9 +149,24 @@ class SystemService
             // Parse additional arguments from command string
             $commandArgs = [];
             if (count($parts) > 1) {
-                // Handle commands like "queue:retry all"
+                // Parse arguments and options
                 for ($i = 1; $i < count($parts); $i++) {
-                    $commandArgs[] = $parts[$i];
+                    $arg = $parts[$i];
+
+                    // Check if it's a flag/option (starts with --)
+                    if (strpos($arg, '--') === 0) {
+                        // It's an option like --force
+                        $commandArgs[$arg] = true;
+                    } elseif (strpos($arg, '-') === 0 && strlen($arg) === 2) {
+                        // It's a short option like -v
+                        $commandArgs[$arg] = true;
+                    } else {
+                        // It's a positional argument (like "all" in "queue:retry all")
+                        // Use 'argument' key for the first positional arg
+                        if (!isset($commandArgs['argument'])) {
+                            $commandArgs['argument'] = $arg;
+                        }
+                    }
                 }
             }
 
