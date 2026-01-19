@@ -31,7 +31,7 @@ class SystemService
         'migrate:status',
         'migrate:rollback',
         'migrate',
-        'migrate --force'
+        'migrate --force',
     ];
 
     /**
@@ -79,6 +79,7 @@ class SystemService
             ->get()
             ->map(function ($job) {
                 $payload = json_decode($job->payload, true);
+
                 return [
                     'id' => $job->id,
                     'queue' => $job->queue,
@@ -99,7 +100,7 @@ class SystemService
     {
         $logPath = storage_path('logs/laravel.log');
 
-        if (!File::exists($logPath)) {
+        if (! File::exists($logPath)) {
             return [
                 'exists' => false,
                 'lines' => [],
@@ -129,7 +130,7 @@ class SystemService
         $fullCommand = trim($command);
 
         // Validate command is whitelisted (check both full command and base command)
-        if (!in_array($fullCommand, self::ALLOWED_COMMANDS) && !in_array($baseCommand, self::ALLOWED_COMMANDS)) {
+        if (! in_array($fullCommand, self::ALLOWED_COMMANDS) && ! in_array($baseCommand, self::ALLOWED_COMMANDS)) {
             Log::warning("Attempted to execute non-whitelisted command: {$command}", [
                 'user_id' => auth()->id(),
             ]);
@@ -208,7 +209,7 @@ class SystemService
                         $ids[] = $arg;
                     }
                 }
-                if (!empty($ids)) {
+                if (! empty($ids)) {
                     $commandArgs['id'] = $ids;
                 }
                 break;
@@ -412,7 +413,7 @@ class SystemService
                 'message' => count($workers) > 0 ? 'Supervisor is managing queue workers' : 'No workers found',
                 'workers' => $workers,
                 'total' => count($workers),
-                'running' => count(array_filter($workers, fn($w) => $w['is_running'])),
+                'running' => count(array_filter($workers, fn ($w) => $w['is_running'])),
             ];
 
         } catch (\Exception $e) {
@@ -420,7 +421,7 @@ class SystemService
 
             return [
                 'available' => true,
-                'message' => 'Error checking supervisor status: ' . $e->getMessage(),
+                'message' => 'Error checking supervisor status: '.$e->getMessage(),
                 'workers' => [],
             ];
         }
@@ -511,6 +512,48 @@ class SystemService
     }
 
     /**
+     * Get all settings for the settings page
+     */
+    public function getSettings(): array
+    {
+        return \App\Models\Setting::query()
+            ->orderBy('group')
+            ->orderBy('key')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Get available languages for Rekognition
+     */
+    public function getAvailableLanguages(): array
+    {
+        return [
+            'en' => 'English',
+            'nl' => 'Dutch (Nederlands)',
+            'fr' => 'French (Français)',
+            'de' => 'German (Deutsch)',
+            'es' => 'Spanish (Español)',
+            'it' => 'Italian (Italiano)',
+            'pt' => 'Portuguese (Português)',
+            'pl' => 'Polish (Polski)',
+            'ja' => 'Japanese (日本語)',
+            'ko' => 'Korean (한국어)',
+            'zh' => 'Chinese (中文)',
+            'ar' => 'Arabic (العربية)',
+            'ru' => 'Russian (Русский)',
+        ];
+    }
+
+    /**
+     * Update a setting value
+     */
+    public function updateSetting(string $key, mixed $value): bool
+    {
+        return \App\Models\Setting::set($key, $value);
+    }
+
+    /**
      * Helper: Tail file efficiently
      */
     private function tailFile(string $filePath, int $lines): array
@@ -523,7 +566,7 @@ class SystemService
         $result = [];
         $file->seek($startLine);
 
-        while (!$file->eof()) {
+        while (! $file->eof()) {
             $line = $file->current();
             if ($line !== false && trim($line) !== '') {
                 $result[] = rtrim($line);
@@ -539,7 +582,7 @@ class SystemService
      */
     private function getDirectorySize(string $path): int
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return 0;
         }
 
@@ -560,6 +603,6 @@ class SystemService
             return $exception;
         }
 
-        return substr($exception, 0, $length) . '...';
+        return substr($exception, 0, $length).'...';
     }
 }

@@ -9,6 +9,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🏷️ Manual and AI-powered tagging (AWS Rekognition)
 - 🌍 Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
 - 🎯 Manual AI tag generation with configurable limits
+- ⚙️ Admin Settings panel (pagination, AI tag limits, language)
 - 🔍 Advanced search and filtering
 - 🖼️ Thumbnail generation and grid view
 - 📤 Multi-file upload with drag & drop
@@ -142,6 +143,8 @@ php artisan serve  # Or use Herd
 - Discover unmapped S3 objects
 - Export to CSV
 - Batch operations
+- System administration (queue management, logs, diagnostics)
+- **Settings panel** - Configure items per page, AI tag limits, and language
 
 ### Discovering Unmapped Objects
 
@@ -218,15 +221,18 @@ orca-dam/
 │   │   ├── TagController.php
 │   │   ├── DiscoverController.php
 │   │   ├── ExportController.php
+│   │   ├── SystemController.php
 │   │   └── Api/AssetApiController.php
 │   ├── Jobs/
 │   │   └── GenerateAiTags.php
 │   ├── Services/
 │   │   ├── S3Service.php
 │   │   ├── ChunkedUploadService.php
-│   │   └── RekognitionService.php
+│   │   ├── RekognitionService.php
+│   │   └── SystemService.php
 │   ├── Models/
 │   │   ├── Asset.php
+│   │   ├── Setting.php
 │   │   ├── UploadSession.php
 │   │   ├── Tag.php
 │   │   └── User.php

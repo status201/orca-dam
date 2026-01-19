@@ -62,11 +62,13 @@ orca-dam/
 │   │       └── AssetApiController.php # API endpoints
 │   ├── Models/
 │   │   ├── Asset.php                 # Asset model
+│   │   ├── Setting.php               # Application settings
 │   │   ├── Tag.php                   # Tag model
 │   │   └── User.php                  # User model
 │   ├── Services/
 │   │   ├── S3Service.php             # S3 operations
-│   │   └── RekognitionService.php    # AI tagging
+│   │   ├── RekognitionService.php    # AI tagging
+│   │   └── SystemService.php         # System admin services
 │   └── Policies/
 │       └── AssetPolicy.php           # Authorization
 ├── database/migrations/              # Database schema
@@ -98,6 +100,8 @@ GET  /discover                 # Discovery page (admin)
 POST /discover/scan            # Scan S3 bucket
 POST /discover/import          # Import objects
 GET  /tags                     # List tags
+GET  /system                   # System admin (admin)
+POST /system/settings          # Update settings (admin)
 ```
 
 ### API Routes
@@ -130,6 +134,10 @@ GET    /api/tags               # List tags
 ### asset_tag
 - asset_id, tag_id, created_at, updated_at
 
+### settings
+- id, key (unique), value, type, group, description
+- Default settings: items_per_page, rekognition_max_labels, rekognition_language
+
 ---
 
 ## Configuration
@@ -143,8 +151,10 @@ AWS_DEFAULT_REGION=us-east-1
 AWS_BUCKET=
 AWS_URL=https://bucket.s3.amazonaws.com
 
-# AI Tagging
+# AI Tagging (also configurable via System → Settings)
 AWS_REKOGNITION_ENABLED=true|false
+AWS_REKOGNITION_MAX_LABELS=5
+AWS_REKOGNITION_LANGUAGE=en
 
 # Database
 DB_CONNECTION=mysql
@@ -174,6 +184,7 @@ APP_DEBUG=true|false
 ✅ Access Discover feature
 ✅ Manage users
 ✅ Bulk operations
+✅ System administration & settings
 
 ---
 

@@ -2,26 +2,30 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
+use App\Models\Tag;
 use Aws\Rekognition\RekognitionClient;
 use Aws\Translate\TranslateClient;
-use App\Models\Tag;
 
 class RekognitionService
 {
     protected RekognitionClient $rekognitionClient;
+
     protected ?TranslateClient $translateClient = null;
+
     protected string $bucket;
+
     protected bool $enabled;
-    protected string $targetLanguage;
+
+    protected array $awsConfig;
 
     public function __construct()
     {
         $this->bucket = config('filesystems.disks.s3.bucket');
         $this->enabled = config('services.aws.rekognition_enabled', false);
-        $this->targetLanguage = config('services.aws.rekognition_language', 'en');
 
         if ($this->enabled) {
-            $awsConfig = [
+            $this->awsConfig = [
                 'version' => 'latest',
                 'region' => config('filesystems.disks.s3.region'),
                 'credentials' => [
@@ -30,13 +34,42 @@ class RekognitionService
                 ],
             ];
 
-            $this->rekognitionClient = new RekognitionClient($awsConfig);
-
-            // Initialize Translate client if language is not English
-            if ($this->targetLanguage !== 'en') {
-                $this->translateClient = new TranslateClient($awsConfig);
-            }
+            $this->rekognitionClient = new RekognitionClient($this->awsConfig);
         }
+    }
+
+    /**
+     * Get the target language from settings or config
+     */
+    protected function getTargetLanguage(): string
+    {
+        return Setting::get('rekognition_language', config('services.aws.rekognition_language', 'en'));
+    }
+
+    /**
+     * Get the max labels from settings or config
+     */
+    protected function getMaxLabels(): int
+    {
+        return (int) Setting::get('rekognition_max_labels', config('services.aws.rekognition_max_labels', 5));
+    }
+
+    /**
+     * Get or initialize the translate client
+     */
+    protected function getTranslateClient(): ?TranslateClient
+    {
+        $targetLanguage = $this->getTargetLanguage();
+
+        if ($targetLanguage === 'en') {
+            return null;
+        }
+
+        if ($this->translateClient === null) {
+            $this->translateClient = new TranslateClient($this->awsConfig);
+        }
+
+        return $this->translateClient;
     }
 
     /**
@@ -44,12 +77,13 @@ class RekognitionService
      */
     public function detectLabels(string $s3Key, float $minConfidence = 75.0): array
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return [];
         }
 
         try {
-            $maxLabels = (int) config('services.aws.rekognition_max_labels', 5);
+            $maxLabels = $this->getMaxLabels();
+            $targetLanguage = $this->getTargetLanguage();
 
             $result = $this->rekognitionClient->detectLabels([
                 'Image' => [
@@ -67,8 +101,8 @@ class RekognitionService
                 $labelName = $label['Name'];
 
                 // Translate label if target language is not English
-                if ($this->targetLanguage !== 'en') {
-                    $labelName = $this->translateText($labelName);
+                if ($targetLanguage !== 'en') {
+                    $labelName = $this->translateText($labelName, $targetLanguage);
                 }
 
                 $labels[] = [
@@ -79,7 +113,8 @@ class RekognitionService
 
             return $labels;
         } catch (\Exception $e) {
-            \Log::error('Rekognition detectLabels failed: ' . $e->getMessage());
+            \Log::error('Rekognition detectLabels failed: '.$e->getMessage());
+
             return [];
         }
     }
@@ -89,7 +124,7 @@ class RekognitionService
      */
     public function detectText(string $s3Key): array
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return [];
         }
 
@@ -112,7 +147,8 @@ class RekognitionService
 
             return $texts;
         } catch (\Exception $e) {
-            \Log::error('Rekognition detectText failed: ' . $e->getMessage());
+            \Log::error('Rekognition detectText failed: '.$e->getMessage());
+
             return [];
         }
     }
@@ -122,7 +158,7 @@ class RekognitionService
      */
     public function autoTagAsset(\App\Models\Asset $asset): array
     {
-        if (!$asset->isImage()) {
+        if (! $asset->isImage()) {
             return [];
         }
 
@@ -140,13 +176,13 @@ class RekognitionService
         }
 
         // Attach tags to asset (only AI tags, don't remove user tags)
-        if (!empty($tagIds)) {
+        if (! empty($tagIds)) {
             // Get existing tag IDs
             $existingTagIds = $asset->tags()->pluck('tags.id')->toArray();
-            
+
             // Merge with new AI tags (remove duplicates)
             $allTagIds = array_unique(array_merge($existingTagIds, $tagIds));
-            
+
             // Sync all tags
             $asset->tags()->sync($allTagIds);
         }
@@ -157,22 +193,25 @@ class RekognitionService
     /**
      * Translate text from English to target language using AWS Translate
      */
-    protected function translateText(string $text): string
+    protected function translateText(string $text, string $targetLanguage): string
     {
-        if (!$this->translateClient) {
+        $translateClient = $this->getTranslateClient();
+
+        if (! $translateClient) {
             return $text;
         }
 
         try {
-            $result = $this->translateClient->translateText([
+            $result = $translateClient->translateText([
                 'SourceLanguageCode' => 'en',
-                'TargetLanguageCode' => $this->targetLanguage,
+                'TargetLanguageCode' => $targetLanguage,
                 'Text' => $text,
             ]);
 
             return $result['TranslatedText'] ?? $text;
         } catch (\Exception $e) {
-            \Log::error('AWS Translate failed: ' . $e->getMessage());
+            \Log::error('AWS Translate failed: '.$e->getMessage());
+
             return $text; // Return original text if translation fails
         }
     }

@@ -97,9 +97,11 @@ The application uses a service-oriented architecture with three main services th
 - Detects labels with confidence scoring (default 75% minimum)
 - Creates/attaches AI tags (type='ai') to assets automatically
 - Only processes image assets
-- Configurable max labels per asset via `AWS_REKOGNITION_MAX_LABELS` (default: 5)
-- Supports multilingual tags via AWS Translate (configurable via `AWS_REKOGNITION_LANGUAGE`)
+- Max labels configurable via database settings or `AWS_REKOGNITION_MAX_LABELS` env (default: 5)
+- Language configurable via database settings or `AWS_REKOGNITION_LANGUAGE` env (default: 'en')
+- Supports multilingual tags via AWS Translate (when language != 'en')
 - Uses Job queue (`GenerateAiTags`) for background processing
+- Settings are read dynamically from database, allowing runtime configuration changes
 
 ### Authorization System
 
@@ -128,11 +130,19 @@ Uses Laravel Policies for fine-grained access control:
 - Helper methods: `isImage()`, `getFileIcon()`, `userTags()`, `aiTags()`
 - Includes license and copyright fields: `license_type`, `copyright`
 
-**Tag Model**
+**Tag Model** (`app/Models/Tag.php`)
 - Has type field: `user` (manual) or `ai` (auto-generated)
 - Many-to-many with Assets
 - Both user and AI tags can be deleted from assets and removed completely
 - AI tags can be removed from individual assets without deleting the tag entirely
+
+**Setting Model** (`app/Models/Setting.php`)
+- Key-value store for application settings
+- Settings cached for 1 hour to reduce database queries
+- Static helper methods: `Setting::get('key', default)`, `Setting::set('key', value)`
+- Supports type casting: string, integer, boolean, json
+- Groups settings by category (display, aws)
+- Cache automatically cleared when settings are updated
 
 ### API Design
 
@@ -220,7 +230,7 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
   - Filter by file type (images, videos, documents)
   - Filter by tags (multi-select with checkboxes)
   - Sort options (date, size, name - ascending/descending)
-  - Pagination (24 items per page)
+  - Pagination (configurable via Settings, default 24 items per page)
 
 **Alpine.js Components**:
 - `assetGrid()`: Manages filters, search, sort, tag selection, and view mode
@@ -332,6 +342,21 @@ The application handles large files (PDFs, GIFs, videos) by:
 **asset_tag pivot**:
 - `asset_id`, `tag_id`
 - Timestamps for when tag was attached
+
+**settings table**:
+- `key` (unique) - Setting identifier
+- `value` (text, nullable) - Setting value stored as string
+- `type` - Data type for casting: string, integer, boolean, json
+- `group` - Category for grouping: general, display, aws
+- `description` (nullable) - Human-readable description
+- Timestamps
+
+**Default Settings**:
+| Key | Default | Description |
+|-----|---------|-------------|
+| `items_per_page` | 24 | Assets per page (12, 24, 36, 48, 60, 72, 96) |
+| `rekognition_max_labels` | 5 | Max AI tags per asset (1-20) |
+| `rekognition_language` | en | AI tag language (en, nl, fr, de, es, etc.) |
 
 ## Environment Configuration
 
@@ -463,6 +488,17 @@ ORCA DAM includes a comprehensive admin-only System page accessible via the user
 - System information (PHP version, Laravel version, environment)
 - Database statistics (record counts for all tables)
 - Disk usage (storage, logs, cache, total)
+
+**Settings Tab:**
+- Configurable application settings stored in database
+- **Display Settings**:
+  - Items per page (12, 24, 36, 48, 60, 72, 96)
+- **AWS Rekognition Settings**:
+  - Maximum AI tags per asset (1-20)
+  - AI tag language (13 languages supported)
+- Changes saved automatically via AJAX
+- Settings cached for performance (1 hour TTL)
+- Route: `POST /system/settings`
 
 **Queue Tab:**
 - Real-time queue statistics (pending, failed, batches)

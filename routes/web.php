@@ -76,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('system/flush-queue', [SystemController::class, 'flushQueue'])->name('system.flush-queue');
         Route::post('system/restart-queue', [SystemController::class, 'restartQueue'])->name('system.restart-queue');
         Route::get('system/supervisor-status', [SystemController::class, 'supervisorStatus'])->name('system.supervisor-status');
+        Route::post('system/settings', [SystemController::class, 'updateSetting'])->name('system.update-setting');
     });
 });
 

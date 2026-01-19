@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Services\SystemService;
-use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\Request;
 
 class SystemController extends Controller
 {
@@ -30,6 +30,8 @@ class SystemController extends Controller
             'diskUsage' => $this->systemService->getDiskUsage(),
             'databaseStats' => $this->systemService->getDatabaseStats(),
             'suggestedCommands' => $this->systemService->getSuggestedCommands(),
+            'settings' => $this->systemService->getSettings(),
+            'availableLanguages' => $this->systemService->getAvailableLanguages(),
         ];
 
         return view('system.index', $data);
@@ -116,7 +118,7 @@ class SystemController extends Controller
             'job_id' => 'required|string',
         ]);
 
-        $result = $this->systemService->executeCommand('queue:retry ' . $request->input('job_id'));
+        $result = $this->systemService->executeCommand('queue:retry '.$request->input('job_id'));
 
         return response()->json($result);
     }
@@ -155,5 +157,50 @@ class SystemController extends Controller
         $status = $this->systemService->getSupervisorStatus();
 
         return response()->json($status);
+    }
+
+    /**
+     * Update a setting (AJAX)
+     */
+    public function updateSetting(Request $request)
+    {
+        $this->authorize('access', SystemController::class);
+
+        $request->validate([
+            'key' => 'required|string|max:255',
+            'value' => 'required',
+        ]);
+
+        $key = $request->input('key');
+        $value = $request->input('value');
+
+        // Validate specific settings
+        $validationRules = [
+            'items_per_page' => function ($v) {
+                return is_numeric($v) && $v >= 10 && $v <= 100;
+            },
+            'rekognition_max_labels' => function ($v) {
+                return is_numeric($v) && $v >= 1 && $v <= 20;
+            },
+            'rekognition_language' => function ($v) {
+                $languages = array_keys($this->systemService->getAvailableLanguages());
+
+                return in_array($v, $languages);
+            },
+        ];
+
+        if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Invalid value for setting: '.$key,
+            ], 422);
+        }
+
+        $success = $this->systemService->updateSetting($key, $value);
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Setting updated successfully' : 'Failed to update setting',
+        ]);
     }
 }

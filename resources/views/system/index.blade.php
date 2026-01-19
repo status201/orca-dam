@@ -19,6 +19,12 @@
                 <i class="fas fa-dashboard mr-2"></i>Overview
             </button>
 
+            <button @click="activeTab = 'settings'"
+                    :class="activeTab === 'settings' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                <i class="fas fa-cog mr-2"></i>Settings
+            </button>
+
             <button @click="activeTab = 'queue'"
                     :class="activeTab === 'queue' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
@@ -153,6 +159,103 @@
                         <span class="text-lg font-bold text-gray-900" x-text="formatBytes({{ $diskUsage['total_size'] }})"></span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div x-show="activeTab === 'settings'" class="space-y-6">
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-sliders-h mr-2"></i>Application Settings
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">Configure global application settings</p>
+            </div>
+            <div class="p-6 space-y-6">
+                <!-- Display Settings -->
+                <div>
+                    <h4 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+                        <i class="fas fa-desktop mr-2 text-gray-500"></i>Display Settings
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Items Per Page -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Items per page
+                            </label>
+                            <select x-model="settings.items_per_page"
+                                    @change="updateSetting('items_per_page', settings.items_per_page)"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-blue focus:border-orca-blue">
+                                <option value="12">12</option>
+                                <option value="24">24</option>
+                                <option value="36">36</option>
+                                <option value="48">48</option>
+                                <option value="60">60</option>
+                                <option value="72">72</option>
+                                <option value="96">96</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Number of assets displayed per page in the asset grid</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AWS Rekognition Settings -->
+                <div>
+                    <h4 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+                        <i class="fab fa-aws mr-2 text-gray-500"></i>AWS Rekognition Settings
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Max Labels -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Maximum AI tags per asset
+                            </label>
+                            <input type="number"
+                                   x-model="settings.rekognition_max_labels"
+                                   @change="updateSetting('rekognition_max_labels', settings.rekognition_max_labels)"
+                                   min="1"
+                                   max="20"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-blue focus:border-orca-blue">
+                            <p class="text-xs text-gray-500 mt-1">Maximum number of AI-generated tags per asset (1-20)</p>
+                        </div>
+
+                        <!-- Language -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                AI tag language
+                            </label>
+                            <select x-model="settings.rekognition_language"
+                                    @change="updateSetting('rekognition_language', settings.rekognition_language)"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-blue focus:border-orca-blue">
+                                @foreach($availableLanguages as $code => $name)
+                                    <option value="{{ $code }}">{{ $name }}</option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Language for AI-generated tags (uses AWS Translate for non-English)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Messages -->
+                <div x-show="settingsSaved" x-transition class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                    <i class="fas fa-check-circle mr-2"></i>Settings saved successfully
+                </div>
+                <div x-show="settingsError" x-transition class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    <i class="fas fa-exclamation-circle mr-2"></i><span x-text="settingsError"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2">
+                <i class="fas fa-info-circle mr-1"></i>About Settings
+            </h4>
+            <div class="text-xs text-blue-800 space-y-1">
+                <p>Changes are saved automatically when you modify a setting.</p>
+                <p>Some settings (like language) only affect new AI tags, not existing ones.</p>
+                <p>AWS Rekognition must be enabled in your environment configuration for AI tagging to work.</p>
             </div>
         </div>
     </div>
@@ -592,6 +695,16 @@ function systemAdmin() {
         },
         loadingSupervisor: false,
 
+        // Settings
+        settings: {
+            items_per_page: '{{ collect($settings)->firstWhere('key', 'items_per_page')['value'] ?? '24' }}',
+            rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
+            rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
+        },
+        settingsSaved: false,
+        settingsError: '',
+        savingSettings: false,
+
         init() {
             // Initial load
             this.refreshQueueStatus();
@@ -758,6 +871,40 @@ function systemAdmin() {
                 };
             } finally {
                 this.loadingSupervisor = false;
+            }
+        },
+
+        async updateSetting(key, value) {
+            this.savingSettings = true;
+            this.settingsSaved = false;
+            this.settingsError = '';
+
+            try {
+                const response = await fetch('{{ route('system.update-setting') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({ key, value }),
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    this.settingsSaved = true;
+                    window.showToast('Setting saved', 'success');
+                    setTimeout(() => { this.settingsSaved = false; }, 3000);
+                } else {
+                    this.settingsError = result.error || 'Failed to save setting';
+                    window.showToast(this.settingsError, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to update setting:', error);
+                this.settingsError = 'Failed to save setting';
+                window.showToast('Failed to save setting', 'error');
+            } finally {
+                this.savingSettings = false;
             }
         },
 

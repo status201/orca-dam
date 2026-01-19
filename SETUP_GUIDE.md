@@ -293,6 +293,17 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Permanent delete removes database record AND S3 objects
 - ✅ Discovery marks soft-deleted assets to prevent re-import
 
+### 9. System Administration (Admin Only)
+- ✅ System overview (PHP version, Laravel version, disk usage)
+- ✅ **Settings panel** with configurable options:
+  - Items per page (12, 24, 36, 48, 60, 72, 96)
+  - AWS Rekognition max labels (1-20)
+  - AWS Rekognition language (13 languages)
+- ✅ Queue management (retry, flush, restart workers)
+- ✅ Log viewer with color-coded output
+- ✅ Artisan command execution (whitelisted commands)
+- ✅ S3 connection diagnostics
+
 ---
 
 ## API Documentation
@@ -457,11 +468,14 @@ The system will:
 Set in `.env`:
 ```env
 AWS_REKOGNITION_ENABLED=true
-AWS_REKOGNITION_MAX_LABELS=5       # Maximum AI tags per asset
-AWS_REKOGNITION_LANGUAGE=en        # Language for AI tags (en, nl, fr, de, es, etc.)
+AWS_REKOGNITION_MAX_LABELS=5       # Maximum AI tags per asset (can also be set in Settings)
+AWS_REKOGNITION_LANGUAGE=en        # Language for AI tags (can also be set in Settings)
 ```
 
 AI tags are generated automatically on upload and run in a background job queue. They are marked with a purple color in the UI.
+
+**Runtime Configuration:**
+Admins can also configure AI tag limits and language via **System → Settings** without editing `.env`. Database settings override environment defaults.
 
 **Manual AI Tagging:**
 - You can manually trigger AI tag generation on any image asset

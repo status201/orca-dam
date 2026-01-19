@@ -166,10 +166,11 @@
                         <div class="flex-1 relative">
                             <input type="text"
                                    x-model="newTag"
-                                   @keyup="searchTags"
-                                   @keyup.enter.prevent="addTag"
+                                   @input="searchTags"
+                                   @keydown.enter.prevent="addTagOrSelectSuggestion"
                                    @keydown.down.prevent="navigateDown"
                                    @keydown.up.prevent="navigateUp"
+                                   @keydown.escape="hideSuggestions"
                                    @blur="hideSuggestions"
                                    placeholder="Add a tag..."
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -294,7 +295,17 @@ function assetEditor() {
 
             this.userTags.push(tag);
             this.newTag = '';
-            this.hideSuggestions();
+            this.showSuggestions = false;
+            this.selectedIndex = -1;
+        },
+
+        addTagOrSelectSuggestion() {
+            // If a suggestion is highlighted, select it
+            if (this.selectedIndex >= 0 && this.suggestions[this.selectedIndex]) {
+                this.selectSuggestion(this.suggestions[this.selectedIndex].name);
+            } else {
+                this.addTag();
+            }
         },
 
         removeTag(index) {
@@ -331,22 +342,23 @@ function assetEditor() {
         },
 
         navigateDown() {
-            if (this.selectedIndex < this.suggestions.length - 1) {
-                this.selectedIndex++;
+            if (this.showSuggestions && this.suggestions.length > 0) {
+                this.selectedIndex = Math.min(this.selectedIndex + 1, this.suggestions.length - 1);
             }
         },
 
         navigateUp() {
-            if (this.selectedIndex > 0) {
+            if (this.showSuggestions && this.selectedIndex > 0) {
                 this.selectedIndex--;
             }
         },
 
         hideSuggestions() {
+            // Small delay to allow click events on suggestions to fire first
             setTimeout(() => {
                 this.showSuggestions = false;
                 this.selectedIndex = -1;
-            }, 200);
+            }, 150);
         }
     };
 }

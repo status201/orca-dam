@@ -2,20 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Asset;
-use App\Models\Tag;
-use App\Services\S3Service;
-use App\Services\RekognitionService;
 use App\Jobs\GenerateAiTags;
+use App\Models\Asset;
+use App\Models\Setting;
+use App\Models\Tag;
+use App\Services\RekognitionService;
+use App\Services\S3Service;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class AssetController extends Controller
 {
     use AuthorizesRequests;
 
     protected S3Service $s3Service;
+
     protected RekognitionService $rekognitionService;
 
     public function __construct(S3Service $s3Service, RekognitionService $rekognitionService)
@@ -76,7 +78,8 @@ class AssetController extends Controller
                 $query->latest('updated_at');
         }
 
-        $assets = $query->paginate(24);
+        $perPage = Setting::get('items_per_page', 24);
+        $assets = $query->paginate($perPage);
         $tags = Tag::orderBy('name')->get();
 
         return view('assets.index', compact('assets', 'tags'));
@@ -88,6 +91,7 @@ class AssetController extends Controller
     public function create()
     {
         $this->authorize('create', Asset::class);
+
         return view('assets.create');
     }
 
@@ -130,7 +134,7 @@ class AssetController extends Controller
                                 $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
                             }
                         } catch (\Exception $e) {
-                            \Log::error("Thumbnail generation failed for {$asset->filename}: " . $e->getMessage());
+                            \Log::error("Thumbnail generation failed for {$asset->filename}: ".$e->getMessage());
                             // Continue without thumbnail
                         }
                     }
@@ -140,14 +144,14 @@ class AssetController extends Controller
                         try {
                             GenerateAiTags::dispatch($asset)->afterResponse();
                         } catch (\Exception $e) {
-                            \Log::error("AI tagging failed for {$asset->filename}: " . $e->getMessage());
+                            \Log::error("AI tagging failed for {$asset->filename}: ".$e->getMessage());
                             // Continue without AI tags
                         }
                     }
 
                     $uploadedAssets[] = $asset;
                 } catch (\Exception $e) {
-                    \Log::error("Failed to upload {$file->getClientOriginalName()}: " . $e->getMessage());
+                    \Log::error("Failed to upload {$file->getClientOriginalName()}: ".$e->getMessage());
                     // Continue with other files
                 }
             }
@@ -165,24 +169,24 @@ class AssetController extends Controller
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => count($uploadedAssets) . ' file(s) uploaded successfully',
+                    'message' => count($uploadedAssets).' file(s) uploaded successfully',
                     'assets' => $uploadedAssets,
                 ]);
             }
 
             return redirect()->route('assets.index')
-                ->with('success', count($uploadedAssets) . ' file(s) uploaded successfully');
+                ->with('success', count($uploadedAssets).' file(s) uploaded successfully');
         } catch (\Exception $e) {
-            \Log::error("Upload process failed: " . $e->getMessage());
+            \Log::error('Upload process failed: '.$e->getMessage());
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Upload failed: ' . $e->getMessage(),
+                    'message' => 'Upload failed: '.$e->getMessage(),
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Upload failed: ' . $e->getMessage());
+                ->with('error', 'Upload failed: '.$e->getMessage());
         }
     }
 
@@ -193,7 +197,7 @@ class AssetController extends Controller
     {
         $this->authorize('view', $asset);
         $asset->load(['tags', 'user']);
-        
+
         return view('assets.show', compact('asset'));
     }
 
@@ -205,7 +209,7 @@ class AssetController extends Controller
         $this->authorize('update', $asset);
         $asset->load('tags');
         $tags = Tag::orderBy('name')->get();
-        
+
         return view('assets.edit', compact('asset', 'tags'));
     }
 
@@ -282,10 +286,11 @@ class AssetController extends Controller
     {
         $this->authorize('restore', Asset::class);
 
+        $perPage = Setting::get('items_per_page', 24);
         $assets = Asset::onlyTrashed()
             ->with(['user', 'tags'])
             ->orderBy('deleted_at', 'desc')
-            ->paginate(24);
+            ->paginate($perPage);
 
         return view('assets.trash', compact('assets'));
     }
@@ -349,7 +354,7 @@ class AssetController extends Controller
         // Return as download
         return response($fileContent)
             ->header('Content-Type', $asset->mime_type)
-            ->header('Content-Disposition', 'attachment; filename="' . $asset->filename . '"');
+            ->header('Content-Disposition', 'attachment; filename="'.$asset->filename.'"');
     }
 
     /**
@@ -361,14 +366,16 @@ class AssetController extends Controller
 
         $this->authorize('update', $asset);
 
-        if (!$asset->isImage()) {
-            \Log::info("Asset is not an image, redirecting to edit");
+        if (! $asset->isImage()) {
+            \Log::info('Asset is not an image, redirecting to edit');
+
             return redirect()->route('assets.edit', $asset)
                 ->with('error', 'AI tagging is only available for images');
         }
 
-        if (!$this->rekognitionService->isEnabled()) {
-            \Log::info("Rekognition is not enabled, redirecting to edit");
+        if (! $this->rekognitionService->isEnabled()) {
+            \Log::info('Rekognition is not enabled, redirecting to edit');
+
             return redirect()->route('assets.edit', $asset)
                 ->with('error', 'AWS Rekognition is not enabled');
         }
@@ -378,18 +385,21 @@ class AssetController extends Controller
             $labels = $this->rekognitionService->autoTagAsset($asset);
 
             if (empty($labels)) {
-                \Log::info("No labels detected, redirecting to edit");
+                \Log::info('No labels detected, redirecting to edit');
+
                 return redirect()->route('assets.edit', $asset)
                     ->with('warning', 'No labels detected for this image');
             }
 
-            \Log::info("Generated " . count($labels) . " AI tags, redirecting to edit");
+            \Log::info('Generated '.count($labels).' AI tags, redirecting to edit');
+
             return redirect()->route('assets.edit', $asset)
-                ->with('success', 'Generated ' . count($labels) . ' AI tag(s) successfully');
+                ->with('success', 'Generated '.count($labels).' AI tag(s) successfully');
         } catch (\Exception $e) {
-            \Log::error("Manual AI tagging failed for {$asset->filename}: " . $e->getMessage());
+            \Log::error("Manual AI tagging failed for {$asset->filename}: ".$e->getMessage());
+
             return redirect()->route('assets.edit', $asset)
-                ->with('error', 'Failed to generate AI tags: ' . $e->getMessage());
+                ->with('error', 'Failed to generate AI tags: '.$e->getMessage());
         }
     }
 
