@@ -694,7 +694,7 @@
                     <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
                     <p x-text="docError"></p>
                 </div>
-                <div x-show="!loadingDoc && !docError && docContent" class="prose prose-sm max-w-none">
+                <div x-show="!loadingDoc && !docError && docContent" class="prose-doc">
                     <div x-html="docContent"></div>
                 </div>
                 <div x-show="!loadingDoc && !docError && !docContent" class="text-center py-8 text-gray-500">
@@ -1024,5 +1024,193 @@ function systemAdmin() {
     };
 }
 </script>
+@endpush
+
+@push('styles')
+<style>
+/* Documentation Markdown Viewer Styles */
+.prose-doc {
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: #374151;
+}
+
+.prose-doc h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.prose-doc h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.375rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.prose-doc h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #374151;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.prose-doc h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #4b5563;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.prose-doc p {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.prose-doc a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.prose-doc a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.prose-doc strong {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.prose-doc code {
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.875em;
+    background-color: #f3f4f6;
+    color: #dc2626;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    border: 1px solid #e5e7eb;
+}
+
+.prose-doc pre {
+    background-color: #1f2937;
+    color: #e5e7eb;
+    padding: 1rem 1.25rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    border: 1px solid #374151;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.prose-doc pre code {
+    background-color: transparent;
+    color: #a5f3fc;
+    padding: 0;
+    border: none;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+}
+
+.prose-doc blockquote {
+    border-left: 4px solid #3b82f6;
+    background-color: #eff6ff;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 0.375rem 0.375rem 0;
+    color: #1e40af;
+    font-style: italic;
+}
+
+.prose-doc blockquote p {
+    margin: 0;
+}
+
+.prose-doc ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin: 0.75rem 0;
+}
+
+.prose-doc ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin: 0.75rem 0;
+}
+
+.prose-doc li {
+    margin: 0.375rem 0;
+    padding-left: 0.25rem;
+}
+
+.prose-doc li > ul,
+.prose-doc li > ol {
+    margin: 0.25rem 0;
+}
+
+.prose-doc hr {
+    border: none;
+    border-top: 2px solid #e5e7eb;
+    margin: 2rem 0;
+}
+
+.prose-doc table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+}
+
+.prose-doc thead {
+    background-color: #f9fafb;
+}
+
+.prose-doc th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.prose-doc td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.prose-doc tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.prose-doc img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Task lists / checkboxes */
+.prose-doc input[type="checkbox"] {
+    margin-right: 0.5rem;
+    accent-color: #2563eb;
+}
+
+/* Emoji support */
+.prose-doc .emoji {
+    font-size: 1.1em;
+    vertical-align: middle;
+}
+</style>
 @endpush
 @endsection
