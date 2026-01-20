@@ -192,6 +192,13 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 - Auto-playing carousel with manual controls and play/pause
 - All statistics update in real-time based on database state
 
+**Tags Index** (`resources/views/tags/index.blade.php`):
+- Grid of tag cards showing name, type badge, and asset count
+- Filter tabs: All Tags, User Tags, AI Tags
+- Instant search filter (client-side, case-insensitive)
+- Tab counts update dynamically based on search
+- Edit/delete actions per tag (edit only for user tags)
+
 **Assets Index - Grid/List Toggle** (`resources/views/assets/index.blade.php`):
 - **View Toggle**: Switch between Grid and List views
   - Toggle buttons positioned after filters, aligned right
