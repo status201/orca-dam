@@ -315,17 +315,25 @@ class SystemController extends Controller
     /**
      * Find the PHP CLI binary path
      * PHP_BINARY might point to php-fpm which can't run CLI commands
+     *
+     * Configure via .env: PHP_CLI_PATH=/usr/bin/php8.2
+     * On Plesk: PHP_CLI_PATH=/opt/plesk/php/8.2/bin/php
      */
     private function findPhpCliBinary(): string
     {
+        // First check for explicit configuration
+        $configuredPath = config('app.php_cli_path') ?: env('PHP_CLI_PATH');
+        if ($configuredPath) {
+            return $configuredPath;
+        }
+
         // Check if PHP_BINARY is already CLI (not fpm/cgi)
         $phpBinary = PHP_BINARY;
         if (! str_contains($phpBinary, 'fpm') && ! str_contains($phpBinary, 'cgi')) {
             return $phpBinary;
         }
 
-        // For FPM environments, just return 'php' and rely on PATH
-        // The PATH will be extended in the proc_open call
+        // For FPM environments, return 'php' and rely on PATH
         return 'php';
     }
 
@@ -336,14 +344,15 @@ class SystemController extends Controller
     {
         $currentPath = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
 
-        // Add common PHP CLI locations to PATH
+        // Add common PHP CLI locations to PATH (including Plesk paths)
         $extraPaths = [
             '/usr/local/bin',
             '/usr/bin',
             '/bin',
-            '/usr/local/sbin',
-            '/usr/sbin',
-            '/sbin',
+            '/opt/plesk/php/8.4/bin',
+            '/opt/plesk/php/8.3/bin',
+            '/opt/plesk/php/8.2/bin',
+            '/opt/plesk/php/8.1/bin',
         ];
 
         return implode(':', array_unique(array_merge($extraPaths, explode(':', $currentPath))));

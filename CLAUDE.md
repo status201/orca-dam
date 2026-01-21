@@ -384,6 +384,25 @@ AWS_REKOGNITION_MAX_LABELS=5             # Maximum AI tags per asset (default: 5
 AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de, es, etc.
 ```
 
+### PHP CLI Path (for Web-Based Test Runner)
+
+On shared hosting or FPM environments, the web-based test runner may need the explicit path to PHP CLI:
+
+```env
+# Optional: Required if web-based test runner shows "php not found"
+PHP_CLI_PATH=/usr/bin/php
+```
+
+**Common paths by hosting type:**
+| Hosting | PHP CLI Path |
+|---------|--------------|
+| Plesk | `/opt/plesk/php/8.2/bin/php` |
+| cPanel | `/opt/cpanel/ea-php82/root/usr/bin/php` |
+| Standard Linux | `/usr/bin/php` or `/usr/bin/php8.2` |
+| Laravel Herd | Usually auto-detected |
+
+**To find your PHP CLI path**, SSH into the server and run: `which php`
+
 ### S3 Bucket Requirements
 - Must have bucket policy allowing public read access (see SETUP_GUIDE.md)
 - Disable ACLs (use bucket policies instead)

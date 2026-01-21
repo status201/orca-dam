@@ -195,6 +195,9 @@ DB_PASSWORD=
 # App
 APP_ENV=local|production
 APP_DEBUG=true|false
+
+# PHP CLI (for web-based test runner on shared hosting)
+PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 ```
 
 ---
@@ -246,6 +249,15 @@ APP_DEBUG=true|false
 1. Verify S3 bucket name in `.env`
 2. Check `s3:ListBucket` permission
 3. Ensure files are in `assets/` prefix
+
+### Web-based test runner: "php not found"
+1. SSH into server: `which php`
+2. Add to `.env`: `PHP_CLI_PATH=/path/from/which/php`
+3. Common paths:
+   - Plesk: `/opt/plesk/php/8.2/bin/php`
+   - cPanel: `/opt/cpanel/ea-php82/root/usr/bin/php`
+   - Linux: `/usr/bin/php`
+4. Clear config: `php artisan config:clear`
 
 ---
 

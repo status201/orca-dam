@@ -228,6 +228,12 @@ Admins can run tests from the browser via **System → Tests** tab:
 - Color-coded output with failed tests highlighted
 - Results grouped by test suite
 
+**Note for shared hosting:** If you get "php not found" errors, add to `.env`:
+```env
+PHP_CLI_PATH=/opt/plesk/php/8.2/bin/php  # Adjust path for your server
+```
+Find your path via SSH: `which php`
+
 ## Architecture
 
 - **Backend:** Laravel 12 with AWS SDK v3
