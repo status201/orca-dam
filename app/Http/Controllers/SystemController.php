@@ -220,8 +220,8 @@ class SystemController extends Controller
         $suite = $request->input('suite', 'all');
         $filter = $request->input('filter');
 
-        // Build command using full PHP path (web server may not have php in PATH)
-        $phpBinary = PHP_BINARY;
+        // Find PHP CLI binary (PHP_BINARY might point to php-fpm which can't run CLI commands)
+        $phpBinary = $this->findPhpCliBinary();
         $command = escapeshellarg($phpBinary).' artisan test --colors=never';
 
         if ($suite !== 'all') {
@@ -309,6 +309,58 @@ class SystemController extends Controller
             'output' => $output,
             'stats' => $stats,
         ]);
+    }
+
+    /**
+     * Find the PHP CLI binary path
+     * PHP_BINARY might point to php-fpm which can't run CLI commands
+     */
+    private function findPhpCliBinary(): string
+    {
+        // Check if PHP_BINARY is already CLI (not fpm/cgi)
+        $phpBinary = PHP_BINARY;
+        if (! str_contains($phpBinary, 'fpm') && ! str_contains($phpBinary, 'cgi')) {
+            return $phpBinary;
+        }
+
+        // Try to derive CLI path from FPM path
+        // e.g., /usr/sbin/php-fpm8.2 → /usr/bin/php8.2
+        // e.g., /usr/sbin/php8.2-fpm → /usr/bin/php8.2
+        $possiblePaths = [];
+
+        // Extract version number if present
+        if (preg_match('/php[_-]?(\d+\.?\d*)/i', $phpBinary, $matches)) {
+            $version = $matches[1];
+            $possiblePaths[] = "/usr/bin/php{$version}";
+            $possiblePaths[] = "/usr/bin/php{$version}-cli";
+            $possiblePaths[] = "/usr/local/bin/php{$version}";
+        }
+
+        // Common PHP CLI locations
+        $possiblePaths = array_merge($possiblePaths, [
+            '/usr/bin/php',
+            '/usr/local/bin/php',
+            '/usr/bin/php8.4',
+            '/usr/bin/php8.3',
+            '/usr/bin/php8.2',
+            '/usr/bin/php8.1',
+            '/usr/bin/php8.0',
+        ]);
+
+        foreach ($possiblePaths as $path) {
+            if (is_executable($path)) {
+                return $path;
+            }
+        }
+
+        // Last resort: try 'which php' or assume it's in PATH
+        $which = trim(shell_exec('which php 2>/dev/null') ?? '');
+        if (! empty($which) && is_executable($which)) {
+            return $which;
+        }
+
+        // Fall back to just 'php' and hope it's in PATH
+        return 'php';
     }
 
     /**
