@@ -854,8 +854,10 @@
             <div class="p-6">
                 <div class="space-y-4">
                     <template x-for="(tests, suite) in groupTestsBySuite()" :key="suite">
-                        <div class="border border-gray-200 rounded-lg overflow-hidden">
-                            <div class="px-4 py-3 bg-gray-50 flex items-center justify-between cursor-pointer"
+                        <div class="rounded-lg overflow-hidden"
+                             :class="tests.some(t => t.status === 'failed') ? 'border-2 border-red-300' : 'border border-gray-200'">
+                            <div class="px-4 py-3 flex items-center justify-between cursor-pointer"
+                                 :class="tests.some(t => t.status === 'failed') ? 'bg-red-50' : 'bg-gray-50'"
                                  @click="toggleSuite(suite)">
                                 <div class="flex items-center gap-2">
                                     <i class="fas fa-chevron-right text-gray-400 transition-transform"
@@ -873,10 +875,11 @@
                             <div x-show="expandedSuites.includes(suite)" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="border-t border-gray-200">
                                 <div class="divide-y divide-gray-100">
                                     <template x-for="test in tests" :key="test.name">
-                                        <div class="px-4 py-2 flex items-center gap-3 text-sm">
+                                        <div class="px-4 py-2 flex items-center gap-3 text-sm"
+                                             :class="test.status === 'failed' ? 'bg-red-50' : ''">
                                             <i class="fas"
                                                :class="test.status === 'passed' ? 'fa-check text-green-500' : 'fa-times text-red-500'"></i>
-                                            <span class="text-gray-700" x-text="test.name"></span>
+                                            <span :class="test.status === 'failed' ? 'text-red-700 font-medium' : 'text-gray-700'" x-text="test.name"></span>
                                         </div>
                                     </template>
                                 </div>
@@ -1277,6 +1280,9 @@ function systemAdmin() {
                     this.testStats = result.stats;
                     this.testProgress = 100;
 
+                    // Auto-expand suites with failures
+                    this.$nextTick(() => this.autoExpandFailedSuites());
+
                     if (result.stats.failed > 0) {
                         window.showToast(`Tests completed: ${result.stats.failed} failed`, 'error');
                     } else {
@@ -1345,7 +1351,44 @@ function systemAdmin() {
                 }
                 grouped[suite].push(test);
             }
-            return grouped;
+
+            // Sort each suite's tests: failed first, then passed
+            for (const suite in grouped) {
+                grouped[suite].sort((a, b) => {
+                    if (a.status === 'failed' && b.status !== 'failed') return -1;
+                    if (a.status !== 'failed' && b.status === 'failed') return 1;
+                    return 0;
+                });
+            }
+
+            // Sort suites: those with failures first
+            const sortedGrouped = {};
+            const suites = Object.keys(grouped);
+            suites.sort((a, b) => {
+                const aHasFailures = grouped[a].some(t => t.status === 'failed');
+                const bHasFailures = grouped[b].some(t => t.status === 'failed');
+                if (aHasFailures && !bHasFailures) return -1;
+                if (!aHasFailures && bHasFailures) return 1;
+                return 0;
+            });
+            for (const suite of suites) {
+                sortedGrouped[suite] = grouped[suite];
+            }
+
+            return sortedGrouped;
+        },
+
+        autoExpandFailedSuites() {
+            if (!this.testStats.tests) return;
+
+            const grouped = this.groupTestsBySuite();
+            for (const suite in grouped) {
+                if (grouped[suite].some(t => t.status === 'failed')) {
+                    if (!this.expandedSuites.includes(suite)) {
+                        this.expandedSuites.push(suite);
+                    }
+                }
+            }
         },
 
         toggleSuite(suite) {

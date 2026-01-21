@@ -247,12 +247,33 @@ class SystemController extends Controller
             2 => ['pipe', 'w'],
         ];
 
+        // Set up environment for testing - inherit current env but override key values
+        // These must match phpunit.xml to ensure tests run correctly
+        $env = array_merge($_ENV, $_SERVER, [
+            'APP_ENV' => 'testing',
+            'APP_MAINTENANCE_DRIVER' => 'file',
+            'BCRYPT_ROUNDS' => '4',
+            'BROADCAST_CONNECTION' => 'null',
+            'CACHE_STORE' => 'array',
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => ':memory:',
+            'MAIL_MAILER' => 'array',
+            'PULSE_ENABLED' => 'false',
+            'QUEUE_CONNECTION' => 'sync',
+            'SESSION_DRIVER' => 'array',
+            'TELESCOPE_ENABLED' => 'false',
+            'NIGHTWATCH_ENABLED' => 'false',
+        ]);
+
+        // Filter out non-string values that can cause issues
+        $env = array_filter($env, fn ($value) => is_string($value));
+
         $process = proc_open(
             $command,
             $descriptors,
             $pipes,
             $projectPath,
-            null
+            $env
         );
 
         if (is_resource($process)) {
@@ -341,17 +362,27 @@ class SystemController extends Controller
                 $currentSuite = trim($matches[2]);
             }
 
-            // Match individual test lines like "✓ asset belongs to a user"
+            // Match individual passed test lines like "✓ asset belongs to a user    0.01s"
             if (preg_match('/^\s*[✓✔]\s*(.+?)\s+[\d\.]+s\s*$/u', $line, $matches)) {
                 $stats['tests'][] = [
                     'name' => trim($matches[1]),
                     'suite' => $currentSuite,
                     'status' => 'passed',
                 ];
-            } elseif (preg_match('/^\s*[✗✘×]\s*(.+?)\s+[\d\.]+s\s*$/u', $line, $matches)) {
+            }
+            // Match individual failed test lines with X mark like "✗ test name    0.01s"
+            elseif (preg_match('/^\s*[✗✘×]\s*(.+?)\s+[\d\.]+s\s*$/u', $line, $matches)) {
                 $stats['tests'][] = [
                     'name' => trim($matches[1]),
                     'suite' => $currentSuite,
+                    'status' => 'failed',
+                ];
+            }
+            // Match Pest failed test format: "FAILED  Tests\Feature\AssetTest > test name"
+            elseif (preg_match('/^\s*FAILED\s+(.+?)\s*>\s*(.+?)\s*$/i', $line, $matches)) {
+                $stats['tests'][] = [
+                    'name' => trim($matches[2]),
+                    'suite' => trim($matches[1]),
                     'status' => 'failed',
                 ];
             }
