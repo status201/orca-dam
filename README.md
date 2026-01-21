@@ -68,6 +68,7 @@ AWS_URL=https://your-bucket.s3.amazonaws.com
 # Optional: Enable AI tagging
 AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
 AWS_REKOGNITION_MAX_LABELS=5             # Max AI tags per asset
+AWS_REKOGNITION_MIN_CONFIDENCE=75        # Min confidence threshold (65-99)
 AWS_REKOGNITION_LANGUAGE=en              # Language: en, nl, fr, de, es, etc.
 ```
 
@@ -251,42 +252,62 @@ Find your path via SSH: `which php`
 orca-dam/
 ├── app/
 │   ├── Console/Commands/
-│   │   └── CleanupStaleUploads.php
+│   │   └── CleanupStaleUploads.php    # Cleanup stale chunked uploads
 │   ├── Http/Controllers/
-│   │   ├── AssetController.php
-│   │   ├── ChunkedUploadController.php
-│   │   ├── TagController.php
-│   │   ├── DiscoverController.php
-│   │   ├── ExportController.php
-│   │   ├── SystemController.php
-│   │   └── Api/AssetApiController.php
+│   │   ├── Api/
+│   │   │   └── AssetApiController.php # REST API for assets
+│   │   ├── Auth/                      # Laravel Breeze auth controllers
+│   │   ├── AssetController.php        # Asset CRUD & management
+│   │   ├── ChunkedUploadController.php# Large file uploads
+│   │   ├── DashboardController.php    # Dashboard stats
+│   │   ├── DiscoverController.php     # S3 discovery (admin)
+│   │   ├── ExportController.php       # CSV export (admin)
+│   │   ├── ProfileController.php      # User profile
+│   │   ├── SystemController.php       # System admin (admin)
+│   │   ├── TagController.php          # Tag management
+│   │   └── UserController.php         # User management (admin)
 │   ├── Jobs/
-│   │   └── GenerateAiTags.php
-│   ├── Services/
-│   │   ├── S3Service.php
-│   │   ├── ChunkedUploadService.php
-│   │   ├── RekognitionService.php
-│   │   └── SystemService.php
+│   │   ├── GenerateAiTags.php         # AI tagging background job
+│   │   └── ProcessDiscoveredAsset.php # Discovery import job
 │   ├── Models/
 │   │   ├── Asset.php
 │   │   ├── Setting.php
-│   │   ├── UploadSession.php
 │   │   ├── Tag.php
+│   │   ├── UploadSession.php
 │   │   └── User.php
-│   └── Policies/
-│       └── AssetPolicy.php
-├── database/migrations/
+│   ├── Policies/
+│   │   ├── AssetPolicy.php            # Asset authorization
+│   │   ├── SystemPolicy.php           # System admin authorization
+│   │   └── UserPolicy.php             # User management authorization
+│   └── Services/
+│       ├── ChunkedUploadService.php   # S3 multipart uploads
+│       ├── RekognitionService.php     # AWS Rekognition AI tagging
+│       ├── S3Service.php              # S3 operations & thumbnails
+│       └── SystemService.php          # System admin utilities
+├── database/
+│   ├── factories/                     # Test factories
+│   └── migrations/
 ├── resources/views/
-│   ├── layouts/app.blade.php
-│   ├── components/
-│   ├── assets/
-│   ├── export/
-│   └── tags/
+│   ├── assets/                        # Asset views (index, show, edit, create, trash)
+│   ├── auth/                          # Authentication views
+│   ├── components/                    # Blade components
+│   ├── discover/                      # S3 discovery view
+│   ├── export/                        # Export view
+│   ├── layouts/                       # App & guest layouts
+│   ├── profile/                       # Profile management
+│   ├── system/                        # System admin view
+│   ├── tags/                          # Tag management view
+│   ├── users/                         # User management views
+│   ├── vendor/pagination/             # Custom pagination templates
+│   └── dashboard.blade.php
 ├── routes/
-│   ├── web.php
-│   └── api.php
+│   ├── api.php                        # API routes
+│   └── web.php                        # Web routes
+├── tests/
+│   ├── Feature/                       # Feature tests
+│   └── Unit/                          # Unit tests
 └── bootstrap/
-    └── app.php (scheduled tasks)
+    └── app.php                        # Scheduled tasks config
 ```
 
 ## License

@@ -94,10 +94,11 @@ The application uses a service-oriented architecture with three main services th
 **RekognitionService** (`app/Services/RekognitionService.php`)
 - Provides AI-powered tagging via AWS Rekognition
 - Can be enabled/disabled via `AWS_REKOGNITION_ENABLED` config
-- Detects labels with confidence scoring (default 75% minimum)
+- Detects labels with configurable confidence scoring
 - Creates/attaches AI tags (type='ai') to assets automatically
 - Only processes image assets
 - Max labels configurable via database settings or `AWS_REKOGNITION_MAX_LABELS` env (default: 5)
+- Min confidence configurable via database settings or `AWS_REKOGNITION_MIN_CONFIDENCE` env (default: 75, range: 65-99)
 - Language configurable via database settings or `AWS_REKOGNITION_LANGUAGE` env (default: 'en')
 - Supports multilingual tags via AWS Translate (when language != 'en')
 - Uses Job queue (`GenerateAiTags`) for background processing
@@ -366,6 +367,7 @@ The application handles large files (PDFs, GIFs, videos) by:
 |-----|---------|-------------|
 | `items_per_page` | 24 | Assets per page (12, 24, 36, 48, 60, 72, 96) |
 | `rekognition_max_labels` | 5 | Max AI tags per asset (1-20) |
+| `rekognition_min_confidence` | 75 | Min confidence threshold for AI tags (65-99) |
 | `rekognition_language` | en | AI tag language (en, nl, fr, de, es, etc.) |
 
 ## Environment Configuration
@@ -381,6 +383,7 @@ AWS_URL=                    # Public S3 URL
 # Optional: Enable AI tagging
 AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
 AWS_REKOGNITION_MAX_LABELS=5             # Maximum AI tags per asset (default: 5)
+AWS_REKOGNITION_MIN_CONFIDENCE=75        # Minimum confidence threshold (default: 75, range: 65-99)
 AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de, es, etc.
 ```
 

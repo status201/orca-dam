@@ -84,6 +84,7 @@ AWS_URL=https://your-bucket-name.s3.amazonaws.com
 # Optional: Enable AI tagging
 AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
 AWS_REKOGNITION_MAX_LABELS=5             # Maximum AI tags per asset (default: 5)
+AWS_REKOGNITION_MIN_CONFIDENCE=75        # Minimum confidence threshold (default: 75, range: 65-99)
 AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de, es, etc.
 ```
 
@@ -469,13 +470,14 @@ Set in `.env`:
 ```env
 AWS_REKOGNITION_ENABLED=true
 AWS_REKOGNITION_MAX_LABELS=5       # Maximum AI tags per asset (can also be set in Settings)
+AWS_REKOGNITION_MIN_CONFIDENCE=75  # Minimum confidence threshold (can also be set in Settings)
 AWS_REKOGNITION_LANGUAGE=en        # Language for AI tags (can also be set in Settings)
 ```
 
 AI tags are generated automatically on upload and run in a background job queue. They are marked with a purple color in the UI.
 
 **Runtime Configuration:**
-Admins can also configure AI tag limits and language via **System → Settings** without editing `.env`. Database settings override environment defaults.
+Admins can also configure AI tag limits, confidence threshold, and language via **System → Settings** without editing `.env`. Database settings override environment defaults.
 
 **Manual AI Tagging:**
 - You can manually trigger AI tag generation on any image asset
@@ -603,6 +605,7 @@ Update validation rules and add appropriate icons/handling.
 - AI tags are processed via job queue - ensure queue worker is running: `php artisan queue:work`
 - Check Laravel logs for errors: `storage/logs/laravel.log`
 - Verify `AWS_REKOGNITION_MAX_LABELS` is set to an integer (default: 5)
+- Verify `AWS_REKOGNITION_MIN_CONFIDENCE` is set to an integer between 65-99 (default: 75)
 - For language issues, check `AWS_REKOGNITION_LANGUAGE` is a valid language code (en, nl, fr, de, es, etc.)
 - Test with manual "Generate AI Tags" button on asset edit page to see immediate errors
 

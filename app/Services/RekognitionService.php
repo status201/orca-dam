@@ -55,6 +55,14 @@ class RekognitionService
     }
 
     /**
+     * Get the minimum confidence from settings or config
+     */
+    protected function getMinConfidence(): float
+    {
+        return (float) Setting::get('rekognition_min_confidence', config('services.aws.rekognition_min_confidence', 75.0));
+    }
+
+    /**
      * Get or initialize the translate client
      */
     protected function getTranslateClient(): ?TranslateClient
@@ -75,7 +83,7 @@ class RekognitionService
     /**
      * Detect labels (tags) in an image using AWS Rekognition
      */
-    public function detectLabels(string $s3Key, float $minConfidence = 75.0): array
+    public function detectLabels(string $s3Key, ?float $minConfidence = null): array
     {
         if (! $this->enabled) {
             return [];
@@ -84,6 +92,7 @@ class RekognitionService
         try {
             $maxLabels = $this->getMaxLabels();
             $targetLanguage = $this->getTargetLanguage();
+            $minConfidence = $minConfidence ?? $this->getMinConfidence();
 
             $result = $this->rekognitionClient->detectLabels([
                 'Image' => [

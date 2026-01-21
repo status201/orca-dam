@@ -188,6 +188,9 @@ class SystemController extends Controller
 
                 return in_array($v, $languages);
             },
+            'rekognition_min_confidence' => function ($v) {
+                return is_numeric($v) && $v >= 65 && $v <= 99;
+            },
         ];
 
         if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {

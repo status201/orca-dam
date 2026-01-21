@@ -252,6 +252,21 @@
                             </select>
                             <p class="text-xs text-gray-500 mt-1">Language for AI-generated tags (uses AWS Translate for non-English)</p>
                         </div>
+
+                        <!-- Min Confidence -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Minimum confidence threshold
+                            </label>
+                            <select x-model="settings.rekognition_min_confidence"
+                                    @change="updateSetting('rekognition_min_confidence', settings.rekognition_min_confidence)"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-blue focus:border-orca-blue">
+                                @for($i = 65; $i <= 99; $i++)
+                                    <option value="{{ $i }}">{{ $i }}.0%</option>
+                                @endfor
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Minimum confidence level for AI-detected labels (65-99%)</p>
+                        </div>
                     </div>
                 </div>
 
@@ -949,6 +964,7 @@ function systemAdmin() {
             items_per_page: '{{ collect($settings)->firstWhere('key', 'items_per_page')['value'] ?? '24' }}',
             rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
             rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
+            rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '75' }}',
         },
         settingsSaved: false,
         settingsError: '',

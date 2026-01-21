@@ -166,7 +166,7 @@ GET    /api/tags               # List tags
 
 ### settings
 - id, key (unique), value, type, group, description
-- Default settings: items_per_page, rekognition_max_labels, rekognition_language
+- Default settings: items_per_page, rekognition_max_labels, rekognition_min_confidence, rekognition_language
 
 ---
 
@@ -184,6 +184,7 @@ AWS_URL=https://bucket.s3.amazonaws.com
 # AI Tagging (also configurable via System → Settings)
 AWS_REKOGNITION_ENABLED=true|false
 AWS_REKOGNITION_MAX_LABELS=5
+AWS_REKOGNITION_MIN_CONFIDENCE=75
 AWS_REKOGNITION_LANGUAGE=en
 
 # Database
