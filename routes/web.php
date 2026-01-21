@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('system/supervisor-status', [SystemController::class, 'supervisorStatus'])->name('system.supervisor-status');
         Route::post('system/settings', [SystemController::class, 'updateSetting'])->name('system.update-setting');
         Route::get('system/documentation', [SystemController::class, 'documentation'])->name('system.documentation');
+        Route::post('system/run-tests', [SystemController::class, 'runTests'])->name('system.run-tests');
     });
 });
 

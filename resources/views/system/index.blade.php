@@ -60,6 +60,18 @@
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 <i class="fas fa-book mr-2"></i>Documentation
             </button>
+
+            <button @click="activeTab = 'tests'"
+                    :class="activeTab === 'tests' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                <i class="fas fa-vial mr-2"></i>Tests
+                <span x-show="testStats.failed > 0"
+                      class="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full"
+                      x-text="testStats.failed"></span>
+                <span x-show="testStats.passed > 0 && testStats.failed === 0"
+                      class="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full"
+                      x-text="testStats.passed"></span>
+            </button>
         </nav>
     </div>
 
@@ -541,15 +553,15 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-list mr-2"></i>Suggested Commands
             </h3>
-            <div class="space-y-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 @foreach($suggestedCommands as $cmd)
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                        <div class="flex-grow">
-                            <code class="text-sm font-mono text-gray-900">{{ $cmd['command'] }}</code>
+                    <div class="flex flex-col justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 h-full">
+                        <div class="flex-grow mb-2">
+                            <code class="text-sm font-mono text-gray-900 break-all">{{ $cmd['command'] }}</code>
                             <p class="text-xs text-gray-500 mt-1">{{ $cmd['description'] }}</p>
                         </div>
                         <button @click="customCommand = '{{ $cmd['command'] }}'; executeCustomCommand()"
-                                class="ml-4 px-3 py-1 text-sm bg-orca-black text-white rounded hover:bg-orca-black-hover">
+                                class="w-full px-3 py-1.5 text-sm bg-orca-black text-white rounded hover:bg-orca-black-hover">
                             <i class="fas fa-play mr-1"></i>Run
                         </button>
                     </div>
@@ -704,6 +716,190 @@
             </div>
         </div>
     </div>
+
+    <!-- Tests Tab -->
+    <div x-show="activeTab === 'tests'" class="space-y-6">
+        <!-- Test Runner Controls -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        <i class="fas fa-vial mr-2"></i>Test Runner
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Run automated tests for the application</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <select x-model="testSuite"
+                            class="rounded-lg border-gray-300 text-sm">
+                        <option value="all">All Tests</option>
+                        <option value="unit">Unit Tests</option>
+                        <option value="feature">Feature Tests</option>
+                    </select>
+                    <input type="text"
+                           x-model="testFilter"
+                           placeholder="Filter by name..."
+                           class="rounded-lg border-gray-300 text-sm px-3 py-2">
+                    <button @click="runTests()"
+                            :disabled="runningTests"
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center">
+                        <i class="fas mr-2" :class="runningTests ? 'fa-spinner fa-spin' : 'fa-play'"></i>
+                        <span x-text="runningTests ? 'Running...' : 'Run Tests'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div x-show="runningTests" class="mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-gray-600">Running tests...</span>
+                    <span class="text-sm text-gray-600" x-text="testProgress + '%'"></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                         :style="'width: ' + testProgress + '%'"></div>
+                </div>
+            </div>
+
+            <!-- Test Statistics Cards -->
+            <div x-show="testStats.total > 0" class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
+                    <p class="text-3xl font-bold text-gray-900" x-text="testStats.total"></p>
+                    <p class="text-sm text-gray-500">Total Tests</p>
+                </div>
+                <div class="bg-green-50 rounded-lg p-4 text-center">
+                    <p class="text-3xl font-bold text-green-600" x-text="testStats.passed"></p>
+                    <p class="text-sm text-gray-500">Passed</p>
+                </div>
+                <div class="rounded-lg p-4 text-center" :class="testStats.failed > 0 ? 'bg-red-50' : 'bg-gray-50'">
+                    <p class="text-3xl font-bold" :class="testStats.failed > 0 ? 'text-red-600' : 'text-gray-400'" x-text="testStats.failed"></p>
+                    <p class="text-sm text-gray-500">Failed</p>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-4 text-center">
+                    <p class="text-3xl font-bold text-blue-600" x-text="testStats.assertions"></p>
+                    <p class="text-sm text-gray-500">Assertions</p>
+                </div>
+                <div class="bg-purple-50 rounded-lg p-4 text-center">
+                    <p class="text-3xl font-bold text-purple-600" x-text="testStats.duration + 's'"></p>
+                    <p class="text-sm text-gray-500">Duration</p>
+                </div>
+            </div>
+
+            <!-- Success/Failure Banner -->
+            <div x-show="testStats.total > 0 && !runningTests" class="mb-6">
+                <div x-show="testStats.failed === 0" class="p-4 bg-green-100 border border-green-300 rounded-lg flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-check-circle text-3xl text-green-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h4 class="text-lg font-semibold text-green-800">All Tests Passed!</h4>
+                        <p class="text-sm text-green-700">
+                            <span x-text="testStats.passed"></span> tests completed successfully with
+                            <span x-text="testStats.assertions"></span> assertions.
+                        </p>
+                    </div>
+                </div>
+                <div x-show="testStats.failed > 0" class="p-4 bg-red-100 border border-red-300 rounded-lg flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-times-circle text-3xl text-red-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h4 class="text-lg font-semibold text-red-800">Tests Failed</h4>
+                        <p class="text-sm text-red-700">
+                            <span x-text="testStats.failed"></span> test(s) failed out of
+                            <span x-text="testStats.total"></span> total tests.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Output -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-terminal mr-2"></i>Test Output
+                </h3>
+                <div class="flex items-center gap-2">
+                    <button x-show="testOutput"
+                            @click="copyTestOutput()"
+                            class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-copy mr-1"></i>Copy
+                    </button>
+                    <button x-show="testOutput"
+                            @click="testOutput = ''; testStats = {total: 0, passed: 0, failed: 0, skipped: 0, assertions: 0, duration: 0, tests: []}"
+                            class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-trash mr-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div x-show="!testOutput && !runningTests" class="text-center py-12 text-gray-500">
+                    <i class="fas fa-flask text-6xl mb-4 text-gray-300"></i>
+                    <p class="text-lg">No tests have been run yet</p>
+                    <p class="text-sm mt-2">Click "Run Tests" to execute the test suite</p>
+                </div>
+                <div x-show="testOutput || runningTests" class="bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-[600px] overflow-y-auto">
+                    <pre class="text-sm font-mono whitespace-pre-wrap text-gray-100" x-html="formatTestOutput(testOutput)"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Files Overview -->
+        <div x-show="testStats.tests && testStats.tests.length > 0" class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-list-check mr-2"></i>Test Results by Suite
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <template x-for="(tests, suite) in groupTestsBySuite()" :key="suite">
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <div class="px-4 py-3 bg-gray-50 flex items-center justify-between cursor-pointer"
+                                 @click="toggleSuite(suite)">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-chevron-right text-gray-400 transition-transform"
+                                       :class="{'rotate-90': expandedSuites.includes(suite)}"></i>
+                                    <span class="font-medium text-gray-900" x-text="suite"></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700"
+                                          x-text="tests.filter(t => t.status === 'passed').length + ' passed'"></span>
+                                    <span x-show="tests.filter(t => t.status === 'failed').length > 0"
+                                          class="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700"
+                                          x-text="tests.filter(t => t.status === 'failed').length + ' failed'"></span>
+                                </div>
+                            </div>
+                            <div x-show="expandedSuites.includes(suite)" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="border-t border-gray-200">
+                                <div class="divide-y divide-gray-100">
+                                    <template x-for="test in tests" :key="test.name">
+                                        <div class="px-4 py-2 flex items-center gap-3 text-sm">
+                                            <i class="fas"
+                                               :class="test.status === 'passed' ? 'fa-check text-green-500' : 'fa-times text-red-500'"></i>
+                                            <span class="text-gray-700" x-text="test.name"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Info -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2">
+                <i class="fas fa-info-circle mr-1"></i>About Testing
+            </h4>
+            <div class="text-xs text-blue-800 space-y-1">
+                <p>Tests are run using <strong>Pest PHP</strong>, a testing framework built on PHPUnit.</p>
+                <p><strong>Unit Tests:</strong> Test individual components in isolation (models, services).</p>
+                <p><strong>Feature Tests:</strong> Test complete HTTP requests and responses (controllers, routes).</p>
+                <p>Tests run against an in-memory SQLite database, so they don't affect your real data.</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
@@ -760,6 +956,23 @@ function systemAdmin() {
         docContent: '',
         docError: '',
         loadingDoc: false,
+
+        // Tests
+        testSuite: 'all',
+        testFilter: '',
+        runningTests: false,
+        testOutput: '',
+        testProgress: 0,
+        testStats: {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            assertions: 0,
+            duration: 0,
+            tests: []
+        },
+        expandedSuites: [],
 
         init() {
             // Initial load
@@ -1020,6 +1233,161 @@ function systemAdmin() {
             } finally {
                 this.loadingDoc = false;
             }
+        },
+
+        async runTests() {
+            this.runningTests = true;
+            this.testOutput = '';
+            this.testProgress = 0;
+            this.testStats = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                skipped: 0,
+                assertions: 0,
+                duration: 0,
+                tests: []
+            };
+            this.expandedSuites = [];
+
+            // Simulate progress
+            const progressInterval = setInterval(() => {
+                if (this.testProgress < 90) {
+                    this.testProgress += Math.random() * 10;
+                }
+            }, 500);
+
+            try {
+                const response = await fetch('{{ route('system.run-tests') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        suite: this.testSuite,
+                        filter: this.testFilter || null,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    this.testOutput = result.output;
+                    this.testStats = result.stats;
+                    this.testProgress = 100;
+
+                    if (result.stats.failed > 0) {
+                        window.showToast(`Tests completed: ${result.stats.failed} failed`, 'error');
+                    } else {
+                        window.showToast(`All ${result.stats.passed} tests passed!`, 'success');
+                    }
+                } else {
+                    this.testOutput = result.error || 'Failed to run tests';
+                    window.showToast('Failed to run tests', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to run tests:', error);
+                this.testOutput = 'Error: ' + error.message;
+                window.showToast('Failed to run tests', 'error');
+            } finally {
+                clearInterval(progressInterval);
+                this.runningTests = false;
+            }
+        },
+
+        formatTestOutput(output) {
+            if (!output) return '';
+
+            // Escape HTML first
+            let formatted = output
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Color code different parts
+            formatted = formatted
+                // Pass markers
+                .replace(/PASS/g, '<span class="text-green-400 font-bold">PASS</span>')
+                // Fail markers
+                .replace(/FAIL/g, '<span class="text-red-400 font-bold">FAIL</span>')
+                // Checkmarks (passed tests)
+                .replace(/✓/g, '<span class="text-green-400">✓</span>')
+                // X marks (failed tests)
+                .replace(/✗|×/g, '<span class="text-red-400">✗</span>')
+                // Test duration
+                .replace(/(\d+\.\d+s)/g, '<span class="text-gray-500">$1</span>')
+                // Tests summary line
+                .replace(/(Tests:\s*)(\d+\s*passed)/gi, '$1<span class="text-green-400 font-bold">$2</span>')
+                .replace(/(\d+\s*failed)/gi, '<span class="text-red-400 font-bold">$1</span>')
+                // Assertions
+                .replace(/\((\d+\s*assertions?)\)/gi, '(<span class="text-blue-400">$1</span>)')
+                // Duration line
+                .replace(/(Duration:\s*)([\d.]+s)/gi, '$1<span class="text-purple-400">$2</span>')
+                // Error messages
+                .replace(/(Error|Exception|Failed)/gi, '<span class="text-red-400">$1</span>')
+                // File paths in errors
+                .replace(/(tests\/[^\s:]+:\d+)/g, '<span class="text-yellow-400">$1</span>');
+
+            return formatted;
+        },
+
+        groupTestsBySuite() {
+            if (!this.testStats.tests || this.testStats.tests.length === 0) {
+                return {};
+            }
+
+            const grouped = {};
+            for (const test of this.testStats.tests) {
+                const suite = test.suite || 'Unknown';
+                if (!grouped[suite]) {
+                    grouped[suite] = [];
+                }
+                grouped[suite].push(test);
+            }
+            return grouped;
+        },
+
+        toggleSuite(suite) {
+            const index = this.expandedSuites.indexOf(suite);
+            if (index > -1) {
+                this.expandedSuites.splice(index, 1);
+            } else {
+                this.expandedSuites.push(suite);
+            }
+        },
+
+        copyTestOutput() {
+            const text = this.testOutput;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    window.showToast('Output copied to clipboard', 'success');
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    this.fallbackCopyToClipboard(text);
+                });
+            } else {
+                this.fallbackCopyToClipboard(text);
+            }
+        },
+
+        fallbackCopyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                window.showToast('Output copied to clipboard', 'success');
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                window.showToast('Failed to copy output', 'error');
+            }
+            textArea.remove();
         },
     };
 }
