@@ -47,6 +47,25 @@ php artisan migrate:fresh --seed
 tail -f storage/logs/laravel.log
 ```
 
+### Testing
+```bash
+# Run all tests
+php artisan test
+
+# Run specific suite
+php artisan test --testsuite=Unit
+php artisan test --testsuite=Feature
+
+# Run tests matching pattern
+php artisan test --filter="asset"
+
+# Using Pest directly
+./vendor/bin/pest
+./vendor/bin/pest --filter="can update"
+```
+
+**Web-based test runner:** Admin → System → Tests tab
+
 ---
 
 ## File Locations
@@ -80,6 +99,16 @@ orca-dam/
 ├── routes/
 │   ├── web.php                       # Web routes
 │   └── api.php                       # API routes
+├── tests/
+│   ├── Feature/                      # Feature tests
+│   │   ├── AssetTest.php
+│   │   ├── TagTest.php
+│   │   ├── ExportTest.php
+│   │   └── ApiTest.php
+│   └── Unit/                         # Unit tests
+│       ├── AssetTest.php
+│       ├── TagTest.php
+│       └── SettingTest.php
 └── config/                           # Configuration
 ```
 
@@ -102,6 +131,7 @@ POST /discover/import          # Import objects
 GET  /tags                     # List tags
 GET  /system                   # System admin (admin)
 POST /system/settings          # Update settings (admin)
+POST /system/run-tests         # Run automated tests (admin)
 ```
 
 ### API Routes

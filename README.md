@@ -197,6 +197,37 @@ POST   /api/chunked-upload/abort    - Cancel and cleanup failed upload
 
 Authentication: Laravel Sanctum (SPA token) - except `/api/assets/meta` which is public
 
+## Testing
+
+ORCA DAM includes a comprehensive test suite built with Pest PHP.
+
+### Running Tests
+
+```bash
+# Run all tests
+php artisan test
+
+# Run specific suite
+php artisan test --testsuite=Unit
+php artisan test --testsuite=Feature
+
+# Run with filter
+php artisan test --filter="asset"
+```
+
+### Test Coverage
+
+- **Unit Tests:** Model relationships, scopes, attributes, type casting
+- **Feature Tests:** Asset CRUD, tag management, export, API endpoints, authorization
+
+### Web-Based Test Runner
+
+Admins can run tests from the browser via **System → Tests** tab:
+- Select test suite and filter by name
+- Real-time progress and statistics
+- Color-coded output with failed tests highlighted
+- Results grouped by test suite
+
 ## Architecture
 
 - **Backend:** Laravel 12 with AWS SDK v3

@@ -445,12 +445,81 @@ For Herd: Edit `~/.config/herd/bin/php84/php.ini` (Windows: `C:\Users\<username>
 - Soft-deleted assets are hidden from normal queries but visible in trash
 - Discovery feature marks soft-deleted assets to prevent re-import
 
-## Testing Considerations
+## Testing
 
-- Tests use SQLite in-memory database (configured in phpunit.xml)
-- AWS services should be mocked in tests to avoid actual S3/Rekognition calls
-- Feature tests should cover: upload flow, authorization policies, search/filter logic
-- Test files located in `tests/Feature/` and `tests/Unit/`
+### Test Suite Overview
+
+ORCA DAM includes a comprehensive test suite built with **Pest PHP** (a testing framework on top of PHPUnit). Tests use an in-memory SQLite database for isolation.
+
+**Test Statistics:** ~100 tests covering models, controllers, API, and authorization.
+
+### Test Structure
+
+```
+tests/
+├── Feature/
+│   ├── AssetTest.php       # Asset CRUD, filtering, permissions
+│   ├── TagTest.php         # Tag management, asset tagging
+│   ├── ExportTest.php      # CSV export functionality
+│   ├── ApiTest.php         # API endpoints, authentication
+│   └── Auth/               # Authentication tests (Laravel Breeze)
+├── Unit/
+│   ├── AssetTest.php       # Asset model relationships, scopes, attributes
+│   ├── TagTest.php         # Tag model relationships
+│   └── SettingTest.php     # Setting model get/set, caching, type casting
+└── Pest.php                # Pest configuration with RefreshDatabase
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+php artisan test
+
+# Run specific test suite
+php artisan test --testsuite=Unit
+php artisan test --testsuite=Feature
+
+# Run specific test file
+php artisan test tests/Feature/AssetTest.php
+
+# Run tests matching a name pattern
+php artisan test --filter="asset"
+
+# Using Pest directly
+./vendor/bin/pest
+./vendor/bin/pest --filter="can update"
+```
+
+### Test Factories
+
+Located in `database/factories/`:
+
+- **AssetFactory** - Creates test assets with states: `image()`, `pdf()`, `withLicense()`, `withCopyright()`
+- **TagFactory** - Creates test tags with states: `ai()`, `user()`
+- **SettingFactory** - Creates test settings with states: `integer()`, `boolean()`
+
+### Web-Based Test Runner
+
+Admins can run tests from the System page (`/system` → Tests tab):
+
+- Select test suite (All, Unit, Feature)
+- Filter by test name
+- Real-time progress indicator
+- Color-coded output with syntax highlighting
+- Statistics cards (total, passed, failed, assertions, duration)
+- Collapsible test results grouped by suite
+- Failed tests highlighted and shown first
+- Copy output to clipboard
+
+### Test Configuration
+
+Tests are configured via `phpunit.xml`:
+- `APP_ENV=testing`
+- `DB_CONNECTION=sqlite` with `:memory:` database
+- `SESSION_DRIVER=array`
+- `CACHE_STORE=array`
+- `QUEUE_CONNECTION=sync`
 
 ## Integration Points
 
@@ -537,6 +606,19 @@ ORCA DAM includes a comprehensive admin-only System page accessible via the user
 - System configuration overview
 - PHP settings display
 - S3 connection test
+
+**Tests Tab:**
+- Web-based test runner for automated tests
+- Suite selector (All Tests, Unit Tests, Feature Tests)
+- Filter tests by name
+- Real-time progress bar during execution
+- Statistics cards: Total, Passed, Failed, Assertions, Duration
+- Success/failure banner with summary
+- Syntax-highlighted test output (color-coded PASS/FAIL)
+- Collapsible test results grouped by test suite
+- Failed tests appear first, suites with failures auto-expand
+- Copy output to clipboard
+- Route: `POST /system/run-tests`
 
 ### Queue Worker Management
 
