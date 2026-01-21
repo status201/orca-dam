@@ -3,7 +3,7 @@
 @section('title', $asset->filename)
 
 @section('content')
-<div class="max-w-6xl mx-auto" x-data="assetDetail()">
+<div class="max-w-7xl mx-auto" x-data="assetDetail()">
     <!-- Back button -->
     <div class="mb-6">
         <a href="{{ route('assets.index') }}" class="inline-flex items-center text-blue-600 hover:text-blue-700">

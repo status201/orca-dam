@@ -3,7 +3,7 @@
 @section('title', 'Edit Asset')
 
 @section('content')
-<div class="max-w-4xl mx-auto" x-data="assetEditor()">
+<div class="max-w-7xl mx-auto" x-data="assetEditor()">
     <div class="mb-6">
         <a href="{{ route('assets.show', $asset) }}" class="inline-flex items-center text-blue-600 hover:text-blue-700">
             <i class="fas fa-arrow-left mr-2"></i> Back to Asset
@@ -34,166 +34,168 @@
         <form action="{{ route('assets.update', $asset) }}" class="mb-6" method="POST">
             @csrf
             @method('PATCH')
-            
-            <!-- Preview -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                @if($asset->isImage())
-                    <img src="{{ $asset->thumbnail_url ?? $asset->url }}"
-                         alt="{{ $asset->filename }}"
-                         class="max-w-sm rounded-lg">
-                @else
-                    <div class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                        @php
-                            $icon = $asset->getFileIcon();
-                            $colorClass = match($icon) {
-                                'fa-file-pdf' => 'text-red-500',
-                                'fa-file-word' => 'text-blue-600',
-                                'fa-file-excel' => 'text-green-600',
-                                'fa-file-powerpoint' => 'text-orange-500',
-                                'fa-file-zipper' => 'text-yellow-600',
-                                'fa-file-code' => 'text-purple-600',
-                                'fa-file-video' => 'text-pink-600',
-                                'fa-file-audio' => 'text-indigo-600',
-                                'fa-file-csv' => 'text-teal-600',
-                                'fa-file-lines' => 'text-gray-500',
-                                default => 'text-gray-400'
-                            };
-                        @endphp
-                        <i class="fas {{ $icon }} {{ $colorClass }} opacity-60" style="font-size: 8rem;"></i>
-                    </div>
-                @endif
-            </div>
-            
-            <!-- Filename (read-only) -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Filename
-                </label>
-                <input type="text" 
-                       value="{{ $asset->filename }}"
-                       readonly
-                       class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg">
-            </div>
-            
-            <!-- Alt Text -->
-            <div class="mb-6">
-                <label for="alt_text" class="block text-sm font-medium text-gray-700 mb-2">
-                    Alt Text
-                    <span class="text-gray-500 font-normal">(for accessibility)</span>
-                </label>
-                <input type="text" 
-                       id="alt_text"
-                       name="alt_text" 
-                       value="{{ old('alt_text', $asset->alt_text) }}"
-                       maxlength="500"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                       placeholder="Brief description of the image">
-                @error('alt_text')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-            
-            <!-- Caption -->
-            <div class="mb-6">
-                <label for="caption" class="block text-sm font-medium text-gray-700 mb-2">
-                    Caption
-                </label>
-                <textarea id="caption"
-                          name="caption"
-                          rows="3"
-                          maxlength="1000"
-                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Optional caption or description">{{ old('caption', $asset->caption) }}</textarea>
-                @error('caption')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
 
-            <!-- License Type -->
-            <div class="mb-6">
-                <label for="license_type" class="block text-sm font-medium text-gray-700 mb-2">
-                    License Type
-                </label>
-                <select id="license_type"
-                        name="license_type"
-                        class="w-full px-4 py-2 pr-dropdown border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="">Select a license...</option>
-                    <option value="public_domain" {{ old('license_type', $asset->license_type) == 'public_domain' ? 'selected' : '' }}>Public Domain</option>
-                    <option value="cc0" {{ old('license_type', $asset->license_type) == 'cc0' ? 'selected' : '' }}>CC0 (No Rights Reserved)</option>
-                    <option value="cc_by" {{ old('license_type', $asset->license_type) == 'cc_by' ? 'selected' : '' }}>CC BY (Attribution)</option>
-                    <option value="cc_by_sa" {{ old('license_type', $asset->license_type) == 'cc_by_sa' ? 'selected' : '' }}>CC BY-SA (Attribution-ShareAlike)</option>
-                    <option value="cc_by_nd" {{ old('license_type', $asset->license_type) == 'cc_by_nd' ? 'selected' : '' }}>CC BY-ND (Attribution-NoDerivs)</option>
-                    <option value="cc_by_nc" {{ old('license_type', $asset->license_type) == 'cc_by_nc' ? 'selected' : '' }}>CC BY-NC (Attribution-NonCommercial)</option>
-                    <option value="cc_by_nc_sa" {{ old('license_type', $asset->license_type) == 'cc_by_nc_sa' ? 'selected' : '' }}>CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)</option>
-                    <option value="cc_by_nc_nd" {{ old('license_type', $asset->license_type) == 'cc_by_nc_nd' ? 'selected' : '' }}>CC BY-NC-ND (Attribution-NonCommercial-NoDerivs)</option>
-                    <option value="fair_use" {{ old('license_type', $asset->license_type) == 'fair_use' ? 'selected' : '' }}>Fair Use</option>
-                    <option value="all_rights_reserved" {{ old('license_type', $asset->license_type) == 'all_rights_reserved' ? 'selected' : '' }}>All Rights Reserved</option>
-                    <option value="other" {{ old('license_type', $asset->license_type) == 'other' ? 'selected' : '' }}>Other</option>
-                </select>
-                @error('license_type')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Filename (read-only) -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Filename
+                    </label>
+                    <input type="text"
+                           value="{{ $asset->filename }}"
+                           readonly
+                           class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                </div>
 
-            <!-- License Expiry Date -->
-            <div class="mb-6">
-                <label for="license_expiry_date" class="block text-sm font-medium text-gray-700 mb-2">
-                    License Expiry Date
-                    <span class="text-gray-500 font-normal">(optional)</span>
-                </label>
-                <input type="date"
-                       id="license_expiry_date"
-                       name="license_expiry_date"
-                       value="{{ old('license_expiry_date', $asset->license_expiry_date?->format('Y-m-d')) }}"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                @error('license_expiry_date')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+                <!-- Preview -->
+                <div class="mb-4 md:row-span-3 md:justify-self-end">
+                    <label class="block text-sm font-medium md:text-right text-gray-700 mb-2">Preview</label>
+                    @if($asset->isImage())
+                        <img src="{{ $asset->thumbnail_url ?? $asset->url }}"
+                             alt="{{ $asset->filename }}"
+                             class="max-w-sm rounded-lg">
+                    @else
+                        <div class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                            @php
+                                $icon = $asset->getFileIcon();
+                                $colorClass = match($icon) {
+                                    'fa-file-pdf' => 'text-red-500',
+                                    'fa-file-word' => 'text-blue-600',
+                                    'fa-file-excel' => 'text-green-600',
+                                    'fa-file-powerpoint' => 'text-orange-500',
+                                    'fa-file-zipper' => 'text-yellow-600',
+                                    'fa-file-code' => 'text-purple-600',
+                                    'fa-file-video' => 'text-pink-600',
+                                    'fa-file-audio' => 'text-indigo-600',
+                                    'fa-file-csv' => 'text-teal-600',
+                                    'fa-file-lines' => 'text-gray-500',
+                                    default => 'text-gray-400'
+                                };
+                            @endphp
+                            <i class="fas {{ $icon }} {{ $colorClass }} opacity-60" style="font-size: 8rem;"></i>
+                        </div>
+                    @endif
+                </div>
 
-            <!-- Copyright -->
-            <div class="mb-6">
-                <label for="copyright" class="block text-sm font-medium text-gray-700 mb-2">
-                    Copyright Information
-                </label>
-                <input type="text"
-                       id="copyright"
-                       name="copyright"
-                       value="{{ old('copyright', $asset->copyright) }}"
-                       maxlength="500"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                       placeholder="e.g., © 2024 Company Name, or copyright holder information">
-                @error('copyright')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+                <!-- Alt Text -->
+                <div class="mb-4">
+                    <label for="alt_text" class="block text-sm font-medium text-gray-700 mb-2">
+                        Alt Text
+                        <span class="text-gray-500 font-normal">(for accessibility)</span>
+                    </label>
+                    <input type="text"
+                           id="alt_text"
+                           name="alt_text"
+                           value="{{ old('alt_text', $asset->alt_text) }}"
+                           maxlength="500"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="Brief description of the image">
+                    @error('alt_text')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
 
-            <!-- Copyright Source -->
-            <div class="mb-6">
-                <label for="copyright_source" class="block text-sm font-medium text-gray-700 mb-2">
-                    Copyright Source
-                    <span class="text-gray-500 font-normal">(URL or reference)</span>
-                </label>
-                <input type="text"
-                       id="copyright_source"
-                       name="copyright_source"
-                       value="{{ old('copyright_source', $asset->copyright_source) }}"
-                       maxlength="500"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                       placeholder="e.g., https://example.com/license or original source reference">
-                @error('copyright_source')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
+                <!-- Caption -->
+                <div class="mb-4">
+                    <label for="caption" class="block text-sm font-medium text-gray-700 mb-2">
+                        Caption
+                    </label>
+                    <textarea id="caption"
+                              name="caption"
+                              rows="3"
+                              maxlength="1000"
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Optional caption or description">{{ old('caption', $asset->caption) }}</textarea>
+                    @error('caption')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- License Type -->
+                <div class="mb-4">
+                    <label for="license_type" class="block text-sm font-medium text-gray-700 mb-2">
+                        License Type
+                    </label>
+                    <select id="license_type"
+                            name="license_type"
+                            class="w-full px-4 py-2 pr-dropdown border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Select a license...</option>
+                        <option value="public_domain" {{ old('license_type', $asset->license_type) == 'public_domain' ? 'selected' : '' }}>Public Domain</option>
+                        <option value="cc0" {{ old('license_type', $asset->license_type) == 'cc0' ? 'selected' : '' }}>CC0 (No Rights Reserved)</option>
+                        <option value="cc_by" {{ old('license_type', $asset->license_type) == 'cc_by' ? 'selected' : '' }}>CC BY (Attribution)</option>
+                        <option value="cc_by_sa" {{ old('license_type', $asset->license_type) == 'cc_by_sa' ? 'selected' : '' }}>CC BY-SA (Attribution-ShareAlike)</option>
+                        <option value="cc_by_nd" {{ old('license_type', $asset->license_type) == 'cc_by_nd' ? 'selected' : '' }}>CC BY-ND (Attribution-NoDerivs)</option>
+                        <option value="cc_by_nc" {{ old('license_type', $asset->license_type) == 'cc_by_nc' ? 'selected' : '' }}>CC BY-NC (Attribution-NonCommercial)</option>
+                        <option value="cc_by_nc_sa" {{ old('license_type', $asset->license_type) == 'cc_by_nc_sa' ? 'selected' : '' }}>CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)</option>
+                        <option value="cc_by_nc_nd" {{ old('license_type', $asset->license_type) == 'cc_by_nc_nd' ? 'selected' : '' }}>CC BY-NC-ND (Attribution-NonCommercial-NoDerivs)</option>
+                        <option value="fair_use" {{ old('license_type', $asset->license_type) == 'fair_use' ? 'selected' : '' }}>Fair Use</option>
+                        <option value="all_rights_reserved" {{ old('license_type', $asset->license_type) == 'all_rights_reserved' ? 'selected' : '' }}>All Rights Reserved</option>
+                        <option value="other" {{ old('license_type', $asset->license_type) == 'other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                    @error('license_type')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- License Expiry Date -->
+                <div class="mb-4">
+                    <label for="license_expiry_date" class="block text-sm font-medium text-gray-700 mb-2">
+                        License Expiry Date
+                        <span class="text-gray-500 font-normal">(optional)</span>
+                    </label>
+                    <input type="date"
+                           id="license_expiry_date"
+                           name="license_expiry_date"
+                           value="{{ old('license_expiry_date', $asset->license_expiry_date?->format('Y-m-d')) }}"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    @error('license_expiry_date')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Copyright -->
+                <div class="mb-4">
+                    <label for="copyright" class="block text-sm font-medium text-gray-700 mb-2">
+                        Copyright Information
+                    </label>
+                    <input type="text"
+                           id="copyright"
+                           name="copyright"
+                           value="{{ old('copyright', $asset->copyright) }}"
+                           maxlength="500"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="e.g., © 2024 Company Name, or copyright holder information">
+                    @error('copyright')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Copyright Source -->
+                <div class="mb-4">
+                    <label for="copyright_source" class="block text-sm font-medium text-gray-700 mb-2">
+                        Copyright Source
+                        <span class="text-gray-500 font-normal">(URL or reference)</span>
+                    </label>
+                    <input type="text"
+                           id="copyright_source"
+                           name="copyright_source"
+                           value="{{ old('copyright_source', $asset->copyright_source) }}"
+                           maxlength="500"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="e.g., https://example.com/license or original source reference">
+                    @error('copyright_source')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
 
             <!-- Tags -->
-            <div class="mb-6">
+            <div class="mb-4 mt-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     User Tags
                     <span class="text-gray-500 font-normal">(AI tags are preserved automatically)</span>
                 </label>
-                
+
                 <!-- Tag input with autocomplete -->
                 <div class="mb-3">
                     <div class="flex space-x-2 relative">
@@ -230,13 +232,13 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Current tags -->
                 <div class="flex flex-wrap gap-2 mb-3">
                     <template x-for="(tag, index) in userTags" :key="index">
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">
                             <span x-text="tag"></span>
-                            <button type="button" 
+                            <button type="button"
                                     @click="removeTag(index)"
                                     class="ml-2 hover:text-blue-900">
                                 <i class="fas fa-times"></i>
@@ -250,6 +252,7 @@
                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
+
             
             <!-- Submit buttons -->
             <div class="flex justify-end space-x-3">

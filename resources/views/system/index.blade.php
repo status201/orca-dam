@@ -468,11 +468,11 @@
     <!-- Logs Tab -->
     <div x-show="activeTab === 'logs'" class="space-y-6">
         <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-file-lines mr-2"></i>Laravel Log Viewer
                 </h3>
-                <div class="flex items-center space-x-3">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <select x-model="logLines" @change="refreshLogs()"
                             class="rounded-md border-gray-300 text-sm">
                         <option value="20">20 lines</option>
@@ -676,11 +676,11 @@
     <!-- Documentation Tab -->
     <div x-show="activeTab === 'documentation'" x-init="$watch('activeTab', value => { if (value === 'documentation' && !docContent && !docError) loadDocumentation(); })" class="space-y-6">
         <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-book mr-2"></i>Project Documentation
                 </h3>
-                <div class="flex items-center space-x-3">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <select x-model="selectedDoc"
                             @change="loadDocumentation()"
                             class="rounded-md border-gray-300 text-sm">
@@ -752,11 +752,11 @@
             <div x-show="runningTests" class="mb-6">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-sm text-gray-600">Running tests...</span>
-                    <span class="text-sm text-gray-600" x-text="testProgress + '%'"></span>
+                    <span class="text-sm text-gray-600" x-text="Math.round(testProgress) + '%'"></span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
                     <div class="bg-green-600 h-2.5 rounded-full transition-all duration-300"
-                         :style="'width: ' + testProgress + '%'"></div>
+                         :style="'width: ' + Math.round(testProgress) + '%'"></div>
                 </div>
             </div>
 
