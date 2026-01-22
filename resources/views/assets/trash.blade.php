@@ -9,7 +9,7 @@
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">
-                    <i class="fas fa-trash-alt mr-2"></i>Trash
+                    Trash
                 </h1>
                 <p class="text-gray-600 mt-2">Soft-deleted assets (S3 objects are kept)</p>
             </div>
