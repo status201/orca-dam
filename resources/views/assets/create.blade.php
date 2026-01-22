@@ -22,9 +22,18 @@
                 </select>
 
                 @can('discover', App\Models\Asset::class)
+                <!-- Admin-only: Scan for folders -->
+                <button @click="scanFolders"
+                        :disabled="scanningFolders"
+                        type="button"
+                        class="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                        title="Scan S3 for folders">
+                    <i :class="scanningFolders ? 'fa-spinner fa-spin' : 'fa-sync'" class="fas"></i>
+                </button>
+
                 <!-- Admin-only: Create new folder -->
                 <template x-if="!showNewFolderInput">
-                    <button @click="showNewFolderInput = true"
+                    <button @click="showNewFolderInput = true; $nextTick(() => $refs.newFolderInput.focus())"
                             type="button"
                             class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 whitespace-nowrap">
                         <i class="fas fa-folder-plus mr-1"></i> New Folder
@@ -32,13 +41,13 @@
                 </template>
                 <template x-if="showNewFolderInput">
                     <div class="flex items-center space-x-2">
-                        <span class="text-gray-500 text-sm">assets/</span>
+                        <span class="text-gray-500 text-sm" x-text="selectedFolder + '/'"></span>
                         <input type="text"
                                x-model="newFolderName"
                                x-ref="newFolderInput"
                                @keydown.enter="createFolder"
                                @keydown.escape="showNewFolderInput = false; newFolderName = ''"
-                               placeholder="folder-name"
+                               placeholder="subfolder-name"
                                class="w-40 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500">
                         <button @click="createFolder"
                                 :disabled="creatingFolder || !newFolderName.trim()"
@@ -168,6 +177,7 @@ function assetUploader() {
         showNewFolderInput: false,
         newFolderName: '',
         creatingFolder: false,
+        scanningFolders: false,
 
         handleDrop(e) {
             this.dragActive = false;
@@ -201,6 +211,34 @@ function assetUploader() {
             return `${size.toFixed(2)} ${units[unitIndex]}`;
         },
 
+        async scanFolders() {
+            if (this.scanningFolders) return;
+
+            this.scanningFolders = true;
+            try {
+                const response = await fetch('{{ route('folders.scan') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to scan folders');
+                }
+
+                window.showToast('Folders refreshed from S3');
+                setTimeout(() => window.location.reload(), 500);
+            } catch (error) {
+                console.error('Scan folders error:', error);
+                window.showToast(error.message || 'Failed to scan folders', 'error');
+            } finally {
+                this.scanningFolders = false;
+            }
+        },
+
         async createFolder() {
             if (!this.newFolderName.trim() || this.creatingFolder) return;
 
@@ -213,7 +251,10 @@ function assetUploader() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({ name: this.newFolderName.trim() }),
+                    body: JSON.stringify({
+                        name: this.newFolderName.trim(),
+                        parent: this.selectedFolder,
+                    }),
                 });
 
                 if (!response.ok) {

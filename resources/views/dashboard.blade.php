@@ -10,7 +10,7 @@
                     </div>
                 </div>
                 <h1 class="text-4xl font-bold text-gray-900 mb-3">ORCA DAM</h1>
-                <p class="text-xl text-gray-600 italic pb-8 tagline"><span>ORCA</span> <span>Retrieves</span> <span>Cloud</span> <span>Assets</span></p>
+                <p class="text-xl text-gray-600 pb-8"><span>ORCA</span> <span>Retrieves</span> <span>Cloud</span> <span>Assets</span></p>
             </div>
 
             <!-- Two Column Grid -->

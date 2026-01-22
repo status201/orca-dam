@@ -79,6 +79,12 @@ class AssetController extends Controller
             case 'name_desc':
                 $query->orderBy('filename', 'desc');
                 break;
+            case 's3key_asc':
+                $query->orderBy('s3_key', 'asc');
+                break;
+            case 's3key_desc':
+                $query->orderBy('s3_key', 'desc');
+                break;
             default:
                 $query->latest('updated_at');
         }

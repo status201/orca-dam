@@ -45,6 +45,8 @@
                         <option value="size_asc">Smallest First</option>
                         <option value="name_asc">Name A-Z</option>
                         <option value="name_desc">Name Z-A</option>
+                        <option value="s3key_asc">S3 Key A-Z</option>
+                        <option value="s3key_desc">S3 Key Z-A</option>
                     </select>
 
                     <!-- Type filter -->

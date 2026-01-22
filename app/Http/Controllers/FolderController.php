@@ -45,10 +45,14 @@ class FolderController extends Controller
         $this->authorize('discover', Asset::class);
 
         $request->validate([
-            'name' => 'required|string|max:100|regex:/^[a-zA-Z0-9_\-\/]+$/',
+            'name' => 'required|string|max:100|regex:/^[a-zA-Z0-9_\-]+$/',
+            'parent' => 'nullable|string|max:255',
         ]);
 
-        $folderPath = 'assets/'.trim($request->name, '/');
+        // Build folder path: parent + name
+        $parent = $request->input('parent', 'assets');
+        $parent = rtrim($parent, '/');
+        $folderPath = $parent.'/'.trim($request->name, '/');
 
         if (! $this->s3Service->createFolder($folderPath)) {
             return response()->json(['message' => 'Failed to create folder'], 500);
