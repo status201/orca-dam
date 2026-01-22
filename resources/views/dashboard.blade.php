@@ -36,7 +36,7 @@
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6 h-full">
                                 <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                                    <div class="flex-shrink-0 bg-blue-500 rounded-md p-3 w-14 text-center">
                                         <i class="fas fa-images text-white text-2xl"></i>
                                     </div>
                                     <div class="ml-5 w-0 flex-1">
@@ -56,7 +56,7 @@
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6 h-full">
                                 <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                                    <div class="flex-shrink-0 bg-green-500 rounded-md p-3 w-14 text-center">
                                         <i class="fas fa-user text-white text-2xl"></i>
                                     </div>
                                     <div class="ml-5 w-0 flex-1">
@@ -73,7 +73,7 @@
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6 h-full">
                                 <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-purple-500 rounded-md p-3">
+                                    <div class="flex-shrink-0 bg-purple-500 rounded-md p-3 w-14 text-center">
                                         <i class="fas fa-tags text-white text-2xl"></i>
                                     </div>
                                     <div class="ml-5 w-0 flex-1">
@@ -96,7 +96,7 @@
                         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div class="p-6 h-full">
                                 <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                                    <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3 w-14 text-center">
                                         <i class="fas fa-database text-white text-2xl"></i>
                                     </div>
                                     <div class="ml-5 w-0 flex-1">
@@ -114,7 +114,7 @@
                             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                 <div class="p-6 h-full">
                                     <div class="flex items-center h-full">
-                                        <div class="flex-shrink-0 bg-red-500 rounded-md p-3">
+                                        <div class="flex-shrink-0 bg-red-500 rounded-md p-3 w-14 text-center">
                                             <i class="fas fa-users text-white text-2xl"></i>
                                         </div>
                                         <div class="ml-5 w-0 flex-1">
@@ -133,7 +133,7 @@
                             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                                 <div class="p-6 h-full">
                                     <div class="flex items-center h-full">
-                                        <div class="flex-shrink-0 bg-gray-500 rounded-md p-3">
+                                        <div class="flex-shrink-0 bg-gray-500 rounded-md p-3 w-14 text-center">
                                             <i class="fas fa-trash text-white text-2xl"></i>
                                         </div>
                                         <div class="ml-5 w-0 flex-1">
@@ -174,8 +174,8 @@
 
                                         <!-- Icon -->
                                         <div class="flex justify-center">
-                                            <div class="rounded-full p-4" :class="feature.bgColor">
-                                                <i :class="feature.icon + ' text-white text-4xl'"></i>
+                                            <div class="rounded-full p-4 w-20 h-20 text-center" :class="feature.bgColor">
+                                                <i :class="feature.icon + ' text-white text-4xl leading-[1.4]'"></i>
                                             </div>
                                         </div>
 

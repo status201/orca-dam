@@ -80,35 +80,46 @@
              class="mt-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="font-semibold">Filter by Tags</h3>
-                <div class="flex gap-2">
-                    <button @click="applyFilters()"
-                            x-show="tagsChanged()"
-                            class="text-sm px-4 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition">
-                        <i class="fas fa-check mr-1"></i> Apply
-                    </button>
-                    <button @click="selectedTags = []"
-                            x-show="selectedTags.length > 0"
-                            class="text-sm px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition">
-                        <i class="fas fa-times mr-1"></i> Clear All
-                    </button>
+                <div class="flex items-center gap-3">
+                    <!-- Tag search input -->
+                    <div class="relative">
+                        <input type="text"
+                               x-model="tagSearch"
+                               placeholder="Search tags..."
+                               class="text-sm pl-8 pr-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-40">
+                        <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="applyFilters()"
+                                x-show="tagsChanged()"
+                                class="text-sm px-4 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition">
+                            <i class="fas fa-check mr-1"></i> Apply
+                        </button>
+                        <button @click="selectedTags = []; tagSearch = ''"
+                                x-show="selectedTags.length > 0"
+                                class="text-sm px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition">
+                            <i class="fas fa-times mr-1"></i> Clear All
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="max-h-96 overflow-y-auto">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
-                    @foreach($tags as $tag)
-                    <label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
-                        <input type="checkbox"
-                               value="{{ $tag->id }}"
-                               x-model="selectedTags"
-                               class="rounded text-blue-600 focus:ring-blue-500 flex-shrink-0 mt-0.5">
-                        <div class="flex flex-col gap-1 min-w-0 flex-1">
-                            <span class="text-sm font-medium truncate">{{ $tag->name }}</span>
-                            <span class="text-xs px-2 py-0.5 rounded-full {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }} inline-block w-fit">
-                                {{ $tag->type }}
-                            </span>
-                        </div>
-                    </label>
-                    @endforeach
+                    <template x-for="tag in allTagsData" :key="tag.id">
+                        <label x-show="shouldShowTag(tag)"
+                               class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
+                            <input type="checkbox"
+                                   :value="tag.id"
+                                   x-model="selectedTags"
+                                   class="rounded text-blue-600 focus:ring-blue-500 flex-shrink-0 mt-0.5">
+                            <div class="flex flex-col gap-1 min-w-0 flex-1">
+                                <span class="text-sm font-medium truncate" x-text="tag.name"></span>
+                                <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                                      class="text-xs px-2 py-0.5 rounded-full inline-block w-fit"
+                                      x-text="tag.type"></span>
+                            </div>
+                        </label>
+                    </template>
                 </div>
             </div>
 
@@ -490,6 +501,8 @@ function assetGrid() {
         showTagFilter: false,
         viewMode: localStorage.getItem('orcaAssetViewMode') || 'grid',
         perPage: localStorage.getItem('orcaAssetsPerPage') || '{{ $perPage }}',
+        tagSearch: '',
+        allTagsData: @json($tags->map(fn($t) => ['id' => (string)$t->id, 'name' => $t->name, 'type' => $t->type])),
 
         init() {
             // If user has a stored preference and URL doesn't have per_page, apply it
@@ -536,6 +549,18 @@ function assetGrid() {
 
         copyUrl(url) {
             window.copyToClipboard(url);
+        },
+
+        shouldShowTag(tag) {
+            // Always show selected tags
+            if (this.selectedTags.includes(tag.id)) {
+                return true;
+            }
+            // Filter unselected tags by search
+            if (!this.tagSearch.trim()) {
+                return true;
+            }
+            return tag.name.toLowerCase().includes(this.tagSearch.toLowerCase());
         }
     };
 }
