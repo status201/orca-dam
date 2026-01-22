@@ -223,6 +223,9 @@ class SystemController extends Controller
         $suite = $request->input('suite', 'all');
         $filter = $request->input('filter');
 
+        // Clear config cache before running tests to avoid cached config issues
+        \Artisan::call('config:clear');
+
         // Find PHP CLI binary (PHP_BINARY might point to php-fpm which can't run CLI commands)
         $phpBinary = $this->findPhpCliBinary();
         $command = escapeshellarg($phpBinary).' artisan test --colors=never';
