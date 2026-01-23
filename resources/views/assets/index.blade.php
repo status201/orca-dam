@@ -19,7 +19,7 @@
                            x-model="search"
                            @keyup.enter="applyFilters"
                            placeholder="Search assets..."
-                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                           class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                 </div>
 
@@ -31,14 +31,14 @@
                                x-model="search"
                                @keyup.enter="applyFilters"
                                placeholder="Search assets..."
-                               class="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                               class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     </div>
 
                     <!-- Folder filter -->
                     <select x-model="folder"
                             @change="applyFilters"
-                            class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm">
+                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm">
                         @foreach($folders as $f)
                             @php
                                 $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
@@ -53,7 +53,7 @@
                     <!-- Sort -->
                     <select x-model="sort"
                             @change="applyFilters"
-                            class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="date_desc">Newest First</option>
                         <option value="date_asc">Oldest First</option>
                         <option value="size_desc">Largest First</option>
@@ -67,7 +67,7 @@
                     <!-- Type filter -->
                     <select x-model="type"
                             @change="applyFilters"
-                            class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="">All Types</option>
                         <option value="image">Images</option>
                         <option value="video">Videos</option>
@@ -76,14 +76,14 @@
 
                     <!-- Tag filter -->
                     <button @click="showTagFilter = !showTagFilter"
-                            class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center">
+                            class="px-4 py-2 bg-white text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center">
                         <i class="fas fa-filter mr-2"></i>
                         <span x-text="selectedTags.length > 0 ? `Tags (${selectedTags.length})` : 'Filter Tags'"></span>
                     </button>
 
                     <!-- Upload button -->
                     <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`"
-                       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center whitespace-nowrap">
+                       class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-upload mr-2"></i> Upload
                     </a>
                 </div>
@@ -94,7 +94,7 @@
         <div x-show="showTagFilter"
              x-cloak
              @click.away="if (selectedTags.length === 0) showTagFilter = false"
-             class="mt-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+             class="mt-4 bg-white border text-sm border-gray-200 rounded-lg shadow-lg p-4">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="font-semibold">Filter by Tags</h3>
                 <div class="flex items-center gap-3">

@@ -9,7 +9,7 @@
             <h1 class="text-3xl font-bold text-gray-900">Users</h1>
             <p class="text-gray-600 mt-2">Manage system users and their roles</p>
         </div>
-        <a href="{{ route('users.create') }}" class="px-4 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover flex items-center">
+        <a href="{{ route('users.create') }}" class="px-4 py-2 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover flex items-center">
             <i class="fas fa-plus mr-2"></i> Add User
         </a>
     </div>

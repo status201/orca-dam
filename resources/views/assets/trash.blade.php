@@ -16,7 +16,7 @@
 
             <div class="flex gap-3">
                 <a href="{{ route('assets.index') }}"
-                   class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center whitespace-nowrap">
+                   class="px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center whitespace-nowrap">
                     <i class="fas fa-arrow-left mr-2"></i> Back to Assets
                 </a>
             </div>

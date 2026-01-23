@@ -19,7 +19,7 @@
                     <input type="text"
                            x-model="searchQuery"
                            placeholder="Search tags..."
-                           class="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                           class="w-full sm:w-64 pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     <button x-show="searchQuery.length > 0"
                             x-cloak

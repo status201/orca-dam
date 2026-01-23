@@ -184,7 +184,7 @@
     <!-- Settings Tab -->
     <div x-show="activeTab === 'settings'" class="space-y-6">
         <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
+            <div class="px-6 py-6 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-sliders-h mr-2"></i>Application Settings
                 </h3>
@@ -506,10 +506,13 @@
     <!-- Logs Tab -->
     <div x-show="activeTab === 'logs'" class="space-y-6">
         <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-file-lines mr-2"></i>Laravel Log Viewer
-                </h3>
+            <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        <i class="fas fa-file-lines mr-2"></i>Laravel Log Viewer
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">See what's going on</p>
+                </div>
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <select x-model="logLines" @change="refreshLogs()"
                             class="rounded-md border-gray-300 text-sm">
@@ -519,7 +522,7 @@
                         <option value="200">200 lines</option>
                     </select>
                     <button @click="refreshLogs()"
-                            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                            class="px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                         <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': loadingLogs}"></i>Refresh
                     </button>
                 </div>
@@ -550,11 +553,19 @@
     <!-- Commands Tab -->
     <div x-show="activeTab === 'commands'" class="space-y-6">
         <!-- Command Input -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                <i class="fas fa-terminal mr-2"></i>Execute Artisan Command
-            </h3>
-            <div class="space-y-4">
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        <i class="fas fa-terminal mr-2"></i>Execute Artisan Command
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Manage caching, run migrations, etc.</p>
+                </div>
+            </div>
+
+            <div class="space-y-4  p-6">
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Command</label>
                     <input type="text"
@@ -569,10 +580,12 @@
                 </div>
                 <button @click="executeCustomCommand()"
                         :disabled="!customCommand || executingCommand"
-                        class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50">
+                        class="px-6 py-2 mt-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50">
                     <i class="fas mr-2" :class="executingCommand ? 'fa-spinner fa-spin' : 'fa-play'"></i>
                     Execute
                 </button>
+                </div>
+
             </div>
 
             <!-- Command Output -->
@@ -714,10 +727,13 @@
     <!-- Documentation Tab -->
     <div x-show="activeTab === 'documentation'" x-init="$watch('activeTab', value => { if (value === 'documentation' && !docContent && !docError) loadDocumentation(); })" class="space-y-6">
         <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-book mr-2"></i>Project Documentation
-                </h3>
+            <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">
+                        <i class="fas fa-book mr-2"></i>Project Documentation
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Check out ORCA's documentation</p>
+                </div>
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <select x-model="selectedDoc"
                             @change="loadDocumentation()"
@@ -730,7 +746,7 @@
                         <option value="SETUP_GUIDE.md">SETUP_GUIDE.md</option>
                     </select>
                     <button @click="loadDocumentation()"
-                            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                            class="px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                         <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': loadingDoc}"></i>Refresh
                     </button>
                 </div>
@@ -779,7 +795,7 @@
                            class="rounded-lg border-gray-300 text-sm px-3 py-2">
                     <button @click="runTests()"
                             :disabled="runningTests"
-                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center">
+                            class="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center">
                         <i class="fas mr-2" :class="runningTests ? 'fa-spinner fa-spin' : 'fa-play'"></i>
                         <span x-text="runningTests ? 'Running...' : 'Run Tests'"></span>
                     </button>
