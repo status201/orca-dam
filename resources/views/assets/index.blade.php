@@ -35,6 +35,21 @@
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     </div>
 
+                    <!-- Folder filter -->
+                    <select x-model="folder"
+                            @change="applyFilters"
+                            class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm">
+                        @foreach($folders as $f)
+                            @php
+                                $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
+                                $relativePath = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '' : ($rootPrefix !== '' ? str_replace($rootPrefix, '', $f) : $f);
+                                $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
+                                $label = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($f);
+                            @endphp
+                            <option value="{{ $f }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+
                     <!-- Sort -->
                     <select x-model="sort"
                             @change="applyFilters"
@@ -57,21 +72,6 @@
                         <option value="image">Images</option>
                         <option value="video">Videos</option>
                         <option value="application">Documents</option>
-                    </select>
-
-                    <!-- Folder filter -->
-                    <select x-model="folder"
-                            @change="applyFilters"
-                            class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm">
-                        @foreach($folders as $f)
-                            @php
-                                $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
-                                $relativePath = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '' : ($rootPrefix !== '' ? str_replace($rootPrefix, '', $f) : $f);
-                                $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
-                                $label = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($f);
-                            @endphp
-                            <option value="{{ $f }}">{{ $label }}</option>
-                        @endforeach
                     </select>
 
                     <!-- Tag filter -->
