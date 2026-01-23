@@ -100,7 +100,7 @@ The application uses a service-oriented architecture with three main services th
 - Creates/attaches AI tags (type='ai') to assets automatically
 - Only processes image assets
 - Max labels configurable via database settings or `AWS_REKOGNITION_MAX_LABELS` env (default: 5)
-- Min confidence configurable via database settings or `AWS_REKOGNITION_MIN_CONFIDENCE` env (default: 75, range: 65-99)
+- Min confidence configurable via database settings or `AWS_REKOGNITION_MIN_CONFIDENCE` env (default: 80, range: 65-99)
 - Language configurable via database settings or `AWS_REKOGNITION_LANGUAGE` env (default: 'en')
 - Supports multilingual tags via AWS Translate (when language != 'en')
 - Uses Job queue (`GenerateAiTags`) for background processing
@@ -243,7 +243,7 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 - **Common Features** (both views):
   - Search by filename
   - Filter by file type (images, videos, documents)
-  - Filter by folder (dropdown of S3 folder prefixes)
+  - Filter by folder (dropdown of S3 folder prefixes, defaults to root folder)
   - Filter by tags (multi-select with checkboxes)
   - Sort options: date, size, name, S3 key (ascending/descending)
   - Results per page selector (12-96), stored in localStorage per user
@@ -383,9 +383,9 @@ The application handles large files (PDFs, GIFs, videos) by:
 | Key | Default | Description |
 |-----|---------|-------------|
 | `items_per_page` | 24 | Assets per page (12, 24, 36, 48, 60, 72, 96) |
-| `rekognition_max_labels` | 5 | Max AI tags per asset (1-20) |
-| `rekognition_min_confidence` | 75 | Min confidence threshold for AI tags (65-99) |
-| `rekognition_language` | en | AI tag language (en, nl, fr, de, es, etc.) |
+| `rekognition_max_labels` | 3 | Max AI tags per asset (1-20) |
+| `rekognition_min_confidence` | 80 | Min confidence threshold for AI tags (65-99) |
+| `rekognition_language` | nl | AI tag language (en, nl, fr, de, es, etc.) |
 | `s3_folders` | ["assets"] | JSON array of S3 folder prefixes (auto-populated) |
 
 ## Environment Configuration
@@ -400,9 +400,9 @@ AWS_URL=                    # Public S3 URL
 
 # Optional: Enable AI tagging
 AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
-AWS_REKOGNITION_MAX_LABELS=5             # Maximum AI tags per asset (default: 5)
-AWS_REKOGNITION_MIN_CONFIDENCE=75        # Minimum confidence threshold (default: 75, range: 65-99)
-AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de, es, etc.
+AWS_REKOGNITION_MAX_LABELS=3             # Maximum AI tags per asset (default: 3)
+AWS_REKOGNITION_MIN_CONFIDENCE=80        # Minimum confidence threshold (default: 80, range: 65-99)
+AWS_REKOGNITION_LANGUAGE=nl              # Language for AI tags: en, nl, fr, de, es, etc.
 ```
 
 ### PHP CLI Path (for Web-Based Test Runner)

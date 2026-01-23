@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Setting;
 use App\Services\SystemService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -169,11 +170,11 @@ class SystemController extends Controller
 
         $request->validate([
             'key' => 'required|string|max:255',
-            'value' => 'required',
+            'value' => 'present',
         ]);
 
         $key = $request->input('key');
-        $value = $request->input('value');
+        $value = $request->input('value') ?? '';
 
         // Validate specific settings
         $validationRules = [
@@ -191,6 +192,10 @@ class SystemController extends Controller
             'rekognition_min_confidence' => function ($v) {
                 return is_numeric($v) && $v >= 65 && $v <= 99;
             },
+            's3_root_folder' => function ($v) {
+                // Allow empty string (bucket root) or alphanumeric with hyphens, underscores, slashes
+                return $v === '' || preg_match('/^[a-zA-Z0-9_\-\/]+$/', $v);
+            },
         ];
 
         if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {
@@ -201,6 +206,12 @@ class SystemController extends Controller
         }
 
         $success = $this->systemService->updateSetting($key, $value);
+
+        // Clear cached folder list when root folder changes
+        if ($success && $key === 's3_root_folder') {
+            Setting::where('key', 's3_folders')->delete();
+            cache()->forget('setting:s3_folders');
+        }
 
         return response()->json([
             'success' => $success,

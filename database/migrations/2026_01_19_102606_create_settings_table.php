@@ -35,7 +35,7 @@ return new class extends Migration
             ],
             [
                 'key' => 'rekognition_max_labels',
-                'value' => '5',
+                'value' => '3',
                 'type' => 'integer',
                 'group' => 'aws',
                 'description' => 'Maximum number of AI tags per asset',
@@ -44,7 +44,7 @@ return new class extends Migration
             ],
             [
                 'key' => 'rekognition_language',
-                'value' => 'en',
+                'value' => 'nl',
                 'type' => 'string',
                 'group' => 'aws',
                 'description' => 'Language for AI-generated tags',

@@ -83,9 +83,9 @@ AWS_URL=https://your-bucket-name.s3.amazonaws.com
 
 # Optional: Enable AI tagging
 AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
-AWS_REKOGNITION_MAX_LABELS=5             # Maximum AI tags per asset (default: 5)
-AWS_REKOGNITION_MIN_CONFIDENCE=75        # Minimum confidence threshold (default: 75, range: 65-99)
-AWS_REKOGNITION_LANGUAGE=en              # Language for AI tags: en, nl, fr, de, es, etc.
+AWS_REKOGNITION_MAX_LABELS=3             # Maximum AI tags per asset (default: 3)
+AWS_REKOGNITION_MIN_CONFIDENCE=80        # Minimum confidence threshold (default: 80, range: 65-99)
+AWS_REKOGNITION_LANGUAGE=nl              # Language for AI tags: en, nl, fr, de, es, etc.
 ```
 
 **Important S3 Bucket Settings:**

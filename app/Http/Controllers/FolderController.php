@@ -50,9 +50,9 @@ class FolderController extends Controller
         ]);
 
         // Build folder path: parent + name
-        $parent = $request->input('parent', 'assets');
+        $parent = $request->input('parent', S3Service::getRootFolder());
         $parent = rtrim($parent, '/');
-        $folderPath = $parent.'/'.trim($request->name, '/');
+        $folderPath = $parent !== '' ? $parent.'/'.trim($request->name, '/') : trim($request->name, '/');
 
         if (! $this->s3Service->createFolder($folderPath)) {
             return response()->json(['message' => 'Failed to create folder'], 500);
@@ -76,6 +76,8 @@ class FolderController extends Controller
         $cached = Setting::get('s3_folders', []);
 
         if (empty($cached)) {
+            $rootFolder = S3Service::getRootFolder();
+
             // Build folder list from existing assets
             $cached = Asset::select('s3_key')
                 ->get()
@@ -84,7 +86,8 @@ class FolderController extends Controller
                 ->values()
                 ->toArray();
 
-            $cached = array_values(array_unique(array_merge(['assets'], $cached)));
+            $base = $rootFolder !== '' ? [$rootFolder] : [];
+            $cached = array_values(array_unique(array_merge($base, $cached)));
             sort($cached);
             Setting::set('s3_folders', $cached, 'json', 'aws');
         }

@@ -125,7 +125,7 @@ class Asset extends Model
         $parts = explode('/', $this->s3_key);
         array_pop($parts); // Remove filename
 
-        return implode('/', $parts) ?: 'assets';
+        return implode('/', $parts) ?: \App\Services\S3Service::getRootFolder();
     }
 
     /**

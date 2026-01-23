@@ -12,7 +12,7 @@ return new class extends Migration
     {
         DB::table('settings')->insert([
             'key' => 'rekognition_min_confidence',
-            'value' => '75',
+            'value' => '80',
             'type' => 'integer',
             'group' => 'aws',
             'description' => 'Minimum confidence threshold for AI tags (65-99)',

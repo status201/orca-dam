@@ -18,9 +18,10 @@
                         class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
                     @foreach($folders as $folder)
                         @php
-                            $relativePath = $folder === 'assets' ? '' : str_replace('assets/', '', $folder);
+                            $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
+                            $relativePath = ($folder === '' || ($rootFolder !== '' && $folder === $rootFolder)) ? '' : ($rootPrefix !== '' ? str_replace($rootPrefix, '', $folder) : $folder);
                             $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
-                            $label = $folder === 'assets' ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($folder);
+                            $label = ($folder === '' || ($rootFolder !== '' && $folder === $rootFolder)) ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($folder);
                         @endphp
                         <option value="{{ $folder }}">{{ $label }}</option>
                     @endforeach
@@ -178,7 +179,7 @@ function assetUploader() {
         uploadProgress: {},
         CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
         CHUNKED_THRESHOLD: 10 * 1024 * 1024, // Use chunked upload for files >= 10MB
-        selectedFolder: 'assets',
+        selectedFolder: @json(request('folder', $rootFolder)),
         showNewFolderInput: false,
         newFolderName: '',
         creatingFolder: false,

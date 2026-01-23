@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Aws\S3\S3Client;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -37,12 +38,32 @@ class S3Service
     }
 
     /**
+     * Get the configured root folder name (trimmed, no slashes).
+     * Returns empty string for bucket root.
+     */
+    public static function getRootFolder(): string
+    {
+        return trim((string) Setting::get('s3_root_folder', 'assets'), " \t\n\r\0\x0B/");
+    }
+
+    /**
+     * Get the root folder as a prefix (with trailing slash), or empty string for bucket root.
+     */
+    public static function getRootPrefix(): string
+    {
+        $root = self::getRootFolder();
+
+        return $root === '' ? '' : $root.'/';
+    }
+
+    /**
      * Upload a file to S3
      */
-    public function uploadFile(UploadedFile $file, string $directory = 'assets'): array
+    public function uploadFile(UploadedFile $file, ?string $directory = null): array
     {
+        $directory = $directory ?? self::getRootFolder();
         $filename = $this->generateUniqueFilename($file);
-        $s3Key = "{$directory}/{$filename}";
+        $s3Key = $directory !== '' ? "{$directory}/{$filename}" : $filename;
 
         // Get image dimensions before upload if it's an image (to avoid memory issues later)
         $dimensions = $this->getImageDimensions($file);
@@ -108,7 +129,11 @@ class S3Service
 
             // Extract folder from s3_key and mirror it for thumbnails
             // e.g., assets/marketing/abc.jpg -> thumbnails/marketing/abc_thumb.jpg
-            $folder = dirname(str_replace('assets/', '', $s3Key));
+            $rootPrefix = self::getRootPrefix();
+            $relativePath = ($rootPrefix !== '' && str_starts_with($s3Key, $rootPrefix))
+                ? substr($s3Key, strlen($rootPrefix))
+                : $s3Key;
+            $folder = dirname($relativePath);
             $folder = ($folder === '.' || $folder === '') ? '' : $folder.'/';
             $thumbnailKey = 'thumbnails/'.$folder.Str::replaceLast('.', '_thumb.', basename($s3Key));
 
@@ -234,13 +259,15 @@ class S3Service
      */
     public function findUnmappedObjects(): array
     {
-        $s3Objects = $this->listObjects('assets/');
+        $rootPrefix = self::getRootPrefix();
+        $s3Objects = $this->listObjects($rootPrefix);
         $mappedKeys = \App\Models\Asset::pluck('s3_key')->toArray();
 
         return collect($s3Objects)
             ->filter(function ($object) use ($mappedKeys) {
                 return ! in_array($object['key'], $mappedKeys)
                     && ! str_contains($object['key'], '/thumbnails/')
+                    && ! str_starts_with($object['key'], 'thumbnails/')
                     && $object['size'] > 0;  // Exclude zero-byte folder markers
             })
             ->values()
@@ -250,10 +277,14 @@ class S3Service
     /**
      * List all folder prefixes in S3 under the given prefix
      */
-    public function listFolders(string $prefix = 'assets/'): array
+    public function listFolders(?string $prefix = null): array
     {
+        $rootFolder = self::getRootFolder();
+        $rootPrefix = self::getRootPrefix();
+        $prefix = $prefix ?? $rootPrefix;
+
         try {
-            $folders = ['assets'];  // Always include root assets folder
+            $folders = $rootFolder !== '' ? [$rootFolder] : [];
 
             // Use delimiter to get common prefixes (folders)
             $result = $this->s3Client->listObjectsV2([
@@ -266,7 +297,7 @@ class S3Service
             if (isset($result['CommonPrefixes'])) {
                 foreach ($result['CommonPrefixes'] as $commonPrefix) {
                     $folderPath = rtrim($commonPrefix['Prefix'], '/');
-                    if ($folderPath !== 'assets' && ! empty($folderPath)) {
+                    if ($folderPath !== $rootFolder && ! empty($folderPath) && $folderPath !== 'thumbnails') {
                         $folders[] = $folderPath;
 
                         // Recursively get nested folders
@@ -286,7 +317,7 @@ class S3Service
         } catch (\Exception $e) {
             \Log::error('S3 list folders failed: '.$e->getMessage());
 
-            return ['assets'];
+            return $rootFolder !== '' ? [$rootFolder] : [];
         }
     }
 

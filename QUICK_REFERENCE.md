@@ -183,9 +183,9 @@ AWS_URL=https://bucket.s3.amazonaws.com
 
 # AI Tagging (also configurable via System → Settings)
 AWS_REKOGNITION_ENABLED=true|false
-AWS_REKOGNITION_MAX_LABELS=5
-AWS_REKOGNITION_MIN_CONFIDENCE=75
-AWS_REKOGNITION_LANGUAGE=en
+AWS_REKOGNITION_MAX_LABELS=3
+AWS_REKOGNITION_MIN_CONFIDENCE=80
+AWS_REKOGNITION_LANGUAGE=nl
 
 # Database
 DB_CONNECTION=mysql
@@ -266,14 +266,18 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 
 ```
 your-bucket/
-├── assets/
+│   {uuid}.jpg              # Original files (when settings/s3 root folder is empty) 
+├── {assets}/
 │   ├── {uuid}.jpg          # Original files
 │   ├── {uuid}.png
 │   └── ...
 └── thumbnails/
     ├── {uuid}_thumb.jpg    # Generated thumbnails
     ├── {uuid}_thumb.png
-    └── ...
+    ├── ...
+    └── {assets}/
+        ├── {uuid}.png
+        └── ...
 ```
 
 ---
@@ -318,6 +322,7 @@ php artisan policy:make AssetPolicy
 - [ ] Set up backups
 - [ ] Configure rate limiting
 - [ ] Enable CORS if needed
+- [ ] Check all System settings before importing uploading assets 
 
 ---
 

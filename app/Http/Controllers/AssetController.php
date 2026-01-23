@@ -48,8 +48,10 @@ class AssetController extends Controller
             $query->ofType($type);
         }
 
-        // Apply folder filter
-        if ($folder = $request->input('folder')) {
+        // Apply folder filter (default to root folder)
+        $rootFolder = S3Service::getRootFolder();
+        $folder = $request->input('folder', $rootFolder);
+        if ($folder !== '') {
             $query->inFolder($folder);
         }
 
@@ -97,12 +99,15 @@ class AssetController extends Controller
         }
         $assets = $query->paginate((int) $perPage)->withQueryString();
         $tags = Tag::orderBy('name')->get();
-        $folders = Setting::get('s3_folders', ['assets']);
-        if (empty($folders)) {
-            $folders = ['assets'];
+        $folders = Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
+        if (empty($folders) && $rootFolder !== '') {
+            $folders = [$rootFolder];
+        }
+        if ($rootFolder === '' && !in_array('', $folders)) {
+            array_unshift($folders, '');
         }
 
-        return view('assets.index', compact('assets', 'tags', 'perPage', 'folders'));
+        return view('assets.index', compact('assets', 'tags', 'perPage', 'folders', 'rootFolder'));
     }
 
     /**
@@ -112,12 +117,16 @@ class AssetController extends Controller
     {
         $this->authorize('create', Asset::class);
 
-        $folders = Setting::get('s3_folders', ['assets']);
-        if (empty($folders)) {
-            $folders = ['assets'];
+        $rootFolder = S3Service::getRootFolder();
+        $folders = Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
+        if (empty($folders) && $rootFolder !== '') {
+            $folders = [$rootFolder];
+        }
+        if ($rootFolder === '' && !in_array('', $folders)) {
+            array_unshift($folders, '');
         }
 
-        return view('assets.create', compact('folders'));
+        return view('assets.create', compact('folders', 'rootFolder'));
     }
 
     /**
@@ -133,7 +142,7 @@ class AssetController extends Controller
                 'folder' => 'nullable|string|max:255',
             ]);
 
-            $folder = $request->input('folder', 'assets');
+            $folder = $request->input('folder', S3Service::getRootFolder());
             $uploadedAssets = [];
 
             foreach ($request->file('files') as $file) {

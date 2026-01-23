@@ -63,12 +63,12 @@
                     <select x-model="folder"
                             @change="applyFilters"
                             class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm">
-                        <option value="">All Folders</option>
                         @foreach($folders as $f)
                             @php
-                                $relativePath = $f === 'assets' ? '' : str_replace('assets/', '', $f);
+                                $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
+                                $relativePath = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '' : ($rootPrefix !== '' ? str_replace($rootPrefix, '', $f) : $f);
                                 $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
-                                $label = $f === 'assets' ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($f);
+                                $label = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($f);
                             @endphp
                             <option value="{{ $f }}">{{ $label }}</option>
                         @endforeach
@@ -82,7 +82,7 @@
                     </button>
 
                     <!-- Upload button -->
-                    <a href="{{ route('assets.create') }}"
+                    <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`"
                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-upload mr-2"></i> Upload
                     </a>
@@ -496,7 +496,7 @@
                 Get started by uploading your first asset
             @endif
         </p>
-        <a href="{{ route('assets.create') }}" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <i class="fas fa-upload mr-2"></i> Upload Assets
         </a>
     </div>
@@ -512,7 +512,7 @@ function assetGrid() {
     return {
         search: @json(request('search', '')),
         type: @json(request('type', '')),
-        folder: @json(request('folder', '')),
+        folder: @json(request('folder', $rootFolder)),
         sort: @json(request('sort', 'date_desc')),
         selectedTags: @json(request('tags', [])),
         initialTags: @json(request('tags', [])),

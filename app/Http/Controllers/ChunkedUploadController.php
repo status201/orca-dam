@@ -48,7 +48,7 @@ class ChunkedUploadController extends Controller
             'folder' => 'nullable|string|max:255',
         ]);
 
-        $folder = $request->input('folder', 'assets');
+        $folder = $request->input('folder', S3Service::getRootFolder());
 
         try {
             $session = $this->chunkedUploadService->initiateUpload(

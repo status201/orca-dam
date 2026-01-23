@@ -43,7 +43,7 @@ class RekognitionService
      */
     protected function getTargetLanguage(): string
     {
-        return Setting::get('rekognition_language', config('services.aws.rekognition_language', 'en'));
+        return Setting::get('rekognition_language', config('services.aws.rekognition_language', 'nl'));
     }
 
     /**
@@ -51,7 +51,7 @@ class RekognitionService
      */
     protected function getMaxLabels(): int
     {
-        return (int) Setting::get('rekognition_max_labels', config('services.aws.rekognition_max_labels', 5));
+        return (int) Setting::get('rekognition_max_labels', config('services.aws.rekognition_max_labels', 3));
     }
 
     /**
@@ -59,7 +59,7 @@ class RekognitionService
      */
     protected function getMinConfidence(): float
     {
-        return (float) Setting::get('rekognition_min_confidence', config('services.aws.rekognition_min_confidence', 75.0));
+        return (float) Setting::get('rekognition_min_confidence', config('services.aws.rekognition_min_confidence', 80.0));
     }
 
     /**

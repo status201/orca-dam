@@ -191,6 +191,29 @@
                 <p class="text-sm text-gray-500 mt-1">Configure global application settings</p>
             </div>
             <div class="p-6 space-y-6">
+
+                <!-- S3 Storage Settings -->
+                <div>
+                    <h4 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+                        <i class="fab fa-aws mr-2 text-gray-500"></i>S3 Storage
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- S3 Root Folder -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Root folder prefix
+                            </label>
+                            <input type="text"
+                                   x-model="settings.s3_root_folder"
+                                   @change="updateSetting('s3_root_folder', settings.s3_root_folder)"
+                                   placeholder=""
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-blue focus:border-orca-blue">
+                            <p class="text-xs text-gray-500 mt-1">S3 prefix for root folder view &amp; uploads. Leave empty for bucket root.</p>
+                            <p class="text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Changing this does not move existing assets.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Display Settings -->
                 <div>
                     <h4 class="text-md font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">
@@ -962,6 +985,7 @@ function systemAdmin() {
         // Settings
         settings: {
             items_per_page: '{{ collect($settings)->firstWhere('key', 'items_per_page')['value'] ?? '24' }}',
+            s3_root_folder: '{{ collect($settings)->firstWhere('key', 's3_root_folder')['value'] ?? 'assets' }}',
             rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
             rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
             rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '75' }}',

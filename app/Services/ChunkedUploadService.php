@@ -49,12 +49,14 @@ class ChunkedUploadService
         string $mimeType,
         int $fileSize,
         int $userId,
-        string $folder = 'assets'
+        ?string $folder = null
     ): UploadSession {
         // Generate unique S3 key with folder support
+        $folder = $folder ?? S3Service::getRootFolder();
         $extension = pathinfo($filename, PATHINFO_EXTENSION);
         $folder = rtrim($folder, '/');
-        $s3Key = $folder.'/'.Str::uuid().($extension ? '.'.$extension : '');
+        $uuidName = Str::uuid().($extension ? '.'.$extension : '');
+        $s3Key = $folder !== '' ? $folder.'/'.$uuidName : $uuidName;
 
         // Initiate S3 multipart upload
         $result = $this->s3Client->createMultipartUpload([
