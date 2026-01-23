@@ -15,9 +15,14 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Upload to Folder</label>
             <div class="flex items-center space-x-3">
                 <select x-model="selectedFolder"
-                        class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
                     @foreach($folders as $folder)
-                        <option value="{{ $folder }}">{{ $folder === 'assets' ? '/ (root)' : str_replace('assets/', '', $folder) }}</option>
+                        @php
+                            $relativePath = $folder === 'assets' ? '' : str_replace('assets/', '', $folder);
+                            $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
+                            $label = $folder === 'assets' ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($folder);
+                        @endphp
+                        <option value="{{ $folder }}">{{ $label }}</option>
                     @endforeach
                 </select>
 

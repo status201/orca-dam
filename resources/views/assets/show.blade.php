@@ -37,6 +37,11 @@
                     <img src="{{ $asset->url }}"
                          alt="{{ $asset->filename }}"
                          class="w-full h-auto">
+                @elseif($asset->isVideo())
+                    <video controls class="w-full" preload="metadata">
+                        <source src="{{ $asset->url }}" type="{{ $asset->mime_type }}">
+                        Your browser does not support the video tag.
+                    </video>
                 @else
                     <div class="aspect-video bg-gray-100 flex items-center justify-center">
                         <div class="text-center">

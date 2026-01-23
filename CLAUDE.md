@@ -79,7 +79,9 @@ The application uses a service-oriented architecture with three main services th
 - Manages all S3 operations using AWS SDK v3
 - Handles file uploads with streaming to avoid memory issues on large files
 - Generates thumbnails using Intervention Image 3.x (skips GIFs to prevent memory exhaustion)
-- Provides discovery functionality to find unmapped S3 objects
+- Thumbnails mirror folder structure (e.g., `assets/marketing/img.jpg` → `thumbnails/marketing/img_thumb.jpg`)
+- Provides discovery functionality to find unmapped S3 objects (excludes folder markers)
+- Folder management: `listFolders()` scans S3 for folder prefixes, `createFolder()` creates folder markers
 - Uses bucket policies (not ACLs) for public read access
 
 **ChunkedUploadService** (`app/Services/ChunkedUploadService.php`)
@@ -126,8 +128,8 @@ Uses Laravel Policies for fine-grained access control:
 - Belongs to User (uploader)
 - Many-to-many with Tags (via `asset_tag` pivot)
 - Uses soft deletes
-- Appends computed attributes: `url`, `thumbnail_url`, `formatted_size`
-- Scopes for search, filtering by tags, type, and user
+- Appends computed attributes: `url`, `thumbnail_url`, `formatted_size`, `folder`
+- Scopes for search, filtering by tags, type, user, and folder (`inFolder`)
 - Helper methods: `isImage()`, `getFileIcon()`, `userTags()`, `aiTags()`
 - Includes license and copyright fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`
 
@@ -171,6 +173,11 @@ Uses Laravel Policies for fine-grained access control:
 - `PATCH /assets/{asset}` - Update asset metadata (license_type, alt_text, caption, copyright)
 - `DELETE /assets/{asset}` - Soft delete asset
 - `POST /assets/{asset}/ai-tag` - Manually trigger AI tag generation
+
+**Folder Management Endpoints** (`routes/web.php`):
+- `GET /api/folders` - List cached folders (all authenticated users)
+- `POST /folders/scan` - Refresh folder list from S3 (admin only)
+- `POST /folders` - Create new folder in S3 (admin only, accepts `name` and optional `parent`)
 
 All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` which is public. Chunked upload endpoints have additional rate limiting (100 requests/minute). Web-based endpoints use session authentication via `auth` middleware.
 
@@ -236,27 +243,37 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 - **Common Features** (both views):
   - Search by filename
   - Filter by file type (images, videos, documents)
+  - Filter by folder (dropdown of S3 folder prefixes)
   - Filter by tags (multi-select with checkboxes)
-  - Sort options (date, size, name - ascending/descending)
+  - Sort options: date, size, name, S3 key (ascending/descending)
   - Results per page selector (12-96), stored in localStorage per user
   - Pagination (default from Settings, user preference overrides)
 
+**Upload Page** (`resources/views/assets/create.blade.php`):
+- Folder selector dropdown to choose upload destination
+- Admin-only features:
+  - "Scan Folders" button (⟳) to refresh folder list from S3
+  - "New Folder" button to create subfolders inside selected folder
+- Drag-and-drop file upload with progress indicators
+- Automatic chunked upload for files ≥10MB
+
 **Alpine.js Components**:
-- `assetGrid()`: Manages filters, search, sort, tag selection, and view mode
+- `assetGrid()`: Manages filters, search, sort, folder filter, tag selection, and view mode
 - `assetCard()`: Handles download and copy URL actions in grid view
 - `assetRow()`: Manages inline editing (tags, license), delete, and copy URL in list view
   - CSRF token handling for all AJAX requests
   - Optimistic UI updates with rollback on error
   - Toast notifications via `window.showToast()`
+- `assetUploader()`: Manages file uploads with folder selection and chunked upload support
 
 ### Key Workflows
 
 **File Upload Process** (Direct Upload for files <10MB):
-1. Client uploads via multipart/form-data to `POST /assets`
-2. `AssetController` validates file (max 512000KB = 500MB)
-3. `S3Service->uploadFile()` streams file to S3 bucket
+1. Client selects target folder and uploads via multipart/form-data to `POST /assets`
+2. `AssetController` validates file (max 512000KB = 500MB) and folder parameter
+3. `S3Service->uploadFile()` streams file to S3 bucket in specified folder
 4. Image dimensions extracted using memory-efficient methods
-5. Thumbnail generated (skipped for GIFs) and uploaded to S3
+5. Thumbnail generated (skipped for GIFs) and uploaded to S3 (mirrors folder structure)
 6. Asset record created in database with s3_key and etag
 7. If Rekognition enabled, `GenerateAiTags` job dispatched to queue
 8. Job runs `RekognitionService->autoTagAsset()` in background
@@ -264,8 +281,8 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 
 **Chunked Upload Process** (For large files ≥10MB):
 1. Client splits file into 10MB chunks using JavaScript `File.slice()`
-2. Client calls `POST /api/chunked-upload/init` with file metadata
-3. Server creates `UploadSession` record and initiates S3 multipart upload
+2. Client calls `POST /api/chunked-upload/init` with file metadata and target folder
+3. Server creates `UploadSession` record and initiates S3 multipart upload in specified folder
 4. Server returns `session_token`, `upload_id`, `chunk_size`, `total_chunks`
 5. Client uploads each chunk sequentially to `POST /api/chunked-upload/chunk`
 6. Each chunk is streamed directly to S3 via `S3Client->uploadPart()`
@@ -275,7 +292,7 @@ All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` wh
 10. Server calls `S3Client->completeMultipartUpload()` to finalize
 11. Server extracts image dimensions from completed S3 object
 12. Server creates Asset record with all metadata
-13. Thumbnail generation and AI tagging proceed as normal
+13. Thumbnail generation (mirrors folder structure) and AI tagging proceed as normal
 14. Session marked as 'completed' in database
 
 **Chunked Upload Error Handling**:
@@ -369,6 +386,7 @@ The application handles large files (PDFs, GIFs, videos) by:
 | `rekognition_max_labels` | 5 | Max AI tags per asset (1-20) |
 | `rekognition_min_confidence` | 75 | Min confidence threshold for AI tags (65-99) |
 | `rekognition_language` | en | AI tag language (en, nl, fr, de, es, etc.) |
+| `s3_folders` | ["assets"] | JSON array of S3 folder prefixes (auto-populated) |
 
 ## Environment Configuration
 
@@ -443,14 +461,16 @@ For Herd: Edit `~/.config/herd/bin/php84/php.ini` (Windows: `C:\Users\<username>
 
 ### File Organization
 - Controllers in `app/Http/Controllers/` (API controllers in `Api/` subdirectory)
+  - `FolderController` handles folder listing, scanning, and creation
 - Services for external integrations in `app/Services/`
 - Policies for authorization in `app/Policies/`
-- All S3 assets stored with `assets/` prefix
-- Thumbnails stored with `thumbnails/` prefix
+- All S3 assets stored with `assets/` prefix (supports subfolders: `assets/{folder}/`)
+- Thumbnails stored with `thumbnails/` prefix (mirrors asset folder structure)
 
 ### Naming Patterns
-- S3 keys use UUID filenames: `assets/{uuid}.{ext}`
-- Thumbnail keys: `thumbnails/{uuid}_thumb.{ext}` (always JPEG)
+- S3 keys use UUID filenames with optional folder: `assets/{folder}/{uuid}.{ext}`
+- Thumbnail keys mirror folder structure: `thumbnails/{folder}/{uuid}_thumb.{ext}` (always JPEG)
+- Folder list cached in `settings` table as JSON (`s3_folders` key)
 - Routes follow RESTful conventions
 - Database columns use snake_case
 

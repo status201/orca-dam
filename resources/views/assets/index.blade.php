@@ -62,10 +62,15 @@
                     <!-- Folder filter -->
                     <select x-model="folder"
                             @change="applyFilters"
-                            class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            class="pr-dropdown px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm">
                         <option value="">All Folders</option>
                         @foreach($folders as $f)
-                            <option value="{{ $f }}">{{ $f === 'assets' ? '/ (root)' : str_replace('assets/', '', $f) }}</option>
+                            @php
+                                $relativePath = $f === 'assets' ? '' : str_replace('assets/', '', $f);
+                                $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
+                                $label = $f === 'assets' ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($f);
+                            @endphp
+                            <option value="{{ $f }}">{{ $label }}</option>
                         @endforeach
                     </select>
 

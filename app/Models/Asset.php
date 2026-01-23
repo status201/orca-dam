@@ -137,6 +137,14 @@ class Asset extends Model
     }
 
     /**
+     * Check if asset is a video
+     */
+    public function isVideo(): bool
+    {
+        return str_starts_with($this->mime_type, 'video/');
+    }
+
+    /**
      * Get the appropriate Font Awesome icon for this file type
      */
     public function getFileIcon(): string
