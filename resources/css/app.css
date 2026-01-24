@@ -20,6 +20,7 @@
     .bg-red-500,
     .bg-pink-500,
     .bg-teal-500,
+    .bg-indigo-500,
     .bg-yellow-500,
     .bg-blue-600,
     .bg-green-600,
@@ -27,6 +28,7 @@
     .bg-red-600,
     .bg-pink-600,
     .bg-teal-600,
+    .bg-indigo-600,
     .bg-yellow-600,
     .text-blue-600,
     .text-green-600,
@@ -34,6 +36,7 @@
     .text-red-600,
     .text-pink-600,
     .text-teal-600,
+    .text-indigo-600,
     .text-yellow-600,
     .text-blue-800,
     .text-green-800,
@@ -41,8 +44,9 @@
     .text-red-800,
     .text-pink-800,
     .text-teal-800,
+    .text-indigo-800,
     .text-yellow-800    {
-        filter: grayscale(0.7);
+        filter: grayscale(0.65);
     }
 }
 
