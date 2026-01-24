@@ -13,7 +13,7 @@
         <!-- Folder selector -->
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Upload to Folder</label>
-            <div class="flex items-center space-x-3">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <select x-model="selectedFolder"
                         class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
                     @foreach($folders as $folder)
