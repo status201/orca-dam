@@ -1,7 +1,7 @@
 # ORCA DAM - Rich Text Editor Integration Examples
 
 
-## Authenticantion
+## Authentication
 
 Authentication uses a bearer token that is to be sent with every request. 
 This token should never be exposed, never used directly by front-end code. 

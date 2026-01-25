@@ -30,7 +30,7 @@
                                 $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
                                 $relativePath = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '' : ($rootPrefix !== '' ? str_replace($rootPrefix, '', $f) : $f);
                                 $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
-                                $label = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($f);
+                                $label = ($f === '' || ($rootFolder !== '' && $f === $rootFolder)) ? '/ (root)' : str_repeat('╎  ', max(0, $depth - 1)) . '├─ ' . basename($f);
                             @endphp
                             <option value="{{ $f }}">{{ $label }}</option>
                         @endforeach

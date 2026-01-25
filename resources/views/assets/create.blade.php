@@ -21,7 +21,7 @@
                             $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
                             $relativePath = ($folder === '' || ($rootFolder !== '' && $folder === $rootFolder)) ? '' : ($rootPrefix !== '' ? str_replace($rootPrefix, '', $folder) : $folder);
                             $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
-                            $label = ($folder === '' || ($rootFolder !== '' && $folder === $rootFolder)) ? '/ (root)' : str_repeat('│  ', max(0, $depth - 1)) . '├─ ' . basename($folder);
+                            $label = ($folder === '' || ($rootFolder !== '' && $folder === $rootFolder)) ? '/ (root)' : str_repeat('╎  ', max(0, $depth - 1)) . '├─ ' . basename($folder);
                         @endphp
                         <option value="{{ $folder }}">{{ $label }}</option>
                     @endforeach
