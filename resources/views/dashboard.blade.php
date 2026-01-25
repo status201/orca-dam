@@ -1,5 +1,5 @@
 <x-app-layout title="Dashboard">
-    <div class="py-12">
+    <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <!-- Welcome Section -->
             <div class="mb-8 text-center">

@@ -13,7 +13,7 @@
     <div class="mb-6">
         <button @click="scanBucket"
                 :disabled="scanning"
-                class="px-6 py-3 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                class="px-6 py-3 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
             <template x-if="!scanning">
                 <span><i class="fas fa-search mr-2"></i> Scan Bucket</span>
             </template>

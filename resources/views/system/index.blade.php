@@ -1697,6 +1697,31 @@ function systemAdmin() {
     background-color: #f9fafb;
 }
 
+/* Responsive tables */
+@media (max-width: 760px) {
+    .prose-doc table {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .prose-doc thead,
+    .prose-doc tbody {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .prose-doc tr {
+        display: flex;
+        width: 100%;
+    }
+
+    .prose-doc th,
+    .prose-doc td {
+        flex: 1; /* Distributes space evenly */
+    }
+}
+
 .prose-doc img {
     max-width: 100%;
     height: auto;

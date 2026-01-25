@@ -16,7 +16,9 @@ export default {
             },
             colors: {
                 orca: {
-                    black: '#1a1a1a',
+                    // black: '#2d2d2d',
+                    black: '#4d4d4d',
+                    // 'black-hover': '#1a1a1a',
                     'black-hover': '#2d2d2d',
                     gray: '#4a4a4a',
                     'gray-light': '#6b7280',

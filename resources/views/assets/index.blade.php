@@ -150,13 +150,13 @@
     <div class="mb-4 flex justify-end">
         <div class="inline-flex rounded-md shadow-sm" role="group">
             <button @click="viewMode = 'grid'; saveViewMode()"
-                    :class="viewMode === 'grid' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-                    class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-l-lg transition-colors">
+                    :class="viewMode === 'grid' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                    class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors">
                 <i class="fas fa-th mr-2"></i> Grid
             </button>
             <button @click="viewMode = 'list'; saveViewMode()"
-                    :class="viewMode === 'list' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-                    class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-r-lg transition-colors">
+                    :class="viewMode === 'list' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                    class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-r-lg transition-colors">
                 <i class="fas fa-list mr-2"></i> List
             </button>
         </div>
@@ -496,7 +496,7 @@
                 Get started by uploading your first asset
             @endif
         </p>
-        <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`" class="inline-flex items-center px-6 py-3 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
             <i class="fas fa-upload mr-2"></i> Upload Assets
         </a>
     </div>

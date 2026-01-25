@@ -23,7 +23,7 @@
                     <select id="folder"
                             name="folder"
                             x-model="folder"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
+                            class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black font-mono text-sm">
                         <option value="">All Folders</option>
                         @foreach($folders as $f)
                             @php
@@ -46,7 +46,7 @@
                     <select id="file_type"
                             name="file_type"
                             x-model="fileType"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black">
                         <option value="">All File Types</option>
                         @foreach($fileTypes as $type)
                             <option value="{{ $type }}">{{ ucfirst($type) }}</option>
@@ -65,7 +65,7 @@
                             x-model="selectedTags"
                             multiple
                             size="5"
-                            class="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black">
                         @foreach($tags as $tag)
                             <option value="{{ $tag->id }}">
                                 {{ $tag->name }}
@@ -107,12 +107,12 @@
             <div class="flex items-center justify-between">
                 <button type="button"
                         @click="resetFilters"
-                        class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                        class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                     <i class="fas fa-undo mr-2"></i>Reset Filters
                 </button>
 
                 <button type="submit"
-                        class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center">
+                        class="px-6 py-3 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center">
                     <i class="fas fa-download mr-2"></i>Download CSV Export
                 </button>
             </div>
