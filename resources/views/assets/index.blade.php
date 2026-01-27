@@ -290,32 +290,34 @@
 
                         <!-- Thumbnail -->
                         <td class="px-4 py-3">
-                            <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
-                                @if($asset->isImage() && $asset->thumbnail_url)
-                                    <img src="{{ $asset->thumbnail_url }}"
-                                         alt="{{ $asset->filename }}"
-                                         class="w-full h-full object-cover"
-                                         loading="lazy">
-                                @else
-                                    @php
-                                        $icon = $asset->getFileIcon();
-                                        $colorClass = match($icon) {
-                                            'fa-file-pdf' => 'text-red-500',
-                                            'fa-file-word' => 'text-blue-600',
-                                            'fa-file-excel' => 'text-green-600',
-                                            'fa-file-powerpoint' => 'text-orange-500',
-                                            'fa-file-zipper' => 'text-yellow-600',
-                                            'fa-file-code' => 'text-purple-600',
-                                            'fa-file-video' => 'text-pink-600',
-                                            'fa-file-audio' => 'text-indigo-600',
-                                            'fa-file-csv' => 'text-teal-600',
-                                            'fa-file-lines' => 'text-gray-500',
-                                            default => 'text-gray-400'
-                                        };
-                                    @endphp
-                                    <i class="fas {{ $icon }} text-3xl {{ $colorClass }} opacity-60"></i>
-                                @endif
-                            </div>
+                            <a href="{{ route('assets.show', $asset) }}" class="block">
+                                <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orca-500 transition-all">
+                                    @if($asset->isImage() && $asset->thumbnail_url)
+                                        <img src="{{ $asset->thumbnail_url }}"
+                                             alt="{{ $asset->filename }}"
+                                             class="w-full h-full object-cover"
+                                             loading="lazy">
+                                    @else
+                                        @php
+                                            $icon = $asset->getFileIcon();
+                                            $colorClass = match($icon) {
+                                                'fa-file-pdf' => 'text-red-500',
+                                                'fa-file-word' => 'text-blue-600',
+                                                'fa-file-excel' => 'text-green-600',
+                                                'fa-file-powerpoint' => 'text-orange-500',
+                                                'fa-file-zipper' => 'text-yellow-600',
+                                                'fa-file-code' => 'text-purple-600',
+                                                'fa-file-video' => 'text-pink-600',
+                                                'fa-file-audio' => 'text-indigo-600',
+                                                'fa-file-csv' => 'text-teal-600',
+                                                'fa-file-lines' => 'text-gray-500',
+                                                default => 'text-gray-400'
+                                            };
+                                        @endphp
+                                        <i class="fas {{ $icon }} text-3xl {{ $colorClass }} opacity-60"></i>
+                                    @endif
+                                </div>
+                            </a>
                         </td>
 
                         <!-- Filename -->
