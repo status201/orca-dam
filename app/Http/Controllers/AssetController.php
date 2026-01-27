@@ -399,6 +399,92 @@ class AssetController extends Controller
     }
 
     /**
+     * Show the form for replacing the asset file
+     */
+    public function showReplace(Asset $asset)
+    {
+        $this->authorize('update', $asset);
+        $asset->load('tags');
+
+        return view('assets.replace', compact('asset'));
+    }
+
+    /**
+     * Replace the asset file while preserving metadata
+     */
+    public function replace(Request $request, Asset $asset)
+    {
+        $this->authorize('update', $asset);
+
+        // Get original extension
+        $originalExtension = strtolower(pathinfo($asset->filename, PATHINFO_EXTENSION));
+
+        $request->validate([
+            'file' => [
+                'required',
+                'file',
+                'max:512000', // 500MB
+                function ($attribute, $value, $fail) use ($originalExtension) {
+                    $newExtension = strtolower($value->getClientOriginalExtension());
+                    if ($newExtension !== $originalExtension) {
+                        $fail("The file must have the same extension (.{$originalExtension}).");
+                    }
+                },
+            ],
+        ]);
+
+        try {
+            // Replace file in S3 using the same key
+            $fileData = $this->s3Service->replaceFile(
+                $request->file('file'),
+                $asset->s3_key
+            );
+
+            // Delete old thumbnail if exists
+            if ($asset->thumbnail_s3_key) {
+                $this->s3Service->deleteFile($asset->thumbnail_s3_key);
+            }
+
+            // Update asset record (only file-related fields)
+            $asset->update([
+                'filename' => $fileData['filename'],
+                'mime_type' => $fileData['mime_type'],
+                'size' => $fileData['size'],
+                'etag' => $fileData['etag'],
+                'width' => $fileData['width'],
+                'height' => $fileData['height'],
+                'thumbnail_s3_key' => null,
+                'last_modified_by' => Auth::id(),
+            ]);
+
+            // Regenerate thumbnail for images
+            if ($asset->isImage()) {
+                try {
+                    $thumbnailKey = $this->s3Service->generateThumbnail($asset->s3_key);
+                    if ($thumbnailKey) {
+                        $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Thumbnail regeneration failed after replace: '.$e->getMessage());
+                    // Continue without thumbnail - not critical
+                }
+            }
+
+            return response()->json([
+                'message' => 'Asset replaced successfully',
+                'asset' => $asset->fresh(),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Asset replacement failed: '.$e->getMessage());
+
+            return response()->json([
+                'message' => 'Failed to replace asset: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Generate AI tags for an asset using AWS Rekognition
      */
     public function generateAiTags(Asset $asset)

@@ -100,6 +100,43 @@ class S3Service
     }
 
     /**
+     * Replace an existing S3 object with a new file (same key, overwrites)
+     */
+    public function replaceFile(UploadedFile $file, string $existingS3Key): array
+    {
+        // Get image dimensions before upload if it's an image
+        $dimensions = $this->getImageDimensions($file);
+
+        // Upload to S3 using streaming (overwrites existing object)
+        $stream = fopen($file->getRealPath(), 'r');
+        if ($stream === false) {
+            throw new \RuntimeException("Failed to open file for upload: {$file->getClientOriginalName()}");
+        }
+
+        try {
+            $result = $this->s3Client->putObject([
+                'Bucket' => $this->bucket,
+                'Key' => $existingS3Key,
+                'Body' => $stream,
+                'ContentType' => $file->getMimeType(),
+            ]);
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        return [
+            'filename' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'size' => $file->getSize(),
+            'etag' => trim($result['ETag'], '"'),
+            'width' => $dimensions['width'] ?? null,
+            'height' => $dimensions['height'] ?? null,
+        ];
+    }
+
+    /**
      * Generate a thumbnail and upload to S3
      */
     public function generateThumbnail(string $s3Key): ?string
@@ -256,11 +293,13 @@ class S3Service
 
     /**
      * Find objects in S3 that are not in the database
+     *
+     * @param  string|null  $prefix  Optional prefix to scan (defaults to root prefix)
      */
-    public function findUnmappedObjects(): array
+    public function findUnmappedObjects(?string $prefix = null): array
     {
-        $rootPrefix = self::getRootPrefix();
-        $s3Objects = $this->listObjects($rootPrefix);
+        $prefix = $prefix ?? self::getRootPrefix();
+        $s3Objects = $this->listObjects($prefix);
         $mappedKeys = \App\Models\Asset::pluck('s3_key')->toArray();
 
         return collect($s3Objects)

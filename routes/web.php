@@ -32,6 +32,10 @@ Route::middleware(['auth'])->group(function () {
     // Asset download
     Route::get('assets/{asset}/download', [AssetController::class, 'download'])->name('assets.download');
 
+    // Asset replace
+    Route::get('assets/{asset}/replace', [AssetController::class, 'showReplace'])->name('assets.replace');
+    Route::post('assets/{asset}/replace', [AssetController::class, 'replace'])->name('assets.replace.store');
+
     // Trash routes (admin only)
     Route::middleware(['can:restore,App\Models\Asset'])->group(function () {
         Route::get('assets/trash/index', [AssetController::class, 'trash'])->name('assets.trash');

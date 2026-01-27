@@ -81,6 +81,15 @@
         </div>
         @endif
 
+        @if(request()->has('replaced'))
+        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Asset replaced successfully.</strong>
+            The new thumbnail may take a moment to generate. If you still see the old image,
+            try refreshing the page or clearing your browser cache.
+        </div>
+        @endif
+
         <form action="{{ route('assets.update', $asset) }}" class="mb-6" method="POST">
             @csrf
             @method('PATCH')
@@ -101,7 +110,7 @@
                 <div class="mb-4 md:row-span-3 md:justify-self-center">
                     <label class="block text-sm font-medium md:text-center text-gray-700 mb-2">Preview</label>
                     @if($asset->isImage())
-                        <img src="{{ $asset->thumbnail_url ?? $asset->url }}"
+                        <img src="{{ ($asset->thumbnail_url ?? $asset->url) . '?v=' . $asset->updated_at->timestamp }}"
                              alt="{{ $asset->filename }}"
                              class="max-w-sm rounded-lg">
                     @else
@@ -125,6 +134,12 @@
                             <i class="fas {{ $icon }} {{ $colorClass }} opacity-60" style="font-size: 8rem;"></i>
                         </div>
                     @endif
+                    <div class="mt-3 text-center">
+                        <a href="{{ route('assets.replace', $asset) }}"
+                           class="inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i> Replace File
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Alt Text -->

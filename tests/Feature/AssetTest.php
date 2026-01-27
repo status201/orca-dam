@@ -188,3 +188,169 @@ test('asset detail shows copyright source as link when url', function () {
     $response->assertStatus(200);
     $response->assertSee('https://example.com/license');
 });
+
+test('authenticated users can access replace form', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->image()->create();
+
+    $response = $this->actingAs($user)->get(route('assets.replace', $asset));
+
+    $response->assertStatus(200);
+    $response->assertSee('Replace Asset File');
+    $response->assertSee('About Asset Replacement');
+});
+
+test('replace rejects file with different extension', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create(['filename' => 'test.jpg']);
+
+    // Create a fake PDF file (wrong extension)
+    $file = \Illuminate\Http\UploadedFile::fake()->create('replacement.pdf', 100);
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.replace.store', $asset), [
+            'file' => $file,
+        ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['file']);
+});
+
+test('replace accepts file with same extension', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->image()->create([
+        'filename' => 'original.jpg',
+        'alt_text' => 'Original alt text',
+        'caption' => 'Original caption',
+        'size' => 1000,
+    ]);
+
+    // Mock the S3Service
+    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service->shouldReceive('replaceFile')->once()->andReturn([
+        'filename' => 'replacement.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 2000,
+        'etag' => 'new-etag-123',
+        'width' => 1920,
+        'height' => 1080,
+    ]);
+    $s3Service->shouldReceive('deleteFile')->andReturn(true);
+    $s3Service->shouldReceive('generateThumbnail')->andReturn('thumbnails/new_thumb.jpg');
+    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+
+    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg', 1920, 1080);
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.replace.store', $asset), [
+            'file' => $file,
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJson(['message' => 'Asset replaced successfully']);
+
+    $asset->refresh();
+    // File attributes should be updated
+    expect($asset->filename)->toBe('replacement.jpg');
+    expect($asset->size)->toBe(2000);
+    expect($asset->width)->toBe(1920);
+    expect($asset->height)->toBe(1080);
+    // Metadata should be preserved
+    expect($asset->alt_text)->toBe('Original alt text');
+    expect($asset->caption)->toBe('Original caption');
+});
+
+test('edit page shows replace button', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create();
+
+    $response = $this->actingAs($user)->get(route('assets.edit', $asset));
+
+    $response->assertStatus(200);
+    $response->assertSee('Replace File');
+    $response->assertSee(route('assets.replace', $asset));
+});
+
+test('guests cannot access replace form', function () {
+    $asset = Asset::factory()->create();
+
+    $response = $this->get(route('assets.replace', $asset));
+
+    $response->assertRedirect(route('login'));
+});
+
+test('guests cannot perform replace action', function () {
+    $asset = Asset::factory()->create(['filename' => 'test.jpg']);
+    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg');
+
+    $response = $this->postJson(route('assets.replace.store', $asset), [
+        'file' => $file,
+    ]);
+
+    $response->assertStatus(401);
+});
+
+test('replace accepts file with different case extension', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create(['filename' => 'original.jpg']); // lowercase
+
+    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service->shouldReceive('replaceFile')->once()->andReturn([
+        'filename' => 'replacement.JPG', // uppercase
+        'mime_type' => 'image/jpeg',
+        'size' => 2000,
+        'etag' => 'new-etag',
+        'width' => 800,
+        'height' => 600,
+    ]);
+    $s3Service->shouldReceive('deleteFile')->andReturn(true);
+    $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
+    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+
+    // Upload file with uppercase extension
+    $file = \Illuminate\Http\UploadedFile::fake()->create('replacement.JPG', 100, 'image/jpeg');
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.replace.store', $asset), [
+            'file' => $file,
+        ]);
+
+    $response->assertStatus(200);
+});
+
+test('replace preserves tags after replacement', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->image()->create(['filename' => 'original.jpg']);
+
+    // Add tags to the asset
+    $userTag = \App\Models\Tag::factory()->create(['name' => 'user-tag', 'type' => 'user']);
+    $aiTag = \App\Models\Tag::factory()->create(['name' => 'ai-tag', 'type' => 'ai']);
+    $asset->tags()->attach([$userTag->id, $aiTag->id]);
+
+    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service->shouldReceive('replaceFile')->once()->andReturn([
+        'filename' => 'replacement.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 2000,
+        'etag' => 'new-etag',
+        'width' => 800,
+        'height' => 600,
+    ]);
+    $s3Service->shouldReceive('deleteFile')->andReturn(true);
+    $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
+    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+
+    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg');
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.replace.store', $asset), [
+            'file' => $file,
+        ]);
+
+    $response->assertStatus(200);
+
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(2);
+    expect($asset->userTags)->toHaveCount(1);
+    expect($asset->aiTags)->toHaveCount(1);
+});

@@ -9,18 +9,44 @@
         <p class="text-gray-600 mt-2">Find and import objects in your S3 bucket that aren't yet tracked in ORCA</p>
     </div>
     
-    <!-- Scan button -->
+    <!-- Folder filter and Scan button -->
     <div class="mb-6">
-        <button @click="scanBucket"
-                :disabled="scanning"
-                class="px-6 py-3 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-            <template x-if="!scanning">
-                <span><i class="fas fa-search mr-2"></i> Scan Bucket</span>
-            </template>
-            <template x-if="scanning">
-                <span><i class="fas fa-spinner fa-spin mr-2"></i> Scanning...</span>
-            </template>
-        </button>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Scan Folder</label>
+        <div class="flex flex-col md:flex-row md:items-center gap-4">
+            <select x-model="selectedFolder"
+                    class="flex-1 max-w-md rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
+                @foreach($folders as $folder)
+                    @php
+                        $rootPrefix = $rootFolder !== '' ? $rootFolder . '/' : '';
+                        $relativePath = ($folder === '' || ($rootFolder !== '' && $folder === $rootFolder)) ? '' : ($rootPrefix !== '' ? str_replace($rootPrefix, '', $folder) : $folder);
+                        $depth = $relativePath ? substr_count($relativePath, '/') + 1 : 0;
+                        $label = ($folder === '' || ($rootFolder !== '' && $folder === $rootFolder)) ? '/ (root)' : str_repeat('╎  ', max(0, $depth - 1)) . '├─ ' . basename($folder);
+                    @endphp
+                    <option value="{{ $folder }}">{{ $label }}</option>
+                @endforeach
+            </select>
+
+            <!-- Refresh folders button -->
+            <button @click="scanFolders"
+                    :disabled="scanningFolders"
+                    type="button"
+                    class="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                    title="Refresh folder list from S3">
+                <i :class="scanningFolders ? 'fa-spinner fa-spin' : 'fa-sync'" class="fas"></i>
+            </button>
+
+            <!-- Scan bucket button -->
+            <button @click="scanBucket"
+                    :disabled="scanning"
+                    class="px-6 py-3 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                <template x-if="!scanning">
+                    <span><i class="fas fa-search mr-2"></i> Scan Bucket</span>
+                </template>
+                <template x-if="scanning">
+                    <span><i class="fas fa-spinner fa-spin mr-2"></i> Scanning...</span>
+                </template>
+            </button>
+        </div>
     </div>
     
     <!-- Results -->
@@ -163,13 +189,43 @@ function discoverObjects() {
         importing: false,
         unmappedObjects: [],
         selectedObjects: [],
-        
+        selectedFolder: '{{ $rootFolder }}',
+        scanningFolders: false,
+
+        async scanFolders() {
+            if (this.scanningFolders) return;
+
+            this.scanningFolders = true;
+            try {
+                const response = await fetch('{{ route('folders.scan') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to scan folders');
+                }
+
+                window.showToast('Folders refreshed from S3');
+                setTimeout(() => window.location.reload(), 500);
+            } catch (error) {
+                console.error('Scan folders error:', error);
+                window.showToast(error.message || 'Failed to scan folders', 'error');
+            } finally {
+                this.scanningFolders = false;
+            }
+        },
+
         async scanBucket() {
             this.scanning = true;
             this.scanned = false;
             this.unmappedObjects = [];
             this.selectedObjects = [];
-            
+
             try {
                 const response = await fetch('{{ route('discover.scan') }}', {
                     method: 'POST',
@@ -178,12 +234,13 @@ function discoverObjects() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json',
                     },
+                    body: JSON.stringify({ folder: this.selectedFolder }),
                 });
-                
+
                 const data = await response.json();
                 this.unmappedObjects = data.objects || [];
                 this.scanned = true;
-                
+
                 window.showToast(`Found ${data.count} unmapped object(s)`);
             } catch (error) {
                 console.error('Scan error:', error);
@@ -240,7 +297,7 @@ function discoverObjects() {
 
                     // Refresh scan results after short delay
                     setTimeout(() => {
-                        this.scan();
+                        this.scanBucket();
                     }, 2000);
                 } else {
                     window.showToast('Import failed: ' + (data.message || 'Unknown error'), 'error');

@@ -104,6 +104,7 @@ ORCA has two user roles with different capabilities:
 | View all assets | ✓ | ✓ |
 | Upload files | ✓ | ✓ |
 | Edit asset details (alt text, caption, tags) | ✓ | ✓ |
+| Replace asset files | ✓ | ✓ |
 | Delete files (to Trash) | ✓ | ✓ |
 | Create folders | ✗ | ✓ |
 | View Trash | ✗ | ✓ |
@@ -284,6 +285,86 @@ If AI tagging is enabled and you want fresh suggestions:
 
 ---
 
+## Replacing Assets
+
+Sometimes you need to update a file without changing its URL. Maybe you uploaded a placeholder image while the final version was still being designed, or you need to fix a typo in a document. That's where **Asset Replace** comes in.
+
+### Why Replace Instead of Re-upload?
+
+Remember the Golden Rules? You can't rename or move files because it would break links. The same problem applies if you delete a file and upload a new one — you'd get a completely new URL.
+
+**Asset Replace solves this:**
+- The URL stays exactly the same
+- All existing links in Studyflow continue to work
+- All metadata (alt text, caption, tags, license info) is preserved
+- Only the file itself changes
+
+### How to Replace an Asset
+
+1. Go to the **Edit** page for the asset you want to replace
+2. Click the **Replace File** button (below the preview image)
+3. On the Replace page, you'll see:
+   - The current file preview and details
+   - A drop zone for your new file
+4. Drag and drop your replacement file, or click to browse
+5. **Important:** The new file must have the same extension (e.g., you can't replace a `.jpg` with a `.png`)
+6. Click **Replace File** and confirm the warning dialog
+7. Wait for the upload to complete — you'll be redirected back to the Edit page
+
+### The Draft/Placeholder Workflow
+
+This is where Asset Replace really shines. Here's a common scenario:
+
+1. **Create content early:** You're building a course in Studyflow, but the final images aren't ready yet
+2. **Upload placeholders:** Upload temporary images with clear names like `hero-image-DRAFT.jpg`
+3. **Link them in Studyflow:** Add the images to your content using the ORCA URLs
+4. **Replace when ready:** When the final images arrive, simply replace the placeholders
+5. **No broken links:** Studyflow automatically shows the new images!
+
+### Tips for Using Drafts
+
+**Tag your placeholders!** Add a tag like `draft` or `placeholder` to temporary uploads. This makes them easy to find later:
+
+1. Filter by the `draft` tag to see all your placeholders
+2. Replace each one with the final version
+3. Remove the `draft` tag when done
+
+**Use descriptive filenames:** Even for placeholders, name them clearly:
+- `hero-section-DRAFT.jpg` ✓
+- `temp1.jpg` ✗
+
+**Keep a list:** For larger projects, maintain a simple checklist of placeholder files that need replacing.
+
+### Important Warnings
+
+#### Same Extension Required
+
+You must replace a file with one of the same type:
+- `.jpg` can only be replaced with `.jpg`
+- `.pdf` can only be replaced with `.pdf`
+- `.png` cannot replace `.jpg` (different format!)
+
+If you need to change the file format, you'll have to delete and re-upload (which means updating all links).
+
+#### The Previous Version is Lost
+
+This is crucial to understand:
+
+> **Without S3 versioning enabled, the original file is permanently deleted when you replace it.**
+
+Ask your administrator if versioning is enabled on your S3 bucket. If it is, previous versions are kept and can potentially be recovered. If not, replacement is a one-way operation — there's no undo.
+
+#### Thumbnail and Dimensions Update
+
+When you replace an image:
+- A new thumbnail is generated automatically
+- The stored dimensions (width/height) update to match the new file
+- The file size updates
+
+This is expected behavior — the metadata should reflect the actual file.
+
+---
+
 ## The Trash (Admin Only)
 
 When files are deleted, they go to the Trash — a holding area before permanent deletion.
@@ -386,6 +467,7 @@ Stuck? Here's what to do:
 | **S3 Key** | The technical path/address of a file in cloud storage |
 | **Thumbnail** | A small preview image generated for visual files |
 | **Rekognition** | Amazon's AI service that analyzes images and suggests tags |
+| **Replace** | Uploading a new file to overwrite an existing asset while keeping the same URL |
 
 ---
 

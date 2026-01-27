@@ -32,7 +32,16 @@ class DiscoverController extends Controller
     {
         $this->authorize('discover', Asset::class);
 
-        return view('discover.index');
+        $rootFolder = S3Service::getRootFolder();
+        $folders = \App\Models\Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
+        if (empty($folders) && $rootFolder !== '') {
+            $folders = [$rootFolder];
+        }
+        if ($rootFolder === '' && ! in_array('', $folders)) {
+            array_unshift($folders, '');
+        }
+
+        return view('discover.index', compact('folders', 'rootFolder'));
     }
 
     /**
@@ -42,7 +51,9 @@ class DiscoverController extends Controller
     {
         $this->authorize('discover', Asset::class);
 
-        $unmappedObjects = $this->s3Service->findUnmappedObjects();
+        $folder = $request->input('folder', S3Service::getRootFolder());
+        $prefix = $folder !== '' ? $folder.'/' : null;
+        $unmappedObjects = $this->s3Service->findUnmappedObjects($prefix);
 
         // Enrich with metadata and check for soft-deleted assets
         $enrichedObjects = collect($unmappedObjects)->map(function ($object) {
