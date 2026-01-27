@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'API Documentation')
+@section('title', 'API Docs & Management')
 
 @section('content')
 <div x-data="apiDocs()" x-init="init()">
     <!-- Header -->
     <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">API Documentation</h1>
+        <h1 class="text-3xl font-bold text-gray-900">API Docs &amp; Management</h1>
         <p class="text-gray-600 mt-2">Interactive API documentation and token management</p>
     </div>
 
@@ -362,7 +362,7 @@ function apiDocs() {
                 await this.loadScript('https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js');
 
                 // Wait a tick for scripts to fully initialize
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 200));
 
                 // Initialize Swagger UI with proper checks
                 const SwaggerUIBundle = window.SwaggerUIBundle;
@@ -585,13 +585,15 @@ function apiDocs() {
 <style>
 /* Swagger UI Customizations */
 #swagger-ui {
-    padding: 1rem;
+    padding: 2rem 1rem;
 }
 
 #swagger-ui .topbar {
     display: none;
 }
-
+#swagger-ui .swagger-ui {
+    padding: 1rem 0;
+}
 #swagger-ui .info {
     margin: 0 0 2rem 0;
 }

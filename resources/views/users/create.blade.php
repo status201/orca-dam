@@ -45,7 +45,8 @@
                 @enderror
                 <p class="text-sm text-gray-500 mt-1">
                     <strong>Editor:</strong> Can manage assets and tags<br>
-                    <strong>Admin:</strong> Can manage assets, tags, users, and discover new files
+                    <strong>Admin:</strong> Can manage assets, tags, users, and discover new files<br>
+                    <strong>Api:</strong> Cannot login to ORCA! Can view and upload assets
                 </p>
             </div>
 
