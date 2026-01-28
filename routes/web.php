@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FolderController;
+use App\Http\Controllers\JwtSecretController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\TagController;
@@ -104,6 +105,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('api-docs/tokens', [TokenController::class, 'store'])->name('api.tokens.store');
         Route::delete('api-docs/tokens/user/{userId}', [TokenController::class, 'destroyUserTokens'])->name('api.tokens.destroy-user');
         Route::delete('api-docs/tokens/{id}', [TokenController::class, 'destroy'])->name('api.tokens.destroy');
+
+        // JWT Secret management
+        Route::get('api-docs/jwt-secrets', [JwtSecretController::class, 'index'])->name('api.jwt-secrets');
+        Route::post('api-docs/jwt-secrets/{user}', [JwtSecretController::class, 'generate'])->name('api.jwt-secrets.generate');
+        Route::delete('api-docs/jwt-secrets/{user}', [JwtSecretController::class, 'revoke'])->name('api.jwt-secrets.revoke');
     });
 });
 

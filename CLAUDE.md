@@ -88,6 +88,20 @@ php artisan token:revoke --user=email    # Revoke all tokens for a user
 php artisan token:revoke 5 --force       # Skip confirmation prompt
 ```
 
+### JWT Secret Management
+```bash
+# List all users with JWT secrets
+php artisan jwt:list
+
+# Generate JWT secret for a user
+php artisan jwt:generate user@email.com         # Generate new secret
+php artisan jwt:generate user@email.com --force # Regenerate existing secret
+
+# Revoke JWT secret
+php artisan jwt:revoke user@email.com           # Revoke with confirmation
+php artisan jwt:revoke user@email.com --force   # Skip confirmation
+```
+
 ## Architecture
 
 ### Core Services Pattern
@@ -124,6 +138,42 @@ The application uses a service-oriented architecture with three main services th
 - Supports multilingual tags via AWS Translate (when language != 'en')
 - Uses Job queue (`GenerateAiTags`) for background processing
 - Settings are read dynamically from database, allowing runtime configuration changes
+
+### JWT Authentication
+
+JWT authentication allows external systems to generate short-lived tokens for API access. This is ideal for frontend Rich Text Editor integrations where you can't safely expose long-lived Sanctum tokens.
+
+**How JWT Authentication Works:**
+1. Admin generates a JWT secret for a user via UI or CLI (`php artisan jwt:generate`)
+2. External backend receives the secret and stores it securely
+3. External backend generates short-lived JWTs for frontend sessions
+4. Frontend includes JWT in API requests: `Authorization: Bearer {jwt}`
+5. ORCA validates the JWT signature and expiry, then authenticates the user
+
+**JWT Token Format:**
+```javascript
+// Node.js example
+const jwt = require('jsonwebtoken');
+const token = jwt.sign(
+  { sub: userId },  // Required: ORCA user ID
+  jwtSecret,        // The secret from ORCA
+  { expiresIn: '1h', algorithm: 'HS256' }
+);
+```
+
+**Required JWT Claims:**
+- `sub` - Subject (ORCA user ID)
+- `exp` - Expiration timestamp
+- `iat` - Issued-at timestamp
+
+**Optional JWT Claims:**
+- `iss` - Issuer (validated if `JWT_ISSUER` is configured)
+
+**Key Files:**
+- Guard: `app/Auth/JwtGuard.php`
+- Config: `config/jwt.php`
+- Controller: `app/Http/Controllers/JwtSecretController.php`
+- Middleware: `app/Http/Middleware/AuthenticateMultiple.php`
 
 ### Authorization System
 
@@ -169,7 +219,13 @@ Uses Laravel Policies for fine-grained access control:
 
 ### API Design
 
-**Authentication**: Laravel Sanctum (SPA tokens)
+**Authentication**: Laravel Sanctum (SPA tokens) and JWT (JSON Web Tokens)
+
+The API supports two authentication methods:
+1. **Sanctum Tokens** - Long-lived tokens for backend integrations. Stored in database.
+2. **JWT** - Short-lived tokens for frontend integrations. External systems generate JWTs using a per-user secret; ORCA validates them.
+
+JWT authentication is disabled by default. Enable with `JWT_ENABLED=true` in `.env`.
 
 **Endpoints** (`routes/api.php`):
 - `GET /api/assets` - List assets with pagination, search, filters
@@ -408,6 +464,10 @@ The application handles large files (PDFs, GIFs, videos) by:
 | `rekognition_language` | nl | AI tag language (en, nl, fr, de, es, etc.) |
 | `s3_folders` | ["assets"] | JSON array of S3 folder prefixes (auto-populated) |
 
+**users table** (JWT-related columns):
+- `jwt_secret` (nullable, encrypted) - Per-user JWT secret for HMAC signing (64 chars)
+- `jwt_secret_generated_at` (nullable, timestamp) - When the JWT secret was generated
+
 ## Environment Configuration
 
 ### Required AWS Configuration
@@ -423,6 +483,13 @@ AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
 AWS_REKOGNITION_MAX_LABELS=3             # Maximum AI tags per asset (default: 3)
 AWS_REKOGNITION_MIN_CONFIDENCE=80        # Minimum confidence threshold (default: 80, range: 65-99)
 AWS_REKOGNITION_LANGUAGE=nl              # Language for AI tags: en, nl, fr, de, es, etc.
+
+# Optional: JWT Authentication (for frontend RTE integrations)
+JWT_ENABLED=false                        # Enable/disable JWT authentication
+JWT_ALGORITHM=HS256                      # Signature algorithm (HS256 recommended)
+JWT_MAX_TTL=36000                        # Maximum token lifetime in seconds (default: 10 hours)
+JWT_LEEWAY=60                            # Clock skew tolerance in seconds
+JWT_ISSUER=                              # Optional: Required issuer claim value
 ```
 
 ### PHP CLI Path (for Web-Based Test Runner)

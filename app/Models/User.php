@@ -22,6 +22,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'jwt_secret',
+        'jwt_secret_generated_at',
     ];
 
     /**
@@ -32,6 +34,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'jwt_secret',
     ];
 
     /**
@@ -44,6 +47,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'jwt_secret_generated_at' => 'datetime',
+            'jwt_secret' => 'encrypted',
         ];
     }
 
@@ -77,6 +82,14 @@ class User extends Authenticatable
     public function isApiUser(): bool
     {
         return $this->role === 'api';
+    }
+
+    /**
+     * Check if user has a JWT secret configured
+     */
+    public function hasJwtSecret(): bool
+    {
+        return !empty($this->jwt_secret);
     }
 
     /**

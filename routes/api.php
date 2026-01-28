@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 // Public API endpoints (no authentication required)
 Route::get('assets/meta', [AssetApiController::class, 'getMeta']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth.multi')->group(function () {
     // Asset API
     Route::get('assets', [AssetApiController::class, 'index']);
     Route::post('assets', [AssetApiController::class, 'store']);
@@ -23,7 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Chunked upload endpoints
-Route::middleware(['auth:sanctum', 'throttle:100,1'])->prefix('chunked-upload')->group(function () {
+Route::middleware(['auth.multi', 'throttle:100,1'])->prefix('chunked-upload')->group(function () {
     Route::post('init', [ChunkedUploadController::class, 'initiate']);
     Route::post('chunk', [ChunkedUploadController::class, 'uploadChunk']);
     Route::post('complete', [ChunkedUploadController::class, 'complete']);

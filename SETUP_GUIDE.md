@@ -86,6 +86,11 @@ AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
 AWS_REKOGNITION_MAX_LABELS=3             # Maximum AI tags per asset (default: 3)
 AWS_REKOGNITION_MIN_CONFIDENCE=80        # Minimum confidence threshold (default: 80, range: 65-99)
 AWS_REKOGNITION_LANGUAGE=nl              # Language for AI tags: en, nl, fr, de, es, etc.
+
+# Optional: JWT Authentication (for frontend RTE integrations)
+JWT_ENABLED=false                        # Enable/disable JWT authentication
+JWT_MAX_TTL=36000                        # Maximum token lifetime in seconds (default: 10 hours)
+JWT_LEEWAY=60                            # Clock skew tolerance in seconds
 ```
 
 **Important S3 Bucket Settings:**
@@ -275,7 +280,8 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 
 ### 6. API for RTE Integration
 - ✅ RESTful API endpoints
-- ✅ Laravel Sanctum authentication
+- ✅ Laravel Sanctum authentication (long-lived tokens for backends)
+- ✅ JWT authentication (short-lived tokens for frontends)
 - ✅ Pagination support
 - ✅ Search and filter API
 - ✅ Public metadata endpoint (no auth required)
@@ -310,18 +316,68 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 ## API Documentation
 
 ### Authentication
-Use Laravel Sanctum for API authentication:
+
+ORCA supports two authentication methods:
+
+#### Option 1: Sanctum Tokens (Backend Integrations)
+
+Long-lived tokens for backend-to-backend API calls. **Never expose these to frontend code.**
 
 ```javascript
-// Generate token (in your app)
-const token = await user.createToken('rte-integration').plainTextToken;
-
-// Use in requests
+// Generate token (admin generates via UI or CLI)
+// Use in backend requests
 headers: {
-    'Authorization': `Bearer ${token}`,
+    'Authorization': `Bearer ${sanctumToken}`,
     'Accept': 'application/json'
 }
 ```
+
+Generate tokens via:
+- **Web UI**: API Docs → API Tokens tab
+- **CLI**: `php artisan token:create user@example.com`
+
+#### Option 2: JWT (Frontend RTE Integrations)
+
+Short-lived tokens ideal for browser-based integrations. Your backend generates JWTs; ORCA validates them.
+
+**Setup:**
+1. Enable JWT auth in `.env`: `JWT_ENABLED=true`
+2. Generate a JWT secret for a user:
+   - **Web UI**: API Docs → JWT Secrets tab → Generate Secret
+   - **CLI**: `php artisan jwt:generate user@example.com`
+3. Your backend generates JWTs using the secret:
+
+```javascript
+// Node.js example
+const jwt = require('jsonwebtoken');
+const token = jwt.sign(
+    { sub: orcaUserId },    // ORCA user ID (required)
+    jwtSecret,              // Secret from ORCA
+    { expiresIn: '1h', algorithm: 'HS256' }
+);
+```
+
+```php
+// PHP example
+use Firebase\JWT\JWT;
+$token = JWT::encode([
+    'sub' => $orcaUserId,   // ORCA user ID (required)
+    'iat' => time(),
+    'exp' => time() + 3600,
+], $jwtSecret, 'HS256');
+```
+
+4. Frontend uses JWT in requests:
+```javascript
+headers: {
+    'Authorization': `Bearer ${jwtToken}`,
+    'Accept': 'application/json'
+}
+```
+
+**Required JWT claims:** `sub` (user ID), `exp` (expiry), `iat` (issued at)
+
+See `RTE_INTEGRATION.md` for complete integration examples.
 
 ### Endpoints
 
