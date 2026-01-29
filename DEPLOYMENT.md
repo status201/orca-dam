@@ -97,6 +97,13 @@ AWS_REKOGNITION_ENABLED=true
 AWS_REKOGNITION_MAX_LABELS=3
 AWS_REKOGNITION_MIN_CONFIDENCE=80
 AWS_REKOGNITION_LANGUAGE=nl
+
+# JWT Authentication (optional, for frontend RTE integrations)
+JWT_ENABLED=false              # Enable JWT auth alongside Sanctum
+JWT_ALGORITHM=HS256            # Signature algorithm
+JWT_MAX_TTL=36000              # Max token lifetime (10 hours)
+JWT_LEEWAY=60                  # Clock skew tolerance
+JWT_ISSUER=                    # Optional: Required issuer claim
 ```
 
 ### 4. Set Permissions
@@ -382,7 +389,27 @@ certbot --apache -d your-domain.com  # For Apache
 - Check queue status in System admin page
 - Test AI tagging (if enabled)
 
-### 2. Monitor Queue Workers
+### 2. Configure API Authentication (if needed)
+
+**For Sanctum Tokens (backend integrations):**
+```bash
+# Via CLI
+php artisan token:create user@email.com --name="My Integration"
+
+# Or via Admin Panel: API Docs → Tokens
+```
+
+**For JWT Authentication (frontend integrations):**
+1. Enable JWT in `.env`: `JWT_ENABLED=true`
+2. Generate a JWT secret for the user:
+   ```bash
+   php artisan jwt:generate user@email.com
+   ```
+   Or via Admin Panel: API Docs → JWT Secrets
+3. Share the secret with your external system securely
+4. External system generates short-lived JWTs for API requests
+
+### 3. Monitor Queue Workers
 
 Check that workers are running:
 ```bash
@@ -395,7 +422,7 @@ orca-queue-worker:orca-queue-worker_00   RUNNING   pid 12345, uptime 0:00:05
 orca-queue-worker:orca-queue-worker_01   RUNNING   pid 12346, uptime 0:00:05
 ```
 
-### 3. Setup Log Rotation
+### 4. Setup Log Rotation
 
 Create `/etc/logrotate.d/orca-dam`:
 
@@ -415,7 +442,7 @@ Create `/etc/logrotate.d/orca-dam`:
 }
 ```
 
-### 4. Setup Scheduled Tasks (Cron)
+### 5. Setup Scheduled Tasks (Cron)
 
 Add to crontab (`crontab -e -u www-data`):
 
@@ -600,6 +627,8 @@ php artisan view:clear
 - [ ] Regularly backup database and storage
 - [ ] Monitor logs for suspicious activity
 - [ ] Keep PHP and server software updated
+- [ ] Securely share JWT secrets with external systems (never expose in frontend)
+- [ ] Use short JWT token lifetimes (default: 1 hour recommended)
 
 ## Backup Strategy
 
@@ -636,6 +665,9 @@ Your assets are already in S3, which is highly durable. Consider:
 
 - **CLAUDE.md** - Development guidelines and architecture
 - **RTE_INTEGRATION.md** - Rich text editor integration guide
+- **USER_MANUAL.md** - End-user documentation
+- **QUICK_REFERENCE.md** - Quick command reference
 - **System Admin Panel** - `https://your-domain.com/system`
+- **API Documentation** - `https://your-domain.com/api-docs`
 
 For issues or questions, refer to the project repository.

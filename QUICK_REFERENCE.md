@@ -108,7 +108,8 @@ orca-dam/
 │   └── Unit/                         # Unit tests
 │       ├── AssetTest.php
 │       ├── TagTest.php
-│       └── SettingTest.php
+│       ├── SettingTest.php
+│       └── UserPreferencesTest.php
 └── config/                           # Configuration
 ```
 
@@ -129,20 +130,32 @@ GET  /discover                 # Discovery page (admin)
 POST /discover/scan            # Scan S3 bucket
 POST /discover/import          # Import objects
 GET  /tags                     # List tags
+GET  /profile                  # User profile & preferences
+PATCH /profile/preferences     # Update user preferences
 GET  /system                   # System admin (admin)
 POST /system/settings          # Update settings (admin)
 POST /system/run-tests         # Run automated tests (admin)
+GET  /api-docs                 # API documentation (admin)
+GET  /api-docs/jwt-secrets     # Manage JWT secrets (admin)
 ```
 
 ### API Routes
+Authentication: Sanctum token OR JWT bearer token (if JWT_ENABLED=true)
 ```
 GET    /api/assets             # List assets
 POST   /api/assets             # Upload assets
 GET    /api/assets/search      # Search assets
+GET    /api/assets/meta        # Get metadata by URL (PUBLIC, no auth)
 GET    /api/assets/{id}        # Get asset
 PATCH  /api/assets/{id}        # Update asset
 DELETE /api/assets/{id}        # Delete asset
 GET    /api/tags               # List tags
+
+# Chunked uploads (for large files ≥10MB)
+POST   /api/chunked-upload/init      # Initialize upload
+POST   /api/chunked-upload/chunk     # Upload chunk
+POST   /api/chunked-upload/complete  # Complete upload
+POST   /api/chunked-upload/abort     # Cancel upload
 ```
 
 ---
@@ -150,7 +163,9 @@ GET    /api/tags               # List tags
 ## Database Schema
 
 ### users
-- id, name, email, password, role (editor|admin)
+- id, name, email, password, role (editor|admin|api)
+- jwt_secret, jwt_secret_generated_at (for JWT auth)
+- preferences (JSON: home_folder, items_per_page)
 
 ### assets
 - id, s3_key, filename, mime_type, size
@@ -187,6 +202,13 @@ AWS_REKOGNITION_MAX_LABELS=3
 AWS_REKOGNITION_MIN_CONFIDENCE=80
 AWS_REKOGNITION_LANGUAGE=nl
 
+# JWT Authentication (optional, for frontend integrations)
+JWT_ENABLED=true|false
+JWT_ALGORITHM=HS256
+JWT_MAX_TTL=36000
+JWT_LEEWAY=60
+JWT_ISSUER=                    # Optional issuer validation
+
 # Database
 DB_CONNECTION=mysql
 DB_DATABASE=orca_dam
@@ -208,17 +230,45 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 ### Editor
 ✅ Upload assets
 ✅ View all assets
-✅ Edit/delete own assets
+✅ Edit/delete any asset
 ✅ Add tags to any asset
 ✅ Search and filter
+✅ Set personal preferences (home folder, items per page)
 
 ### Admin
 ✅ All editor permissions
-✅ Edit/delete any asset
+✅ Access Trash, restore & permanently delete
 ✅ Access Discover feature
 ✅ Manage users
-✅ Bulk operations
+✅ Export to CSV
 ✅ System administration & settings
+✅ Manage API tokens & JWT secrets
+
+### API User
+✅ View all assets (API only)
+✅ Upload assets (API only)
+✅ Update asset metadata (API only)
+❌ Delete assets
+❌ Admin features
+
+---
+
+## User Preferences
+
+Users can set personal preferences via **Profile → Preferences**:
+
+| Preference | Description | Override Hierarchy |
+|------------|-------------|-------------------|
+| **Home Folder** | Default folder when browsing assets | URL param > User pref > Global root |
+| **Items Per Page** | Default pagination (12-96) | URL param > User pref > Global setting |
+
+```php
+// In code, access via User model:
+$user->getPreference('home_folder');
+$user->getPreference('items_per_page');
+$user->getHomeFolder();      // Validated against root
+$user->getItemsPerPage();    // Falls back to global
+```
 
 ---
 
@@ -289,6 +339,16 @@ your-bucket/
 php artisan tinker
 > User::create(['name' => 'Admin', 'email' => 'admin@test.com', 'password' => Hash::make('password'), 'role' => 'admin']);
 
+# API Token management
+php artisan token:list                   # List all tokens
+php artisan token:create user@email.com  # Create token for user
+php artisan token:revoke 5               # Revoke token ID 5
+
+# JWT Secret management
+php artisan jwt:list                     # List users with JWT secrets
+php artisan jwt:generate user@email.com  # Generate JWT secret
+php artisan jwt:revoke user@email.com    # Revoke JWT secret
+
 # Clear all caches
 php artisan optimize:clear
 
@@ -322,14 +382,17 @@ php artisan policy:make AssetPolicy
 - [ ] Set up backups
 - [ ] Configure rate limiting
 - [ ] Enable CORS if needed
-- [ ] Check all System settings before importing uploading assets 
+- [ ] Check all System settings before importing uploading assets
+- [ ] Securely share JWT secrets (never expose in frontend code)
+- [ ] Use short JWT token lifetimes (1 hour recommended) 
 
 ---
 
 ## Support Resources
 
-- **Documentation**: See README.md, SETUP_GUIDE.md
+- **Documentation**: See README.md, SETUP_GUIDE.md, USER_MANUAL.md
 - **API Integration**: See RTE_INTEGRATION.md
+- **Deployment**: See DEPLOYMENT.md
 - **Laravel Docs**: https://laravel.com/docs
 - **AWS S3 Docs**: https://docs.aws.amazon.com/s3/
 - **AWS Rekognition**: https://docs.aws.amazon.com/rekognition/

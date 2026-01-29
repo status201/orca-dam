@@ -275,10 +275,17 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Metadata extraction
 
 ### 5. User Roles
-- **Editors**: Upload and manage all assets (view, edit, soft delete)
-- **Admins**: Full access including trash management, restore/permanent delete, discover, export, and user management
+- **Editors**: Upload and manage all assets (view, edit, soft delete), set personal preferences
+- **Admins**: Full access including trash management, restore/permanent delete, discover, export, user management, and API token/JWT secret management
+- **API Users**: API-only access for external integrations (view, create, update assets; no delete or admin features)
 
-### 6. API for RTE Integration
+### 6. User Preferences
+- ✅ Personal home folder setting (default folder when browsing assets)
+- ✅ Personal items per page setting (overrides global default)
+- ✅ Preferences accessible via Profile page
+- ✅ URL parameters still override user preferences
+
+### 7. API for RTE Integration
 - ✅ RESTful API endpoints
 - ✅ Laravel Sanctum authentication (long-lived tokens for backends)
 - ✅ JWT authentication (short-lived tokens for frontends)
@@ -286,21 +293,21 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Search and filter API
 - ✅ Public metadata endpoint (no auth required)
 
-### 7. Export & Reporting
+### 8. Export & Reporting
 - ✅ CSV export with all asset metadata
 - ✅ Separate columns for user tags and AI tags
 - ✅ Includes license type and copyright information
 - ✅ Filter by file type and tags before export
 - ✅ Timestamped export filenames
 
-### 8. Trash & Restore (Admin Only)
+### 9. Trash & Restore (Admin Only)
 - ✅ Soft delete keeps S3 objects when assets are deleted
 - ✅ Trash page shows all soft-deleted assets
 - ✅ Restore assets from trash back to active state
 - ✅ Permanent delete removes database record AND S3 objects
 - ✅ Discovery marks soft-deleted assets to prevent re-import
 
-### 9. System Administration (Admin Only)
+### 10. System Administration (Admin Only)
 - ✅ System overview (PHP version, Laravel version, disk usage)
 - ✅ **Settings panel** with configurable options:
   - Items per page (12, 24, 36, 48, 60, 72, 96)
@@ -310,6 +317,8 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Log viewer with color-coded output
 - ✅ Artisan command execution (whitelisted commands)
 - ✅ S3 connection diagnostics
+- ✅ API token management (Sanctum tokens)
+- ✅ JWT secret management (per-user secrets for frontend integrations)
 
 ---
 
@@ -699,7 +708,20 @@ For scheduled tasks (includes daily cleanup of stale upload sessions):
 Scheduled tasks include:
 - Daily cleanup of abandoned chunked upload sessions (>24 hours old)
 
-### 4. Security Checklist
+### 4. API Token Management
+```bash
+# Sanctum tokens (for backend integrations)
+php artisan token:list                   # List all tokens
+php artisan token:create user@email.com  # Create token for user
+php artisan token:revoke 5               # Revoke token ID 5
+
+# JWT secrets (for frontend integrations)
+php artisan jwt:list                     # List users with JWT secrets
+php artisan jwt:generate user@email.com  # Generate JWT secret
+php artisan jwt:revoke user@email.com    # Revoke JWT secret
+```
+
+### 5. Security Checklist
 - [ ] Change default admin password
 - [ ] Set `APP_ENV=production` and `APP_DEBUG=false`
 - [ ] Use strong `APP_KEY`
@@ -708,6 +730,8 @@ Scheduled tasks include:
 - [ ] Restrict IAM permissions to minimum required
 - [ ] Set up regular backups
 - [ ] Configure rate limiting
+- [ ] Securely share JWT secrets with external systems (never expose in frontend code)
+- [ ] Use short JWT token lifetimes (1 hour recommended)
 
 ---
 
