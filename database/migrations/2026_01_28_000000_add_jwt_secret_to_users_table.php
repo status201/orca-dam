@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('jwt_secret', 64)->nullable()->after('password');
+            $table->text('jwt_secret')->nullable()->after('password');
             $table->timestamp('jwt_secret_generated_at')->nullable()->after('jwt_secret');
         });
     }
@@ -23,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['jwt_secret', 'jwt_secret_generated_at']);
+            $table->dropColumn('jwt_secret');
+            $table->dropColumn('jwt_secret_generated_at');
         });
     }
 };

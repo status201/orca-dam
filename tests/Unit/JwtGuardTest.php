@@ -15,18 +15,20 @@ beforeEach(function () {
     config(['jwt.required_claims' => ['sub', 'exp', 'iat']]);
 });
 
-function createJwtGuard(Request $request): JwtGuard
+function createJwtGuardWithRequest(Request $request): JwtGuard
 {
+    // Bind the request to the container so the guard can access it
+    app()->instance('request', $request);
+
     return new JwtGuard(
-        Auth::createUserProvider('users'),
-        $request
+        Auth::createUserProvider('users')
     );
 }
 
 test('jwt guard returns null for missing authorization header', function () {
     $request = Request::create('/api/assets', 'GET');
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -35,7 +37,7 @@ test('jwt guard returns null for invalid token format', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer invalid-token');
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -51,7 +53,7 @@ test('jwt guard returns null for unknown user', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -69,7 +71,7 @@ test('jwt guard returns null for user without jwt secret', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -87,7 +89,7 @@ test('jwt guard returns null for expired token', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -108,7 +110,7 @@ test('jwt guard returns null for invalid signature', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -126,7 +128,7 @@ test('jwt guard returns user for valid token', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     $result = $guard->user();
     expect($result)->not->toBeNull();
@@ -149,7 +151,7 @@ test('jwt guard returns null when token exceeds max ttl', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -171,7 +173,7 @@ test('jwt guard validates issuer when configured', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });
@@ -192,7 +194,7 @@ test('jwt guard accepts token with correct issuer', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     $result = $guard->user();
     expect($result)->not->toBeNull();
@@ -212,7 +214,7 @@ test('jwt guard returns null for missing required claims', function () {
     $request = Request::create('/api/assets', 'GET');
     $request->headers->set('Authorization', 'Bearer ' . $token);
 
-    $guard = createJwtGuard($request);
+    $guard = createJwtGuardWithRequest($request);
 
     expect($guard->user())->toBeNull();
 });

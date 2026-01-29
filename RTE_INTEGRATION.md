@@ -68,7 +68,7 @@ $token->plainTextToken  // Copy this!
 
 Provide them with:
 
-1. **The API Token** (from one of the methods above)
+1. **The API Token or JWT Secret** (from one of the methods above)
 2. **Base URL**: `https://your-orca-domain.com/api`
 3. **How to authenticate**: Include the token in the Authorization header:
    ```
@@ -116,7 +116,7 @@ JWT authentication is ideal for frontend RTE integrations where you need short-l
 ### How JWT Authentication Works
 
 1. **Admin generates a JWT secret** for a user (via UI or CLI)
-2. **Share the secret** with your external backend system (keep it secure!)
+2. **Share the secret** with your backend system (keep it secure!)
 3. **Your backend generates short-lived JWTs** using the secret
 4. **Your frontend receives the JWT** and uses it for ORCA API requests
 5. **ORCA validates** the JWT signature and expiry
@@ -126,7 +126,7 @@ JWT authentication is ideal for frontend RTE integrations where you need short-l
 First, enable JWT auth in ORCA's `.env` file:
 ```env
 JWT_ENABLED=true
-JWT_MAX_TTL=3600o      # Maximum token lifetime (10 hours)
+JWT_MAX_TTL=36000      # Maximum token lifetime (10 hours)
 ```
 
 ### Generate a JWT Secret
@@ -223,6 +223,85 @@ def generate_orca_token(user_id: int, jwt_secret: str) -> str:
 def get_orca_token():
     token = generate_orca_token(ORCA_USER_ID, ORCA_JWT_SECRET)
     return jsonify({'token': token})
+```
+
+#### Java Spring Boot Example
+```java
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+import java.util.Map;
+
+@RestController
+public class OrcaTokenController {
+
+    @Value("${orca.jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${orca.user.id}")
+    private Long orcaUserId;
+
+    @GetMapping("/api/orca-token")
+    public Map<String, String> getOrcaToken() {
+        String token = generateOrcaToken(orcaUserId, jwtSecret);
+        return Map.of("token", token);
+    }
+
+    private String generateOrcaToken(Long userId, String secret) {
+        Instant now = Instant.now();
+        SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+
+        return Jwts.builder()
+                .claim("sub", userId)              // ORCA user ID (required)
+                .issuedAt(Date.from(now))          // iat claim (required)
+                .expiration(Date.from(now.plus(1, ChronoUnit.HOURS)))  // exp claim (required)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+}
+```
+
+Add the dependency to your `pom.xml`:
+```xml
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-api</artifactId>
+    <version>0.12.5</version>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-impl</artifactId>
+    <version>0.12.5</version>
+    <scope>runtime</scope>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-jackson</artifactId>
+    <version>0.12.5</version>
+    <scope>runtime</scope>
+</dependency>
+```
+
+Or for Gradle (`build.gradle`):
+```groovy
+implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
+```
+
+Configure in `application.properties`:
+```properties
+orca.jwt.secret=your-64-character-secret-from-orca
+orca.user.id=1
 ```
 
 ### Use JWT in Frontend

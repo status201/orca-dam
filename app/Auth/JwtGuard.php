@@ -18,12 +18,18 @@ class JwtGuard implements Guard
 {
     use GuardHelpers;
 
-    protected Request $request;
-
-    public function __construct(UserProvider $provider, Request $request)
+    public function __construct(UserProvider $provider)
     {
         $this->provider = $provider;
-        $this->request = $request;
+    }
+
+    /**
+     * Get the current request instance.
+     * We resolve this dynamically to ensure we always have the current request.
+     */
+    protected function getRequest(): Request
+    {
+        return app('request');
     }
 
     /**
@@ -57,7 +63,7 @@ class JwtGuard implements Guard
      */
     protected function getTokenFromRequest(): ?string
     {
-        $header = $this->request->header('Authorization', '');
+        $header = $this->getRequest()->header('Authorization', '');
 
         if (preg_match('/^Bearer\s+(.+)$/i', $header, $matches)) {
             return $matches[1];
@@ -112,9 +118,9 @@ class JwtGuard implements Guard
                 }
             }
 
-            // Validate issuer if configured
+            // Validate issuer if configured (treat empty string as null)
             $issuer = config('jwt.issuer');
-            if ($issuer !== null && (!isset($decoded->iss) || $decoded->iss !== $issuer)) {
+            if (!empty($issuer) && (!isset($decoded->iss) || $decoded->iss !== $issuer)) {
                 return null;
             }
 

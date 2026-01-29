@@ -85,7 +85,7 @@
                 @if($asset->isImage())
                     <img src="{{ $asset->url }}"
                          alt="{{ $asset->filename }}"
-                         class="w-full h-auto">
+                         class="h-auto my-0 mx-auto">
                 @elseif($asset->isVideo())
                     <video controls class="w-full" preload="metadata">
                         <source src="{{ $asset->url }}" type="{{ $asset->mime_type }}">

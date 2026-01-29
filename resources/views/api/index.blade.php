@@ -373,9 +373,9 @@
                                 <option :value="user.id" x-text="user.name + ' (' + user.email + ') - ' + user.role"></option>
                             </template>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">The user whose credentials will be used for JWT-authenticated requests</p>
+                        <p class="text-xs text-gray-500 mt-1 mt-2">The user whose credentials will be used for JWT-authenticated requests</p>
                     </div>
-                    <div class="flex items-end">
+                    <div class="flex items-center">
                         <button @click="generateJwtSecret()"
                                 :disabled="generatingJwt || !jwtSelectedUserId"
                                 class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50">

@@ -30,8 +30,7 @@ class AppServiceProvider extends ServiceProvider
         // Register JWT guard driver for API authentication
         Auth::extend('jwt', function ($app, $name, array $config) {
             return new JwtGuard(
-                Auth::createUserProvider($config['provider']),
-                $app['request']
+                Auth::createUserProvider($config['provider'])
             );
         });
     }
