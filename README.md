@@ -9,7 +9,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🏷️ Manual and AI-powered tagging (AWS Rekognition)
 - 🌍 Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
 - 🎯 Manual AI tag generation with configurable limits
-- ⚙️ Admin Settings panel (pagination, AI tag limits, language)
+- ⚙️ Admin Settings panel (pagination, AI tag settings & language)
 - 🔍 Advanced search and filtering
 - 🖼️ Thumbnail generation and grid view
 - 📤 Multi-file upload with drag & drop
@@ -20,12 +20,14 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - ♿ Accessibility support (alt text, captions)
 - 📊 CSV export with separate user/AI tag columns
 - 🔗 Easy URL copying for external integration
-- 🌐 Public metadata API endpoint (no auth required)
 - 🔎 Discover unmapped S3 objects
 - 🗑️ Trash & restore system with soft delete (keeps S3 objects)
 - ♻️ Permanent delete option for admins
 - 📱 Responsive design
-- 🌐 API-ready for Rich Text Editor integration
+- 🌐 OpenAPI 3 for Rich Text Editor or System integration
+- 🔓 Public metadata API endpoint (no auth required)
+- 🔒 Long-lived token support (Laravel Sanctum Token) for back-ends
+- 🔑 Short-lived token support (JWT bearer) for front-ends
 
 ## Installation
 
