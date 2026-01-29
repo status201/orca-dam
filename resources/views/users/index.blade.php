@@ -52,7 +52,7 @@
                     <div class="text-sm text-gray-900">{{ $user->email }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $user->isAdmin() ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full @if($user->isAdmin()) bg-purple-100 text-purple-700 @elseif($user->isApiUser()) bg-red-100 text-red-700 @else bg-blue-100 text-blue-700 @endif">
                         {{ ucfirst($user->role) }}
                     </span>
                 </td>

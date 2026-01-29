@@ -255,9 +255,9 @@
                                 <td class="px-6 py-4 text-sm">
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full"
                                           :class="{
-                                              'bg-purple-100 text-purple-800': token.user_role === 'api',
+                                              'bg-red-100 text-red-800': token.user_role === 'api',
                                               'bg-blue-100 text-blue-800': token.user_role === 'editor',
-                                              'bg-red-100 text-red-800': token.user_role === 'admin'
+                                              'bg-purple-100 text-purple-800': token.user_role === 'admin'
                                           }"
                                           x-text="token.user_role"></span>
                                 </td>

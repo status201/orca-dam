@@ -20,40 +20,7 @@ Ever tried managing files directly on Amazon S3? It's like trying to organize a 
 
 **Not fun.**
 
-That's exactly why we built ORCA. Think of it as a friendly reception desk in front of a massive warehouse:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     SPARK/STUDYFLOW                         │
-│                 (Your courses & content)                    │
-│                             │                               │
-│                             │ Search and                    │
-│                             │ link to files                 │
-│                             ▼                               │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │                                                      │   │
-│  │                      ORCA DAM                        │   │
-│  │                                                      │   │
-│  │   * Search & filter        * User management         │   │
-│  │   * AI-powered tagging     * Safe deletion           │   │
-│  │   * Add & edit metadata    * Access control          │   │
-│  │   * Organized folders      * Manage storage          │   │
-│  │                                                      │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                             │                               │
-│                             │ managed access                │
-│                             ▼                               │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │                                                      │   │
-│  │                       AWS S3                         │   │
-│  │                   (Cloud Storage)                    │   │
-│  │                                                      │   │
-│  │              Your actual files live here             │   │
-│  │                                                      │   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
-
+That's exactly why we built ORCA. Think of it as a friendly reception desk in front of a massive warehouse.
 ORCA sits between you and the raw cloud storage, making everything safer, searchable, and manageable.
 
 ---
