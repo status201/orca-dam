@@ -28,16 +28,18 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔓 Public metadata API endpoint (no auth required)
 - 🔒 Long-lived token support (Laravel Sanctum Token) for back-ends
 - 🔑 Short-lived token support (JWT bearer) for front-ends
+- 👤 User preferences (home folder, items per page)
 
 ## Installation
 
 ### Prerequisites
-- PHP 8.2+ with minimum 256MB memory limit
+- PHP 8.3+ with minimum 256MB memory limit
 - Composer
 - MySQL/PostgreSQL
 - Node.js & NPM
 - AWS Account with S3 bucket
 - GD or Imagick extension for image processing
+- Supervisor on your production server
 
 ### Setup Steps
 
@@ -59,7 +61,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-4. Configure AWS credentials in `.env`:
+4. Configure AWS credentials, optional Rekognition and JWT auth in `.env`:
 ```env
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
@@ -72,6 +74,17 @@ AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
 AWS_REKOGNITION_MAX_LABELS=5             # Max AI tags per asset
 AWS_REKOGNITION_MIN_CONFIDENCE=75        # Min confidence threshold (65-99)
 AWS_REKOGNITION_LANGUAGE=en              # Language: en, nl, fr, de, es, etc.
+
+# Optional: _Also_ enable JWT auth
+JWT_ENABLED=true
+# Signature algorithm (HS256 recommended)
+JWT_ALGORITHM=HS256
+# Maximum token lifetime in seconds (default: 10 hours)
+JWT_MAX_TTL=36000
+# Clock skew tolerance in seconds
+JWT_LEEWAY=60
+# Optional: Required issuer claim value
+JWT_ISSUER=
 ```
 
 5. Run migrations
@@ -137,6 +150,7 @@ php artisan serve  # Or use Herd
 - Search and browse all assets
 - Copy URLs
 - Soft delete assets (moves to trash)
+- Set personal preferences (home folder, items per page)
 
 **Admins:**
 - All editor permissions
@@ -233,7 +247,7 @@ Admins can run tests from the browser via **System → Tests** tab:
 
 **Note for shared hosting:** If you get "php not found" errors, add to `.env`:
 ```env
-PHP_CLI_PATH=/opt/plesk/php/8.2/bin/php  # Adjust path for your server
+PHP_CLI_PATH=/opt/plesk/php/8.3/bin/php  # Adjust path for your server
 ```
 Find your path via SSH: `which php`
 
@@ -318,4 +332,5 @@ MIT License
 
 ## Credits
 
-Built with ❤️ for managing cloud assets efficiently.
+Copyright © 2026 Gijs Oliemans & Studyflow.
+Built together with 🤖 Claude Opus 4.5, as part of an AI pilot for Studyflow.

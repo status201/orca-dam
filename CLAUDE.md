@@ -25,14 +25,14 @@ php artisan db:seed --class=AdminUserSeeder
 ### Testing
 ```bash
 # Run all tests
-php artisan test
+php artisan config:clear && php artisan test
 
 # Run specific test suite
-php artisan test --testsuite=Feature
-php artisan test --testsuite=Unit
+php artisan config:clear && php artisan test --testsuite=Feature
+php artisan config:clear && php artisan test --testsuite=Unit
 
 # Run specific test file
-php artisan test tests/Feature/AssetTest.php
+php artisan config:clear && php artisan test tests/Feature/AssetTest.php
 
 # Alternative: Use PHPUnit directly
 vendor/bin/phpunit

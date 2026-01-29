@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Asset;
+use App\Models\Setting;
 use App\Models\User;
 
 test('guests cannot access assets index', function () {
@@ -353,4 +354,91 @@ test('replace preserves tags after replacement', function () {
     expect($asset->tags)->toHaveCount(2);
     expect($asset->userTags)->toHaveCount(1);
     expect($asset->aiTags)->toHaveCount(1);
+});
+
+test('assets index uses user home folder preference as default', function () {
+    Setting::set('s3_root_folder', 'assets', 'string', 'aws');
+    Setting::set('s3_folders', ['assets', 'assets/marketing', 'assets/docs'], 'json', 'aws');
+
+    $user = User::factory()->create([
+        'preferences' => ['home_folder' => 'assets/marketing'],
+    ]);
+
+    // Create assets in different folders
+    Asset::factory()->create(['s3_key' => 'assets/marketing/file1.jpg', 'filename' => 'file1.jpg']);
+    Asset::factory()->create(['s3_key' => 'assets/docs/file2.jpg', 'filename' => 'file2.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.index'));
+
+    $response->assertStatus(200);
+    $response->assertSee('file1.jpg');
+    $response->assertDontSee('file2.jpg');
+});
+
+test('assets index uses user items per page preference', function () {
+    Setting::set('items_per_page', 24, 'integer', 'display');
+    Setting::set('s3_root_folder', '', 'string', 'aws');
+
+    $user = User::factory()->create([
+        'preferences' => ['items_per_page' => 12],
+    ]);
+
+    // Create 15 assets
+    Asset::factory(15)->create();
+
+    $response = $this->actingAs($user)->get(route('assets.index'));
+
+    $response->assertStatus(200);
+    // With 12 per page, we should have pagination
+    expect($response['assets']->perPage())->toBe(12);
+});
+
+test('assets index url param overrides user folder preference', function () {
+    Setting::set('s3_root_folder', 'assets', 'string', 'aws');
+    Setting::set('s3_folders', ['assets', 'assets/marketing', 'assets/docs'], 'json', 'aws');
+
+    $user = User::factory()->create([
+        'preferences' => ['home_folder' => 'assets/marketing'],
+    ]);
+
+    Asset::factory()->create(['s3_key' => 'assets/marketing/file1.jpg', 'filename' => 'file1.jpg']);
+    Asset::factory()->create(['s3_key' => 'assets/docs/file2.jpg', 'filename' => 'file2.jpg']);
+
+    // Override with URL param
+    $response = $this->actingAs($user)->get(route('assets.index', ['folder' => 'assets/docs']));
+
+    $response->assertStatus(200);
+    $response->assertDontSee('file1.jpg');
+    $response->assertSee('file2.jpg');
+});
+
+test('assets index url param overrides user items per page preference', function () {
+    Setting::set('items_per_page', 24, 'integer', 'display');
+    Setting::set('s3_root_folder', '', 'string', 'aws');
+
+    $user = User::factory()->create([
+        'preferences' => ['items_per_page' => 12],
+    ]);
+
+    Asset::factory(50)->create();
+
+    // Override with URL param
+    $response = $this->actingAs($user)->get(route('assets.index', ['per_page' => 48]));
+
+    $response->assertStatus(200);
+    expect($response['assets']->perPage())->toBe(48);
+});
+
+test('assets index falls back to global setting when no user preference', function () {
+    Setting::set('items_per_page', 36, 'integer', 'display');
+    Setting::set('s3_root_folder', '', 'string', 'aws');
+
+    $user = User::factory()->create(); // No preferences
+
+    Asset::factory(50)->create();
+
+    $response = $this->actingAs($user)->get(route('assets.index'));
+
+    $response->assertStatus(200);
+    expect($response['assets']->perPage())->toBe(36);
 });

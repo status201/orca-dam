@@ -108,6 +108,7 @@ ORCA has two user roles with different capabilities:
 | Edit asset details (alt text, caption, tags) | ✓ | ✓ |
 | Replace asset files | ✓ | ✓ |
 | Delete files (to Trash) | ✓ | ✓ |
+| Set personal preferences | ✓ | ✓ |
 | Create folders | ✗ | ✓ |
 | View Trash | ✗ | ✓ |
 | Restore from Trash | ✗ | ✓ |
@@ -456,6 +457,57 @@ Stuck? Here's what to do:
 
 ---
 
+## User Preferences
+
+You can customize ORCA to work the way you prefer. Access your preferences via the **Profile** page (click your name in the top-right menu).
+
+### Available Preferences
+
+#### Home Folder
+
+Set your default starting folder when browsing assets. This is useful if you mostly work in a specific folder.
+
+- When you visit the Assets page without specifying a folder, ORCA will automatically show your home folder
+- The folder must be within the system's configured root folder
+- Leave empty to use the default (root folder)
+
+**Example:** If you always work with marketing assets, set your home folder to `assets/marketing`. Every time you go to Assets, you'll start there instead of the root.
+
+#### Items Per Page
+
+Set how many assets you want to see per page by default.
+
+- Choose from: 12, 24, 36, 48, 60, 72, or 96
+- Select "Use default" to follow the global system setting
+- This affects both Grid and List views
+
+**Note:** The "Results per page" dropdown on the Assets page still works — it overrides your preference for that session. Your preference is just the default when you first load the page.
+
+### How Preferences Work
+
+Preferences follow a hierarchy (highest priority first):
+
+1. **URL parameters** — If you click a link with `?folder=assets/docs`, that wins
+2. **Your user preference** — What you set in Profile → Preferences
+3. **Global system setting** — The default configured by your admin
+
+This means your preferences are respected, but you can still navigate freely — clicking a different folder or changing the results dropdown won't reset to your preferences until you load a fresh page.
+
+### Setting Your Preferences
+
+1. Click your name in the top-right corner
+2. Select **Profile**
+3. Scroll down to the **Preferences** section
+4. Choose your preferred home folder from the dropdown
+5. Choose your preferred items per page
+6. Click **Save**
+
+You'll see a "Saved" confirmation when successful.
+
+**Tip:** Click the refresh icon (↻) next to the folder dropdown to reload the folder list if new folders were recently created.
+
+---
+
 ## Glossary
 
 | Term | Meaning |
@@ -468,6 +520,7 @@ Stuck? Here's what to do:
 | **User Tags** | Tags manually added by people |
 | **S3 Key** | The technical path/address of a file in cloud storage |
 | **Thumbnail** | A small preview image generated for visual files |
+| **Preferences** | Personal settings (like home folder) that customize your ORCA experience |
 | **Rekognition** | Amazon's AI service that analyzes images and suggests tags |
 | **Replace** | Uploading a new file to overwrite an existing asset while keeping the same URL |
 

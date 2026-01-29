@@ -24,6 +24,7 @@ class User extends Authenticatable
         'role',
         'jwt_secret',
         'jwt_secret_generated_at',
+        'preferences',
     ];
 
     /**
@@ -49,6 +50,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'jwt_secret_generated_at' => 'datetime',
             'jwt_secret' => 'encrypted',
+            'preferences' => 'array',
         ];
     }
 
@@ -98,5 +100,69 @@ class User extends Authenticatable
     public function canManageAllAssets(): bool
     {
         return $this->isAdmin();
+    }
+
+    /**
+     * Get a user preference value
+     */
+    public function getPreference(string $key, mixed $default = null): mixed
+    {
+        return data_get($this->preferences, $key, $default);
+    }
+
+    /**
+     * Set a user preference value
+     */
+    public function setPreference(string $key, mixed $value): bool
+    {
+        $preferences = $this->preferences ?? [];
+        $preferences[$key] = $value;
+        $this->preferences = $preferences;
+
+        return $this->save();
+    }
+
+    /**
+     * Get the user's home folder preference, validated against global root
+     */
+    public function getHomeFolder(): string
+    {
+        $userFolder = $this->getPreference('home_folder');
+        $globalRoot = \App\Services\S3Service::getRootFolder();
+
+        if ($userFolder && $this->isValidHomeFolder($userFolder)) {
+            return $userFolder;
+        }
+
+        return $globalRoot;
+    }
+
+    /**
+     * Check if a folder is a valid home folder (within global root)
+     */
+    public function isValidHomeFolder(string $folder): bool
+    {
+        $globalRoot = \App\Services\S3Service::getRootFolder();
+
+        // If no global root configured, any folder is valid
+        if ($globalRoot === '') {
+            return true;
+        }
+
+        // Folder must be the root or start with root/
+        return $folder === $globalRoot || str_starts_with($folder, $globalRoot.'/');
+    }
+
+    /**
+     * Get the user's items per page preference, falling back to global setting
+     */
+    public function getItemsPerPage(): int
+    {
+        $userPref = $this->getPreference('items_per_page');
+        if ($userPref && (int) $userPref > 0) {
+            return (int) $userPref;
+        }
+
+        return (int) \App\Models\Setting::get('items_per_page', 24);
     }
 }

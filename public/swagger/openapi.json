@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "ORCA DAM API",
-    "description": "Digital Asset Management API for ORCA DAM. Provides endpoints for managing assets, tags, and chunked file uploads.\n\n## Authentication\n\nAll endpoints except `/api/assets/meta` require authentication via Bearer token (Laravel Sanctum).\n\nInclude the token in the Authorization header:\n```\nAuthorization: Bearer YOUR_TOKEN_HERE\n```\n\n## Rate Limiting\n\nChunked upload endpoints are rate-limited to 100 requests per minute.",
+    "description": "Digital Asset Management API for ORCA DAM. Provides endpoints for managing assets, tags, and chunked file uploads.\n\n## Authentication\n\nAll endpoints except `/api/assets/meta` require authentication via Bearer token (Laravel Sanctum or JWT).\n\nInclude the token in the Authorization header:\n```\nAuthorization: Bearer YOUR_TOKEN_HERE\n```\n\n## Rate Limiting\n\nChunked upload endpoints are rate-limited to 100 requests per minute.",
     "version": "1.0.0",
     "contact": {
       "name": "ORCA DAM"

@@ -48,9 +48,10 @@ class AssetController extends Controller
             $query->ofType($type);
         }
 
-        // Apply folder filter (default to root folder)
+        // Apply folder filter: URL param > user preference > global root
         $rootFolder = S3Service::getRootFolder();
-        $folder = $request->input('folder', $rootFolder);
+        $userHomeFolder = Auth::user()->getHomeFolder();
+        $folder = $request->input('folder', $userHomeFolder);
         if ($folder !== '') {
             $query->inFolder($folder);
         }
@@ -91,11 +92,11 @@ class AssetController extends Controller
                 $query->latest('updated_at');
         }
 
-        // Allow per_page from request (user preference) to override global setting
+        // Items per page: URL param > user preference > global setting
         $allowedPerPage = [12, 24, 36, 48, 60, 72, 96];
         $perPage = $request->input('per_page');
         if (! $perPage || ! in_array((int) $perPage, $allowedPerPage)) {
-            $perPage = Setting::get('items_per_page', 24);
+            $perPage = Auth::user()->getItemsPerPage();
         }
         $assets = $query->paginate((int) $perPage)->withQueryString();
         $tags = Tag::orderBy('name')->get();
@@ -107,7 +108,7 @@ class AssetController extends Controller
             array_unshift($folders, '');
         }
 
-        return view('assets.index', compact('assets', 'tags', 'perPage', 'folders', 'rootFolder'));
+        return view('assets.index', compact('assets', 'tags', 'perPage', 'folders', 'rootFolder', 'folder'));
     }
 
     /**
@@ -327,7 +328,7 @@ class AssetController extends Controller
     {
         $this->authorize('restore', Asset::class);
 
-        $perPage = Setting::get('items_per_page', 24);
+        $perPage = Auth::user()->getItemsPerPage();
         $assets = Asset::onlyTrashed()
             ->with(['user', 'tags'])
             ->orderBy('deleted_at', 'desc')

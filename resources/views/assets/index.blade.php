@@ -514,7 +514,7 @@ function assetGrid() {
     return {
         search: @json(request('search', '')),
         type: @json(request('type', '')),
-        folder: @json(request('folder', $rootFolder)),
+        folder: @json($folder),
         sort: @json(request('sort', 'date_desc')),
         selectedTags: @json(request('tags', [])),
         initialTags: @json(request('tags', [])),
