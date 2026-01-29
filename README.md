@@ -267,20 +267,32 @@ Find your path via SSH: `which php`
 ```
 orca-dam/
 ├── app/
+│   ├── Auth/
+│   │   └── JwtGuard.php               # JWT authentication guard
 │   ├── Console/Commands/
-│   │   └── CleanupStaleUploads.php    # Cleanup stale chunked uploads
+│   │   ├── CleanupStaleUploads.php    # Cleanup stale chunked uploads
+│   │   ├── JwtGenerateCommand.php     # Generate JWT secret for user
+│   │   ├── JwtListCommand.php         # List users with JWT secrets
+│   │   ├── JwtRevokeCommand.php       # Revoke JWT secret
+│   │   ├── TokenCreateCommand.php     # Create Sanctum API token
+│   │   ├── TokenListCommand.php       # List API tokens
+│   │   └── TokenRevokeCommand.php     # Revoke API token
 │   ├── Http/Controllers/
 │   │   ├── Api/
 │   │   │   └── AssetApiController.php # REST API for assets
 │   │   ├── Auth/                      # Laravel Breeze auth controllers
+│   │   ├── ApiDocsController.php      # OpenAPI docs page
 │   │   ├── AssetController.php        # Asset CRUD & management
 │   │   ├── ChunkedUploadController.php# Large file uploads
 │   │   ├── DashboardController.php    # Dashboard stats
 │   │   ├── DiscoverController.php     # S3 discovery (admin)
 │   │   ├── ExportController.php       # CSV export (admin)
-│   │   ├── ProfileController.php      # User profile
+│   │   ├── FolderController.php       # Folder list, scan & create
+│   │   ├── JwtSecretController.php    # JWT secret management (admin)
+│   │   ├── ProfileController.php      # User profile & preferences
 │   │   ├── SystemController.php       # System admin (admin)
 │   │   ├── TagController.php          # Tag management
+│   │   ├── TokenController.php        # API token management (admin)
 │   │   └── UserController.php         # User management (admin)
 │   ├── Jobs/
 │   │   ├── GenerateAiTags.php         # AI tagging background job
@@ -300,10 +312,13 @@ orca-dam/
 │       ├── RekognitionService.php     # AWS Rekognition AI tagging
 │       ├── S3Service.php              # S3 operations & thumbnails
 │       └── SystemService.php          # System admin utilities
+├── config/
+│   └── jwt.php                        # JWT authentication config
 ├── database/
 │   ├── factories/                     # Test factories
 │   └── migrations/
 ├── resources/views/
+│   ├── api/                           # OpenAPI documentation view
 │   ├── assets/                        # Asset views (index, show, edit, create, trash)
 │   ├── auth/                          # Authentication views
 │   ├── components/                    # Blade components
@@ -315,7 +330,8 @@ orca-dam/
 │   ├── tags/                          # Tag management view
 │   ├── users/                         # User management views
 │   ├── vendor/pagination/             # Custom pagination templates
-│   └── dashboard.blade.php
+│   ├── dashboard.blade.php
+│   └── welcome.blade.php              # Landing page
 ├── routes/
 │   ├── api.php                        # API routes
 │   └── web.php                        # Web routes
