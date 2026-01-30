@@ -118,7 +118,7 @@ class RekognitionService
                     'name' => strtolower($labelName),
                     'confidence' => $label['Confidence'],
                 ];
-                \Log::info('AWS Rekognition detected label: '.$labels['name'].' -> '.$labels['confidence']);
+                \Log::info('AWS Rekognition detected label: '.$label['Name'].' -> '.$label['Confidence']);
             }
 
             return $labels;
