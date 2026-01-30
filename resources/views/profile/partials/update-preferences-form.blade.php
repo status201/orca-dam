@@ -57,6 +57,21 @@
             <p x-show="errors.items_per_page" x-text="errors.items_per_page" class="mt-2 text-sm text-red-600"></p>
         </div>
 
+        <div>
+            <x-input-label for="dark_mode" :value="__('Dark Mode (Experimental)')" />
+            <select id="dark_mode"
+                    x-model="darkMode"
+                    name="dark_mode"
+                    @change="updateDarkModePreview"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                <option value="disabled">{{ __('Disabled') }}</option>
+                <option value="force_dark">{{ __('Force Dark Mode') }}</option>
+                <option value="force_light">{{ __('Force Light Mode') }}</option>
+            </select>
+            <p class="mt-1 text-xs text-gray-500">{{ __('Experimental dark/light mode override. CSS styling not yet complete.') }}</p>
+            <p x-show="errors.dark_mode" x-text="errors.dark_mode" class="mt-2 text-sm text-red-600"></p>
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button :disabled="false" x-bind:disabled="saving">
                 <span x-show="!saving">{{ __('Save') }}</span>
@@ -72,6 +87,7 @@ function preferencesForm() {
     return {
         homeFolder: @json($user->getPreference('home_folder') ?? ''),
         itemsPerPage: @json($user->getPreference('items_per_page') ?? 0),
+        darkMode: @json($user->getPreference('dark_mode') ?? 'disabled'),
         saving: false,
         refreshing: false,
         errors: {},
@@ -91,6 +107,7 @@ function preferencesForm() {
                     body: JSON.stringify({
                         home_folder: this.homeFolder,
                         items_per_page: this.itemsPerPage,
+                        dark_mode: this.darkMode,
                     }),
                 });
 
@@ -120,6 +137,17 @@ function preferencesForm() {
             setTimeout(() => {
                 window.location.reload();
             }, 500);
+        },
+
+        updateDarkModePreview() {
+            const html = document.documentElement;
+            html.classList.remove('dark-mode', 'light-mode');
+
+            if (this.darkMode === 'force_dark') {
+                html.classList.add('dark-mode');
+            } else if (this.darkMode === 'force_light') {
+                html.classList.add('light-mode');
+            }
         }
     };
 }

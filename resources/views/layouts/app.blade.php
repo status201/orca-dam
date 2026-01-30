@@ -1,5 +1,13 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+@php
+    $darkModeClass = '';
+    if (auth()->check()) {
+        $dm = auth()->user()->getPreference('dark_mode');
+        if ($dm === 'force_dark') $darkModeClass = 'dark-mode';
+        elseif ($dm === 'force_light') $darkModeClass = 'light-mode';
+    }
+@endphp
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $darkModeClass }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">

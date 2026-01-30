@@ -93,6 +93,7 @@ class ProfileController extends Controller
                 }
             }],
             'items_per_page' => 'nullable|integer|in:0,12,24,36,48,60,72,96',
+            'dark_mode' => 'nullable|string|in:disabled,force_dark,force_light',
         ]);
 
         $preferences = $request->user()->preferences ?? [];
@@ -109,6 +110,13 @@ class ProfileController extends Controller
             $preferences['items_per_page'] = (int) $validated['items_per_page'];
         } else {
             unset($preferences['items_per_page']);
+        }
+
+        // Dark mode: disabled or empty = use default (no class)
+        if (! empty($validated['dark_mode']) && $validated['dark_mode'] !== 'disabled') {
+            $preferences['dark_mode'] = $validated['dark_mode'];
+        } else {
+            unset($preferences['dark_mode']);
         }
 
         $request->user()->update(['preferences' => $preferences ?: null]);
