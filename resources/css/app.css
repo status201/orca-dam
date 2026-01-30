@@ -132,3 +132,28 @@
 .footer-logo-container:hover svg {
     transform: scale(1.1);
 }
+
+/* Dark Mode shortcut ;-) */
+@media (prefers-color-scheme: dark) {
+    html {
+        filter: invert(1);
+    }
+    body {
+        background: white;
+    }
+    #swagger-ui,
+    img, video, svg {
+        filter: invert(1);
+    }
+}
+
+html.dark-mode {
+    filter: invert(1);
+    body {
+        background: white;
+    }
+    #swagger-ui,
+    img, video, svg {
+        filter: invert(1);
+    }
+}
