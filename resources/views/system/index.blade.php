@@ -66,10 +66,10 @@
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 <i class="fas fa-vial mr-2"></i>Tests
                 <span x-show="testStats.failed > 0"
-                      class="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full"
+                      class="attention ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full"
                       x-text="testStats.failed"></span>
                 <span x-show="testStats.passed > 0 && testStats.failed === 0"
-                      class="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full"
+                      class="attention ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full"
                       x-text="testStats.passed"></span>
             </button>
         </nav>
@@ -589,7 +589,7 @@
                 <!-- Command Output -->
                 <div x-show="commandOutput" class="mt-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Output</label>
-                    <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <div class="attention bg-gray-900 rounded-lg p-4 overflow-x-auto">
                     <pre class="text-xs font-mono"
                          :class="commandSuccess ? 'text-green-400' : 'text-red-400'"
                          x-text="commandOutput"></pre>
@@ -822,7 +822,7 @@
                     <span class="text-sm text-gray-600" x-text="Math.round(testProgress) + '%'"></span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                    <div class="attention bg-green-600 h-2.5 rounded-full transition-all duration-300"
                          :style="'width: ' + Math.round(testProgress) + '%'"></div>
                 </div>
             </div>
@@ -834,12 +834,12 @@
                     <p class="text-sm text-gray-500">Total Tests</p>
                 </div>
                 <div class="bg-green-50 rounded-lg p-4 text-center">
-                    <p class="text-3xl font-bold text-green-600" x-text="testStats.passed"></p>
-                    <p class="text-sm text-gray-500">Passed</p>
+                    <p class="attention text-3xl font-bold text-green-600" x-text="testStats.passed"></p>
+                    <p class="attention text-sm text-gray-500">Passed</p>
                 </div>
                 <div class="rounded-lg p-4 text-center" :class="testStats.failed > 0 ? 'bg-red-50' : 'bg-gray-50'">
-                    <p class="text-3xl font-bold" :class="testStats.failed > 0 ? 'text-red-600' : 'text-gray-400'" x-text="testStats.failed"></p>
-                    <p class="text-sm text-gray-500">Failed</p>
+                    <p class="attention text-3xl font-bold" :class="testStats.failed > 0 ? 'text-red-600' : 'text-gray-400'" x-text="testStats.failed"></p>
+                    <p class="attention text-sm text-gray-500">Failed</p>
                 </div>
                 <div class="bg-blue-50 rounded-lg p-4 text-center">
                     <p class="text-3xl font-bold text-blue-600" x-text="testStats.assertions"></p>
@@ -852,7 +852,7 @@
             </div>
 
             <!-- Success/Failure Banner -->
-            <div x-show="testStats.total > 0 && !runningTests" class="mb-6">
+            <div x-show="testStats.total > 0 && !runningTests" class="attention mb-6">
                 <div x-show="testStats.failed === 0" class="p-4 bg-green-100 border border-green-300 rounded-lg flex items-center">
                     <div class="flex-shrink-0">
                         <i class="fas fa-check-circle text-3xl text-green-600"></i>
@@ -905,7 +905,7 @@
                     <p class="text-lg">No tests have been run yet</p>
                     <p class="text-sm mt-2">Click "Run Tests" to execute the test suite</p>
                 </div>
-                <div x-show="testOutput || runningTests" class="bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-[600px] overflow-y-auto">
+                <div x-show="testOutput || runningTests" class="attention bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-[600px] overflow-y-auto">
                     <pre class="text-sm font-mono whitespace-pre-wrap text-gray-100" x-html="formatTestOutput(testOutput)"></pre>
                 </div>
             </div>
@@ -927,11 +927,11 @@
                                  :class="tests.some(t => t.status === 'failed') ? 'bg-red-50' : 'bg-gray-50'"
                                  @click="toggleSuite(suite)">
                                 <div class="flex items-center gap-2">
-                                    <i class="fas fa-chevron-right text-gray-400 transition-transform"
+                                    <i class="attention fas fa-chevron-right text-gray-400 transition-transform"
                                        :class="{'rotate-90': expandedSuites.includes(suite)}"></i>
                                     <span class="font-medium text-gray-900" x-text="suite"></span>
                                 </div>
-                                <div class="flex items-center gap-2">
+                                <div class="attention flex items-center gap-2">
                                     <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700"
                                           x-text="tests.filter(t => t.status === 'passed').length + ' passed'"></span>
                                     <span x-show="tests.filter(t => t.status === 'failed').length > 0"
@@ -944,7 +944,7 @@
                                     <template x-for="test in tests" :key="test.name">
                                         <div class="px-4 py-2 flex items-center gap-3 text-sm"
                                              :class="test.status === 'failed' ? 'bg-red-50' : ''">
-                                            <i class="fas"
+                                            <i class="attention fas"
                                                :class="test.status === 'passed' ? 'fa-check text-green-500' : 'fa-times text-red-500'"></i>
                                             <span :class="test.status === 'failed' ? 'text-red-700 font-medium' : 'text-gray-700'" x-text="test.name"></span>
                                         </div>

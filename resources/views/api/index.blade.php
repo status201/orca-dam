@@ -399,7 +399,7 @@
         <div x-show="createdToken.plainText" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle text-3xl text-green-600"></i>
+                    <i class="attention fas fa-check-circle text-3xl text-green-600"></i>
                 </div>
                 <div class="flex-grow">
                     <h4 class="text-lg font-semibold text-green-800 mb-2">Token Created Successfully!</h4>
@@ -411,19 +411,19 @@
                         <div class="flex items-center justify-between gap-4">
                             <code class="text-sm font-mono text-gray-900 break-all" x-text="createdToken.plainText"></code>
                             <button @click="copyToken()"
-                                    class="flex-shrink-0 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">
+                                    class="attention flex-shrink-0 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">
                                 <i class="fas fa-copy mr-1"></i>Copy
                             </button>
                         </div>
                     </div>
 
-                    <div class="mt-4 text-sm text-green-700">
+                    <div class="attention mt-4 text-sm text-green-700">
                         <p><strong>User:</strong> <span x-text="createdToken.userName"></span> (<span x-text="createdToken.userEmail"></span>)</p>
                         <p><strong>Role:</strong> <span x-text="createdToken.userRole"></span></p>
                     </div>
 
                     <button @click="createdToken = {plainText: '', userName: '', userEmail: '', userRole: ''}; loadTokens();"
-                            class="mt-4 text-sm text-green-700 hover:text-green-900 underline">
+                            class="attention mt-4 text-sm text-green-700 hover:text-green-900 underline">
                         Dismiss and refresh list
                     </button>
                 </div>
@@ -492,15 +492,15 @@
         </div>
 
         <!-- API Info Box -->
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2">
                 <i class="fas fa-info-circle mr-1"></i>Using API Tokens
             </h4>
-            <div class="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+            <div class="text-xs text-blue-800 space-y-1">
                 <p>Include the token in API requests using the Authorization header:</p>
-                <code class="block bg-blue-100 dark:bg-blue-800 p-2 rounded mt-2 font-mono">Authorization: Bearer YOUR_TOKEN_HERE</code>
+                <code class="block bg-blue-100 p-2 rounded mt-2 font-mono">Authorization: Bearer YOUR_TOKEN_HERE</code>
                 <p class="mt-2"><strong>API users</strong> (role: api) have limited permissions: view, create, and update assets. They cannot delete assets, access trash, discover unmapped files, or export data.</p>
-                <p>See <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">RTE_INTEGRATION.md</code> for integration examples.</p>
+                <p>See <code class="bg-blue-100 px-1 rounded">RTE_INTEGRATION.md</code> for integration examples.</p>
             </div>
         </div>
     </div>
@@ -508,11 +508,11 @@
     <!-- JWT Secrets Tab -->
     <div x-show="activeTab === 'jwt'" class="space-y-6">
         <!-- JWT Info Box -->
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2">
                 <i class="fas fa-info-circle mr-1"></i>About JWT Authentication
             </h4>
-            <div class="text-xs text-blue-800 dark:text-blue-300 space-y-2">
+            <div class="text-xs text-blue-800 space-y-2">
                 <p>JWT authentication allows external systems to generate short-lived tokens for API access. This is ideal for frontend RTE integrations where you don't want to expose long-lived Sanctum tokens.</p>
                 <p><strong>How it works:</strong></p>
                 <ol class="list-decimal ml-4 space-y-1">
@@ -525,17 +525,17 @@
         </div>
 
         <!-- JWT Status Banner -->
-        <div :class="jwtEnabled ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'"
-             class="attention border rounded-lg p-4">
+        <div :class="jwtEnabled ? 'bg-green-50 border-green-200' : 'bg-yellow-50  border-yellow-200'"
+             class="border rounded-lg p-4">
             <div class="flex items-center">
-                <i :class="jwtEnabled ? 'fa-check-circle text-green-600 dark:text-green-400' : 'fa-exclamation-triangle text-yellow-600 dark:text-yellow-400'"
-                   class="fas text-xl mr-3"></i>
+                <i :class="jwtEnabled ? 'fa-check-circle text-green-600' : 'fa-exclamation-triangle text-yellow-600'"
+                   class="attention fas text-xl mr-3"></i>
                 <div>
-                    <p :class="jwtEnabled ? 'text-green-800 dark:text-green-200' : 'text-yellow-800 dark:text-yellow-200'" class="font-medium">
+                    <p :class="jwtEnabled ? 'text-green-800' : 'text-yellow-800'" class="font-medium">
                         JWT Authentication is <span x-text="jwtEnabled ? 'Enabled' : 'Disabled'"></span>
                     </p>
-                    <p x-show="!jwtEnabled" class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                        Set <code class="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">JWT_ENABLED=true</code> in your .env file to enable JWT authentication.
+                    <p x-show="!jwtEnabled" class="text-xs text-yellow-700 mt-1">
+                        Set <code class="bg-yellow-100 px-1 rounded">JWT_ENABLED=true</code> in your .env file to enable JWT authentication.
                     </p>
                 </div>
             </div>
@@ -543,27 +543,27 @@
 
         <!-- JWT Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Users with JWT Secrets</p>
-                        <p class="text-3xl font-bold text-green-600 dark:text-green-400" x-text="jwtSecretCount"></p>
+                        <p class="text-sm font-medium text-gray-500">Users with JWT Secrets</p>
+                        <p class="text-3xl font-bold text-green-600" x-text="jwtSecretCount"></p>
                     </div>
-                    <i class="fas fa-shield-alt text-4xl text-green-200 dark:text-green-800"></i>
+                    <i class="fas fa-shield-alt text-4xl text-green-200"></i>
                 </div>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</p>
-                        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400" x-text="jwtAllUsers.length"></p>
+                        <p class="text-sm font-medium text-gray-500">Total Users</p>
+                        <p class="text-3xl font-bold text-blue-600" x-text="jwtAllUsers.length"></p>
                     </div>
-                    <i class="fas fa-users text-4xl text-blue-200 dark:text-blue-800"></i>
+                    <i class="fas fa-users text-4xl text-blue-200"></i>
                 </div>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow p-6">
                 <button @click="loadJwtSecrets()"
-                        class="w-full h-full flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                        class="w-full h-full flex items-center justify-center text-gray-600 hover:text-gray-900">
                     <i class="fas fa-sync-alt text-2xl" :class="{'fa-spin': loadingJwt}"></i>
                     <span class="ml-2">Refresh</span>
                 </button>
@@ -571,24 +571,24 @@
         </div>
 
         <!-- Generate JWT Secret Form -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-plus-circle mr-2"></i>Generate JWT Secret
                 </h3>
             </div>
             <div class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select User *</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select User *</label>
                         <select x-model="jwtSelectedUserId"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent bg-white text-gray-900">
                             <option value="">Select a user...</option>
                             <template x-for="user in jwtAllUsers" :key="user.id">
                                 <option :value="user.id" x-text="user.name + ' (' + user.email + ') - ' + user.role"></option>
                             </template>
                         </select>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mt-2">The user whose credentials will be used for JWT-authenticated requests</p>
+                        <p class="text-xs text-gray-500 mt-1 mt-2">The user whose credentials will be used for JWT-authenticated requests</p>
                     </div>
                     <div class="flex items-center">
                         <button @click="generateJwtSecret()"
@@ -603,36 +603,36 @@
         </div>
 
         <!-- Generated Secret Display -->
-        <div x-show="generatedJwtSecret.secret" class="bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-lg p-6">
+        <div x-show="generatedJwtSecret.secret" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0">
-                    <i class="fas fa-check-circle text-3xl text-green-600 dark:text-green-400"></i>
+                    <i class="attention fas fa-check-circle text-3xl text-green-600"></i>
                 </div>
                 <div class="flex-grow">
-                    <h4 class="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">JWT Secret Generated!</h4>
-                    <p class="text-sm text-green-700 dark:text-green-300 mb-4">
+                    <h4 class="text-lg font-semibold text-green-800 mb-2">JWT Secret Generated!</h4>
+                    <p class="text-sm text-green-700 mb-4">
                         <strong>Important:</strong> Copy this secret now. It will NOT be shown again!
                     </p>
 
-                    <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-300 dark:border-green-700 mb-4">
-                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">JWT Secret</label>
+                    <div class="bg-white rounded-lg p-4 border border-green-300 mb-4">
+                        <label class="block text-xs text-gray-500 mb-1">JWT Secret</label>
                         <div class="flex items-center justify-between gap-4">
-                            <code class="text-sm font-mono text-gray-900 dark:text-white break-all" x-text="generatedJwtSecret.secret"></code>
+                            <code class="text-sm font-mono text-gray-900 break-all" x-text="generatedJwtSecret.secret"></code>
                             <button @click="copyJwtSecret()"
-                                    class="flex-shrink-0 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">
+                                    class="attention flex-shrink-0 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">
                                 <i class="fas fa-copy mr-1"></i>Copy
                             </button>
                         </div>
                     </div>
 
-                    <div class="text-sm text-green-700 dark:text-green-300 mb-4">
+                    <div class="attention text-sm text-green-700 mb-4">
                         <p><strong>User:</strong> <span x-text="generatedJwtSecret.userName"></span> (<span x-text="generatedJwtSecret.userEmail"></span>)</p>
                         <p><strong>Role:</strong> <span x-text="generatedJwtSecret.userRole"></span></p>
                         <p><strong>User ID:</strong> <span x-text="generatedJwtSecret.userId"></span> (use this in the JWT 'sub' claim)</p>
                     </div>
 
                     <!-- Example Code -->
-                    <div class="bg-gray-800 rounded-lg p-4 text-sm">
+                    <div class="attention bg-gray-800 rounded-lg p-4 text-sm">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-gray-400 text-xs">Example: Node.js JWT Generation</span>
                             <button @click="copyJwtExample()"
@@ -653,7 +653,7 @@ const token = jwt.sign(
                     </div>
 
                     <button @click="generatedJwtSecret = {}; loadJwtSecrets();"
-                            class="mt-4 text-sm text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 underline">
+                            class="attention mt-4 text-sm text-green-700 hover:text-green-900:text-green-100 underline">
                         Dismiss and refresh list
                     </button>
                 </div>
@@ -661,56 +661,56 @@ const token = jwt.sign(
         </div>
 
         <!-- Existing JWT Secrets Table -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-list mr-2"></i>Users with JWT Secrets
                 </h3>
             </div>
             <div class="overflow-x-auto">
-                <div x-show="loadingJwt" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                <div x-show="loadingJwt" class="p-8 text-center text-gray-500">
                     <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
                     <p>Loading JWT secrets...</p>
                 </div>
-                <div x-show="!loadingJwt && jwtUsersWithSecrets.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
-                    <i class="fas fa-shield-alt text-4xl mb-3 text-gray-300 dark:text-gray-600"></i>
+                <div x-show="!loadingJwt && jwtUsersWithSecrets.length === 0" class="p-8 text-center text-gray-500">
+                    <i class="fas fa-shield-alt text-4xl mb-3 text-gray-300"></i>
                     <p>No users have JWT secrets. Generate one above to get started.</p>
                 </div>
-                <table x-show="!loadingJwt && jwtUsersWithSecrets.length > 0" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-700">
+                <table x-show="!loadingJwt && jwtUsersWithSecrets.length > 0" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">ID</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">User</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Role</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Generated</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Generated</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody class="bg-white divide-y divide-gray-200">
                         <template x-for="user in jwtUsersWithSecrets" :key="user.id">
                             <tr>
-                                <td class="px-6 py-4 text-sm text-gray-900 dark:text-white" x-text="user.id"></td>
-                                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                                <td class="px-6 py-4 text-sm text-gray-900" x-text="user.id"></td>
+                                <td class="px-6 py-4 text-sm text-gray-600">
                                     <div x-text="user.name"></div>
-                                    <div class="text-xs text-gray-400 dark:text-gray-500" x-text="user.email"></div>
+                                    <div class="text-xs text-gray-400" x-text="user.email"></div>
                                 </td>
                                 <td class="px-6 py-4 text-sm">
                                     <span class="px-2 py-1 text-xs font-semibold rounded-full"
                                           :class="{
-                                              'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200': user.role === 'api',
-                                              'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200': user.role === 'editor',
-                                              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200': user.role === 'admin'
+                                              'bg-purple-100 text-purple-800': user.role === 'api',
+                                              'bg-blue-100 text-blue-800': user.role === 'editor',
+                                              'bg-red-100 text-red-800': user.role === 'admin'
                                           }"
                                           x-text="user.role"></span>
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" x-text="user.generated_at || 'Unknown'"></td>
+                                <td class="px-6 py-4 text-sm text-gray-600" x-text="user.generated_at || 'Unknown'"></td>
                                 <td class="px-6 py-4 text-sm space-x-2">
                                     <button @click="jwtSelectedUserId = user.id; generateJwtSecret()"
-                                            class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
+                                            class="text-blue-600 hover:text-blue-900:text-blue-300">
                                         <i class="fas fa-redo mr-1"></i>Regenerate
                                     </button>
                                     <button @click="revokeJwtSecret(user.id, user.name)"
-                                            class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
+                                            class="text-red-600 hover:text-red-900:text-red-300">
                                         <i class="attention fas fa-trash mr-1"></i>Revoke
                                     </button>
                                 </td>
@@ -722,20 +722,20 @@ const token = jwt.sign(
         </div>
 
         <!-- JWT Technical Info -->
-        <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">
                 <i class="fas fa-code mr-1"></i>JWT Technical Details
             </h4>
-            <div class="text-xs text-gray-600 dark:text-gray-400 space-y-2">
+            <div class="text-xs text-gray-600 space-y-2">
                 <p><strong>Algorithm:</strong> HS256 (HMAC-SHA256)</p>
                 <p><strong>Required claims:</strong></p>
                 <ul class="list-disc ml-4">
-                    <li><code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">sub</code> - User ID (integer)</li>
-                    <li><code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">exp</code> - Expiration timestamp</li>
-                    <li><code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">iat</code> - Issued-at timestamp</li>
+                    <li><code class="bg-gray-200 px-1 rounded">sub</code> - User ID (integer)</li>
+                    <li><code class="bg-gray-200 px-1 rounded">exp</code> - Expiration timestamp</li>
+                    <li><code class="bg-gray-200 px-1 rounded">iat</code> - Issued-at timestamp</li>
                 </ul>
-                <p><strong>Max token lifetime:</strong> 10 hour (configurable via <code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">JWT_MAX_TTL</code>)</p>
-                <p><strong>Usage:</strong> Include in Authorization header as <code class="bg-gray-200 dark:bg-gray-600 px-1 rounded">Bearer {token}</code></p>
+                <p><strong>Max token lifetime:</strong> 10 hour (configurable via <code class="bg-gray-200 px-1 rounded">JWT_MAX_TTL</code>)</p>
+                <p><strong>Usage:</strong> Include in Authorization header as <code class="bg-gray-200 px-1 rounded">Bearer {token}</code></p>
             </div>
         </div>
     </div>
@@ -801,8 +801,8 @@ function apiDocs() {
         generatedJwtSecret: {},
 
         init() {
-            // Set active tab from URL hash
-            const hash = window.location.hash.substring(1);
+            // Set active tab from URL hash (replace slash, swagger adds that so it becomes `api-docs#/swagger`)
+            const hash = window.location.hash.substring(1).replace('/', '');
             if (hash && this.validTabs.includes(hash)) {
                 this.activeTab = hash;
             }
