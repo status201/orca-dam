@@ -722,7 +722,7 @@
                     </div>
                     <button @click="testS3Connection()"
                             :disabled="testingS3"
-                            class="test px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                            class="test px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
                         <i class="fas mr-2" :class="testingS3 ? 'fa-spinner fa-spin' : 'fa-vial'"></i>
                         Test
                     </button>

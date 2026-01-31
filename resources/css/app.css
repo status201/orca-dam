@@ -14,7 +14,7 @@ html.dark-mode {
 
 /* Explicit light mode - same as default but explicit */
 html.light-mode {
-    color-scheme: only light;
+    color-scheme: light only;
 }
 
 
@@ -166,6 +166,7 @@ html.light-mode {
 */
 html.dark-mode {
     filter: invert(1);
+    scrollbar-color: #000000 #333333;
 }
 html.dark-mode body{
     background: white;
