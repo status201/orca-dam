@@ -64,25 +64,25 @@
         <h1 class="text-3xl font-bold mb-6">Edit Asset</h1>
 
         @if(session('success'))
-        <div class="mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
+        <div class="attention mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
             <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
         </div>
         @endif
 
         @if(session('error'))
-        <div class="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
+        <div class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
             <i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}
         </div>
         @endif
 
         @if(session('warning'))
-        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
+        <div class="attention mb-6 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
             <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('warning') }}
         </div>
         @endif
 
         @if(request()->has('replaced'))
-        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
+        <div class="attention mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg">
             <i class="fas fa-info-circle mr-2"></i>
             <strong>Asset replaced successfully.</strong>
             The new thumbnail may take a moment to generate. If you still see the old image,

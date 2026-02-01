@@ -74,7 +74,7 @@
                 @endif
 
                 <!-- Trash badge -->
-                <div class="warning absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs">
+                <div class="warning absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs opacity-70">
                     <i class="fas fa-trash-alt mr-1"></i>Deleted
                 </div>
 

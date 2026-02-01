@@ -151,6 +151,72 @@
             </div>
         </div>
 
+        <!-- API Status -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-heartbeat mr-2"></i>API Status
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Sanctum Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Sanctum</p>
+                            <p class="attention text-xs text-green-600">Active</p>
+                        </div>
+                    </div>
+
+                    <!-- JWT Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full mr-3"
+                             :class="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">JWT</p>
+                            <p class="attention text-xs"
+                               :class="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1' ? 'text-green-600' : 'text-red-600'">
+                                <template x-if="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1'">
+                                    <span>Active</span>
+                                </template>
+                                <template x-if="systemInfo.jwtEnvEnabled !== '1'">
+                                    <span>Disabled (env)</span>
+                                </template>
+                                <template x-if="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled !== '1'">
+                                    <span>Disabled (setting)</span>
+                                </template>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Public Meta Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full mr-3"
+                             :class="settings.metaEndpointEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Public Meta</p>
+                            <p class="attention text-xs"
+                               :class="settings.metaEndpointEnabled === '1' ? 'text-green-600' : 'text-red-600'"
+                               x-text="settings.metaEndpointEnabled === '1' ? 'Enabled' : 'Disabled'"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 pt-[0]">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="text-sm font-semibold text-blue-900 mb-2">
+                        <i class="fas fa-info-circle mr-1"></i>About API settings
+                    </h4>
+                    <div class="text-xs text-blue-800 space-y-1">
+                        <p>You can find these API settings on the <strong><a href="/api-docs" title="API Settings & Documentation">API page</a></strong></p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
         <!-- Disk Usage -->
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200">
@@ -530,17 +596,17 @@
             <div class="p-6">
                 <div x-show="logData.exists" class="space-y-4">
                     <div class="text-sm text-gray-600">
-                        <span class="font-semibold">File:</span> <span class="font-mono" x-text="logData.path"></span><br>
+                        <span class="font-semibold">File:</span> <span class="break-all font-mono" x-text="logData.path"></span><br>
                         <span class="font-semibold">Size:</span> <span x-text="formatBytes(logData.size)"></span>
                     </div>
-                    <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <div class="attention bg-gray-900 rounded-lg p-4 overflow-x-auto">
                         <pre class="text-xs text-green-400 font-mono"><template x-for="(line, index) in logData.lines" :key="index"><div x-text="line" :class="getLogLineColor(line)"></div></template></pre>
                     </div>
                 </div>
                 <div x-show="!logData.exists" class="text-center py-8 text-gray-500">
                     <i class="fas fa-inbox text-4xl mb-3"></i>
                     <p>Click the refresh button</p>
-                    <p>Choose the amount of lines you'd like to see in the top right.</p>
+                    <p>Choose the amount of lines at the top right.</p>
                     <button @click="refreshLogs()"
                             class="px-4 py-2 mt-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                         <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': loadingLogs}"></i>Refresh
@@ -1017,11 +1083,16 @@ function systemAdmin() {
             s3_root_folder: '{{ collect($settings)->firstWhere('key', 's3_root_folder')['value'] ?? 'assets' }}',
             rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
             rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
-            rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '75' }}',
+            jwtSettingEnabled: '{{ collect($settings)->firstWhere('key', 'jwt_enabled_override')['value'] ?? '0' }}',
+            metaEndpointEnabled: '{{ collect($settings)->firstWhere('key', 'api_meta_endpoint_enabled')['value'] ?? '0' }}',
         },
         settingsSaved: false,
         settingsError: '',
         savingSettings: false,
+
+        systemInfo: {
+          jwtEnvEnabled: '{{$systemInfo['jwt_enabled']}}',
+        },
 
         // Documentation
         selectedDoc: 'USER_MANUAL.md',

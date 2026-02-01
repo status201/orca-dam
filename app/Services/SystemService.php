@@ -261,6 +261,7 @@ class SystemService
             'post_max_size' => ini_get('post_max_size'),
             'gd_enabled' => extension_loaded('gd'),
             'imagick_enabled' => extension_loaded('imagick'),
+            'jwt_enabled' => config('jwt.enabled'),
         ];
     }
 
