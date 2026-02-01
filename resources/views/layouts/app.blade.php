@@ -15,6 +15,13 @@
 
         <title>@yield('title', 'Home') - ORCA</title>
 
+        @if($darkModeClass === '')
+            <meta name="color-scheme" content="light" />
+        @endif
+        @if($darkModeClass === 'light-mode')
+            <meta name="color-scheme" content="light only" />
+        @endif
+
         <!-- Favicon -->
         <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">

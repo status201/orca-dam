@@ -17,6 +17,11 @@ html.light-mode {
     color-scheme: light only;
 }
 
+/* Smooth page transitions(?) */
+@view-transition {
+    navigation: auto;
+}
+
 
 /* Alpine.js x-cloak - hide elements until Alpine is ready */
 [x-cloak] {
