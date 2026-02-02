@@ -369,25 +369,13 @@ class SystemService
         }
 
         try {
-            // Try ORCA workers first (manual setup per DEPLOYMENT.md)
-            exec('supervisorctl status orca-queue-worker:* 2>&1', $output, $returnCode);
-            $workerSource = 'orca';
+            // Get ALL supervisor processes and filter for queue workers
+            // This is more reliable than using wildcard patterns which may not expand correctly
+            $output = [];
+            exec('supervisorctl status 2>&1', $output, $returnCode);
 
-            // If no ORCA workers found, try Forge workers
-            // Forge uses naming convention: worker-{id}:worker-{id}_00
-            if (empty($output) || $returnCode !== 0 || $this->isNoProcessError($output)) {
-                $forgeOutput = [];
-                exec('supervisorctl status worker-*:* 2>&1', $forgeOutput, $forgeReturnCode);
-
-                if (! empty($forgeOutput) && $forgeReturnCode === 0 && ! $this->isNoProcessError($forgeOutput)) {
-                    $output = $forgeOutput;
-                    $returnCode = $forgeReturnCode;
-                    $workerSource = 'forge';
-                }
-            }
-
-            // If still no processes found
-            if (empty($output) || $returnCode !== 0 || $this->isNoProcessError($output)) {
+            // If supervisor returned an error or no output
+            if (empty($output) || $returnCode !== 0) {
                 return [
                     'available' => true,
                     'message' => 'No queue worker processes found in supervisor. For manual setup see DEPLOYMENT.md, or use Laravel Forge for automatic configuration.',
@@ -395,16 +383,33 @@ class SystemService
                 ];
             }
 
-            // Parse supervisor output
+            // Parse supervisor output and filter for queue workers
             $workers = [];
+            $workerSource = null;
+
             foreach ($output as $line) {
-                // Match both ORCA and Forge naming patterns:
+                // Match supervisor status line format:
                 // ORCA: "orca-queue-worker:orca-queue-worker_00   RUNNING   pid 12345, uptime 0:05:23"
                 // Forge: "worker-670782:worker-670782_00          RUNNING   pid 269178, uptime 3:03:15"
                 if (preg_match('/^([\w:-]+)\s+(STOPPED|STARTING|RUNNING|BACKOFF|STOPPING|EXITED|FATAL|UNKNOWN)\s+(.*)$/', $line, $matches)) {
                     $name = $matches[1];
                     $status = $matches[2];
                     $details = $matches[3];
+
+                    // Check if this is a queue worker we care about
+                    $isOrcaWorker = str_starts_with($name, 'orca-queue-worker:');
+                    $isForgeWorker = preg_match('/^worker-\d+:/', $name);
+
+                    if (! $isOrcaWorker && ! $isForgeWorker) {
+                        continue; // Skip non-queue-worker processes
+                    }
+
+                    // Track the source (prefer ORCA if both exist)
+                    if ($isOrcaWorker) {
+                        $workerSource = 'orca';
+                    } elseif ($workerSource === null) {
+                        $workerSource = 'forge';
+                    }
 
                     // Extract PID and uptime if available
                     $pid = null;
@@ -427,13 +432,19 @@ class SystemService
                 }
             }
 
-            // Build appropriate message based on worker source
-            $message = 'No workers found';
-            if (count($workers) > 0) {
-                $message = $workerSource === 'forge'
-                    ? 'Laravel Forge is managing queue workers'
-                    : 'Supervisor is managing queue workers';
+            // No queue workers found
+            if (empty($workers)) {
+                return [
+                    'available' => true,
+                    'message' => 'No queue worker processes found in supervisor. For manual setup see DEPLOYMENT.md, or use Laravel Forge for automatic configuration.',
+                    'workers' => [],
+                ];
             }
+
+            // Build appropriate message based on worker source
+            $message = $workerSource === 'forge'
+                ? 'Laravel Forge is managing queue workers'
+                : 'Supervisor is managing queue workers';
 
             return [
                 'available' => true,
@@ -453,23 +464,6 @@ class SystemService
                 'workers' => [],
             ];
         }
-    }
-
-    /**
-     * Check if supervisorctl output indicates no matching processes
-     */
-    private function isNoProcessError(array $output): bool
-    {
-        if (empty($output)) {
-            return true;
-        }
-
-        $firstLine = $output[0] ?? '';
-
-        // Common error messages when no processes match the pattern
-        return str_contains($firstLine, 'no such process')
-            || str_contains($firstLine, 'ERROR')
-            || str_contains($firstLine, 'error:');
     }
 
     /**
