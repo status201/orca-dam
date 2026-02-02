@@ -537,10 +537,10 @@
             </div>
         </div>
         <!-- JWT Status Banner -->
-        <div :class="jwtEnabled ? 'bg-green-50 border-green-200' : 'bg-yellow-50  border-yellow-200'"
+        <div :class="jwtEnabled && jwtSettingEnabled ? 'bg-green-50 border-green-200' : 'bg-yellow-50  border-yellow-200'"
              class="border rounded-lg p-4">
             <div class="flex items-center">
-                <i :class="jwtEnabled ? 'fa-check-circle text-green-600' : 'fa-exclamation-triangle text-yellow-600'"
+                <i :class="jwtEnabled && jwtSettingEnabled ? 'fa-check-circle text-green-600' : 'fa-exclamation-triangle text-yellow-600'"
                    class="attention fas text-xl mr-3"></i>
                 <div>
                     <p :class="jwtEnabled && jwtSettingEnabled ? 'text-green-800' : 'text-yellow-800'" class="font-medium">
