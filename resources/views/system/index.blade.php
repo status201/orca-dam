@@ -1083,6 +1083,7 @@ function systemAdmin() {
             s3_root_folder: '{{ collect($settings)->firstWhere('key', 's3_root_folder')['value'] ?? 'assets' }}',
             rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
             rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
+            rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '80' }}',
             jwtSettingEnabled: '{{ collect($settings)->firstWhere('key', 'jwt_enabled_override')['value'] ?? '0' }}',
             metaEndpointEnabled: '{{ collect($settings)->firstWhere('key', 'api_meta_endpoint_enabled')['value'] ?? '0' }}',
         },
