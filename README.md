@@ -28,7 +28,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔓 Public metadata API endpoint (no auth required)
 - 🔒 Long-lived token support (Laravel Sanctum Token) for back-ends
 - 🔑 Short-lived token support (JWT bearer) for front-ends
-- 👤 User preferences (home folder, items per page)
+- 👤 User preferences (home folder, items per page, dark/light mode)
 
 ## Installation
 
