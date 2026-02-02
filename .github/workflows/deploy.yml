@@ -1,0 +1,30 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          tools: composer:v2
+          coverage: none
+      - name: Require Laravel Forge CLI
+        run: composer global require laravel/forge-cli
+      - name: Deploy Site
+        run: |
+          forge server:switch your-server-name
+          forge deploy your-site-name.com
+        env:
+          FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
