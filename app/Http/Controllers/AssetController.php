@@ -70,6 +70,12 @@ class AssetController extends Controller
             case 'date_desc':
                 $query->latest('updated_at');
                 break;
+            case 'upload_asc':
+                $query->oldest('created_at');
+                break;
+            case 'upload_desc':
+                $query->latest('created_at');
+                break;
             case 'size_asc':
                 $query->orderBy('size', 'asc');
                 break;

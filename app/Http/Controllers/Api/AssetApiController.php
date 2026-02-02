@@ -29,8 +29,7 @@ class AssetApiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Asset::with(['tags', 'user'])
-            ->latest();
+        $query = Asset::with(['tags', 'user']);
 
         // Apply filters
         if ($search = $request->input('search')) {
@@ -47,6 +46,43 @@ class AssetApiController extends Controller
 
         if (Auth::user()->isAdmin() && $userId = $request->input('user')) {
             $query->byUser($userId);
+        }
+
+        // Apply sorting
+        $sort = $request->input('sort', 'date_desc');
+        switch ($sort) {
+            case 'date_asc':
+                $query->oldest('updated_at');
+                break;
+            case 'date_desc':
+                $query->latest('updated_at');
+                break;
+            case 'upload_asc':
+                $query->oldest('created_at');
+                break;
+            case 'upload_desc':
+                $query->latest('created_at');
+                break;
+            case 'size_asc':
+                $query->orderBy('size', 'asc');
+                break;
+            case 'size_desc':
+                $query->orderBy('size', 'desc');
+                break;
+            case 'name_asc':
+                $query->orderBy('filename', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('filename', 'desc');
+                break;
+            case 's3key_asc':
+                $query->orderBy('s3_key', 'asc');
+                break;
+            case 's3key_desc':
+                $query->orderBy('s3_key', 'desc');
+                break;
+            default:
+                $query->latest('updated_at');
         }
 
         $perPage = min($request->input('per_page', 24), 100);
@@ -180,8 +216,7 @@ class AssetApiController extends Controller
      */
     public function search(Request $request)
     {
-        $query = Asset::with(['tags'])
-            ->latest();
+        $query = Asset::with(['tags']);
 
         if ($search = $request->input('q')) {
             $query->search($search);
@@ -194,6 +229,43 @@ class AssetApiController extends Controller
 
         if ($type = $request->input('type')) {
             $query->ofType($type);
+        }
+
+        // Apply sorting
+        $sort = $request->input('sort', 'date_desc');
+        switch ($sort) {
+            case 'date_asc':
+                $query->oldest('updated_at');
+                break;
+            case 'date_desc':
+                $query->latest('updated_at');
+                break;
+            case 'upload_asc':
+                $query->oldest('created_at');
+                break;
+            case 'upload_desc':
+                $query->latest('created_at');
+                break;
+            case 'size_asc':
+                $query->orderBy('size', 'asc');
+                break;
+            case 'size_desc':
+                $query->orderBy('size', 'desc');
+                break;
+            case 'name_asc':
+                $query->orderBy('filename', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('filename', 'desc');
+                break;
+            case 's3key_asc':
+                $query->orderBy('s3_key', 'asc');
+                break;
+            case 's3key_desc':
+                $query->orderBy('s3_key', 'desc');
+                break;
+            default:
+                $query->latest('updated_at');
         }
 
         $perPage = min($request->input('per_page', 24), 100);

@@ -56,6 +56,8 @@
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <option value="date_desc">Newest First</option>
                         <option value="date_asc">Oldest First</option>
+                        <option value="upload_desc">Newest Uploads</option>
+                        <option value="upload_asc">Oldest Uploads</option>
                         <option value="size_desc">Largest First</option>
                         <option value="size_asc">Smallest First</option>
                         <option value="name_asc">Name A-Z</option>
