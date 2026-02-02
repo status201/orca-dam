@@ -507,42 +507,6 @@
 
     <!-- JWT Secrets Tab -->
     <div x-show="activeTab === 'jwt'" class="space-y-6">
-        <!-- JWT Info Box -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 class="text-sm font-semibold text-blue-900 mb-2">
-                <i class="fas fa-info-circle mr-1"></i>About JWT Authentication
-            </h4>
-            <div class="text-xs text-blue-800 space-y-2">
-                <p>JWT authentication allows external systems to generate short-lived tokens for API access. This is ideal for frontend RTE integrations where you don't want to expose long-lived Sanctum tokens.</p>
-                <p><strong>How it works:</strong></p>
-                <ol class="list-decimal ml-4 space-y-1">
-                    <li>Generate a JWT secret for a user (below)</li>
-                    <li>Share the secret with your external backend system</li>
-                    <li>Your backend generates short-lived JWTs using the secret</li>
-                    <li>Your frontend uses the JWT for ORCA API requests</li>
-                </ol>
-            </div>
-        </div>
-
-        <!-- JWT Status Banner -->
-        <div :class="jwtEnabled ? 'bg-green-50 border-green-200' : 'bg-yellow-50  border-yellow-200'"
-             class="border rounded-lg p-4">
-            <div class="flex items-center">
-                <i :class="jwtEnabled ? 'fa-check-circle text-green-600' : 'fa-exclamation-triangle text-yellow-600'"
-                   class="attention fas text-xl mr-3"></i>
-                <div>
-                    <p :class="jwtEnabled && jwtSettingEnabled ? 'text-green-800' : 'text-yellow-800'" class="font-medium">
-                        JWT Authentication is <span x-text="jwtEnabled && jwtSettingEnabled ? 'Enabled' : 'Disabled'"></span>
-                    </p>
-                    <p x-show="!jwtEnabled" class="text-xs text-yellow-700 mt-1">
-                        Set <code class="bg-yellow-100 px-1 rounded">JWT_ENABLED=true</code> in your .env file to enable JWT authentication.
-                    </p>
-                    <p x-show="!jwtSettingEnabled" class="text-xs text-yellow-700 mt-1">
-                        JWT Authentication is turned off in the Dasboard Settings.
-                    </p>
-                </div>
-            </div>
-        </div>
 
         <!-- JWT Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -570,6 +534,25 @@
                     <i class="fas fa-sync-alt text-2xl" :class="{'fa-spin': loadingJwt}"></i>
                     <span class="ml-2">Refresh</span>
                 </button>
+            </div>
+        </div>
+        <!-- JWT Status Banner -->
+        <div :class="jwtEnabled ? 'bg-green-50 border-green-200' : 'bg-yellow-50  border-yellow-200'"
+             class="border rounded-lg p-4">
+            <div class="flex items-center">
+                <i :class="jwtEnabled ? 'fa-check-circle text-green-600' : 'fa-exclamation-triangle text-yellow-600'"
+                   class="attention fas text-xl mr-3"></i>
+                <div>
+                    <p :class="jwtEnabled && jwtSettingEnabled ? 'text-green-800' : 'text-yellow-800'" class="font-medium">
+                        JWT Authentication is <span x-text="jwtEnabled && jwtSettingEnabled ? 'Enabled' : 'Disabled'"></span>
+                    </p>
+                    <p x-show="!jwtEnabled" class="text-xs text-yellow-700 mt-1">
+                        Set <code class="bg-yellow-100 px-1 rounded">JWT_ENABLED=true</code> in your .env file to enable JWT authentication.
+                    </p>
+                    <p x-show="!jwtSettingEnabled" class="text-xs text-yellow-700 mt-1">
+                        JWT Authentication is turned off in the Dasboard Settings.
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -741,6 +724,24 @@ const token = jwt.sign(
                 <p><strong>Usage:</strong> Include in Authorization header as <code class="bg-gray-200 px-1 rounded">Bearer {token}</code></p>
             </div>
         </div>
+        <!-- JWT Info Box -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 class="text-sm font-semibold text-blue-900 mb-2">
+                <i class="fas fa-info-circle mr-1"></i>About JWT Authentication
+            </h4>
+            <div class="text-xs text-blue-800 space-y-2">
+                <p>JWT authentication allows external systems to generate short-lived tokens for API access. This is ideal for frontend RTE integrations where you don't want to expose long-lived Sanctum tokens.</p>
+                <p><strong>How it works:</strong></p>
+                <ol class="list-decimal ml-4 space-y-1">
+                    <li>Generate a JWT secret for a user (below)</li>
+                    <li>Share the secret with your external backend system</li>
+                    <li>Your backend generates short-lived JWTs using the secret</li>
+                    <li>Your frontend uses the JWT for ORCA API requests</li>
+                </ol>
+            </div>
+        </div>
+
+
     </div>
 </div>
 @endsection
