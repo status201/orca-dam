@@ -266,6 +266,73 @@ test('api assets search can sort results', function () {
     expect($data[1]['id'])->toBe($newer->id);
 });
 
+test('api assets index hides sensitive user data', function () {
+    $user = User::factory()->create([
+        'email' => 'secret@example.com',
+        'preferences' => ['items_per_page' => 48],
+    ]);
+    Sanctum::actingAs($user);
+
+    Asset::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->getJson('/api/assets');
+
+    $response->assertOk();
+    $userData = $response->json('data.0.user');
+    expect($userData)->toHaveKeys(['id', 'name', 'role']);
+    expect($userData)->not->toHaveKey('email');
+    expect($userData)->not->toHaveKey('email_verified_at');
+    expect($userData)->not->toHaveKey('jwt_secret_generated_at');
+    expect($userData)->not->toHaveKey('preferences');
+    expect($userData)->not->toHaveKey('password');
+    expect($userData)->not->toHaveKey('jwt_secret');
+});
+
+test('api asset show hides sensitive user data', function () {
+    $user = User::factory()->create(['email' => 'secret@example.com']);
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->getJson("/api/assets/{$asset->id}");
+
+    $response->assertOk();
+    $userData = $response->json('user');
+    expect($userData)->toHaveKeys(['id', 'name', 'role']);
+    expect($userData)->not->toHaveKey('email');
+    expect($userData)->not->toHaveKey('preferences');
+});
+
+test('api assets index can filter by folder', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    Asset::factory()->create(['s3_key' => 'assets/marketing/photo.jpg']);
+    Asset::factory()->create(['s3_key' => 'assets/design/logo.png']);
+    Asset::factory()->create(['s3_key' => 'assets/marketing/banner.jpg']);
+
+    $response = $this->getJson('/api/assets?folder=assets/marketing');
+
+    $response->assertOk();
+    $response->assertJsonCount(2, 'data');
+    $filenames = collect($response->json('data'))->pluck('s3_key')->all();
+    expect($filenames)->each->toContain('assets/marketing/');
+});
+
+test('api assets search can filter by folder', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    Asset::factory()->create(['s3_key' => 'assets/marketing/photo.jpg', 'filename' => 'photo.jpg']);
+    Asset::factory()->create(['s3_key' => 'assets/design/photo.png', 'filename' => 'photo.png']);
+
+    $response = $this->getJson('/api/assets/search?q=photo&folder=assets/marketing');
+
+    $response->assertOk();
+    $response->assertJsonCount(1, 'data');
+    expect($response->json('data.0.s3_key'))->toContain('assets/marketing/');
+});
+
 test('api assets index defaults to newest first when no sort specified', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);

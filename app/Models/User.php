@@ -36,6 +36,10 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'jwt_secret',
+        'email',
+        'email_verified_at',
+        'jwt_secret_generated_at',
+        'preferences',
     ];
 
     /**
@@ -91,7 +95,7 @@ class User extends Authenticatable
      */
     public function hasJwtSecret(): bool
     {
-        return !empty($this->jwt_secret);
+        return ! empty($this->jwt_secret);
     }
 
     /**

@@ -48,6 +48,10 @@ class AssetApiController extends Controller
             $query->byUser($userId);
         }
 
+        if ($folder = $request->input('folder')) {
+            $query->inFolder($folder);
+        }
+
         // Apply sorting
         $sort = $request->input('sort', 'date_desc');
         switch ($sort) {
@@ -223,6 +227,10 @@ class AssetApiController extends Controller
 
         if ($type = $request->input('type')) {
             $query->ofType($type);
+        }
+
+        if ($folder = $request->input('folder')) {
+            $query->inFolder($folder);
         }
 
         // Apply sorting

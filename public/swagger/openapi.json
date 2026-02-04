@@ -79,6 +79,15 @@
             }
           },
           {
+            "name": "folder",
+            "in": "query",
+            "description": "Filter by S3 folder path (e.g., 'assets/marketing')",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "per_page",
             "in": "query",
             "description": "Number of items per page (max 100)",
@@ -222,6 +231,15 @@
             "schema": {
               "type": "string",
               "enum": ["images", "videos", "documents"]
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "description": "Filter by S3 folder path (e.g., 'assets/marketing')",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1043,6 +1061,7 @@
       },
       "User": {
         "type": "object",
+        "description": "User object (sensitive fields like email are hidden from API responses)",
         "properties": {
           "id": {
             "type": "integer",
@@ -1051,11 +1070,6 @@
           "name": {
             "type": "string",
             "example": "John Doe"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "example": "john@example.com"
           },
           "role": {
             "type": "string",
