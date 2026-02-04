@@ -139,7 +139,7 @@
                         
                         <button @click="removeFile(index)" 
                                 :disabled="uploading"
-                                class="text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="attention text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>

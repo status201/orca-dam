@@ -109,7 +109,7 @@ Think before you click that upload button:
    - Drag and drop files onto the upload area, or
    - Click to browse and select files
 4. Watch the progress bars — larger files may take a moment
-5. Done! Your files are now in ORCA
+5. Done! Your files are now in ORCA. Generating thumbnails and AI tags is done in the background, this might take a little while, just refresh the page.
 
 **File size limit:** Up to 500MB per file. Larger files are automatically uploaded in chunks, so don't worry if your connection hiccups — it can resume where it left off.
 
@@ -117,7 +117,7 @@ Think before you click that upload button:
 
 1. Your file is safely stored in AWS S3
 2. A thumbnail is generated (for images)
-3. If AI tagging is enabled, ORCA automatically analyzes images and suggests relevant tags
+3. If AI tagging is enabled, ORCA automatically analyzes images and adds relevant tags
 4. The file appears in your asset library, ready to use
 
 ---
@@ -135,7 +135,7 @@ Toggle between them using the buttons in the top right.
 
 ### Searching & Filtering
 
-**Search box:** Type any part of a filename to find it quickly.
+**Search box:** Type any part of a filename, tag, folder, s3key to find it quickly.
 
 **Filters available:**
 - **File type** — Images, Videos, Documents
@@ -143,7 +143,8 @@ Toggle between them using the buttons in the top right.
 - **Tags** — Filter by one or more tags (checkboxes let you select multiple)
 
 **Sorting options:**
-- Date (newest/oldest)
+- Date modified (newest/oldest)
+- Date uploaded (newest/oldest)
 - Size (largest/smallest)
 - Name (A-Z / Z-A)
 - S3 key (the technical file path)

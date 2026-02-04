@@ -63,14 +63,14 @@
         <h1 class="text-3xl font-bold mb-6">Replace Asset File</h1>
 
         <!-- Success Message -->
-        <div x-show="success" x-cloak class="mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
+        <div x-show="success" x-cloak class="attention mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
             <i class="fas fa-check-circle mr-2"></i>
             <span x-text="successMessage"></span>
             <span class="ml-2 text-green-600">Redirecting in <span x-text="redirectCountdown"></span> seconds...</span>
         </div>
 
         <!-- Error Message -->
-        <div x-show="error" x-cloak class="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
+        <div x-show="error" x-cloak class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
             <i class="fas fa-exclamation-circle mr-2"></i>
             <span x-text="error"></span>
         </div>
@@ -152,7 +152,7 @@
 
                     <template x-if="!selectedFile">
                         <div class="space-y-4">
-                            <i class="fas fa-cloud-upload-alt text-5xl"
+                            <i class="attention fas fa-cloud-upload-alt text-5xl"
                                :class="dragActive ? 'text-amber-500' : 'text-gray-400'"></i>
                             <div>
                                 <p class="text-lg font-medium text-gray-700">
@@ -160,7 +160,7 @@
                                 </p>
                                 <p class="text-gray-500 mt-1">or</p>
                                 <button @click="$refs.fileInput.click()"
-                                        type="button"
+                                        type="attention button"
                                         class="mt-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
                                     Browse Files
                                 </button>
@@ -173,7 +173,7 @@
 
                     <template x-if="selectedFile && !uploading">
                         <div class="space-y-4">
-                            <i class="fas fa-file-check text-5xl text-green-500"></i>
+                            <i class="attention fas fa-file-check text-5xl text-green-500"></i>
                             <div>
                                 <p class="text-lg font-medium text-gray-700" x-text="selectedFile.name"></p>
                                 <p class="text-sm text-gray-500" x-text="formatFileSize(selectedFile.size)"></p>
@@ -186,7 +186,7 @@
                                 </button>
                                 <button @click="showConfirmation = true"
                                         type="button"
-                                        class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
+                                        class="attention px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
                                     <i class="fas fa-sync-alt mr-1"></i> Replace File
                                 </button>
                             </div>
@@ -292,12 +292,12 @@
                 <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                     <button @click="uploadFile()"
                             type="button"
-                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            class="attention w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm">
                         <i class="fas fa-sync-alt mr-2"></i> Yes, Replace
                     </button>
                     <button @click="showConfirmation = false"
                             type="button"
-                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm">
+                            class="attention mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm">
                         Cancel
                     </button>
                 </div>

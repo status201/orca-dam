@@ -136,7 +136,7 @@
                     @endif
                     <div class="mt-3 text-center">
                         <a href="{{ route('assets.replace', $asset) }}"
-                           class="inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
+                           class="attention inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors">
                             <i class="fas fa-sync-alt mr-2"></i> Replace File
                         </a>
                     </div>

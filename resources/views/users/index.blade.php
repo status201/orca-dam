@@ -56,7 +56,7 @@
                         {{ ucfirst($user->role) }}
                     </span>
                 </td>
-                <td class="actions-icons px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <a href="{{ route('users.edit', $user) }}" class="text-orca-black hover:text-orca-black-hover mr-3">
                         <i class="fas fa-edit"></i> Edit
                     </a>
@@ -65,7 +65,7 @@
                               onsubmit="return confirm('Are you sure you want to delete this user?');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="text-red-600 hover:text-red-900">
+                            <button type="submit" class="warning text-red-600 hover:text-red-900">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
                         </form>

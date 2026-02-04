@@ -10,7 +10,7 @@
         <h3 class="text-white font-semibold text-lg mb-1">ORCA DAM</h3>
         <p class="text-gray-400 text-sm mb-2">ORCA Retrieves Cloud Assets</p>
         <p class="text-gray-500 text-xs">
-            &copy; {{ date('Y') }} - Digital Asset Management
+            &copy; {{ date('Y') }} - Studyflow &amp; Status201
         </p>
     </div>
 </footer>
