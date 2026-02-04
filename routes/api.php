@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AssetApiController;
 use App\Http\Controllers\ChunkedUploadController;
+use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,9 @@ Route::middleware('auth.multi')->group(function () {
     // Tags API
     Route::get('tags', [TagController::class, 'index']);
     Route::get('tags/search', [TagController::class, 'search']);
+
+    // Folders API
+    Route::get('folders', [FolderController::class, 'index']);
 });
 
 // Chunked upload endpoints

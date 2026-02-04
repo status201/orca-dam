@@ -29,6 +29,10 @@
       "description": "Tag management endpoints"
     },
     {
+      "name": "Folders",
+      "description": "Folder management endpoints"
+    },
+    {
       "name": "Chunked Upload",
       "description": "Large file upload endpoints (files >= 10MB)"
     }
@@ -603,6 +607,38 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/Tag"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/folders": {
+      "get": {
+        "tags": ["Folders"],
+        "summary": "List folders",
+        "description": "Get a list of available S3 folder paths. Useful for populating folder filter dropdowns in asset picker integrations.",
+        "operationId": "listFolders",
+        "responses": {
+          "200": {
+            "description": "List of folder paths",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "folders": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": ["assets", "assets/marketing", "assets/design"]
+                    }
                   }
                 }
               }

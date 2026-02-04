@@ -333,6 +333,32 @@ test('api assets search can filter by folder', function () {
     expect($response->json('data.0.s3_key'))->toContain('assets/marketing/');
 });
 
+test('api folders endpoint returns folder list', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    Asset::factory()->create(['s3_key' => 'assets/marketing/photo.jpg']);
+    Asset::factory()->create(['s3_key' => 'assets/design/logo.png']);
+
+    // Clear any cached folders so they rebuild from assets
+    \App\Models\Setting::where('key', 's3_folders')->delete();
+    \Illuminate\Support\Facades\Cache::forget('settings');
+
+    $response = $this->getJson('/api/folders');
+
+    $response->assertOk();
+    $response->assertJsonStructure(['folders']);
+    $folders = $response->json('folders');
+    expect($folders)->toContain('assets/marketing');
+    expect($folders)->toContain('assets/design');
+});
+
+test('api folders endpoint requires authentication', function () {
+    $response = $this->getJson('/api/folders');
+
+    $response->assertUnauthorized();
+});
+
 test('api assets index defaults to newest first when no sort specified', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);

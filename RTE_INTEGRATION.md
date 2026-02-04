@@ -874,6 +874,7 @@ return [
 | `POST` | `/api/assets` | Upload files |
 | `PATCH` | `/api/assets/{id}` | Update asset metadata |
 | `GET` | `/api/tags` | List all tags |
+| `GET` | `/api/folders` | List available S3 folders (for folder dropdowns) |
 
 ### Common Query Parameters
 | Parameter | Description | Example |
@@ -883,6 +884,7 @@ return [
 | `tags` | Filter by tag IDs | `?tags=1,2,3` |
 | `per_page` | Results per page (max 100) | `?per_page=24` |
 | `page` | Page number | `?page=2` |
+| `folder` | Filter by S3 folder | `?folder=assets/marketing` |
 | `sort` | Sort order | `?sort=upload_desc` |
 
 ### Sort Options
