@@ -433,7 +433,7 @@ class SystemService
                         $pid = (int) $pidMatch[1];
                     }
                     if (preg_match('/uptime ([\d:]+)/', $details, $uptimeMatch)) {
-                        $uptime = $uptimeMatch[1];
+                        $uptime = $this->formatUptime($uptimeMatch[1]);
                     }
 
                     $workers[] = [
@@ -479,6 +479,40 @@ class SystemService
                 'workers' => [],
             ];
         }
+    }
+
+    /**
+     * Format supervisor uptime string (H:MM:SS) into human-readable format.
+     */
+    protected function formatUptime(string $raw): string
+    {
+        $parts = explode(':', $raw);
+        if (count($parts) !== 3) {
+            return $raw;
+        }
+
+        $totalHours = (int) $parts[0];
+        $minutes = (int) $parts[1];
+        $seconds = (int) $parts[2];
+
+        $days = intdiv($totalHours, 24);
+        $hours = $totalHours % 24;
+
+        $segments = [];
+        if ($days > 0) {
+            $segments[] = $days.'d';
+        }
+        if ($hours > 0) {
+            $segments[] = $hours.'h';
+        }
+        if ($minutes > 0) {
+            $segments[] = $minutes.'m';
+        }
+        if (empty($segments)) {
+            return $seconds.'s';
+        }
+
+        return implode(' ', $segments);
     }
 
     /**
