@@ -32,6 +32,8 @@ class SystemService
         'migrate:rollback',
         'migrate',
         'migrate --force',
+        'two-factor:status',
+        'two-factor:disable',
     ];
 
     /**
@@ -566,9 +568,9 @@ class SystemService
                 'category' => 'Cache',
             ],
             [
-                'command' => 'storage:link',
-                'description' => 'Create symbolic storage link',
-                'category' => 'Storage',
+                'command' => 'two-factor:status',
+                'description' => 'List users and their two-factor authentication status',
+                'category' => '2FA',
             ],
             [
                 'command' => 'uploads:cleanup',

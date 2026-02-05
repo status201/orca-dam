@@ -46,7 +46,7 @@
                 <form method="POST" action="{{ route('two-factor.disable') }}" class="inline">
                     @csrf
                     @method('DELETE')
-                    <x-danger-button type="submit">
+                    <x-danger-button type="submit" class="warning">
                         {{ __('Disable') }}
                     </x-danger-button>
                 </form>
