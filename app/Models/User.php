@@ -25,6 +25,9 @@ class User extends Authenticatable
         'jwt_secret',
         'jwt_secret_generated_at',
         'preferences',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'two_factor_confirmed_at',
     ];
 
     /**
@@ -40,6 +43,8 @@ class User extends Authenticatable
         'email_verified_at',
         'jwt_secret_generated_at',
         'preferences',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -55,6 +60,9 @@ class User extends Authenticatable
             'jwt_secret_generated_at' => 'datetime',
             'jwt_secret' => 'encrypted',
             'preferences' => 'array',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
@@ -168,5 +176,22 @@ class User extends Authenticatable
         }
 
         return (int) \App\Models\Setting::get('items_per_page', 24);
+    }
+
+    /**
+     * Check if user has two-factor authentication enabled
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return ! empty($this->two_factor_secret) && ! empty($this->two_factor_confirmed_at);
+    }
+
+    /**
+     * Check if user can enable two-factor authentication
+     * Only admins and editors can enable 2FA (not API users)
+     */
+    public function canEnableTwoFactor(): bool
+    {
+        return $this->isAdmin() || $this->isEditor();
     }
 }

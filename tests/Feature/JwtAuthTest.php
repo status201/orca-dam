@@ -21,7 +21,7 @@ test('api endpoint accepts valid jwt authentication', function () {
         'exp' => time() + 3600,
     ], $secret, 'HS256');
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->getJson('/api/assets');
 
     $response->assertOk();
@@ -37,7 +37,7 @@ test('api endpoint rejects expired jwt', function () {
         'exp' => time() - 3600, // Expired
     ], $secret, 'HS256');
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->getJson('/api/assets');
 
     $response->assertUnauthorized();
@@ -55,7 +55,7 @@ test('api endpoint rejects jwt with invalid signature', function () {
         'exp' => time() + 3600,
     ], $wrongSecret, 'HS256');
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->getJson('/api/assets');
 
     $response->assertUnauthorized();
@@ -65,7 +65,7 @@ test('sanctum tokens still work when jwt is enabled', function () {
     $user = User::factory()->create();
     $token = $user->createToken('test-token')->plainTextToken;
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->getJson('/api/assets');
 
     $response->assertOk();
@@ -84,8 +84,8 @@ test('jwt auth returns correct user in authenticated requests', function () {
     // Create an asset belonging to this user
     $asset = Asset::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-        ->getJson('/api/assets/' . $asset->id);
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
+        ->getJson('/api/assets/'.$asset->id);
 
     $response->assertOk();
     $response->assertJsonPath('id', $asset->id);
@@ -107,8 +107,8 @@ test('jwt authentication respects user roles', function () {
     // API users cannot delete assets
     $asset = Asset::factory()->create();
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-        ->deleteJson('/api/assets/' . $asset->id);
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
+        ->deleteJson('/api/assets/'.$asset->id);
 
     $response->assertForbidden();
 });
@@ -125,7 +125,7 @@ test('jwt auth disabled returns 401 for jwt tokens', function () {
         'exp' => time() + 3600,
     ], $secret, 'HS256');
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->getJson('/api/assets');
 
     $response->assertUnauthorized();
@@ -143,7 +143,7 @@ test('chunked upload endpoints accept jwt authentication', function () {
 
     // Just test that the endpoint is accessible with JWT auth
     // The actual upload would require more setup
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->postJson('/api/chunked-upload/init', [
             'filename' => 'test.jpg',
             'size' => 1024,

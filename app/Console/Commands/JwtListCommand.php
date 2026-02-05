@@ -31,6 +31,7 @@ class JwtListCommand extends Command
 
         if ($users->isEmpty()) {
             $this->info('No users have JWT secrets.');
+
             return Command::SUCCESS;
         }
 
@@ -50,9 +51,9 @@ class JwtListCommand extends Command
 
         $jwtEnabled = config('jwt.enabled', false);
         $this->newLine();
-        $this->line('JWT Authentication: ' . ($jwtEnabled ? '<fg=green>Enabled</>' : '<fg=yellow>Disabled</>'));
+        $this->line('JWT Authentication: '.($jwtEnabled ? '<fg=green>Enabled</>' : '<fg=yellow>Disabled</>'));
 
-        if (!$jwtEnabled) {
+        if (! $jwtEnabled) {
             $this->warn('Set JWT_ENABLED=true in .env to enable JWT authentication.');
         }
 

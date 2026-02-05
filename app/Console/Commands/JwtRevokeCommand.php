@@ -31,18 +31,21 @@ class JwtRevokeCommand extends Command
         $email = $this->argument('email');
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->error("User not found: {$email}");
+
             return Command::FAILURE;
         }
 
-        if (!$user->hasJwtSecret()) {
+        if (! $user->hasJwtSecret()) {
             $this->info('User does not have a JWT secret.');
+
             return Command::SUCCESS;
         }
 
-        if (!$this->option('force') && !$this->confirm("Revoke JWT secret for {$user->name} ({$user->email})?")) {
+        if (! $this->option('force') && ! $this->confirm("Revoke JWT secret for {$user->name} ({$user->email})?")) {
             $this->info('Operation cancelled.');
+
             return Command::FAILURE;
         }
 

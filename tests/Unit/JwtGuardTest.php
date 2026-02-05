@@ -51,7 +51,7 @@ test('jwt guard returns null for unknown user', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -69,7 +69,7 @@ test('jwt guard returns null for user without jwt secret', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -87,7 +87,7 @@ test('jwt guard returns null for expired token', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -108,7 +108,7 @@ test('jwt guard returns null for invalid signature', function () {
     ], $wrongSecret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -126,7 +126,7 @@ test('jwt guard returns user for valid token', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -149,7 +149,7 @@ test('jwt guard returns null when token exceeds max ttl', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -171,7 +171,7 @@ test('jwt guard validates issuer when configured', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -192,7 +192,7 @@ test('jwt guard accepts token with correct issuer', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 
@@ -212,7 +212,7 @@ test('jwt guard returns null for missing required claims', function () {
     ], $secret, 'HS256');
 
     $request = Request::create('/api/assets', 'GET');
-    $request->headers->set('Authorization', 'Bearer ' . $token);
+    $request->headers->set('Authorization', 'Bearer '.$token);
 
     $guard = createJwtGuardWithRequest($request);
 

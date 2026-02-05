@@ -7,12 +7,14 @@
     "require": {
         "php": "^8.2",
         "aws/aws-sdk-php": "^3.0",
+        "bacon/bacon-qr-code": "^3.0",
         "firebase/php-jwt": "^7.0",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^3.0",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.10"
+        "laravel/tinker": "^2.10",
+        "pragmarx/google2fa-laravel": "^2.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

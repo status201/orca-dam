@@ -3,11 +3,11 @@
 namespace App\Auth;
 
 use App\Models\User;
+use Firebase\JWT\BeforeValidException;
+use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Firebase\JWT\ExpiredException;
 use Firebase\JWT\SignatureInvalidException;
-use Firebase\JWT\BeforeValidException;
 use Illuminate\Auth\GuardHelpers;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
@@ -42,7 +42,7 @@ class JwtGuard implements Guard
         }
 
         $token = $this->getTokenFromRequest();
-        if (!$token) {
+        if (! $token) {
             return null;
         }
 
@@ -91,13 +91,13 @@ class JwtGuard implements Guard
             return null;
         }
 
-        if (!$payload || !isset($payload['sub'])) {
+        if (! $payload || ! isset($payload['sub'])) {
             return null;
         }
 
         // Find the user by the subject claim
         $user = User::find($payload['sub']);
-        if (!$user || !$user->jwt_secret) {
+        if (! $user || ! $user->jwt_secret) {
             return null;
         }
 
@@ -113,14 +113,14 @@ class JwtGuard implements Guard
             // Validate required claims
             $requiredClaims = config('jwt.required_claims', ['sub', 'exp', 'iat']);
             foreach ($requiredClaims as $claim) {
-                if (!isset($decoded->$claim)) {
+                if (! isset($decoded->$claim)) {
                     return null;
                 }
             }
 
             // Validate issuer if configured (treat empty string as null)
             $issuer = config('jwt.issuer');
-            if (!empty($issuer) && (!isset($decoded->iss) || $decoded->iss !== $issuer)) {
+            if (! empty($issuer) && (! isset($decoded->iss) || $decoded->iss !== $issuer)) {
                 return null;
             }
 

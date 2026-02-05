@@ -32,13 +32,15 @@ class JwtGenerateCommand extends Command
         $email = $this->argument('email');
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->error("User not found: {$email}");
+
             return Command::FAILURE;
         }
 
-        if ($user->hasJwtSecret() && !$this->option('force')) {
+        if ($user->hasJwtSecret() && ! $this->option('force')) {
             $this->error('User already has a JWT secret. Use --force to regenerate.');
+
             return Command::FAILURE;
         }
 
@@ -59,7 +61,7 @@ class JwtGenerateCommand extends Command
         $this->warn('IMPORTANT: Copy this secret now. It will NOT be shown again!');
         $this->newLine();
 
-        $this->line('<fg=green;options=bold>Secret: ' . $secret . '</>');
+        $this->line('<fg=green;options=bold>Secret: '.$secret.'</>');
         $this->newLine();
 
         $this->info('User Details:');

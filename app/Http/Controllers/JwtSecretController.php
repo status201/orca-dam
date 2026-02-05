@@ -76,7 +76,7 @@ class JwtSecretController extends Controller
      */
     public function revoke(User $user): JsonResponse
     {
-        if (!$user->hasJwtSecret()) {
+        if (! $user->hasJwtSecret()) {
             return response()->json([
                 'success' => false,
                 'message' => 'User does not have a JWT secret',
