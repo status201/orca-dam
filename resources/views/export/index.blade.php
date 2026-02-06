@@ -65,7 +65,7 @@
                             x-model="selectedTags"
                             multiple
                             size="5"
-                            class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black">
+                            class="invert-scrollbar-colors w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black">
                         @foreach($tags as $tag)
                             <option value="{{ $tag->id }}">
                                 {{ $tag->name }}
