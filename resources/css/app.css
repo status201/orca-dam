@@ -183,7 +183,7 @@ html.dark-mode {
 html.dark-mode body{
     background: white;
 }
-button.btn.authorize {
+html.dark-mode button.btn.authorize {
     color: white;
 }
 html.dark-mode .warning,
@@ -205,4 +205,8 @@ html.dark-mode svg {
 }
 html.dark-mode .swagger-ui-container {
     background-color: #1c2022; /* #e3dfdd inverted */
+}
+html.dark-mode .tab-navigation-container,
+html.dark-mode .invert-scrollbar-colors {
+    scrollbar-color: #FFF #CCC; /* inverted */
 }
