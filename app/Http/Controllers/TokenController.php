@@ -35,8 +35,15 @@ class TokenController extends Controller
             });
 
         // Get list of users for the create form
+        // Map to plain arrays to bypass $hidden attribute filtering
         $users = User::orderBy('name')
-            ->get(['id', 'name', 'email', 'role']);
+            ->get(['id', 'name', 'email', 'role'])
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]);
 
         return response()->json([
             'tokens' => $tokens,

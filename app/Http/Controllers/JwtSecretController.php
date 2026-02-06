@@ -26,7 +26,15 @@ class JwtSecretController extends Controller
             ]);
 
         // Get all users for the dropdown
-        $allUsers = User::select(['id', 'name', 'email', 'role'])->get();
+        // Map to plain arrays to bypass $hidden attribute filtering
+        $allUsers = User::select(['id', 'name', 'email', 'role'])
+            ->get()
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]);
 
         $jwtSettingEnabled = Setting::get('jwt_enabled_override', true);
         $metaEndpointEnabled = Setting::get('api_meta_endpoint_enabled', true);
