@@ -85,6 +85,7 @@ test('authenticated users can update asset metadata', function () {
     $asset = Asset::factory()->create();
 
     $response = $this->actingAs($user)->patch(route('assets.update', $asset), [
+        'filename' => $asset->filename,
         'alt_text' => 'New alt text',
         'caption' => 'New caption',
         'license_type' => 'cc_by',
@@ -109,6 +110,7 @@ test('authenticated users can update asset tags', function () {
     $asset = Asset::factory()->create();
 
     $response = $this->actingAs($user)->patch(route('assets.update', $asset), [
+        'filename' => $asset->filename,
         'tags' => ['tag1', 'tag2', 'tag3'],
     ]);
 

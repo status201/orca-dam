@@ -303,12 +303,13 @@
                 @if($asset->tags->count() > 0)
                 <div class="flex flex-wrap gap-2 mb-4">
                     @foreach($asset->tags as $tag)
-                    <span class="tag attention inline-flex items-center px-3 py-1 rounded-full text-sm {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                        {{ $tag->name }}
+                    <a href="{{ route('assets.index', ['tags[]' => $tag->id]) }}"
+                       class="tag attention inline-flex items-center px-3 py-1 rounded-full text-sm {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200' }} transition-colors no-underline">
+                        {{ $tag->name }} ({{ $tag->assets_count }})
                         @if($tag->type === 'ai')
                         <i class="fas fa-robot ml-2 text-xs"></i>
                         @endif
-                    </span>
+                    </a>
                     @endforeach
                 </div>
 

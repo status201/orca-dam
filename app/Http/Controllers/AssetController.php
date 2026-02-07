@@ -239,7 +239,9 @@ class AssetController extends Controller
     public function show(Asset $asset)
     {
         $this->authorize('view', $asset);
-        $asset->load(['tags', 'user']);
+        $asset->load(['tags' => function ($query) {
+            $query->withCount('assets');
+        }, 'user']);
 
         return view('assets.show', compact('asset'));
     }
@@ -264,6 +266,7 @@ class AssetController extends Controller
         $this->authorize('update', $asset);
 
         $request->validate([
+            'filename' => 'required|string|max:255',
             'alt_text' => 'nullable|string|max:500',
             'caption' => 'nullable|string|max:1000',
             'license_type' => 'nullable|string|max:255',
@@ -276,7 +279,7 @@ class AssetController extends Controller
 
         // Update metadata
         $asset->update(array_merge(
-            $request->only(['alt_text', 'caption', 'license_type', 'license_expiry_date', 'copyright', 'copyright_source']),
+            $request->only(['filename', 'alt_text', 'caption', 'license_type', 'license_expiry_date', 'copyright', 'copyright_source']),
             ['last_modified_by' => Auth::id()]
         ));
 

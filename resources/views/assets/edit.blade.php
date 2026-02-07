@@ -94,15 +94,20 @@
             @method('PATCH')
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Filename (read-only) -->
+                <!-- Filename -->
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="filename" class="block text-sm font-medium text-gray-700 mb-2">
                         {{ __('Filename') }}
                     </label>
                     <input type="text"
-                           value="{{ $asset->filename }}"
-                           readonly
-                           class="w-full px-4 py-2 focus:ring-2 focus:ring-orca-black bg-gray-50 border border-gray-300 rounded-lg">
+                           name="filename"
+                           id="filename"
+                           value="{{ old('filename', $asset->filename) }}"
+                           maxlength="255"
+                           class="w-full px-4 py-2 focus:ring-2 focus:ring-orca-black border border-gray-300 rounded-lg">
+                    @error('filename')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Preview -->

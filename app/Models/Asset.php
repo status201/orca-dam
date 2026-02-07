@@ -74,7 +74,8 @@ class Asset extends Model
      */
     public function tags(): BelongsToMany
     {
-        return $this->belongsToMany(Tag::class)->withTimestamps();
+        return $this->belongsToMany(Tag::class)->withTimestamps()
+            ->orderByRaw("CASE WHEN tags.type = 'user' THEN 0 ELSE 1 END");
     }
 
     /**
