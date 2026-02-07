@@ -187,7 +187,7 @@
                                 <button @click="showConfirmation = true"
                                         type="button"
                                         class="attention px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
-                                    <i class="fas fa-sync-alt mr-1"></i> Replace File
+                                    <i class="fas fa-shuffle mr-1"></i> Replace File
                                 </button>
                             </div>
                         </div>
@@ -293,7 +293,7 @@
                     <button @click="uploadFile()"
                             type="button"
                             class="attention w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm">
-                        <i class="fas fa-sync-alt mr-2"></i> Yes, Replace
+                        <i class="fas fa-shuffle mr-2"></i> Yes, Replace
                     </button>
                     <button @click="showConfirmation = false"
                             type="button"

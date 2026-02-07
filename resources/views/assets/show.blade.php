@@ -349,7 +349,14 @@
                         <i :class="downloading ? 'fas fa-spinner fa-spin' : 'fas fa-download'" class="mr-2"></i>
                         <span x-text="downloading ? 'Downloading...' : 'Download'"></span>
                     </button>
-                    
+
+                    @can('replace', $asset)
+                        <a href="{{ route('assets.replace', $asset) }}"
+                           class="block w-full px-4 py-2 bg-amber-600 text-white text-center rounded-lg hover:bg-amber-700">
+                            <i class="fas fa-shuffle mr-2"></i> Replace Asset
+                        </a>
+                    @endcan
+
                     @can('delete', $asset)
                     <form action="{{ route('assets.destroy', $asset) }}" 
                           method="POST"

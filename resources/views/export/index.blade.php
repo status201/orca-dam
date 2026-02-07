@@ -133,7 +133,7 @@
                     <li>S3 storage details (keys, ETag)</li>
                     <li>Image dimensions (if applicable)</li>
                     <li>Metadata (alt text, captions, license, copyright)</li>
-                    <li>Uploader information</li>
+                    <li>Uploader and last modified by information</li>
                     <li>All User and AI tags (as text)</li>
                     <li>Public URLs for assets</li>
                     <li>Creation and update timestamps</li>

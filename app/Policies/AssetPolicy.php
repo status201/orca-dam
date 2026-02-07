@@ -32,6 +32,20 @@ class AssetPolicy
     }
 
     /**
+     * Determine whether the user can replace assets.
+     */
+    public function replace(User $user): bool
+    {
+        // API users cannot replace assets
+        if ($user->isApiUser()) {
+            return false;
+        }
+
+        // All other authenticated users can replace any asset
+        return true;
+    }
+
+    /**
      * Determine whether the user can update the asset.
      */
     public function update(User $user, Asset $asset): bool

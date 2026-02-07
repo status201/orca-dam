@@ -353,7 +353,7 @@
                                 <a href="{{ route('assets.replace', $asset) }}"
                                    class="attention text-amber-600 hover:text-amber-800"
                                    title="Replace asset">
-                                    <i class="fas fa-sync-alt"></i>
+                                    <i class="fas fa-shuffle"></i>
                                 </a>
                                 <button @click="deleteAsset()"
                                         :disabled="loading"
