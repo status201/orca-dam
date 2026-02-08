@@ -427,7 +427,7 @@ class AssetController extends Controller
         $this->authorize('update', $asset);
 
         // Get original extension
-        $originalExtension = strtolower(pathinfo($asset->filename, PATHINFO_EXTENSION));
+        $originalExtension = strtolower(pathinfo($asset->s3_key, PATHINFO_EXTENSION));
 
         $request->validate([
             'file' => [

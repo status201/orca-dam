@@ -205,7 +205,10 @@ test('authenticated users can access replace form', function () {
 
 test('replace rejects file with different extension', function () {
     $user = User::factory()->create();
-    $asset = Asset::factory()->create(['filename' => 'test.jpg']);
+    $asset = Asset::factory()->create([
+        'filename' => 'test.jpg',
+        's3_key' => 'assets/test-uuid.jpg',
+    ]);
 
     // Create a fake PDF file (wrong extension)
     $file = \Illuminate\Http\UploadedFile::fake()->create('replacement.pdf', 100);
@@ -295,7 +298,10 @@ test('guests cannot perform replace action', function () {
 
 test('replace accepts file with different case extension', function () {
     $user = User::factory()->create();
-    $asset = Asset::factory()->create(['filename' => 'original.jpg']); // lowercase
+    $asset = Asset::factory()->create([
+        'filename' => 'original.jpg',
+        's3_key' => 'assets/original-uuid.jpg',
+    ]); // lowercase s3_key
 
     $s3Service = Mockery::mock(\App\Services\S3Service::class);
     $s3Service->shouldReceive('replaceFile')->once()->andReturn([
@@ -319,6 +325,39 @@ test('replace accepts file with different case extension', function () {
         ]);
 
     $response->assertStatus(200);
+});
+
+test('replace uses s3_key extension not filename extension', function () {
+    $user = User::factory()->create();
+    // Filename has been edited to remove extension, but s3_key still has .jpg
+    $asset = Asset::factory()->create([
+        'filename' => 'renamed-photo',
+        's3_key' => 'assets/original-uuid.jpg',
+    ]);
+
+    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service->shouldReceive('replaceFile')->once()->andReturn([
+        'filename' => 'replacement.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 2000,
+        'etag' => 'new-etag',
+        'width' => 800,
+        'height' => 600,
+    ]);
+    $s3Service->shouldReceive('deleteFile')->andReturn(true);
+    $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
+    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+
+    // Upload a .jpg file — should match s3_key extension, not filename
+    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg', 800, 600);
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.replace.store', $asset), [
+            'file' => $file,
+        ]);
+
+    $response->assertStatus(200);
+    $response->assertJson(['message' => 'Asset replaced successfully']);
 });
 
 test('replace preserves tags after replacement', function () {

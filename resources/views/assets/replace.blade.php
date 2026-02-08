@@ -24,7 +24,7 @@
             array_shift($breadcrumbPaths);
         }
 
-        $extension = strtolower(pathinfo($asset->filename, PATHINFO_EXTENSION));
+        $extension = strtolower(pathinfo($asset->s3_key, PATHINFO_EXTENSION));
     @endphp
 
     <!-- Back button and breadcrumb -->
