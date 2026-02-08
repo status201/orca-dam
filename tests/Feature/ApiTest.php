@@ -147,6 +147,45 @@ test('api asset meta returns error for unknown url', function () {
     $response->assertStatus(400);
 });
 
+test('api asset meta works with custom domain url', function () {
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/test-image.jpg',
+        'alt_text' => 'Custom domain test',
+    ]);
+
+    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    cache()->forget('setting:custom_domain');
+
+    $response = $this->getJson('/api/assets/meta?url='.urlencode('https://cdn.example.com/assets/test-image.jpg'));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['alt_text' => 'Custom domain test']);
+
+    // Clean up
+    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    cache()->forget('setting:custom_domain');
+});
+
+test('api asset meta still works with s3 url when custom domain is set', function () {
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/test-image.jpg',
+        'alt_text' => 'S3 fallback test',
+    ]);
+
+    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    cache()->forget('setting:custom_domain');
+
+    $s3Url = config('filesystems.disks.s3.url');
+    $response = $this->getJson('/api/assets/meta?url='.urlencode($s3Url.'/assets/test-image.jpg'));
+
+    $response->assertOk();
+    $response->assertJsonFragment(['alt_text' => 'S3 fallback test']);
+
+    // Clean up
+    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    cache()->forget('setting:custom_domain');
+});
+
 test('api assets index can sort by date ascending', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);

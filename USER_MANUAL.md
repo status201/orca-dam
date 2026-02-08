@@ -31,15 +31,13 @@ ORCA sits between you and the raw cloud storage, making everything safer, search
 
 ORCA has some deliberate limitations. These aren't bugs — they're safety features!
 
-#### 1. You Cannot Rename Files
+#### 1. You Can Rename Files — But Not Move Them
 
-Once a file is uploaded, its name is set in stone. Why? Because Studyflow and other systems link directly to these files using their exact URL. Renaming would break all those links instantly.
-
-**What to do instead:** If you really need a different filename, you'll need to delete the old file and upload a new one with the correct name.
+You can edit an asset's **display filename** at any time via the Edit page. This changes how the file appears in ORCA, but the actual URL (the S3 key) stays exactly the same. All existing links in Studyflow and other systems continue to work.
 
 #### 2. You Cannot Move Files Between Folders
 
-Same reason as above — moving a file changes its URL, breaking all existing links.
+Moving a file would change its URL, breaking all existing links.
 
 **What to do instead:** See the "Moving Files (The Long Way)" section below.
 
@@ -72,7 +70,7 @@ ORCA has two user roles with different capabilities:
 |---------|:------:|:-----:|
 | View all assets | ✓ | ✓ |
 | Upload files | ✓ | ✓ |
-| Edit asset details (alt text, caption, tags) | ✓ | ✓ |
+| Edit asset details (filename, alt text, caption, tags) | ✓ | ✓ |
 | Replace asset files | ✓ | ✓ |
 | Delete files (to Trash) | ✓ | ✓ |
 | Set personal preferences | ✓ | ✓ |
@@ -227,6 +225,9 @@ So if you delete an asset, then remove its tags, then restore it — those remov
 ## Editing Asset Details
 
 Click on any asset or hit the Edit button to modify:
+
+### Filename
+You can change the display name of any asset. This only affects how it appears in ORCA — the actual URL and S3 key remain unchanged, so existing links are never broken.
 
 ### Alt Text
 A short description of the image for accessibility (screen readers use this). Keep it brief but descriptive.
@@ -428,6 +429,14 @@ Set how many assets you want to see per page by default.
 
 **Note:** The "Results per page" dropdown on the Assets page still works — it overrides your preference for that session. Your preference is just the default when you first load the page.
 
+#### Language
+
+Choose the interface language for your ORCA session. Currently supported: **English** and **Nederlands (Dutch)**.
+
+- Select a language to override the global system default
+- Select "Use default" to follow whatever your admin has configured
+- The change takes effect on the next page load
+
 ### How Preferences Work
 
 Preferences follow a hierarchy (highest priority first):
@@ -436,7 +445,7 @@ Preferences follow a hierarchy (highest priority first):
 2. **Your user preference** — What you set in Profile → Preferences
 3. **Global system setting** — The default configured by your admin
 
-This means your preferences are respected, but you can still navigate freely — clicking a different folder or changing the results dropdown won't reset to your preferences until you load a fresh page.
+This applies to home folder, items per page, and language. Your preferences are respected, but you can still navigate freely — clicking a different folder or changing the results dropdown won't reset to your preferences until you load a fresh page.
 
 ### Setting Your Preferences
 
@@ -445,7 +454,8 @@ This means your preferences are respected, but you can still navigate freely —
 3. Scroll down to the **Preferences** section
 4. Choose your preferred home folder from the dropdown
 5. Choose your preferred items per page
-6. Click **Save**
+6. Choose your preferred language (or "Use default" to follow the global setting)
+7. Click **Save**
 
 You'll see a "Saved" confirmation when successful.
 
@@ -462,7 +472,7 @@ You'll see a "Saved" confirmation when successful.
 
 ### Best Practices
 
-1. **Name files clearly before uploading** — You can't rename them later!
+1. **Name files clearly before uploading** — You can rename them later, but a clear original name helps
 2. **Use tags generously** — They make searching so much easier
 3. **Fill in alt text** — It's good for accessibility and helps you remember what's in the image
 4. **Choose folders wisely** — Think of the folder structure as permanent
@@ -482,7 +492,9 @@ You'll see a "Saved" confirmation when successful.
 | **User Tags** | Tags manually added by people |
 | **S3 Key** | The technical path/address of a file in cloud storage |
 | **Thumbnail** | A small preview image generated for visual files |
-| **Preferences** | Personal settings (like home folder) that customize your ORCA experience |
+| **Custom Domain** | A friendly URL (like `cdn.example.com`) used instead of the raw S3 bucket URL |
+| **Locale** | Your preferred interface language (e.g., English, Nederlands) |
+| **Preferences** | Personal settings (like home folder, language) that customize your ORCA experience |
 | **Rekognition** | Amazon's AI service that analyzes images and suggests tags |
 | **Replace** | Uploading a new file to overwrite an existing asset while keeping the same URL |
 

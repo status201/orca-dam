@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\S3Service;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -99,7 +100,7 @@ class Asset extends Model
      */
     public function getUrlAttribute(): string
     {
-        return config('filesystems.disks.s3.url').'/'.$this->s3_key;
+        return S3Service::getPublicBaseUrl().'/'.$this->s3_key;
     }
 
     /**
@@ -116,7 +117,7 @@ class Asset extends Model
             return null;
         }
 
-        return config('filesystems.disks.s3.url').'/'.$this->thumbnail_s3_key;
+        return S3Service::getPublicBaseUrl().'/'.$this->thumbnail_s3_key;
     }
 
     /**

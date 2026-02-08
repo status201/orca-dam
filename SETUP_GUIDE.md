@@ -243,6 +243,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ **Chunked upload for large files (up to 500MB)**
 - ✅ **Automatic upload method selection (direct <10MB, chunked ≥10MB)**
 - ✅ **Smart retry logic with exponential backoff**
+- ✅ **Editable filenames** (display name only — S3 key/URL unchanged)
 - ✅ Automatic thumbnail generation
 - ✅ Image dimension detection
 - ✅ File size tracking
@@ -275,17 +276,24 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Metadata extraction
 
 ### 5. User Roles
-- **Editors**: Upload and manage all assets (view, edit, soft delete), set personal preferences
-- **Admins**: Full access including trash management, restore/permanent delete, discover, export, user management, and API token/JWT secret management
+- **Editors**: Upload and manage all assets (view, edit filenames/metadata, soft delete), set personal preferences
+- **Admins**: Full access including trash management, restore/permanent delete, discover, export, user management, system settings, and API token/JWT secret management
 - **API Users**: API-only access for external integrations (view, create, update assets; no delete or admin features)
 
 ### 6. User Preferences
 - ✅ Personal home folder setting (default folder when browsing assets)
 - ✅ Personal items per page setting (overrides global default)
+- ✅ Personal language preference (overrides global default)
 - ✅ Preferences accessible via Profile page
 - ✅ URL parameters still override user preferences
 
-### 7. API for RTE Integration
+### 7. Multi-Language Support
+- ✅ UI available in English and Dutch (Nederlands)
+- ✅ Global language set by admin via System → Settings
+- ✅ Per-user language override via Profile → Preferences
+- ✅ Priority: User preference → Global setting → Config default
+
+### 8. API for RTE Integration
 - ✅ RESTful API endpoints
 - ✅ Laravel Sanctum authentication (long-lived tokens for backends)
 - ✅ JWT authentication (short-lived tokens for frontends)
@@ -293,24 +301,28 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Search and filter API
 - ✅ Public metadata endpoint (no auth required)
 
-### 8. Export & Reporting
+### 9. Export & Reporting
 - ✅ CSV export with all asset metadata
 - ✅ Separate columns for user tags and AI tags
 - ✅ Includes license type and copyright information
 - ✅ Filter by file type and tags before export
 - ✅ Timestamped export filenames
 
-### 9. Trash & Restore (Admin Only)
+### 10. Trash & Restore (Admin Only)
 - ✅ Soft delete keeps S3 objects when assets are deleted
 - ✅ Trash page shows all soft-deleted assets
 - ✅ Restore assets from trash back to active state
 - ✅ Permanent delete removes database record AND S3 objects
 - ✅ Discovery marks soft-deleted assets to prevent re-import
 
-### 10. System Administration (Admin Only)
+### 11. System Administration (Admin Only)
 - ✅ System overview (PHP version, Laravel version, disk usage)
 - ✅ **Settings panel** with configurable options:
+  - S3 root folder prefix
+  - Custom domain for asset URLs (CDN support)
   - Items per page (12, 24, 36, 48, 60, 72, 96)
+  - Timezone
+  - UI language (English, Dutch)
   - AWS Rekognition max labels (1-20)
   - AWS Rekognition language (13 languages)
 - ✅ Queue management (retry, flush, restart workers)
@@ -319,6 +331,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ S3 connection diagnostics
 - ✅ API token management (Sanctum tokens)
 - ✅ JWT secret management (per-user secrets for frontend integrations)
+- ✅ Web-based test runner
 
 ---
 
@@ -589,6 +602,31 @@ Select multiple unmapped objects in Discover to import in bulk.
 - When scanning S3 bucket, soft-deleted assets appear with a red "Deleted" badge
 - Shows when the asset was deleted
 - Prevents accidentally re-importing deleted assets
+
+### 6. Using a Custom Domain (CDN)
+
+By default, asset URLs use your S3 bucket domain (e.g., `https://bucket.s3.amazonaws.com/assets/uuid.jpg`). You can configure a custom domain so all asset URLs use a friendlier address like `https://cdn.example.com/assets/uuid.jpg`.
+
+**Setup Steps:**
+
+1. **Configure your CDN** to point to your S3 bucket:
+   - **AWS CloudFront**: Create a distribution with your S3 bucket as origin
+   - **Cloudflare**: Add a CNAME record pointing to your S3 bucket URL
+   - **Other CDN**: Configure the CDN to proxy requests to your S3 bucket
+
+2. **Set the custom domain in ORCA**:
+   - Go to **System → Settings** (admin only)
+   - Under **S3 Storage**, enter your custom domain URL (e.g., `https://cdn.example.com`)
+   - Save — all asset URLs across the application update immediately
+
+3. **Verify**: Browse to any asset and check that its URL uses the custom domain
+
+**Important notes:**
+- The S3 bucket policy must still allow public read access
+- Existing assets get the new URL immediately (no migration needed)
+- Clearing the custom domain field reverts all URLs back to the S3 bucket domain
+- S3 operations (uploads, deletes, thumbnails) always use the real S3 bucket, unaffected
+- The `/api/assets/meta` endpoint accepts both custom domain URLs and original S3 URLs
 
 ---
 

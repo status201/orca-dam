@@ -870,7 +870,7 @@ return [
 | `GET` | `/api/assets` | List assets with pagination, search, filters, sorting |
 | `GET` | `/api/assets/search` | Search assets (optimized for picker) |
 | `GET` | `/api/assets/{id}` | Get single asset details |
-| `GET` | `/api/assets/meta?url=` | Get metadata by URL (public, no auth) |
+| `GET` | `/api/assets/meta?url=` | Get metadata by URL (public, no auth, accepts custom domain & S3 URLs) |
 | `POST` | `/api/assets` | Upload files |
 | `PATCH` | `/api/assets/{id}` | Update asset metadata |
 | `GET` | `/api/tags` | List all tags |
@@ -925,4 +925,7 @@ return [
 
 8. **Alt Text**: Always use the asset's alt_text when available for accessibility.
 
-9. **CORS**: If your RTE is on a different domain, configure CORS in Laravel (see below).
+9. **Custom Domain**: If your ORCA admin has configured a custom domain (CDN), asset URLs will use
+   that domain automatically. The `/api/assets/meta` endpoint accepts both custom domain and S3 URLs.
+
+10. **CORS**: If your RTE is on a different domain, configure CORS in Laravel (see below).

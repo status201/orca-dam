@@ -459,11 +459,25 @@ class S3Service
     }
 
     /**
+     * Get the public base URL for asset URLs.
+     * Uses custom domain setting if configured, otherwise falls back to S3 bucket URL.
+     */
+    public static function getPublicBaseUrl(): string
+    {
+        $customDomain = Setting::get('custom_domain', '');
+        if ($customDomain !== '' && $customDomain !== null) {
+            return rtrim($customDomain, '/');
+        }
+
+        return config('filesystems.disks.s3.url');
+    }
+
+    /**
      * Get the public URL for an S3 key
      */
     public function getUrl(string $s3Key): string
     {
-        return config('filesystems.disks.s3.url').'/'.$s3Key;
+        return self::getPublicBaseUrl().'/'.$s3Key;
     }
 
     /**

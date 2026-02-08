@@ -200,6 +200,43 @@ test('locale rejects invalid values', function () {
     $response->assertJson(['success' => false]);
 });
 
+test('admin can update custom_domain setting', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('system.update-setting'), [
+        'key' => 'custom_domain',
+        'value' => 'https://cdn.example.com',
+    ]);
+
+    $response->assertOk();
+    $response->assertJson(['success' => true]);
+    expect(Setting::get('custom_domain'))->toBe('https://cdn.example.com');
+});
+
+test('custom_domain allows empty string', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('system.update-setting'), [
+        'key' => 'custom_domain',
+        'value' => '',
+    ]);
+
+    $response->assertOk();
+    $response->assertJson(['success' => true]);
+});
+
+test('custom_domain rejects invalid urls', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('system.update-setting'), [
+        'key' => 'custom_domain',
+        'value' => 'not-a-url',
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJson(['success' => false]);
+});
+
 test('system page loads all settings correctly', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 

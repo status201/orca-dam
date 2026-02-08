@@ -291,16 +291,22 @@ class AssetApiController extends Controller
         ]);
 
         $url = $request->input('url');
-        $baseUrl = config('filesystems.disks.s3.url').'/';
+        $customBaseUrl = S3Service::getPublicBaseUrl().'/';
+        $s3BaseUrl = config('filesystems.disks.s3.url').'/';
 
-        // Extract S3 key by removing the base URL
-        if (! str_starts_with($url, $baseUrl)) {
-            return response()->json([
-                'message' => 'URL does not match configured S3 bucket',
-            ], 400);
+        // Extract S3 key by removing the base URL (supports both custom domain and S3 URLs)
+        $s3Key = null;
+        if (str_starts_with($url, $customBaseUrl)) {
+            $s3Key = substr($url, strlen($customBaseUrl));
+        } elseif ($s3BaseUrl !== $customBaseUrl && str_starts_with($url, $s3BaseUrl)) {
+            $s3Key = substr($url, strlen($s3BaseUrl));
         }
 
-        $s3Key = str_replace($baseUrl, '', $url);
+        if ($s3Key === null) {
+            return response()->json([
+                'message' => 'URL does not match configured domain',
+            ], 400);
+        }
 
         // Find asset by s3_key
         $asset = Asset::where('s3_key', $s3Key)->first();

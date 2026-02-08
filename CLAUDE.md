@@ -116,6 +116,8 @@ The application uses a service-oriented architecture with three main services th
 - Provides discovery functionality to find unmapped S3 objects (excludes folder markers)
 - Folder management: `listFolders()` scans S3 for folder prefixes, `createFolder()` creates folder markers
 - Uses bucket policies (not ACLs) for public read access
+- `getPublicBaseUrl()` returns custom domain if configured, otherwise S3 bucket URL
+- Custom domain setting allows CDN URLs (e.g., `https://cdn.example.com`) for all public asset URLs
 
 **ChunkedUploadService** (`app/Services/ChunkedUploadService.php`)
 - Handles large file uploads (≥10MB) using AWS S3 Multipart Upload API
@@ -175,6 +177,19 @@ const token = jwt.sign(
 - Controller: `app/Http/Controllers/JwtSecretController.php`
 - Middleware: `app/Http/Middleware/AuthenticateMultiple.php`
 
+### Locale System
+
+Multi-language support with global and per-user locale settings:
+
+**SetLocale Middleware** (`app/Http/Middleware/SetLocale.php`)
+- Applied to all web routes
+- Resolution priority: User preference (`users.preferences['locale']`) → Global setting (`settings.locale`) → `config('app.locale')`
+- Supported UI languages: `en` (English), `nl` (Dutch)
+- User preferences stored in encrypted JSON `users.preferences` column
+
+**Global Setting**: `locale` in `settings` table (configured via System → Settings)
+**User Override**: Per-user `locale` preference (configured via Profile → Preferences)
+
 ### Authorization System
 
 Uses Laravel Policies for fine-grained access control:
@@ -199,6 +214,8 @@ Uses Laravel Policies for fine-grained access control:
 - Many-to-many with Tags (via `asset_tag` pivot)
 - Uses soft deletes
 - Appends computed attributes: `url`, `thumbnail_url`, `formatted_size`, `folder`
+- `url` and `thumbnail_url` use `S3Service::getPublicBaseUrl()` (supports custom domain)
+- `filename` is editable (display name); `s3_key` is immutable (URL path)
 - Scopes for search, filtering by tags, type, user, and folder (`inFolder`)
 - Helper methods: `isImage()`, `getFileIcon()`, `userTags()`, `aiTags()`
 - Includes license and copyright fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`
@@ -234,7 +251,7 @@ JWT authentication is disabled by default. Enable with `JWT_ENABLED=true` in `.e
 - `PATCH /api/assets/{id}` - Update metadata (alt_text, caption, tags, license_type, copyright)
 - `DELETE /api/assets/{id}` - Delete asset
 - `GET /api/assets/search` - Search with query params and sorting
-- `GET /api/assets/meta` - Get asset metadata by URL (public, no auth required)
+- `GET /api/assets/meta` - Get asset metadata by URL (public, no auth required, accepts both custom domain and S3 URLs)
 - `GET /api/tags` - List tags (with optional type filter)
 
 **API Sort Parameter** (for `GET /api/assets` and `GET /api/assets/search`):
@@ -260,7 +277,7 @@ JWT authentication is disabled by default. Enable with `JWT_ENABLED=true` in `.e
 **Web-based Asset Management Endpoints** (`routes/web.php`, used by inline editing):
 - `POST /assets/{asset}/tags` - Add tags to asset (accepts `tags` array, creates if needed)
 - `DELETE /assets/{asset}/tags/{tag}` - Remove specific tag from asset
-- `PATCH /assets/{asset}` - Update asset metadata (license_type, alt_text, caption, copyright)
+- `PATCH /assets/{asset}` - Update asset metadata (filename, license_type, alt_text, caption, copyright)
 - `DELETE /assets/{asset}` - Soft delete asset
 - `POST /assets/{asset}/ai-tag` - Manually trigger AI tag generation
 
@@ -473,6 +490,10 @@ The application handles large files (PDFs, GIFs, videos) by:
 | Key | Default | Description |
 |-----|---------|-------------|
 | `items_per_page` | 24 | Assets per page (12, 24, 36, 48, 60, 72, 96) |
+| `timezone` | UTC | Application timezone |
+| `locale` | en | UI language (en, nl) |
+| `s3_root_folder` | assets | S3 prefix for root folder view & uploads |
+| `custom_domain` | _(empty)_ | Custom domain for asset URLs (e.g., `https://cdn.example.com`) |
 | `rekognition_max_labels` | 3 | Max AI tags per asset (1-20) |
 | `rekognition_min_confidence` | 80 | Min confidence threshold for AI tags (65-99) |
 | `rekognition_language` | nl | AI tag language (en, nl, fr, de, es, etc.) |
@@ -481,6 +502,14 @@ The application handles large files (PDFs, GIFs, videos) by:
 **users table** (JWT-related columns):
 - `jwt_secret` (nullable, encrypted) - Per-user JWT secret for HMAC signing (64 chars)
 - `jwt_secret_generated_at` (nullable, timestamp) - When the JWT secret was generated
+
+**users table** (2FA-related columns):
+- `two_factor_secret` (nullable, encrypted) - TOTP secret key
+- `two_factor_recovery_codes` (nullable, encrypted) - JSON array of recovery codes
+- `two_factor_confirmed_at` (nullable, timestamp) - When 2FA was confirmed
+
+**users table** (preferences):
+- `preferences` (nullable, encrypted JSON) - User preferences: `home_folder`, `items_per_page`, `locale`, `dark_mode`
 
 ## Environment Configuration
 
@@ -563,8 +592,9 @@ For Herd: Edit `~/.config/herd/bin/php84/php.ini` (Windows: `C:\Users\<username>
 ### File Organization
 - Controllers in `app/Http/Controllers/` (API controllers in `Api/` subdirectory)
   - `FolderController` handles folder listing, scanning, and creation
-- Services for external integrations in `app/Services/`
-- Policies for authorization in `app/Policies/`
+- Services for external integrations in `app/Services/` (S3, Rekognition, Chunked Upload, System, TwoFactor)
+- Middleware in `app/Http/Middleware/` (SetLocale, AuthenticateMultiple)
+- Policies for authorization in `app/Policies/` (Asset, System, User)
 - All S3 assets stored with `assets/` prefix (supports subfolders: `assets/{folder}/`)
 - Thumbnails stored with `thumbnails/` prefix (mirrors asset folder structure)
 
@@ -594,7 +624,7 @@ For Herd: Edit `~/.config/herd/bin/php84/php.ini` (Windows: `C:\Users\<username>
 
 ORCA DAM includes a comprehensive test suite built with **Pest PHP** (a testing framework on top of PHPUnit). Tests use an in-memory SQLite database for isolation.
 
-**Test Statistics:** ~195 tests covering models, controllers, API, authorization, and system settings.
+**Test Statistics:** ~253 tests covering models, controllers, API, authorization, locale, 2FA, and system settings.
 
 ### Test Structure
 
@@ -604,17 +634,20 @@ tests/
 │   ├── AssetTest.php       # Asset CRUD, filtering, sorting, permissions
 │   ├── TagTest.php         # Tag management, asset tagging
 │   ├── ExportTest.php      # CSV export functionality
-│   ├── ApiTest.php         # API endpoints, authentication, sorting
+│   ├── ApiTest.php         # API endpoints, authentication, sorting, meta
 │   ├── SystemTest.php      # System admin settings, access control
 │   ├── JwtAuthTest.php     # JWT authentication
 │   ├── JwtSecretManagementTest.php  # JWT secret management
+│   ├── LocaleTest.php      # Language/locale features
 │   ├── ProfileTest.php     # User profile and preferences
+│   ├── TwoFactorAuthTest.php  # 2FA functionality
 │   └── Auth/               # Authentication tests (Laravel Breeze)
 ├── Unit/
-│   ├── AssetTest.php       # Asset model relationships, scopes, attributes
+│   ├── AssetTest.php       # Asset model relationships, scopes, attributes, custom domain URLs
 │   ├── TagTest.php         # Tag model relationships
 │   ├── SettingTest.php     # Setting model get/set, caching, type casting
 │   ├── UserPreferencesTest.php  # User preferences helpers
+│   ├── TwoFactorServiceTest.php # 2FA service
 │   └── JwtGuardTest.php    # JWT guard unit tests
 └── Pest.php                # Pest configuration with RefreshDatabase
 ```
@@ -692,8 +725,9 @@ See `RTE_INTEGRATION.md` for detailed examples integrating with TinyMCE, CKEdito
 **Public Metadata API**:
 - `GET /api/assets/meta?url={asset_url}` - Retrieve metadata by asset URL (no authentication required)
 - Returns: alt_text, caption, license_type, copyright, filename, url
+- Accepts both custom domain URLs and original S3 bucket URLs
 - Useful for displaying asset information in external applications
-- Example: `https://your-app.test/api/assets/meta?url=https://bucket.s3.amazonaws.com/assets/abc123.jpg`
+- Example: `https://your-app.test/api/assets/meta?url=https://cdn.example.com/assets/abc123.jpg`
 
 ### External Systems
 - S3 bucket can be shared with other applications
@@ -719,8 +753,13 @@ ORCA DAM includes a comprehensive admin-only System page accessible via the user
 
 **Settings Tab:**
 - Configurable application settings stored in database
+- **S3 Storage Settings**:
+  - Root folder prefix (S3 prefix for uploads)
+  - Custom domain for asset URLs (e.g., `https://cdn.example.com`)
 - **Display Settings**:
   - Items per page (12, 24, 36, 48, 60, 72, 96)
+  - Timezone
+  - UI Language (English, Dutch)
 - **AWS Rekognition Settings**:
   - Maximum AI tags per asset (1-20)
   - AI tag language (13 languages supported)

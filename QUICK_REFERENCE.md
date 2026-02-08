@@ -73,46 +73,98 @@ php artisan test --filter="asset"
 ```
 orca-dam/
 ├── app/
+│   ├── Auth/
+│   │   └── JwtGuard.php              # JWT authentication guard
+│   ├── Console/Commands/
+│   │   ├── CleanupStaleUploads.php   # Cleanup stale chunked uploads
+│   │   ├── JwtGenerateCommand.php    # Generate JWT secret
+│   │   ├── JwtListCommand.php        # List JWT secrets
+│   │   ├── JwtRevokeCommand.php      # Revoke JWT secret
+│   │   ├── TokenCreateCommand.php    # Create Sanctum API token
+│   │   ├── TokenListCommand.php      # List API tokens
+│   │   ├── TokenRevokeCommand.php    # Revoke API token
+│   │   ├── TwoFactorDisableCommand.php # Disable 2FA
+│   │   └── TwoFactorStatusCommand.php  # Check 2FA status
 │   ├── Http/Controllers/
-│   │   ├── AssetController.php       # Main asset CRUD
-│   │   ├── DiscoverController.php    # S3 discovery
-│   │   ├── TagController.php         # Tag management
-│   │   └── Api/
-│   │       └── AssetApiController.php # API endpoints
+│   │   ├── Api/
+│   │   │   └── AssetApiController.php # REST API endpoints
+│   │   ├── Auth/                      # Laravel Breeze + 2FA controllers
+│   │   ├── ApiDocsController.php      # OpenAPI docs page
+│   │   ├── AssetController.php        # Asset CRUD & management
+│   │   ├── ChunkedUploadController.php# Large file uploads
+│   │   ├── DashboardController.php    # Dashboard stats
+│   │   ├── DiscoverController.php     # S3 discovery (admin)
+│   │   ├── ExportController.php       # CSV export (admin)
+│   │   ├── FolderController.php       # Folder list, scan & create
+│   │   ├── JwtSecretController.php    # JWT secret management
+│   │   ├── ProfileController.php      # User profile & preferences
+│   │   ├── SystemController.php       # System admin (admin)
+│   │   ├── TagController.php          # Tag management
+│   │   ├── TokenController.php        # API token management
+│   │   └── UserController.php         # User management (admin)
+│   ├── Http/Middleware/
+│   │   ├── AuthenticateMultiple.php   # Sanctum + JWT dual auth
+│   │   └── SetLocale.php             # Locale resolution middleware
+│   ├── Jobs/
+│   │   ├── GenerateAiTags.php         # AI tagging background job
+│   │   └── ProcessDiscoveredAsset.php # Discovery import job
 │   ├── Models/
-│   │   ├── Asset.php                 # Asset model
-│   │   ├── Setting.php               # Application settings
-│   │   ├── Tag.php                   # Tag model
-│   │   └── User.php                  # User model
-│   ├── Services/
-│   │   ├── S3Service.php             # S3 operations
-│   │   ├── RekognitionService.php    # AI tagging
-│   │   └── SystemService.php         # System admin services
-│   └── Policies/
-│       └── AssetPolicy.php           # Authorization
-├── database/migrations/              # Database schema
+│   │   ├── Asset.php                  # Asset model
+│   │   ├── Setting.php                # Application settings
+│   │   ├── Tag.php                    # Tag model
+│   │   ├── UploadSession.php          # Chunked upload tracking
+│   │   └── User.php                   # User model
+│   ├── Policies/
+│   │   ├── AssetPolicy.php            # Asset authorization
+│   │   ├── SystemPolicy.php           # System admin authorization
+│   │   └── UserPolicy.php             # User management authorization
+│   └── Services/
+│       ├── ChunkedUploadService.php   # S3 multipart uploads
+│       ├── RekognitionService.php     # AWS Rekognition AI tagging
+│       ├── S3Service.php              # S3 operations, thumbnails & URLs
+│       ├── SystemService.php          # System admin utilities
+│       └── TwoFactorService.php       # 2FA TOTP management
+├── config/
+│   └── jwt.php                        # JWT authentication config
+├── database/migrations/               # Database schema
 ├── resources/views/
-│   ├── layouts/app.blade.php         # Main layout
-│   ├── assets/                       # Asset views
-│   ├── discover/                     # Discovery views
-│   └── tags/                         # Tag views
+│   ├── api/                           # OpenAPI documentation view
+│   ├── assets/                        # Asset views (index, show, edit, create, replace, trash)
+│   ├── auth/                          # Authentication & 2FA views
+│   ├── components/                    # Blade components
+│   ├── discover/                      # S3 discovery view
+│   ├── export/                        # Export view
+│   ├── layouts/                       # App & guest layouts
+│   ├── profile/                       # Profile & preferences
+│   ├── system/                        # System admin view
+│   ├── tags/                          # Tag management view
+│   ├── users/                         # User management views
+│   └── vendor/pagination/             # Custom pagination templates
 ├── routes/
-│   ├── web.php                       # Web routes
-│   └── api.php                       # API routes
+│   ├── web.php                        # Web routes
+│   └── api.php                        # API routes
 ├── tests/
-│   ├── Feature/                      # Feature tests
-│   │   ├── AssetTest.php             # Asset CRUD, sorting
-│   │   ├── TagTest.php
-│   │   ├── ExportTest.php
-│   │   ├── ApiTest.php               # API endpoints, sorting
-│   │   ├── SystemTest.php            # System settings
-│   │   └── JwtAuthTest.php           # JWT authentication
-│   └── Unit/                         # Unit tests
-│       ├── AssetTest.php
-│       ├── TagTest.php
-│       ├── SettingTest.php
-│       └── UserPreferencesTest.php
-└── config/                           # Configuration
+│   ├── Feature/
+│   │   ├── ApiTest.php                # API endpoints, sorting, meta
+│   │   ├── AssetTest.php              # Asset CRUD, sorting, permissions
+│   │   ├── ExportTest.php             # CSV export
+│   │   ├── JwtAuthTest.php            # JWT authentication
+│   │   ├── JwtSecretManagementTest.php# JWT secret management
+│   │   ├── LocaleTest.php             # Language/locale
+│   │   ├── ProfileTest.php            # User profile & preferences
+│   │   ├── SystemTest.php             # System settings
+│   │   ├── TagTest.php                # Tag management
+│   │   ├── TwoFactorAuthTest.php      # 2FA functionality
+│   │   └── Auth/                      # Authentication tests
+│   └── Unit/
+│       ├── AssetTest.php              # Model relationships, scopes
+│       ├── JwtGuardTest.php           # JWT guard
+│       ├── SettingTest.php            # Setting model, caching
+│       ├── TagTest.php                # Tag model
+│       ├── TwoFactorServiceTest.php   # 2FA service
+│       └── UserPreferencesTest.php    # User preference helpers
+└── bootstrap/
+    └── app.php                        # Scheduled tasks config
 ```
 
 ---
@@ -125,15 +177,25 @@ GET  /assets                   # List assets
 GET  /assets/create            # Upload form
 POST /assets                   # Store assets
 GET  /assets/{id}              # View asset
-GET  /assets/{id}/edit         # Edit form
+GET  /assets/{id}/edit         # Edit form (filename, metadata, tags)
 PATCH /assets/{id}             # Update asset
-DELETE /assets/{id}            # Delete asset
+DELETE /assets/{id}            # Soft delete asset
+GET  /assets/{id}/replace      # Replace file form
+POST /assets/{id}/replace      # Replace file (same S3 key)
+GET  /assets/{id}/download     # Download asset
+POST /assets/{id}/ai-tag       # Generate AI tags
+POST /assets/{id}/tags         # Add tags
+DELETE /assets/{id}/tags/{tag}  # Remove tag
+GET  /assets/trash/index       # View trash (admin)
+POST /assets/{id}/restore      # Restore from trash (admin)
+DELETE /assets/{id}/force-delete # Permanent delete (admin)
 GET  /discover                 # Discovery page (admin)
 POST /discover/scan            # Scan S3 bucket
 POST /discover/import          # Import objects
 GET  /tags                     # List tags
 GET  /profile                  # User profile & preferences
-PATCH /profile/preferences     # Update user preferences
+PATCH /profile/preferences     # Update preferences (locale, home folder, etc.)
+GET  /users                    # User management (admin)
 GET  /system                   # System admin (admin)
 POST /system/settings          # Update settings (admin)
 POST /system/run-tests         # Run automated tests (admin)
@@ -174,12 +236,14 @@ POST   /api/chunked-upload/abort     # Cancel upload
 ### users
 - id, name, email, password, role (editor|admin|api)
 - jwt_secret, jwt_secret_generated_at (for JWT auth)
-- preferences (JSON: home_folder, items_per_page)
+- two_factor_secret, two_factor_recovery_codes, two_factor_confirmed_at (2FA)
+- preferences (encrypted JSON: home_folder, items_per_page, locale, dark_mode)
 
 ### assets
-- id, s3_key, filename, mime_type, size
+- id, s3_key, filename, mime_type, size, etag
 - width, height, thumbnail_s3_key
-- alt_text, caption, user_id
+- alt_text, caption, user_id, last_modified_by
+- license_type, license_expiry_date, copyright, copyright_source
 - created_at, updated_at, deleted_at
 
 ### tags
@@ -188,9 +252,15 @@ POST   /api/chunked-upload/abort     # Cancel upload
 ### asset_tag
 - asset_id, tag_id, created_at, updated_at
 
+### upload_sessions
+- id, upload_id, session_token, filename, mime_type, file_size
+- s3_key, chunk_size, total_chunks, uploaded_chunks, part_etags (JSON)
+- status (pending|uploading|completed|failed|aborted), user_id, last_activity_at
+
 ### settings
 - id, key (unique), value, type, group, description
-- Default settings: items_per_page, rekognition_max_labels, rekognition_min_confidence, rekognition_language
+- Default settings: items_per_page, timezone, locale, s3_root_folder, custom_domain,
+  rekognition_max_labels, rekognition_min_confidence, rekognition_language
 
 ---
 
@@ -232,6 +302,13 @@ APP_DEBUG=true|false
 PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 ```
 
+**Runtime settings** (configured via System → Settings, no .env needed):
+- `custom_domain` — Custom CDN domain for asset URLs (e.g., `https://cdn.example.com`)
+- `s3_root_folder` — S3 prefix for uploads (default: `assets`)
+- `timezone` — Application timezone
+- `locale` — Global UI language (`en` or `nl`)
+- `items_per_page` — Default pagination
+
 ---
 
 ## User Permissions
@@ -239,10 +316,11 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 ### Editor
 ✅ Upload assets
 ✅ View all assets
+✅ Edit filenames and metadata
 ✅ Edit/delete any asset
 ✅ Add tags to any asset
 ✅ Search and filter
-✅ Set personal preferences (home folder, items per page)
+✅ Set personal preferences (home folder, items per page, language)
 
 ### Admin
 ✅ All editor permissions
@@ -270,11 +348,13 @@ Users can set personal preferences via **Profile → Preferences**:
 |------------|-------------|-------------------|
 | **Home Folder** | Default folder when browsing assets | URL param > User pref > Global root |
 | **Items Per Page** | Default pagination (12-96) | URL param > User pref > Global setting |
+| **Language** | UI language (English, Dutch) | User pref > Global setting > Config |
 
 ```php
 // In code, access via User model:
 $user->getPreference('home_folder');
 $user->getPreference('items_per_page');
+$user->getPreference('locale');
 $user->getHomeFolder();      // Validated against root
 $user->getItemsPerPage();    // Falls back to global
 ```
@@ -357,6 +437,13 @@ php artisan token:revoke 5               # Revoke token ID 5
 php artisan jwt:list                     # List users with JWT secrets
 php artisan jwt:generate user@email.com  # Generate JWT secret
 php artisan jwt:revoke user@email.com    # Revoke JWT secret
+
+# Two-Factor Authentication management
+php artisan two-factor:status            # Check 2FA status for all users
+php artisan two-factor:disable user@email.com  # Disable 2FA for a user
+
+# Maintenance
+php artisan uploads:cleanup              # Clean up stale chunked uploads (>24h)
 
 # Clear all caches
 php artisan optimize:clear

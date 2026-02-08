@@ -9,7 +9,10 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🏷️ Manual and AI-powered tagging (AWS Rekognition)
 - 🌍 Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
 - 🎯 Manual AI tag generation with configurable limits
-- ⚙️ Admin Settings panel (pagination, AI tag settings & language)
+- ✏️ **Editable filenames** (display name only — S3 key and URLs stay the same)
+- 🌐 **Multi-language UI** (English, Dutch) with global and per-user locale
+- 🔗 **Custom domain for asset URLs** (e.g., `https://cdn.example.com` instead of S3 bucket URL)
+- ⚙️ Admin Settings panel (pagination, AI tag settings, language, custom domain)
 - 🔍 Advanced search and filtering
 - 🖼️ Thumbnail generation and grid view
 - 📤 Multi-file upload with drag & drop
@@ -28,7 +31,8 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔓 Public metadata API endpoint (no auth required)
 - 🔒 Long-lived token support (Laravel Sanctum Token) for back-ends
 - 🔑 Short-lived token support (JWT bearer) for front-ends
-- 👤 User preferences (home folder, items per page, dark/light mode)
+- 👤 User preferences (home folder, items per page, language, dark/light mode)
+- 🔒 Two-factor authentication (TOTP)
 
 ## Installation
 
@@ -146,11 +150,12 @@ php artisan serve  # Or use Herd
 
 **Editors:**
 - Upload and manage all assets
+- Edit filenames and metadata (alt text, caption, license, copyright)
 - Add and remove tags
 - Search and browse all assets
 - Copy URLs
 - Soft delete assets (moves to trash)
-- Set personal preferences (home folder, items per page)
+- Set personal preferences (home folder, items per page, language)
 
 **Admins:**
 - All editor permissions
@@ -161,7 +166,7 @@ php artisan serve  # Or use Herd
 - Export to CSV
 - Batch operations
 - System administration (queue management, logs, diagnostics)
-- **Settings panel** - Configure items per page, AI tag limits, and language
+- **Settings panel** - Configure items per page, AI tag limits, language, timezone, custom domain
 
 ### Discovering Unmapped Objects
 
@@ -276,11 +281,14 @@ orca-dam/
 │   │   ├── JwtRevokeCommand.php       # Revoke JWT secret
 │   │   ├── TokenCreateCommand.php     # Create Sanctum API token
 │   │   ├── TokenListCommand.php       # List API tokens
-│   │   └── TokenRevokeCommand.php     # Revoke API token
+│   │   ├── TokenRevokeCommand.php     # Revoke API token
+│   │   ├── TwoFactorDisableCommand.php# Disable 2FA for a user
+│   │   └── TwoFactorStatusCommand.php # Check 2FA status
 │   ├── Http/Controllers/
 │   │   ├── Api/
 │   │   │   └── AssetApiController.php # REST API for assets
 │   │   ├── Auth/                      # Laravel Breeze auth controllers
+│   │   │   └── TwoFactorAuthController.php # 2FA setup & verification
 │   │   ├── ApiDocsController.php      # OpenAPI docs page
 │   │   ├── AssetController.php        # Asset CRUD & management
 │   │   ├── ChunkedUploadController.php# Large file uploads
@@ -294,6 +302,9 @@ orca-dam/
 │   │   ├── TagController.php          # Tag management
 │   │   ├── TokenController.php        # API token management (admin)
 │   │   └── UserController.php         # User management (admin)
+│   ├── Http/Middleware/
+│   │   ├── AuthenticateMultiple.php   # Sanctum + JWT dual auth
+│   │   └── SetLocale.php             # Locale resolution middleware
 │   ├── Jobs/
 │   │   ├── GenerateAiTags.php         # AI tagging background job
 │   │   └── ProcessDiscoveredAsset.php # Discovery import job
@@ -310,8 +321,9 @@ orca-dam/
 │   └── Services/
 │       ├── ChunkedUploadService.php   # S3 multipart uploads
 │       ├── RekognitionService.php     # AWS Rekognition AI tagging
-│       ├── S3Service.php              # S3 operations & thumbnails
-│       └── SystemService.php          # System admin utilities
+│       ├── S3Service.php              # S3 operations, thumbnails & URLs
+│       ├── SystemService.php          # System admin utilities
+│       └── TwoFactorService.php       # 2FA TOTP management
 ├── config/
 │   └── jwt.php                        # JWT authentication config
 ├── database/
@@ -319,7 +331,7 @@ orca-dam/
 │   └── migrations/
 ├── resources/views/
 │   ├── api/                           # OpenAPI documentation view
-│   ├── assets/                        # Asset views (index, show, edit, create, trash)
+│   ├── assets/                        # Asset views (index, show, edit, create, replace, trash)
 │   ├── auth/                          # Authentication views
 │   ├── components/                    # Blade components
 │   ├── discover/                      # S3 discovery view

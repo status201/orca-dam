@@ -277,6 +277,19 @@
                             <p class="text-xs text-gray-500 mt-1">{{ __('S3 prefix for root folder view & uploads. Leave empty for bucket root.') }}</p>
                             <p class="text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Changing this does not move existing assets.') }}</p>
                         </div>
+
+                        <!-- Custom Domain -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                {{ __('Custom domain') }}
+                            </label>
+                            <input type="text"
+                                   x-model="settings.custom_domain"
+                                   @change="updateSetting('custom_domain', settings.custom_domain)"
+                                   placeholder="https://cdn.example.com"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                            <p class="text-xs text-gray-500 mt-1">{{ __('Replaces the S3 bucket domain in asset URLs. Leave empty to use the default S3 URL.') }}</p>
+                        </div>
                     </div>
                 </div>
 
@@ -1125,6 +1138,7 @@ function systemAdmin() {
             timezone: '{{ collect($settings)->firstWhere('key', 'timezone')['value'] ?? 'UTC' }}',
             locale: '{{ collect($settings)->firstWhere('key', 'locale')['value'] ?? 'en' }}',
             s3_root_folder: '{{ collect($settings)->firstWhere('key', 's3_root_folder')['value'] ?? 'assets' }}',
+            custom_domain: '{{ collect($settings)->firstWhere('key', 'custom_domain')['value'] ?? '' }}',
             rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
             rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
             rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '80' }}',

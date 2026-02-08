@@ -206,6 +206,10 @@ class SystemController extends Controller
                 // Allow empty string (bucket root) or alphanumeric with hyphens, underscores, slashes
                 return $v === '' || preg_match('/^[a-zA-Z0-9_\-\/]+$/', $v);
             },
+            'custom_domain' => function ($v) {
+                // Allow empty (disabled) or a valid URL starting with http(s)://
+                return $v === '' || preg_match('/^https?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(\/.*)?$/', $v);
+            },
         ];
 
         if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {

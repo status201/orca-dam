@@ -389,7 +389,16 @@ certbot --apache -d your-domain.com  # For Apache
 - Check queue status in System admin page
 - Test AI tagging (if enabled)
 
-### 2. Configure API Authentication (if needed)
+### 2. Configure Custom Domain (optional)
+
+If you use a CDN (CloudFront, Cloudflare, etc.) in front of your S3 bucket:
+
+1. Log in as admin and go to **System → Settings**
+2. Under **S3 Storage**, enter your custom domain (e.g., `https://cdn.example.com`)
+3. All asset URLs across the application will immediately use the custom domain
+4. The `/api/assets/meta` endpoint accepts both custom domain and original S3 URLs
+
+### 3. Configure API Authentication (if needed)
 
 **For Sanctum Tokens (backend integrations):**
 ```bash
@@ -409,7 +418,7 @@ php artisan token:create user@email.com --name="My Integration"
 3. Share the secret with your external system securely
 4. External system generates short-lived JWTs for API requests
 
-### 3. Monitor Queue Workers
+### 4. Monitor Queue Workers
 
 Check that workers are running:
 ```bash
@@ -422,7 +431,7 @@ orca-queue-worker:orca-queue-worker_00   RUNNING   pid 12345, uptime 0:00:05
 orca-queue-worker:orca-queue-worker_01   RUNNING   pid 12346, uptime 0:00:05
 ```
 
-### 4. Setup Log Rotation
+### 5. Setup Log Rotation
 
 Create `/etc/logrotate.d/orca-dam`:
 
@@ -442,7 +451,7 @@ Create `/etc/logrotate.d/orca-dam`:
 }
 ```
 
-### 5. Setup Scheduled Tasks (Cron)
+### 6. Setup Scheduled Tasks (Cron)
 
 Add to crontab (`crontab -e -u www-data`):
 

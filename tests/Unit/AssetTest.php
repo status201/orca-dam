@@ -106,6 +106,58 @@ test('asset scope ofType filters by mime type prefix', function () {
     expect($documents)->toHaveCount(1);
 });
 
+test('asset url uses custom domain when configured', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'assets/test-image.jpg']);
+
+    // Without custom domain, should use S3 URL
+    $s3Url = config('filesystems.disks.s3.url');
+    expect($asset->url)->toBe($s3Url.'/assets/test-image.jpg');
+
+    // With custom domain, should use it
+    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    cache()->forget('setting:custom_domain');
+
+    // Re-fetch to get fresh attribute
+    $asset->refresh();
+    expect($asset->url)->toBe('https://cdn.example.com/assets/test-image.jpg');
+
+    // Clean up
+    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    cache()->forget('setting:custom_domain');
+});
+
+test('asset thumbnail_url uses custom domain when configured', function () {
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/test-image.jpg',
+        'thumbnail_s3_key' => 'thumbnails/test-image_thumb.jpg',
+        'mime_type' => 'image/jpeg',
+    ]);
+
+    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    cache()->forget('setting:custom_domain');
+
+    $asset->refresh();
+    expect($asset->thumbnail_url)->toBe('https://cdn.example.com/thumbnails/test-image_thumb.jpg');
+
+    // Clean up
+    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    cache()->forget('setting:custom_domain');
+});
+
+test('asset url falls back to s3 url when custom domain is empty', function () {
+    \App\Models\Setting::set('custom_domain', '', 'string', 'aws');
+    cache()->forget('setting:custom_domain');
+
+    $asset = Asset::factory()->create(['s3_key' => 'assets/test.jpg']);
+
+    $s3Url = config('filesystems.disks.s3.url');
+    expect($asset->url)->toBe($s3Url.'/assets/test.jpg');
+
+    // Clean up
+    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    cache()->forget('setting:custom_domain');
+});
+
 test('asset scope withTags filters by tag ids', function () {
     $tag1 = Tag::factory()->create();
     $tag2 = Tag::factory()->create();
