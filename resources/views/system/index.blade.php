@@ -256,7 +256,7 @@
                 </h3>
                 <p class="text-sm text-gray-500 mt-1">{{ __('Configure global application settings') }}</p>
             </div>
-            <div class="p-6 space-y-6">
+            <div class="grid gap-6 p-6 space-y-6">
 
                 <!-- S3 Storage Settings -->
                 <div>

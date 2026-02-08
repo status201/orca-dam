@@ -507,14 +507,14 @@ class AssetController extends Controller
             \Log::info('Asset is not an image, redirecting to edit');
 
             return redirect()->route('assets.edit', $asset)
-                ->with('error', 'AI tagging is only available for images');
+                ->with('error', __('AI tagging is only available for images'));
         }
 
         if (! $this->rekognitionService->isEnabled()) {
             \Log::info('Rekognition is not enabled, redirecting to edit');
 
             return redirect()->route('assets.edit', $asset)
-                ->with('error', 'AWS Rekognition is not enabled');
+                ->with('error', __('AWS Rekognition is not enabled'));
         }
 
         try {
@@ -525,18 +525,19 @@ class AssetController extends Controller
                 \Log::info('No labels detected, redirecting to edit');
 
                 return redirect()->route('assets.edit', $asset)
-                    ->with('warning', 'No labels detected for this image');
+                    ->with('warning', __('No labels detected for this image'));
             }
 
             \Log::info('Generated '.count($labels).' AI tags, redirecting to edit');
 
             return redirect()->route('assets.edit', $asset)
-                ->with('success', 'Generated '.count($labels).' AI tag(s) successfully');
+                // ->with('success', 'Generated '.count($labels).' AI tag(s) successfully');
+                ->with('success', __('Generated :count AI tag(s) successfully', ['count' => count($labels)]));
         } catch (\Exception $e) {
             \Log::error("Manual AI tagging failed for {$asset->filename}: ".$e->getMessage());
 
             return redirect()->route('assets.edit', $asset)
-                ->with('error', 'Failed to generate AI tags: '.$e->getMessage());
+                ->with('error', __('Failed to generate AI tags: ') .$e->getMessage());
         }
     }
 
