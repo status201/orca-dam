@@ -82,6 +82,7 @@ ORCA has two user roles with different capabilities:
 | Export assets to CSV | ✗ | ✓ |
 | Manage users | ✗ | ✓ |
 | Access System settings | ✗ | ✓ |
+| Manage API tokens & JWT secrets | ✗ | ✓ |
 
 ---
 
@@ -400,6 +401,46 @@ The export includes:
 - License and copyright info
 - Public URLs
 - Who uploaded it and when
+
+---
+
+## API Docs & Token Management (Admin Only)
+
+If external systems (websites, apps, rich text editors) need to access your DAM, admins can manage API authentication from the **API Docs** page.
+
+### Accessing the API Docs Page
+
+Click your name in the top-right → **API Docs**
+
+### API Tokens (Sanctum)
+
+API tokens are **long-lived** credentials for backend-to-backend integrations. They should never be exposed in frontend code.
+
+**To create a token:**
+1. Go to API Docs → **API Tokens** tab
+2. Select an existing user or create a new API user
+3. Give the token a descriptive name (e.g., "Website CMS")
+4. Click **Create Token**
+5. **Copy the token immediately** — it will only be shown once
+
+**To revoke a token:**
+- Click the revoke button next to the token in the list
+
+### JWT Secrets
+
+JWT secrets are for **frontend integrations** (e.g., rich text editors). Your external backend generates short-lived JWT tokens using the secret, and ORCA validates them.
+
+**To generate a JWT secret:**
+1. Go to API Docs → **JWT Secrets** tab
+2. Select a user from the dropdown
+3. Click **Generate Secret**
+4. **Copy the secret immediately** — it will only be shown once
+5. Share the secret securely with the external system's backend developer
+
+**To revoke a JWT secret:**
+- Click the revoke button next to the user in the list
+
+> **Note:** JWT authentication must be enabled in the system configuration (`JWT_ENABLED=true` in `.env`). You can also toggle it at runtime from the API Docs dashboard.
 
 ---
 

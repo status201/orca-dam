@@ -201,8 +201,16 @@ GET  /users                    # User management (admin)
 GET  /system                   # System admin (admin)
 POST /system/settings          # Update settings (admin)
 POST /system/run-tests         # Run automated tests (admin)
-GET  /api-docs                 # API documentation (admin)
-GET  /api-docs/jwt-secrets     # Manage JWT secrets (admin)
+GET  /api-docs                          # API documentation page (admin)
+GET  /api-docs/dashboard                # API stats dashboard (admin)
+POST /api-docs/settings                 # Update API settings (admin)
+GET  /api-docs/tokens                   # List API tokens (admin)
+POST /api-docs/tokens                   # Create API token (admin)
+DELETE /api-docs/tokens/{id}            # Revoke token (admin)
+DELETE /api-docs/tokens/user/{userId}   # Revoke all user tokens (admin)
+GET  /api-docs/jwt-secrets              # List JWT secrets (admin)
+POST /api-docs/jwt-secrets/{user}       # Generate JWT secret (admin)
+DELETE /api-docs/jwt-secrets/{user}     # Revoke JWT secret (admin)
 ```
 
 ### API Routes
@@ -263,7 +271,8 @@ POST   /api/chunked-upload/abort     # Cancel upload
 ### settings
 - id, key (unique), value, type, group, description
 - Default settings: items_per_page, timezone, locale, s3_root_folder, custom_domain,
-  rekognition_max_labels, rekognition_min_confidence, rekognition_language
+  rekognition_max_labels, rekognition_min_confidence, rekognition_language,
+  jwt_enabled_override, api_meta_endpoint_enabled
 
 ---
 
@@ -311,6 +320,10 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 - `timezone` — Application timezone
 - `locale` — Global UI language (`en` or `nl`)
 - `items_per_page` — Default pagination
+
+**API settings** (configured via API Docs → Dashboard):
+- `jwt_enabled_override` — Enable/disable JWT authentication at runtime
+- `api_meta_endpoint_enabled` — Enable/disable the public `/api/assets/meta` endpoint
 
 ---
 

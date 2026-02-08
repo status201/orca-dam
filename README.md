@@ -167,6 +167,7 @@ php artisan serve  # Or use Herd
 - Batch operations
 - System administration (queue management, logs, diagnostics)
 - **Settings panel** - Configure items per page, AI tag limits, language, timezone, custom domain
+- **API Docs & Management** - API token management, JWT secret management, interactive API docs
 
 ### Discovering Unmapped Objects
 
@@ -218,7 +219,7 @@ POST   /api/chunked-upload/complete - Complete upload and create asset
 POST   /api/chunked-upload/abort    - Cancel and cleanup failed upload
 ```
 
-Authentication: Laravel Sanctum (SPA token) - except `/api/assets/meta` which is public
+Authentication: Laravel Sanctum (SPA token) or JWT bearer token - except `/api/assets/meta` which is public
 
 ## Testing
 

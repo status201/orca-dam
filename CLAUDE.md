@@ -174,7 +174,9 @@ const token = jwt.sign(
 **Key Files:**
 - Guard: `app/Auth/JwtGuard.php`
 - Config: `config/jwt.php`
-- Controller: `app/Http/Controllers/JwtSecretController.php`
+- JWT Secrets: `app/Http/Controllers/JwtSecretController.php`
+- API Tokens: `app/Http/Controllers/TokenController.php`
+- API Docs page: `app/Http/Controllers/ApiDocsController.php`
 - Middleware: `app/Http/Middleware/AuthenticateMultiple.php`
 
 ### Locale System
@@ -285,6 +287,18 @@ JWT authentication is disabled by default. Enable with `JWT_ENABLED=true` in `.e
 - `GET /api/folders` - List cached folders (all authenticated users)
 - `POST /folders/scan` - Refresh folder list from S3 (admin only)
 - `POST /folders` - Create new folder in S3 (admin only, accepts `name` and optional `parent`)
+
+**API Docs & Token Management Endpoints** (`routes/web.php`, admin only):
+- `GET /api-docs` - API documentation page
+- `GET /api-docs/dashboard` - Dashboard statistics
+- `POST /api-docs/settings` - Update API settings (jwt_enabled_override, api_meta_endpoint_enabled)
+- `GET /api-docs/tokens` - List all Sanctum tokens
+- `POST /api-docs/tokens` - Create new token (for existing user or new API user)
+- `DELETE /api-docs/tokens/{id}` - Revoke token
+- `DELETE /api-docs/tokens/user/{userId}` - Revoke all tokens for user
+- `GET /api-docs/jwt-secrets` - List users with JWT secrets
+- `POST /api-docs/jwt-secrets/{user}` - Generate/regenerate JWT secret
+- `DELETE /api-docs/jwt-secrets/{user}` - Revoke JWT secret
 
 All API endpoints require `auth:sanctum` middleware except `/api/assets/meta` which is public. Chunked upload endpoints have additional rate limiting (100 requests/minute). Web-based endpoints use session authentication via `auth` middleware.
 
@@ -498,6 +512,8 @@ The application handles large files (PDFs, GIFs, videos) by:
 | `rekognition_min_confidence` | 80 | Min confidence threshold for AI tags (65-99) |
 | `rekognition_language` | nl | AI tag language (en, nl, fr, de, es, etc.) |
 | `s3_folders` | ["assets"] | JSON array of S3 folder prefixes (auto-populated) |
+| `jwt_enabled_override` | true | Runtime toggle for JWT authentication (works with `JWT_ENABLED` env var) |
+| `api_meta_endpoint_enabled` | true | Enable/disable the public `/api/assets/meta` endpoint |
 
 **users table** (JWT-related columns):
 - `jwt_secret` (nullable, encrypted) - Per-user JWT secret for HMAC signing (64 chars)
@@ -795,15 +811,6 @@ ORCA DAM includes a comprehensive admin-only System page accessible via the user
 - PHP settings display
 - S3 connection test
 
-**API Tokens Tab:**
-- Manage Laravel Sanctum API tokens for external integrations
-- Create tokens for existing users or new API users
-- View all tokens with user info, creation date, last used timestamp
-- Revoke individual tokens
-- Copy new tokens to clipboard (shown only once)
-- API users have limited permissions (view, create, update; no delete/admin features)
-- Routes: `GET/POST/DELETE /system/tokens`
-
 **Tests Tab:**
 - Web-based test runner for automated tests
 - Suite selector (All Tests, Unit Tests, Feature Tests)
@@ -848,6 +855,52 @@ Use supervisor to manage persistent queue workers. See `DEPLOYMENT.md` for compl
 - CSRF protection on all POST requests
 - Read-only log access (no deletion)
 - Input validation on all endpoints
+
+## API Documentation & Management
+
+ORCA DAM has a dedicated admin-only API Docs page for managing API authentication and viewing interactive documentation.
+
+### Accessing API Docs
+- **Route**: `/api-docs`
+- **Authorization**: Admin users only (`role = 'admin'`)
+- **Location**: User dropdown → API Docs
+- **Controller**: `app/Http/Controllers/ApiDocsController.php`
+
+### API Docs Page Tabs
+
+**Dashboard Tab:**
+- Statistics cards: API Tokens count, JWT Secrets count, API Users count
+- Quick links to other tabs
+- API Settings toggles:
+  - `jwt_enabled_override` - Enable/disable JWT authentication at runtime (separate from `JWT_ENABLED` env var)
+  - `api_meta_endpoint_enabled` - Enable/disable the public `/api/assets/meta` endpoint
+- Route: `GET /api-docs/dashboard`, `POST /api-docs/settings`
+
+**Swagger Tab:**
+- Interactive OpenAPI 3.0 documentation
+- Try-out functionality for all API endpoints
+
+**API Tokens Tab:**
+- Manage Laravel Sanctum API tokens for external integrations
+- Create tokens for existing users or create new API users (role: `api`)
+- View all tokens with user info, creation date, last used timestamp
+- Revoke individual tokens or all tokens for a user
+- Token shown only once on creation — copy immediately
+- Routes: `GET/POST /api-docs/tokens`, `DELETE /api-docs/tokens/{id}`, `DELETE /api-docs/tokens/user/{userId}`
+
+**JWT Secrets Tab:**
+- Manage per-user JWT secrets for frontend integrations
+- Generate new secrets or regenerate existing ones
+- View all users with active JWT secrets
+- Revoke secrets
+- Secret shown only once on generation — copy immediately
+- Routes: `GET /api-docs/jwt-secrets`, `POST /api-docs/jwt-secrets/{user}`, `DELETE /api-docs/jwt-secrets/{user}`
+
+### Key Files
+- API Docs page: `app/Http/Controllers/ApiDocsController.php`
+- Token management: `app/Http/Controllers/TokenController.php`
+- JWT secret management: `app/Http/Controllers/JwtSecretController.php`
+- View: `resources/views/api/index.blade.php`
 
 ## Deployment
 
