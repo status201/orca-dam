@@ -180,7 +180,7 @@
 
                     <div>
                         <dt class="text-gray-500">{{ __('Uploaded By') }}</dt>
-                        <dd class="font-medium">{{ $asset->user->name }}</dd>
+                        <dd title="{{ $asset->user->email }}" class="font-medium">{{ $asset->user->name }}</dd>
                     </div>
 
                     <div>
@@ -191,7 +191,7 @@
                     @if($asset->wasModified())
                     <div>
                         <dt class="text-gray-500">{{ __('Last Modified By') }}</dt>
-                        <dd class="font-medium">{{ $asset->modifier?->name ?? __('Unknown') }}</dd>
+                        <dd title="{{ $asset->modifier?->email ?? __('Unknown') }}" class="font-medium">{{ $asset->modifier?->name ?? __('Unknown') }}</dd>
                     </div>
                     <div>
                         <dt class="text-gray-500">{{ __('Last Modified') }}</dt>

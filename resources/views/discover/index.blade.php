@@ -56,7 +56,14 @@
             <div class="flex items-center justify-between">
                 <div class="w-full sm:w-auto">
                     <h2 class="text-xl font-semibold pr-2">
-                        {{ __('Found') }} <span x-text="unmappedObjects.length" class="text-blue-600"></span> {{ __('unmapped object(s)') }}
+                        <div x-data="{
+                            messageTemplate: @js(__('Found :count unmapped object(s)')),
+                            get unmappedMessage() {
+                                return this.messageTemplate.replace(':count', unmappedObjects.length);
+                            }
+                        }">
+                            <span x-text="unmappedMessage"  class="text-blue-600"></span>
+                        </div>
                     </h2>
                     <p class="text-gray-600 text-sm mt-1">{{ __('Select objects to import into ORCA') }}</p>
                 </div>
@@ -76,10 +83,16 @@
                             :disabled="selectedObjects.length === 0 || importing"
                             class="import px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
                         <template x-if="!importing">
-                            <span>
+
+                            <div x-data="{
+                                messageTemplate: @js(__('Import :count Selected')),
+                                get selectedMessage() {
+                                    return this.messageTemplate.replace(':count', selectedObjects.length);
+                                }}">
                                 <i class="fas fa-file-import mr-2"></i>
-                                {{ __('Import') }} <span x-text="selectedObjects.length"></span> {{ __('Selected') }}
-                            </span>
+                                <span x-text="selectedMessage"></span>
+                            </div>
+                            
                         </template>
                         <template x-if="importing">
                             <span><i class="fas fa-spinner fa-spin mr-2"></i> {{ __('Importing...') }}</span>
@@ -173,7 +186,7 @@
 
         <!-- No results -->
         <div x-show="unmappedObjects.length === 0" class="bg-white rounded-lg shadow-lg p-12 text-center">
-            <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
+            <i class="attention fas fa-check-circle text-6xl text-green-500 mb-4"></i>
             <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ __('All Clear!') }}</h3>
             <p class="text-gray-600">{{ __('All objects in your S3 bucket are already tracked in ORCA.') }}</p>
         </div>
