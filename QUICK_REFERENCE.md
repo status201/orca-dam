@@ -189,6 +189,8 @@ DELETE /assets/{id}/tags/{tag}  # Remove tag
 GET  /assets/trash/index       # View trash (admin)
 POST /assets/{id}/restore      # Restore from trash (admin)
 DELETE /assets/{id}/force-delete # Permanent delete (admin)
+POST /folders/scan             # Refresh folder list from S3 (admin)
+POST /folders                  # Create new folder (admin)
 GET  /discover                 # Discovery page (admin)
 POST /discover/scan            # Scan S3 bucket
 POST /discover/import          # Import objects
@@ -214,6 +216,7 @@ GET    /api/assets/{id}        # Get asset
 PATCH  /api/assets/{id}        # Update asset
 DELETE /api/assets/{id}        # Delete asset
 GET    /api/tags               # List tags
+GET    /api/folders            # List S3 folders
 
 # Chunked uploads (for large files ≥10MB)
 POST   /api/chunked-upload/init      # Initialize upload

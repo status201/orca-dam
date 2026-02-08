@@ -207,6 +207,7 @@ DELETE /api/assets/{id}         - Delete asset
 GET    /api/assets/search       - Search with filters
 GET    /api/assets/meta         - Get metadata by URL (PUBLIC, no auth)
 GET    /api/tags                - List tags for autocomplete
+GET    /api/folders             - List available S3 folders
 ```
 
 **Chunked Upload Endpoints** (for large files ≥10MB):

@@ -524,6 +524,16 @@ GET /api/assets/search?q=keyword&tags=1,2&type=image
 GET /api/tags?type=user
 ```
 
+#### List Folders
+```
+GET /api/folders
+
+Returns:
+{
+    "folders": ["assets", "assets/marketing", "assets/docs"]
+}
+```
+
 ---
 
 ## Usage Tips
