@@ -81,11 +81,31 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Preview column -->
         <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="image-container bg-white rounded-lg shadow-lg overflow-hidden relative"
+                 @if($asset->isImage())
+                     x-data="imageRefresher(@js($asset->url), @js($asset->filename))"
+                    @endif
+            >
+
                 @if($asset->isImage())
-                    <img src="{{ $asset->url }}"
-                         alt="{{ $asset->filename }}"
-                         class="h-auto my-0 mx-auto">
+
+                    <!-- Refresh Icon Button -->
+                    <button @click="refreshImage()" title="{{ __('Force a refresh') }}"
+                            class="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10"
+                            :disabled="isRefreshing">
+                        <svg class="w-5 h-5 text-gray-700" :class="{ 'animate-spin [animation-direction:reverse]': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+
+                    <!-- Original Image -->
+                    <img :src="imageSrc"
+                         :alt="imageAlt"
+                         class="h-auto my-0 mx-auto"
+                         x-ref="mainImage">
+
+
                 @elseif($asset->isVideo())
                     <video controls class="w-full" preload="metadata">
                         <source src="{{ $asset->url }}" type="{{ $asset->mime_type }}">
@@ -439,6 +459,54 @@ function assetDetail() {
             }
         }
     };
+}
+
+function imageRefresher(url, alt) {
+  return {
+    baseImageUrl: url,
+    imageAlt: alt,
+    imageSrc: url,
+    isRefreshing: false,
+
+    async refreshImage() {
+      this.isRefreshing = true;
+
+      try {
+        // Fetch the image with no-cache headers
+        const response = await fetch(this.baseImageUrl, {
+          cache: 'reload',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+
+          // Update to blob URL temporarily
+          this.imageSrc = objectUrl;
+
+          // After image loads, switch back to original URL
+          await new Promise(resolve => {
+            this.$refs.mainImage.onload = resolve;
+          });
+
+          // Clean up blob URL
+          URL.revokeObjectURL(objectUrl);
+
+          // Set back to original URL (now cached fresh)
+          this.imageSrc = this.baseImageUrl;
+        }
+      } catch (error) {
+        console.error('Failed to refresh image:', error);
+      } finally {
+        this.isRefreshing = false;
+      }
+    }
+  }
 }
 </script>
 
