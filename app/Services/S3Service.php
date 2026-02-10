@@ -294,7 +294,7 @@ class S3Service
     }
 
     /**
-     * Delete resized image variants from S3
+     * Delete resized image variants from S3 
      */
     public function deleteResizedImages(Asset $asset): void
     {
