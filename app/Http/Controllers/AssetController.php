@@ -280,7 +280,7 @@ class AssetController extends Controller
         $this->authorize('update', $asset);
 
         $request->validate([
-            'filename' => 'required|string|max:255',
+            'filename' => 'sometimes|required|string|max:255',
             'alt_text' => 'nullable|string|max:500',
             'caption' => 'nullable|string|max:1000',
             'license_type' => 'nullable|string|max:255',
