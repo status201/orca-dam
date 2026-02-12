@@ -614,4 +614,30 @@ class S3Service
             return null;
         }
     }
+
+    /**
+     * Get the S3 bucket endpoint address.
+     */
+    public function getBucketEndpoint(): string
+    {
+        return "{$this->bucket}.s3.{$this->region}.amazonaws.com";
+    }
+
+    /**
+     * Check if bucket versioning is enabled.
+     *
+     * @return string|null 'Enabled', 'Suspended', or null (not configured / error)
+     */
+    public function getBucketVersioning(): ?string
+    {
+        try {
+            $result = $this->s3Client->getBucketVersioning([
+                'Bucket' => $this->bucket,
+            ]);
+
+            return $result['Status'] ?? null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
 }

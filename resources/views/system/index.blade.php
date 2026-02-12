@@ -851,6 +851,10 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-3">
                     <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span class="text-sm text-gray-600">{{ __('AWS S3 Bucket:') }}</span>
+                        <span class="text-sm font-semibold text-gray-900">{{ $systemInfo['s3_bucket_endpoint'] ?? __('N/A') }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-gray-200">
                         <span class="text-sm text-gray-600">{{ __('Queue Driver:') }}</span>
                         <span class="text-sm font-semibold text-gray-900">{{ $systemInfo['queue_driver'] }}</span>
                     </div>
@@ -868,6 +872,16 @@
                     </div>
                 </div>
                 <div class="space-y-3">
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span class="text-sm text-gray-600">{{ __('S3 Bucket Versioning:') }}</span>
+                        @if ($systemInfo['s3_versioning'] === null)
+                            <span class="text-sm font-semibold text-gray-400">{{ __('Unknown') }}</span>
+                        @elseif ($systemInfo['s3_versioning'])
+                            <span class="attention text-sm font-semibold text-green-600">{{ __('Enabled') }}</span>
+                        @else
+                            <span class="attention text-sm font-semibold text-gray-400">{{ __('Disabled') }}</span>
+                        @endif
+                    </div>
                     <div class="flex justify-between py-2 border-b border-gray-200">
                         <span class="text-sm text-gray-600">{{ __('Timezone:') }}</span>
                         <span class="text-sm font-semibold text-gray-900">{{ $systemInfo['timezone'] }}</span>

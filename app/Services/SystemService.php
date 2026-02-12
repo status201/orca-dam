@@ -264,6 +264,8 @@ class SystemService
             'gd_enabled' => extension_loaded('gd'),
             'imagick_enabled' => extension_loaded('imagick'),
             'jwt_enabled' => config('jwt.enabled'),
+            's3_bucket_endpoint' => $this->getS3BucketEndpoint(),
+            's3_versioning' => $this->getS3Versioning(),
         ];
     }
 
@@ -651,6 +653,34 @@ class SystemService
     public function updateSetting(string $key, mixed $value): bool
     {
         return \App\Models\Setting::set($key, $value);
+    }
+
+    /**
+     * Get S3 bucket endpoint via S3Service.
+     */
+    private function getS3BucketEndpoint(): ?string
+    {
+        try {
+            return app(\App\Services\S3Service::class)->getBucketEndpoint();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get S3 bucket versioning status.
+     *
+     * @return bool|null true = Enabled, false = Suspended/not set, null = error
+     */
+    private function getS3Versioning(): ?bool
+    {
+        try {
+            $status = app(\App\Services\S3Service::class)->getBucketVersioning();
+
+            return $status === 'Enabled';
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
