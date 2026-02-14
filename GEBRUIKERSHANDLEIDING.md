@@ -17,7 +17,8 @@
 9. [De Prullenbak (alleen admin)](#de-prullenbak-alleen-admin)
 10. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
 11. [Discover-functie (alleen admin)](#discover-functie-alleen-admin)
-12. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
+12. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
+13. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
 13. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
 14. [Gebruikersvoorkeuren](#gebruikersvoorkeuren)
 15. [Tips & trucs](#tips--trucs)
@@ -217,6 +218,14 @@ Ja, het is omslachtig. Dat is met opzet — het dwingt je om goed na te denken e
 Soms belanden bestanden in S3 zonder via ORCA te gaan (directe uploads, migraties, etc.). **Discover** laat admins S3 scannen op niet-gekoppelde bestanden, ze bekijken en geselecteerde bestanden importeren in ORCA.
 
 Bestanden die bij assets in de prullenbak horen krijgen een rood "Verwijderd"-badge om te voorkomen dat je iets per ongeluk opnieuw importeert dat bewust is verwijderd.
+
+---
+
+## Metadata importeren (alleen admin)
+
+Werk asset-metadata in bulk bij vanuit een CSV. Ga naar het gebruikersmenu > **Importeren**, kies of je wilt matchen op `s3_key` of `filename`, en plak CSV-gegevens of upload/sleep een `.csv`-bestand.
+
+Klik op **Importvoorbeeld bekijken** om te zien welke assets matchen en wat er verandert. Lege velden in de CSV worden overgeslagen (bestaande waarden blijven behouden). Tags worden toegevoegd aan bestaande tags, nooit verwijderd. Klik op **Importeren** om toe te passen.
 
 ---
 

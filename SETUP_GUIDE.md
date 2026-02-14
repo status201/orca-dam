@@ -553,7 +553,16 @@ The system will:
 - Auto-tag with AI (if enabled)
 - Extract metadata
 
-### 2. Enabling AI Tagging
+### 2. Importing Bulk Metadata
+To enrich assets with metadata from an external source (spreadsheet, other DAM):
+
+1. Go to user dropdown > **Import** (admin only)
+2. Select match field (`s3_key` or `filename`)
+3. Paste CSV data or upload/drop a `.csv` file
+4. Preview matched assets and changes
+5. Click **Import** to apply
+
+### 3. Enabling AI Tagging
 Set in `.env`:
 ```env
 AWS_REKOGNITION_ENABLED=true
@@ -574,13 +583,13 @@ Admins can also configure AI tag limits, confidence threshold, and language via 
 - This will queue a job to detect and translate tags
 - Existing AI tags will be replaced with new ones
 
-### 3. Copying URLs
+### 4. Copying URLs
 Click the copy icon on any asset thumbnail or use the copy button on the asset detail page. URLs are public and permanent (configured via bucket policy for public read access).
 
-### 4. Batch Operations
+### 5. Batch Operations
 Select multiple unmapped objects in Discover to import in bulk.
 
-### 5. Using the Trash Feature (Admin Only)
+### 6. Using the Trash Feature (Admin Only)
 
 **Soft Delete (Default Behavior):**
 - When you delete an asset, it's moved to trash
@@ -613,7 +622,7 @@ Select multiple unmapped objects in Discover to import in bulk.
 - Shows when the asset was deleted
 - Prevents accidentally re-importing deleted assets
 
-### 6. Using a Custom Domain (CDN)
+### 7. Using a Custom Domain (CDN)
 
 By default, asset URLs use your S3 bucket domain (e.g., `https://bucket.s3.amazonaws.com/assets/uuid.jpg`). You can configure a custom domain so all asset URLs use a friendlier address like `https://cdn.example.com/assets/uuid.jpg`.
 

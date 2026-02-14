@@ -22,6 +22,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 📝 License type and copyright metadata
 - ♿ Accessibility support (alt text, captions)
 - 📊 CSV export with separate user/AI tag columns
+- 📥 Bulk metadata import from CSV (paste or upload)
 - 🔗 Easy URL copying for external integration
 - 🔎 Discover unmapped S3 objects
 - 🗑️ Trash & restore system with soft delete (keeps S3 objects)
@@ -164,6 +165,7 @@ php artisan serve  # Or use Herd
 - User management
 - Discover unmapped S3 objects
 - Export to CSV
+- Import metadata from CSV
 - Batch operations
 - System administration (queue management, logs, diagnostics)
 - **Settings panel** - Configure items per page, AI tag limits, language, timezone, custom domain
@@ -176,6 +178,14 @@ php artisan serve  # Or use Herd
 3. Review unmapped objects (soft-deleted assets marked with "Deleted" badge)
 4. Select objects to import
 5. AI tags will be automatically generated
+
+### Importing Metadata (Admin Only)
+
+1. Navigate to Admin dropdown > Import
+2. Select match field (`s3_key` or `filename`)
+3. Paste CSV data or upload/drop a `.csv` file
+4. Click "Preview Import" to review matched assets and changes
+5. Click "Import" to apply updates
 
 ### Trash & Restore (Admin Only)
 
@@ -297,6 +307,7 @@ orca-dam/
 │   │   ├── DashboardController.php    # Dashboard stats
 │   │   ├── DiscoverController.php     # S3 discovery (admin)
 │   │   ├── ExportController.php       # CSV export (admin)
+│   │   ├── ImportController.php      # CSV metadata import (admin)
 │   │   ├── FolderController.php       # Folder list, scan & create
 │   │   ├── JwtSecretController.php    # JWT secret management (admin)
 │   │   ├── ProfileController.php      # User profile & preferences
@@ -338,6 +349,7 @@ orca-dam/
 │   ├── components/                    # Blade components
 │   ├── discover/                      # S3 discovery view
 │   ├── export/                        # Export view
+│   ├── import/                        # Metadata import view
 │   ├── layouts/                       # App & guest layouts
 │   ├── profile/                       # Profile management
 │   ├── system/                        # System admin view

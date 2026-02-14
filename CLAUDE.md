@@ -171,7 +171,7 @@ PHP_CLI_PATH=/usr/bin/php
 **Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`), SettingFactory (`integer()`, `boolean()`)
 
 ```
-tests/Feature/  - AssetTest, TagTest, ExportTest, ApiTest, SystemTest, JwtAuthTest,
+tests/Feature/  - AssetTest, TagTest, ExportTest, ImportTest, ApiTest, SystemTest, JwtAuthTest,
                   JwtSecretManagementTest, LocaleTest, ProfileTest, TwoFactorAuthTest, Auth/
 tests/Unit/     - AssetTest, TagTest, SettingTest, UserPreferencesTest, TwoFactorServiceTest, JwtGuardTest
 ```
@@ -183,6 +183,8 @@ Web-based test runner at `/system` -> Tests tab (admin only).
 **Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> S3Service streams to S3 -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled.
 
 **Discovery** (admin): S3Service finds unmapped objects -> admin selects to import -> Asset records created -> thumbnails + resized images + AI tags applied. Soft-deleted assets shown with "Deleted" badge to prevent re-import.
+
+**Import Metadata** (admin): Paste/upload CSV -> preview matched assets with change diffs -> import. Matches by `s3_key` or `filename`. Updates metadata fields (alt_text, caption, license, copyright). Tags are lowercased, added via `syncWithoutDetaching` (never removed). Empty CSV fields are skipped. Invalid license types and date formats are rejected.
 
 **Trash** (admin): Soft delete keeps S3 files. Restore returns to active. Force delete removes S3 objects (original + thumbnail + resized variants) + DB permanently.
 

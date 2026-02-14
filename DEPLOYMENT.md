@@ -517,6 +517,7 @@ Access the admin panel at: `https://your-domain.com/system`
 - Log viewer (last 20-200 lines)
 - Artisan command executor
 - System diagnostics (S3 connection test, PHP config)
+- Bulk metadata import from CSV (via Import page)
 
 ### Important Commands from Admin Panel
 

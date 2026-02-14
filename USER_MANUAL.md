@@ -17,7 +17,8 @@
 9. [The Trash (Admin Only)](#the-trash-admin-only)
 10. [Moving Files (The Long Way)](#moving-files-the-long-way)
 11. [Discover Feature (Admin Only)](#discover-feature-admin-only)
-12. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
+12. [Import Metadata (Admin Only)](#import-metadata-admin-only)
+13. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
 13. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
 14. [User Preferences](#user-preferences)
 15. [Tips & Tricks](#tips--tricks)
@@ -217,6 +218,14 @@ Yes, it's tedious. That's intentional — it makes you think twice and reminds y
 Files sometimes end up in S3 without going through ORCA (direct uploads, migrations, etc.). **Discover** lets admins scan S3 for unmapped files, preview them, and import selected ones into ORCA.
 
 Files belonging to trashed assets show a red "Deleted" badge to prevent accidentally re-importing something intentionally removed.
+
+---
+
+## Import Metadata (Admin Only)
+
+Bulk-update asset metadata from a CSV. Go to the user dropdown > **Import**, select whether to match by `s3_key` or `filename`, then paste CSV data or upload/drop a `.csv` file.
+
+Click **Preview Import** to see which assets matched and what will change. Empty fields in the CSV are skipped (existing values preserved). Tags are added to existing ones, never removed. Click **Import** to apply.
 
 ---
 

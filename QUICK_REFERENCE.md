@@ -95,6 +95,7 @@ orca-dam/
 │   │   ├── DashboardController.php    # Dashboard stats
 │   │   ├── DiscoverController.php     # S3 discovery (admin)
 │   │   ├── ExportController.php       # CSV export (admin)
+│   │   ├── ImportController.php      # CSV metadata import (admin)
 │   │   ├── FolderController.php       # Folder list, scan & create
 │   │   ├── JwtSecretController.php    # JWT secret management
 │   │   ├── ProfileController.php      # User profile & preferences
@@ -134,6 +135,7 @@ orca-dam/
 │   ├── components/                    # Blade components
 │   ├── discover/                      # S3 discovery view
 │   ├── export/                        # Export view
+│   ├── import/                        # Metadata import view
 │   ├── layouts/                       # App & guest layouts
 │   ├── profile/                       # Profile & preferences
 │   ├── system/                        # System admin view
@@ -148,6 +150,7 @@ orca-dam/
 │   │   ├── ApiTest.php                # API endpoints, sorting, meta
 │   │   ├── AssetTest.php              # Asset CRUD, sorting, permissions
 │   │   ├── ExportTest.php             # CSV export
+│   │   ├── ImportTest.php             # CSV metadata import
 │   │   ├── JwtAuthTest.php            # JWT authentication
 │   │   ├── JwtSecretManagementTest.php# JWT secret management
 │   │   ├── LocaleTest.php             # Language/locale
@@ -194,6 +197,9 @@ POST /folders                  # Create new folder (admin)
 GET  /discover                 # Discovery page (admin)
 POST /discover/scan            # Scan S3 bucket
 POST /discover/import          # Import objects
+GET  /import                   # Import metadata page (admin)
+POST /import/preview           # Preview CSV import (JSON)
+POST /import/import            # Execute CSV import (JSON)
 GET  /tags                     # List tags
 GET  /profile                  # User profile & preferences
 PATCH /profile/preferences     # Update preferences (locale, home folder, etc.)
@@ -344,6 +350,7 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 ✅ Access Discover feature
 ✅ Manage users
 ✅ Export to CSV
+✅ Import metadata from CSV
 ✅ System administration & settings
 ✅ Manage API tokens & JWT secrets
 
