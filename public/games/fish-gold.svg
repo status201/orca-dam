@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 36" width="64" height="36">
+  <g fill="none">
+    <!-- Tail fin -->
+    <path d="M56,18 L64,8 L61,18 L64,28 Z" fill="#c8960a" stroke="#a07808" stroke-width="0.6"/>
+    <!-- Body -->
+    <ellipse cx="30" cy="18" rx="26" ry="14" fill="#e8b830" stroke="#b08a18" stroke-width="0.8"/>
+    <!-- Belly highlight -->
+    <ellipse cx="28" cy="22" rx="18" ry="7" fill="#f0d060" opacity="0.5"/>
+    <!-- Scales pattern -->
+    <path d="M18,12 Q22,10 26,12" stroke="#c8a020" stroke-width="0.4" fill="none" opacity="0.4"/>
+    <path d="M24,14 Q28,12 32,14" stroke="#c8a020" stroke-width="0.4" fill="none" opacity="0.4"/>
+    <path d="M16,18 Q20,16 24,18" stroke="#c8a020" stroke-width="0.4" fill="none" opacity="0.4"/>
+    <!-- Dorsal fin -->
+    <path d="M24,4 L32,1 L35,7" fill="#c8960a" stroke="#a07808" stroke-width="0.5"/>
+    <!-- Pectoral fin -->
+    <path d="M20,22 L16,28 L22,26" fill="#c8960a" stroke="#a07808" stroke-width="0.5"/>
+    <!-- Eye -->
+    <circle cx="12" cy="15" r="3.2" fill="white" stroke="#555" stroke-width="0.6"/>
+    <circle cx="11" cy="14.6" r="1.6" fill="#222"/>
+    <circle cx="10.4" cy="14.2" r="0.5" fill="white"/>
+    <!-- Mouth -->
+    <path d="M4,18 Q7,20 5,21" stroke="#8a6a10" stroke-width="0.7" fill="none"/>
+    <!-- Gill line -->
+    <path d="M17,10 Q18,18 17,26" stroke="#b08a18" stroke-width="0.7" fill="none" opacity="0.4"/>
+  </g>
+</svg>

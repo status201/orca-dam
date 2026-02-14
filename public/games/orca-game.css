@@ -1,0 +1,353 @@
+/* ORCA Feeding Frenzy - Game Styles */
+
+/* Game area container */
+#orca-game-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    outline: none;
+}
+
+/* Underwater current overlay — smooth flowing SVG wave bands */
+#orca-game-area::before,
+#orca-game-area::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    background-repeat: repeat-x;
+    background-size: 800px 100%;
+}
+
+#orca-game-area::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' preserveAspectRatio='none'%3E%3Cpath d='M0,80 C100,60 200,100 400,80 S700,60 800,80' fill='none' stroke='rgba(120,200,240,0.12)' stroke-width='40'/%3E%3Cpath d='M0,180 C150,160 250,210 400,180 S650,155 800,180' fill='none' stroke='rgba(100,185,230,0.10)' stroke-width='35'/%3E%3Cpath d='M0,300 C120,280 280,320 400,300 S680,275 800,300' fill='none' stroke='rgba(110,195,235,0.11)' stroke-width='45'/%3E%3C/svg%3E");
+    animation: current-flow 5s linear infinite;
+    opacity: 0.6;
+}
+
+#orca-game-area::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' preserveAspectRatio='none'%3E%3Cpath d='M0,130 C200,110 300,155 400,130 S600,108 800,130' fill='none' stroke='rgba(95,185,225,0.09)' stroke-width='50'/%3E%3Cpath d='M0,250 C180,230 320,275 400,250 S620,225 800,250' fill='none' stroke='rgba(110,190,230,0.10)' stroke-width='38'/%3E%3Cpath d='M0,360 C140,345 260,380 400,360 S660,340 800,360' fill='none' stroke='rgba(85,175,220,0.08)' stroke-width='42'/%3E%3C/svg%3E");
+    animation: current-flow 7s linear infinite;
+    opacity: 0.6;
+}
+
+@keyframes current-flow {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-400px); }
+}
+
+/* Player orca */
+.game-orca {
+    position: absolute;
+    width: 80px;
+    height: 60px;
+    z-index: 10;
+    transition: none;
+    animation: game-orca-swim 1.2s ease-in-out infinite;
+}
+
+.game-orca svg {
+    width: 100%;
+    height: 100%;
+}
+
+@keyframes game-orca-swim {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    25% { transform: rotate(2deg) scaleX(1.02); }
+    50% { transform: rotate(-1deg) scaleX(0.98); }
+    75% { transform: rotate(1deg) scaleX(1.01); }
+}
+
+/* Fish entities */
+.game-fish {
+    position: absolute;
+    z-index: 5;
+    transition: none;
+}
+
+.game-fish.fast {
+    width: 36px;
+    height: 21px;
+}
+
+.game-fish.slow {
+    width: 52px;
+    height: 29px;
+}
+
+.game-fish svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Shark entity */
+.game-shark {
+    position: absolute;
+    width: 96px;
+    height: 48px;
+    z-index: 8;
+    transition: none;
+    filter: drop-shadow(0 0 8px rgba(255, 40, 40, 0.4));
+}
+
+.game-shark svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* HUD - retro style */
+.game-hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 20;
+    font-family: 'Courier New', monospace;
+}
+
+.game-score {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    color: #00ff00;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(0, 255, 0, 0.6), 0 0 16px rgba(0, 255, 0, 0.3);
+    letter-spacing: 2px;
+}
+
+.game-lives {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.game-life-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00ff00;
+    box-shadow: 0 0 6px rgba(0, 255, 0, 0.5);
+    border: 1px solid rgba(0, 255, 0, 0.8);
+}
+
+.game-life-dot.lost {
+    background: #333;
+    box-shadow: none;
+    border-color: #555;
+}
+
+/* Instructions overlay */
+.game-instructions {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    font-family: 'Courier New', monospace;
+    color: #00ff00;
+    text-align: center;
+    padding: 20px;
+}
+
+.game-instructions h2 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #00ffcc;
+    text-shadow: 0 0 12px rgba(0, 255, 204, 0.6);
+    margin-bottom: 16px;
+    letter-spacing: 3px;
+}
+
+.game-instructions .controls {
+    font-size: 13px;
+    line-height: 1.8;
+    color: #88ff88;
+    margin-bottom: 12px;
+}
+
+.game-instructions .controls span {
+    color: #ffff00;
+    font-weight: bold;
+}
+
+.game-instructions .fish-info {
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.game-instructions .fish-info .silver { color: #c0c8d0; }
+.game-instructions .fish-info .gold { color: #e8b830; }
+.game-instructions .fish-info .danger { color: #ff4444; }
+
+.game-instructions .start-prompt {
+    font-size: 18px;
+    color: #ffff00;
+    margin-top: 16px;
+    animation: blink-prompt 1s step-end infinite;
+    text-shadow: 0 0 8px rgba(255, 255, 0, 0.5);
+}
+
+@keyframes blink-prompt {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Game Over screen */
+.game-over-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    padding: 20px;
+}
+
+.game-over-screen h2 {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ff2222;
+    text-shadow: 0 0 16px rgba(255, 34, 34, 0.7);
+    margin-bottom: 12px;
+    letter-spacing: 4px;
+}
+
+.game-over-screen .final-score {
+    font-size: 22px;
+    color: #00ff00;
+    text-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+    margin-bottom: 16px;
+}
+
+.game-over-screen .high-scores {
+    margin-bottom: 16px;
+}
+
+.game-over-screen .high-scores h3 {
+    font-size: 14px;
+    color: #00ffcc;
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+}
+
+.game-over-screen .high-scores ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.game-over-screen .high-scores li {
+    font-size: 13px;
+    color: #ffff00;
+    line-height: 1.6;
+    letter-spacing: 1px;
+}
+
+.game-over-screen .high-scores li.current {
+    color: #00ff00;
+    text-shadow: 0 0 6px rgba(0, 255, 0, 0.4);
+}
+
+.game-over-screen .buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.game-over-screen .buttons button {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 8px 20px;
+    border: 2px solid #00ff00;
+    background: transparent;
+    color: #00ff00;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 0 0 4px rgba(0, 255, 0, 0.4);
+    transition: background 0.15s, color 0.15s;
+}
+
+.game-over-screen .buttons button:hover {
+    background: #00ff00;
+    color: #000;
+}
+
+.game-over-screen .buttons button.quit {
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
+.game-over-screen .buttons button.quit:hover {
+    background: #ff4444;
+    color: #000;
+}
+
+/* Hit flash effect */
+.game-hit-flash {
+    animation: hit-flash 0.3s ease-out;
+}
+
+@keyframes hit-flash {
+    0% { filter: brightness(3) drop-shadow(0 0 10px white); }
+    100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* Catch effect - floating score text */
+.game-catch-effect {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: bold;
+    color: #00ff00;
+    text-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
+    pointer-events: none;
+    z-index: 15;
+    animation: float-up 0.8s ease-out forwards;
+}
+
+@keyframes float-up {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+}
+
+/* Dark mode counter-inversion */
+html.dark-mode #orca-game-area,
+html.dark-mode #orca-game-loader,
+html.dark-mode .game-instructions,
+html.dark-mode .game-over-screen,
+html.dark-mode .game-hud,
+html.dark-mode .game-orca svg,
+html.dark-mode .game-fish svg,
+html.dark-mode .game-shark svg,
+html.dark-mode .game-catch-effect {
+    filter: invert(1);
+}

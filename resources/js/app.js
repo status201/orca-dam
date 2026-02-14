@@ -28,6 +28,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start the random jumps
     scheduleRandomOrcaJump();
+
+    // Easter egg: double-click orca logo to launch game
+    const orcaLogo = document.getElementById('orca-logo-container');
+    if (orcaLogo) {
+        orcaLogo.addEventListener('dblclick', function (e) {
+            e.preventDefault();
+            if (window.__orcaGameLoaded) return;
+            window.__orcaGameLoaded = true;
+
+            const loader = document.getElementById('orca-game-loader');
+            if (loader) loader.style.display = '';
+
+            // Lazy-load game CSS
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '/games/orca-game.css';
+            document.head.appendChild(link);
+
+            // Lazy-load game JS
+            const script = document.createElement('script');
+            script.src = '/games/orca-game.js';
+            script.onload = function () {
+                if (window.OrcaGame) window.OrcaGame.init();
+            };
+            script.onerror = function () {
+                if (loader) loader.style.display = 'none';
+                window.__orcaGameLoaded = false;
+            };
+            document.head.appendChild(script);
+        });
+    }
 });
 
 // Toast notification system

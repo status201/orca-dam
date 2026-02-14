@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 28" width="48" height="28">
+  <g fill="none">
+    <!-- Tail fin -->
+    <path d="M42,14 L48,6 L46,14 L48,22 Z" fill="#a0aab4" stroke="#7a8590" stroke-width="0.5"/>
+    <!-- Body -->
+    <ellipse cx="24" cy="14" rx="20" ry="10" fill="#c0c8d0" stroke="#8a929a" stroke-width="0.8"/>
+    <!-- Belly highlight -->
+    <ellipse cx="22" cy="17" rx="14" ry="5" fill="#dce2e8" opacity="0.6"/>
+    <!-- Dorsal fin -->
+    <path d="M20,4 L26,2 L28,6" fill="#a0aab4" stroke="#7a8590" stroke-width="0.5"/>
+    <!-- Eye -->
+    <circle cx="10" cy="12" r="2.5" fill="white" stroke="#555" stroke-width="0.5"/>
+    <circle cx="9.2" cy="11.8" r="1.2" fill="#222"/>
+    <!-- Mouth -->
+    <path d="M4,14 Q6,15 5,16" stroke="#666" stroke-width="0.6" fill="none"/>
+    <!-- Gill line -->
+    <path d="M14,9 Q15,14 14,19" stroke="#8a929a" stroke-width="0.6" fill="none" opacity="0.5"/>
+  </g>
+</svg>
