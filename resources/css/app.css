@@ -78,6 +78,22 @@ html.light-mode {
     visibility: visible;
 }
 
+
+/* Logo orca */
+.dashboard-logo svg {
+    animation: logo-orca-swim 2.5s ease-in-out infinite;
+}
+.dashboard-logo:hover svg {
+    animation: logo-orca-swim 1.5s ease-in-out infinite;
+}
+
+@keyframes logo-orca-swim {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    25% { transform: rotate(2deg) scaleX(1.02); }
+    50% { transform: rotate(-1deg) scaleX(0.98); }
+    75% { transform: rotate(1deg) scaleX(1.01); }
+}
+
 /* Wave pattern footer */
 .wave-footer {
     position: relative;
