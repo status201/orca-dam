@@ -60,6 +60,31 @@
       </g>
     </svg>`;
 
+    // Small herringbone (for silver/fast fish, matches 36×21)
+    const BONE_SMALL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 21" width="36" height="21">
+      <g fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.9">
+        <line x1="4" y1="10.5" x2="30" y2="10.5"/>
+        <circle cx="5" cy="10.5" r="2.5" fill="white" stroke="none"/>
+        <line x1="12" y1="10.5" x2="9" y2="4"/><line x1="12" y1="10.5" x2="9" y2="17"/>
+        <line x1="19" y1="10.5" x2="16" y2="4"/><line x1="19" y1="10.5" x2="16" y2="17"/>
+        <line x1="26" y1="10.5" x2="23" y2="4"/><line x1="26" y1="10.5" x2="23" y2="17"/>
+        <line x1="30" y1="10.5" x2="35" y2="4"/><line x1="30" y1="10.5" x2="35" y2="17"/>
+      </g>
+    </svg>`;
+
+    // Large herringbone (for gold/slow fish, matches 52×29)
+    const BONE_LARGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 29" width="52" height="29">
+      <g fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.9">
+        <line x1="5" y1="14.5" x2="43" y2="14.5"/>
+        <circle cx="6" cy="14.5" r="3" fill="white" stroke="none"/>
+        <line x1="14" y1="14.5" x2="10" y2="5"/><line x1="14" y1="14.5" x2="10" y2="24"/>
+        <line x1="22" y1="14.5" x2="18" y2="5"/><line x1="22" y1="14.5" x2="18" y2="24"/>
+        <line x1="30" y1="14.5" x2="26" y2="5"/><line x1="30" y1="14.5" x2="26" y2="24"/>
+        <line x1="38" y1="14.5" x2="34" y2="5"/><line x1="38" y1="14.5" x2="34" y2="24"/>
+        <line x1="43" y1="14.5" x2="50" y2="5"/><line x1="43" y1="14.5" x2="50" y2="24"/>
+      </g>
+    </svg>`;
+
     // --- Init (called after lazy load) ---
     function init() {
         const basePath = '/games/';
@@ -322,6 +347,7 @@
                     // Catch fish
                     score += e.points;
                     showCatchEffect(e.x, e.y, '+' + e.points);
+                    showBoneEffect(e.x, e.y, e.points === FAST_FISH_POINTS);
                     e.el.remove();
                     entities.splice(i, 1);
                 } else if (e.type === 'shark') {
@@ -444,6 +470,16 @@
         el.style.top = y + 'px';
         gameArea.appendChild(el);
         setTimeout(() => el.remove(), 800);
+    }
+
+    function showBoneEffect(x, y, isFast) {
+        const el = document.createElement('div');
+        el.className = 'game-bone-effect';
+        el.innerHTML = isFast ? BONE_SMALL_SVG : BONE_LARGE_SVG;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        gameArea.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
     }
 
     function updateLivesDisplay() {

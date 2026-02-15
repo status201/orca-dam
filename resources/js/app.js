@@ -29,10 +29,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start the random jumps
     scheduleRandomOrcaJump();
 
-    // Easter egg: double-click orca logo to launch game
+    // Easter egg: two clicks within 1 second on orca logo to launch game
     const orcaLogo = document.getElementById('orca-logo-container');
     if (orcaLogo) {
-        orcaLogo.addEventListener('dblclick', function (e) {
+        let lastClickTime = 0;
+        orcaLogo.addEventListener('click', function (e) {
+            const now = Date.now();
+            if (now - lastClickTime > 1000) {
+                lastClickTime = now;
+                return;
+            }
+            lastClickTime = 0;
             e.preventDefault();
             if (window.__orcaGameLoaded) return;
             window.__orcaGameLoaded = true;

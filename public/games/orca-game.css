@@ -53,7 +53,9 @@
     height: 60px;
     z-index: 10;
     transition: none;
+    filter: drop-shadow(-4px 0 10px rgba(120, 120, 120, 0.3));
     animation: game-orca-swim 1.2s ease-in-out infinite;
+
 }
 
 .game-orca svg {
@@ -244,7 +246,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -376,6 +378,19 @@
 @keyframes float-up {
     0% { opacity: 1; transform: translateY(0) scale(1); }
     100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+}
+
+/* Bone drop effect - herringbone falls and fades after fish catch */
+.game-bone-effect {
+    position: absolute;
+    pointer-events: none;
+    z-index: 12;
+    animation: bone-drop 1s ease-in forwards;
+}
+
+@keyframes bone-drop {
+    0% { opacity: 0.9; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(60px) rotate(15deg); }
 }
 
 /* Dark mode counter-inversion */
