@@ -212,7 +212,7 @@
 }
 
 .game-instructions h2 {
-    font-size: 24px;
+    font-size: 32px;
     font-weight: bold;
     color: #00ffcc;
     text-shadow: 0 0 12px rgba(0, 255, 204, 0.6);
@@ -221,7 +221,7 @@
 }
 
 .game-instructions .controls {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.8;
     color: #88ff88;
     margin-bottom: 12px;
@@ -231,9 +231,14 @@
     color: #ffff00;
     font-weight: bold;
 }
+.game-instructions .controls span.arrows {
+    font-size: 20px;
+    padding: 20px 0 45px;
+    display: inline-block;
+}
 
 .game-instructions .fish-info {
-    font-size: 12px;
+    font-size: 13px;
     margin-bottom: 8px;
 }
 
@@ -457,4 +462,8 @@ html.dark-mode .game-catch-effect,
 html.dark-mode .game-blood-chunk,
 html.dark-mode .game-ouch-text {
     filter: invert(1);
+}
+
+html.dark-mode .game-shark {
+    filter: drop-shadow(0 0 8px rgba(40, 255, 40, 0.4)); /* inverted color */
 }

@@ -197,7 +197,7 @@
         overlay.innerHTML = `
             <h2>ORCA FEEDING FRENZY</h2>
             <div class="controls">
-                <span>&uarr; &darr; &larr; &rarr;</span> SWIM AROUND<br>
+                <span class="arrows">&uarr; &darr; &larr; &rarr;</span> SWIM AROUND<br>
                 <span>SPACE</span> JUMP
             </div>
             <div class="fish-info">
