@@ -1,26 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="80" height="40">
-  <g fill="none">
-    <!-- Tail fin -->
-    <path d="M70,20 L80,8 L76,20 L80,32 Z" fill="#6a7a8a" stroke="#4a5a6a" stroke-width="0.6"></path>
-    <!-- Body -->
-    <path d="M4,20 Q2,12 19,7 L60,8 Q72,10 71,20 Q72,30 40,31 L12,32 Q2,28 4,20 Z" fill="#7a8a9a" stroke="#5a6a7a" stroke-width="0.8"></path>
-    <!-- Belly -->
-    <path d="M3,26 Q5,29 11,31 L56,31 Q66,28 68,22 L58,26 L14,28 Z" fill="#c8d0d8" opacity="0.7"></path>
-    <!-- Dorsal fin -->
-    <path d="M19,8 L28,0 L31,8" fill="#6a7a8a" stroke="#4a5a6a" stroke-width="0.6"></path>
-    <!-- Pectoral fin -->
-    <path d="M24,26 L18,36 L30,32" fill="#6a7a8a" stroke="#4a5a6a" stroke-width="0.5"></path>
-    <!-- Eye -->
-    <circle cx="14" cy="16" r="3" fill="white" stroke="#444" stroke-width="0.6"></circle>
-    <circle cx="13" cy="15.6" r="1.8" fill="#111"></circle>
-    <circle cx="12.2" cy="15" r="0.5" fill="#600" opacity="0.6"></circle>
-    <!-- Mouth with teeth -->
-    <path d="M4,24 L16,23" stroke="#4a5a6a" stroke-width="2.8"></path>
-    <!-- Teeth -->
-    <path d="M3,21 L6,25 L7,22 L8,24 L9,22 L10,24 L11,22 L12,25 L16,22" fill="white" stroke="#aaa" stroke-width="0.3"></path>
-    <!-- Gill slits -->
-    <line x1="20" y1="14" x2="20" y2="22" stroke="#4a5a6a" stroke-width="0.6" opacity="0.5"></line>
-    <line x1="23" y1="13" x2="23" y2="23" stroke="#4a5a6a" stroke-width="0.6" opacity="0.4"></line>
-    <line x1="26" y1="12" x2="26" y2="24" stroke="#4a5a6a" stroke-width="0.6" opacity="0.3"></line>
+  <!-- Tail fin — classic crescent shape -->
+  <path d="M72,20 Q72,14 80,8 Q73,17 76,20 Q73,23 80,32 Q72,26 72,20 Z" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.7"/>
+
+  <!-- Body — tapered toward the tail, beefy at the head -->
+  <path d="M5,20 Q3,11 18,7 L42,7 Q58,8 65,14 L72,20 L65,26 Q58,32 42,33 L18,33 Q3,29 5,20 Z" fill="#6e7e8e" stroke="#3e4e5e" stroke-width="1"/>
+  <!-- Body top highlight -->
+  <path d="M7,17 Q11,9 20,7.5 L42,7.5 Q56,9 63,15" fill="#8a9aaa" opacity="0.45"/>
+
+  <!-- Belly — lighter underside -->
+  <path d="M7,26 Q9,31 18,33 L48,33 Q61,31 63,25 L55,29 Q38,33 19,25 Z" fill="#ccd4dc" opacity="0.7"/>
+
+  <!-- Scars -->
+  <line x1="34" y1="12" x2="40" y2="14" stroke="#4a5a6a" stroke-width="0.6" opacity="0.5"/>
+  <line x1="42" y1="16" x2="47" y2="15" stroke="#4a5a6a" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Dorsal fin — tall and menacing -->
+  <path d="M22,8.8 L32,0 L32,8.8" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.8" stroke-linejoin="round"/>
+
+  <!-- Small rear dorsal -->
+  <path d="M50,10 L53,5 L55,10" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.5"/>
+
+  <!-- Pectoral fin -->
+  <path d="M22,28 L21,38 L31,33" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.6" stroke-linejoin="round"/>
+
+  <!-- Gill slits -->
+  <line x1="21" y1="15" x2="21" y2="24" stroke="#3e4e5e" stroke-width="0.7" opacity="0.5"/>
+  <line x1="24" y1="14" x2="24" y2="25" stroke="#3e4e5e" stroke-width="0.7" opacity="0.4"/>
+  <line x1="27" y1="13" x2="27" y2="25" stroke="#3e4e5e" stroke-width="0.6" opacity="0.3"/>
+
+  <!-- Gum upper teeth (red) -->
+  <line x1="5" y1="17" x2="18.7" y2="18.7" stroke="#F00" stroke-width="2.1" opacity="0.9"/>
+
+  <!-- Mouth interior (dark) -->
+  <rect x="5" y="18" width="14" height="5" rx="1" fill="#1a0505" opacity="0.8"/>
+
+  <!-- Upper teeth — clean zigzag -->
+  <path d="M5,17 L7,20 L8,17 L9,19 L10,17 L11,19 L14,18 L19,18" fill="white" stroke="#aaa" stroke-width="0.35" stroke-linejoin="round"/>
+
+  <!-- === LOWER JAW — animated via CSS === -->
+  <g class="shark-jaw">
+    <!-- Gum lower teeth (red) -->
+    <line x1="5" y1="25" x2="19" y2="23" stroke="#D00" stroke-width="1.8" opacity="0.9"/>
+
+    <!-- Lower teeth — clean zigzag -->
+    <path d="M5,25 L5,20 L7,24 L9,21 L11,24 L13,21 L18,23 L17,23" fill="white" stroke="#aaa" stroke-width="0.35" stroke-linejoin="round"/>
   </g>
+
+  <!-- Eye -->
+  <ellipse cx="14" cy="14" rx="3" ry="2.6" fill="#ffe8cc" stroke="#333" stroke-width="0.8"/>
+  <!-- Pupil — vertical slit -->
+  <ellipse cx="13.7" cy="14" rx="1" ry="2.2" fill="#220000"/>
+  <!-- Glint -->
+  <circle cx="14.2" cy="12.8" r="0.5" fill="white" opacity="0.7"/>
+  <!-- Nostril -->
+  <circle cx="8" cy="14.5" r="0.7" fill="#3e4e5e" opacity="0.6"/>
 </svg>

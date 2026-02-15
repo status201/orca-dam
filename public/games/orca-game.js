@@ -354,13 +354,20 @@
                     // Hit by shark
                     lives--;
                     updateLivesDisplay();
-                    // Swap orca to herringbone skeleton with arcade blink
-                    orcaEl.innerHTML = HERRINGBONE_SVG;
-                    orcaEl.classList.add('game-hit-flash', 'game-hit-blink')
-                    setTimeout(() => {
-                        orcaEl.innerHTML = orcaSvgHtml;
-                        orcaEl.classList.remove('game-hit-flash', 'game-hit-blink');
-                    }, 600);
+
+                    if (lives <= 0) {
+                        // Fatal hit: orca becomes herringbone skeleton
+                        orcaEl.innerHTML = HERRINGBONE_SVG;
+                        orcaEl.classList.add('game-hit-blink');
+                        showBloodSplash(orcaX + ORCA_W / 2, orcaY + ORCA_H / 2);
+                    } else {
+                        // Non-fatal hit: blood splash + blink, orca survives
+                        showBloodSplash(orcaX + ORCA_W / 2, orcaY + ORCA_H / 2);
+                        orcaEl.classList.add('game-hit-flash', 'game-hit-blink');
+                        setTimeout(() => {
+                            orcaEl.classList.remove('game-hit-flash', 'game-hit-blink');
+                        }, 600);
+                    }
                     e.el.remove();
                     entities.splice(i, 1);
 
@@ -470,6 +477,40 @@
         el.style.top = y + 'px';
         gameArea.appendChild(el);
         setTimeout(() => el.remove(), 800);
+    }
+
+    function showBloodSplash(cx, cy) {
+        // Spawn pixel-art blood chunks in random directions
+        const count = 8 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < count; i++) {
+            const el = document.createElement('div');
+            el.className = 'game-blood-chunk';
+            // Randomise size for chunky pixel feel
+            const size = 4 + Math.floor(Math.random() * 6);
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.style.left = cx + 'px';
+            el.style.top = cy + 'px';
+            // Random direction via CSS custom properties
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 30 + Math.random() * 50;
+            el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+            el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+            // Slight delay stagger for juiciness
+            el.style.animationDelay = (Math.random() * 0.08) + 's';
+            gameArea.appendChild(el);
+            setTimeout(() => el.remove(), 700);
+        }
+
+        // "OUCH!" text for arcade fun
+        const ouch = document.createElement('div');
+        ouch.className = 'game-ouch-text';
+        const phrases = ['OUCH!', 'OW!', 'CHOMP!', 'YIKES!', 'ARGH!'];
+        ouch.textContent = phrases[Math.floor(Math.random() * phrases.length)];
+        ouch.style.left = cx + 'px';
+        ouch.style.top = (cy - 20) + 'px';
+        gameArea.appendChild(ouch);
+        setTimeout(() => ouch.remove(), 800);
     }
 
     function showBoneEffect(x, y, isFast) {

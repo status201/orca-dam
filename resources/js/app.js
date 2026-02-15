@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const footerOrca = document.querySelector('.footer-logo-container svg');
             if (footerOrca) {
                 footerOrca.classList.add('orca-jump');
-                setTimeout(() => footerOrca.classList.remove('orca-jump'), 1100);
+                setTimeout(() => footerOrca.classList.remove('orca-jump'), 1200);
             }
             // Schedule next jump
             scheduleRandomOrcaJump();
