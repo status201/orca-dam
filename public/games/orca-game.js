@@ -17,8 +17,8 @@
     const SHARK_MAX_INTERVAL = 12;
     const FAST_FISH_SPEED = 280;
     const SLOW_FISH_SPEED = 120;
-    const SHARK_SPEED_MIN = 260;
-    const SHARK_SPEED_MAX = 380;
+    const SHARK_SPEED_MIN = 290;
+    const SHARK_SPEED_MAX = 460;
     const SHARK_W = 96;
     const SHARK_H = 48;
     const FAST_FISH_POINTS = 50;
@@ -93,16 +93,17 @@
 
         if (!footer || !footerContent || !gameArea) return;
 
-        // Capture logo position BEFORE hiding footer content
+        // Capture logo position BEFORE hiding footer content (only if visible)
         const logoContainer = document.getElementById('orca-logo-container');
         const footerRect = footer.getBoundingClientRect();
         let logoStartX = null;
         let logoStartY = null;
-        if (logoContainer) {
+        if (logoContainer && logoContainer.offsetParent !== null) {
             const logoRect = logoContainer.getBoundingClientRect();
-            // Position relative to footer top-left
-            logoStartX = logoRect.left - footerRect.left + (logoRect.width - ORCA_W) / 2;
-            logoStartY = logoRect.top - footerRect.top + (logoRect.height - ORCA_H) / 2;
+            if (logoRect.width > 0 && logoRect.height > 0) {
+                logoStartX = logoRect.left - footerRect.left + (logoRect.width - ORCA_W) / 2;
+                logoStartY = logoRect.top - footerRect.top + (logoRect.height - ORCA_H) / 2;
+            }
         }
 
         // Activate game mode
@@ -120,9 +121,9 @@
         score = 0;
         lives = 3;
         restingY = GAME_HEIGHT - ORCA_H - 20;
-        // Start orca exactly where the logo was, fall back to center
+        // Start orca exactly where the logo was, fall back to center of game area
         orcaX = logoStartX !== null ? logoStartX : (gameArea.offsetWidth - ORCA_W) / 2;
-        orcaY = logoStartY !== null ? Math.min(logoStartY, restingY) : restingY;
+        orcaY = logoStartY !== null ? Math.min(logoStartY, restingY) : (GAME_HEIGHT - ORCA_H) / 2;
         orcaVelocity = 0;
         isJumping = false;
         entities = [];
@@ -286,6 +287,22 @@
             const e = entities[i];
             e.x -= e.speed * dt;
 
+            // Shark single lunge: one sudden vertical shift partway across the screen
+            if (e.weave && !e.lungeDone) {
+                const screenPct = 1 - (e.x / gameArea.offsetWidth);
+                if (screenPct >= e.lungeTrigger) {
+                    e.lungeDone = true;
+                    e.lungeTarget = Math.max(100, Math.min(e.baseY + e.weaveAmp, GAME_HEIGHT - e.h));
+                }
+            }
+            if (e.lungeDone && e.y !== e.lungeTarget) {
+                const dir = e.lungeTarget > e.y ? 1 : -1;
+                e.y += dir * 300 * dt;
+                if ((dir === 1 && e.y >= e.lungeTarget) || (dir === -1 && e.y <= e.lungeTarget)) {
+                    e.y = e.lungeTarget;
+                }
+            }
+
             // Off-screen removal
             if (e.x < -e.w) {
                 e.el.remove();
@@ -311,18 +328,19 @@
                     // Hit by shark
                     lives--;
                     updateLivesDisplay();
-                    // Swap orca to herringbone skeleton briefly
+                    // Swap orca to herringbone skeleton with arcade blink
                     orcaEl.innerHTML = HERRINGBONE_SVG;
-                    orcaEl.classList.add('game-hit-flash');
+                    orcaEl.classList.add('game-hit-flash', 'game-hit-blink')
                     setTimeout(() => {
                         orcaEl.innerHTML = orcaSvgHtml;
-                        orcaEl.classList.remove('game-hit-flash');
+                        orcaEl.classList.remove('game-hit-flash', 'game-hit-blink');
                     }, 600);
                     e.el.remove();
                     entities.splice(i, 1);
 
                     if (lives <= 0) {
-                        gameOver();
+                        running = false;
+                        setTimeout(() => gameOver(), 1700);
                         return;
                     }
                 }
@@ -354,8 +372,9 @@
 
         const w = isFast ? 36 : 52;
         const h = isFast ? 21 : 29;
-        // Bias upper 70% of game area for "jumping out of water" feel
-        const y = Math.random() * (GAME_HEIGHT * 0.7);
+        // Spawn below the wave area (top ~100px) across the remaining height
+        const minY = 100;
+        const y = minY + Math.random() * (GAME_HEIGHT * 0.7 - minY);
 
         el.style.left = areaWidth + 'px';
         el.style.top = y + 'px';
@@ -383,8 +402,9 @@
 
             const w = SHARK_W;
             const h = SHARK_H;
-            // Spread across full game height
-            const y = Math.random() * (GAME_HEIGHT - h);
+            // Spawn below the wave area (top ~100px)
+            const minY = 100;
+            const y = minY + Math.random() * (GAME_HEIGHT - h - minY);
             // Stagger horizontally so they don't stack
             const x = areaWidth + i * randomRange(60, 140);
             const speed = randomRange(SHARK_SPEED_MIN, SHARK_SPEED_MAX);
@@ -393,14 +413,24 @@
             el.style.top = y + 'px';
             gameArea.appendChild(el);
 
+            // ~60% of sharks do a single vertical lunge
+            const weaves = Math.random() < 0.6;
+            // Random direction: positive = down, negative = up
+            const lungeDir = Math.random() < 0.5 ? 1 : -1;
             entities.push({
                 type: 'shark',
                 el: el,
                 x: x,
                 y: y,
+                baseY: y,
                 w: w,
                 h: h,
                 speed: speed,
+                weave: weaves,
+                weaveAmp: weaves ? lungeDir * randomRange(40, 80) : 0,
+                lungeTrigger: randomRange(0.2, 0.6),
+                lungeDone: false,
+                lungeTarget: y,
             });
         }
     }

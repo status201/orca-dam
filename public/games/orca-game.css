@@ -11,6 +11,7 @@
     user-select: none;
     -webkit-user-select: none;
     outline: none;
+    filter: grayscale(0.6);
 }
 
 /* Underwater current overlay — smooth flowing SVG wave bands */
@@ -31,13 +32,13 @@
 #orca-game-area::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' preserveAspectRatio='none'%3E%3Cpath d='M0,80 C100,60 200,100 400,80 S700,60 800,80' fill='none' stroke='rgba(120,200,240,0.12)' stroke-width='40'/%3E%3Cpath d='M0,180 C150,160 250,210 400,180 S650,155 800,180' fill='none' stroke='rgba(100,185,230,0.10)' stroke-width='35'/%3E%3Cpath d='M0,300 C120,280 280,320 400,300 S680,275 800,300' fill='none' stroke='rgba(110,195,235,0.11)' stroke-width='45'/%3E%3C/svg%3E");
     animation: current-flow 5s linear infinite;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 #orca-game-area::after {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' preserveAspectRatio='none'%3E%3Cpath d='M0,130 C200,110 300,155 400,130 S600,108 800,130' fill='none' stroke='rgba(95,185,225,0.09)' stroke-width='50'/%3E%3Cpath d='M0,250 C180,230 320,275 400,250 S620,225 800,250' fill='none' stroke='rgba(110,190,230,0.10)' stroke-width='38'/%3E%3Cpath d='M0,360 C140,345 260,380 400,360 S660,340 800,360' fill='none' stroke='rgba(85,175,220,0.08)' stroke-width='42'/%3E%3C/svg%3E");
     animation: current-flow 7s linear infinite;
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 @keyframes current-flow {
@@ -72,21 +73,36 @@
     position: absolute;
     z-index: 5;
     transition: none;
+    transform-origin: right center;
 }
 
 .game-fish.fast {
     width: 36px;
     height: 21px;
+    animation: fish-swim-fast 0.3s ease-in-out infinite;
 }
 
 .game-fish.slow {
     width: 52px;
     height: 29px;
+    animation: fish-swim-slow 0.5s ease-in-out infinite;
 }
 
 .game-fish svg {
     width: 100%;
     height: 100%;
+}
+
+@keyframes fish-swim-fast {
+    0%, 100% { transform: rotate(0deg) scaleY(1); }
+    25% { transform: rotate(2deg) scaleY(0.92); }
+    75% { transform: rotate(-2deg) scaleY(1.08); }
+}
+
+@keyframes fish-swim-slow {
+    0%, 100% { transform: rotate(0deg) scaleY(1); }
+    25% { transform: rotate(1.5deg) scaleY(0.94); }
+    75% { transform: rotate(-1.5deg) scaleY(1.06); }
 }
 
 /* Shark entity */
@@ -97,11 +113,19 @@
     z-index: 8;
     transition: none;
     filter: drop-shadow(0 0 8px rgba(255, 40, 40, 0.4));
+    transform-origin: 30% center;
+    animation: shark-swim 0.4s ease-in-out infinite;
 }
 
 .game-shark svg {
     width: 100%;
     height: 100%;
+}
+
+@keyframes shark-swim {
+    0%, 100% { transform: rotate(0deg) scaleY(1); }
+    30% { transform: rotate(1.5deg) scaleY(0.95); }
+    70% { transform: rotate(-1.5deg) scaleY(1.05); }
 }
 
 /* HUD - retro style */
@@ -321,6 +345,21 @@
     100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
 }
 
+/* Arcade blink on hit */
+.game-hit-blink {
+    animation: hit-blink 0.6s step-end;
+}
+
+@keyframes hit-blink {
+    0%   { opacity: 1; }
+    15%  { opacity: 0; }
+    30%  { opacity: 1; }
+    45%  { opacity: 0; }
+    60%  { opacity: 1; }
+    75%  { opacity: 0; }
+    90%  { opacity: 1; }
+}
+
 /* Catch effect - floating score text */
 .game-catch-effect {
     position: absolute;
@@ -340,14 +379,10 @@
 }
 
 /* Dark mode counter-inversion */
-html.dark-mode #orca-game-area,
 html.dark-mode #orca-game-loader,
 html.dark-mode .game-instructions,
 html.dark-mode .game-over-screen,
 html.dark-mode .game-hud,
-html.dark-mode .game-orca svg,
-html.dark-mode .game-fish svg,
-html.dark-mode .game-shark svg,
 html.dark-mode .game-catch-effect {
     filter: invert(1);
 }
