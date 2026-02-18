@@ -379,6 +379,32 @@ class S3Service
      */
     public function extractImageDimensions(string $s3Key, string $mimeType): ?array
     {
+        // EPS: use Imagick if available, otherwise skip
+        if (str_ends_with(strtolower($s3Key), '.eps')) {
+            if ($this->imagickManager === null) {
+                return null;
+            }
+
+            try {
+                $result = $this->s3Client->getObject([
+                    'Bucket' => $this->bucket,
+                    'Key' => $s3Key,
+                ]);
+
+                $imageData = (string) $result['Body'];
+                $image = $this->imagickManager->read($imageData);
+
+                return [
+                    'width' => $image->width(),
+                    'height' => $image->height(),
+                ];
+            } catch (\Exception $e) {
+                \Log::warning('Failed to extract EPS dimensions: '.$e->getMessage());
+
+                return null;
+            }
+        }
+
         // Skip GIFs - use getimagesize approach from existing code
         if ($mimeType === 'image/gif') {
             try {
@@ -589,6 +615,26 @@ class S3Service
     {
         if (! str_starts_with($file->getMimeType(), 'image/')) {
             return [];
+        }
+
+        // EPS: use Imagick if available, otherwise skip
+        if (str_ends_with(strtolower($file->getClientOriginalName()), '.eps')) {
+            if ($this->imagickManager === null) {
+                return [];
+            }
+
+            try {
+                $image = $this->imagickManager->read($file->getRealPath());
+
+                return [
+                    'width' => $image->width(),
+                    'height' => $image->height(),
+                ];
+            } catch (\Exception $e) {
+                \Log::warning('Failed to get EPS dimensions: '.$e->getMessage());
+
+                return [];
+            }
         }
 
         // Skip dimension detection for GIFs to avoid memory issues
