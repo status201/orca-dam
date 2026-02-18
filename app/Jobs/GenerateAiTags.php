@@ -29,6 +29,11 @@ class GenerateAiTags implements ShouldQueue
             return;
         }
 
+        // Rekognition does not support GIF format
+        if ($this->asset->mime_type === 'image/gif') {
+            return;
+        }
+
         try {
             $rekognitionService->autoTagAsset($this->asset);
         } catch (\Exception $e) {

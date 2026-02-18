@@ -629,24 +629,78 @@ class S3Service
 
     /**
      * Check whether raw GIF data contains multiple frames (i.e. is animated).
-     * Scans for image descriptor blocks (0x2C); two or more means animated.
+     * Walks the GIF block structure to count actual image descriptor blocks.
      */
     protected function isAnimatedGif(string $imageData): bool
     {
-        $count = 0;
-        $offset = 0;
         $len = strlen($imageData);
+        if ($len < 13) {
+            return false;
+        }
+
+        // Skip header (6 bytes) + Logical Screen Descriptor (7 bytes)
+        $offset = 10;
+        // Check for Global Color Table
+        $packed = ord($imageData[10]);
+        if ($packed & 0x80) {
+            $gctSize = 3 * (1 << (($packed & 0x07) + 1));
+            $offset = 13 + $gctSize;
+        } else {
+            $offset = 13;
+        }
+
+        $frameCount = 0;
 
         while ($offset < $len) {
-            $pos = strpos($imageData, "\x2C", $offset);
-            if ($pos === false) {
+            $byte = ord($imageData[$offset]);
+
+            if ($byte === 0x3B) {
+                // Trailer — end of GIF
                 break;
+            } elseif ($byte === 0x2C) {
+                // Image Descriptor
+                $frameCount++;
+                if ($frameCount >= 2) {
+                    return true;
+                }
+                // Skip Image Descriptor fixed fields (9 bytes total including introducer)
+                $offset += 9;
+                if ($offset >= $len) {
+                    break;
+                }
+                // Check for Local Color Table
+                $localPacked = ord($imageData[$offset - 1]);
+                if ($localPacked & 0x80) {
+                    $lctSize = 3 * (1 << (($localPacked & 0x07) + 1));
+                    $offset += $lctSize;
+                }
+                // Skip LZW Minimum Code Size byte
+                $offset++;
+                // Skip sub-blocks
+                while ($offset < $len) {
+                    $blockSize = ord($imageData[$offset]);
+                    $offset++;
+                    if ($blockSize === 0) {
+                        break;
+                    }
+                    $offset += $blockSize;
+                }
+            } elseif ($byte === 0x21) {
+                // Extension block
+                $offset += 2; // skip introducer + label
+                // Skip sub-blocks
+                while ($offset < $len) {
+                    $blockSize = ord($imageData[$offset]);
+                    $offset++;
+                    if ($blockSize === 0) {
+                        break;
+                    }
+                    $offset += $blockSize;
+                }
+            } else {
+                // Unknown byte, advance to avoid infinite loop
+                $offset++;
             }
-            $count++;
-            if ($count >= 2) {
-                return true;
-            }
-            $offset = $pos + 1;
         }
 
         return false;
