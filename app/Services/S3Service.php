@@ -229,7 +229,10 @@ class S3Service
         }
 
         if ($thumbnailContent === null) {
-            \Log::info("Skipping thumbnail for EPS (no Ghostscript or Imagick available): $s3Key");
+            \Log::info('Skipping thumbnail for EPS (Ghostscript '
+                .($this->ghostscriptBin ? 'found but failed' : 'not found')
+                .', Imagick '.($this->hasImagick ? 'found but failed' : 'not available')
+                ."): $s3Key");
 
             return null;
         }
@@ -261,7 +264,8 @@ class S3Service
     protected function generateEpsThumbnailViaGhostscript(string $epsContent): ?string
     {
         $tmpInput = tempnam(sys_get_temp_dir(), 'eps_');
-        $tmpOutput = tempnam(sys_get_temp_dir(), 'eps_thumb_').'.jpg';
+        $tmpOutputBase = tempnam(sys_get_temp_dir(), 'eps_thumb_');
+        $tmpOutput = $tmpOutputBase.'.jpg';
 
         try {
             file_put_contents($tmpInput, $epsContent);
@@ -281,13 +285,23 @@ class S3Service
                 return null;
             }
 
-            return file_get_contents($tmpOutput);
-        } catch (\Exception $e) {
+            $data = file_get_contents($tmpOutput);
+
+            // Verify output is a valid JPEG (magic bytes: FF D8 FF)
+            if (strlen($data) < 3 || $data[0] !== "\xFF" || $data[1] !== "\xD8" || $data[2] !== "\xFF") {
+                \Log::warning('Ghostscript produced invalid JPEG output for EPS thumbnail');
+
+                return null;
+            }
+
+            return $data;
+        } catch (\Throwable $e) {
             \Log::warning('Ghostscript EPS thumbnail exception: '.$e->getMessage());
 
             return null;
         } finally {
             @unlink($tmpInput);
+            @unlink($tmpOutputBase);
             @unlink($tmpOutput);
         }
     }
@@ -310,7 +324,7 @@ class S3Service
             $imagick->destroy();
 
             return $thumbnailContent;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::warning('Imagick EPS thumbnail failed (likely policy.xml restriction): '.$e->getMessage());
 
             return null;
@@ -322,15 +336,20 @@ class S3Service
      */
     protected function findGhostscriptBinary(): ?string
     {
-        $isWindows = PHP_OS_FAMILY === 'Windows';
-        $candidates = $isWindows ? ['gswin64c', 'gswin32c', 'gs'] : ['gs'];
-        $whichCmd = $isWindows ? 'where' : 'which';
+        try {
+            $isWindows = PHP_OS_FAMILY === 'Windows';
+            $candidates = $isWindows ? ['gswin64c', 'gswin32c', 'gs'] : ['gs'];
+            $whichCmd = $isWindows ? 'where' : 'which';
 
-        foreach ($candidates as $bin) {
-            $result = @exec(sprintf('%s %s 2>&1', $whichCmd, escapeshellarg($bin)), $output, $exitCode);
-            if ($exitCode === 0 && ! empty($result)) {
-                return trim($result);
+            foreach ($candidates as $bin) {
+                $output = [];
+                $result = @exec(sprintf('%s %s 2>&1', $whichCmd, escapeshellarg($bin)), $output, $exitCode);
+                if ($exitCode === 0 && ! empty($result)) {
+                    return trim($result);
+                }
             }
+        } catch (\Throwable $e) {
+            // exec() may be disabled via php.ini disable_functions
         }
 
         return null;
