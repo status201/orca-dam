@@ -8,6 +8,7 @@ use Aws\S3\S3Client;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;
 
 class S3Service
@@ -19,6 +20,8 @@ class S3Service
     protected string $region;
 
     protected ImageManager $imageManager;
+
+    protected ?ImageManager $imagickManager = null;
 
     public function __construct()
     {
@@ -34,8 +37,13 @@ class S3Service
             ],
         ]);
 
-        // Initialize Intervention Image 3.x
+        // Initialize Intervention Image 3.x (GD for general use)
         $this->imageManager = new ImageManager(new Driver);
+
+        // Initialize Imagick driver if available (needed for EPS thumbnail generation)
+        if (extension_loaded('imagick')) {
+            $this->imagickManager = new ImageManager(new ImagickDriver);
+        }
     }
 
     /**
@@ -150,9 +158,9 @@ class S3Service
                 return null;
             }
 
-            // Skip thumbnail generation for EPS files (not supported by GD)
-            if (str_ends_with(strtolower($s3Key), '.eps')) {
-                \Log::info("Skipping thumbnail generation for EPS: $s3Key");
+            // Skip thumbnail generation for EPS files when Imagick is not available
+            if (str_ends_with(strtolower($s3Key), '.eps') && $this->imagickManager === null) {
+                \Log::info("Skipping thumbnail for EPS (Imagick not available): $s3Key");
 
                 return null;
             }
@@ -165,8 +173,11 @@ class S3Service
 
             $imageContent = (string) $result['Body'];
 
-            // Generate thumbnail (300x300 max, maintain aspect ratio)
-            $image = $this->imageManager->read($imageContent);
+            // Use Imagick for EPS files, GD for everything else
+            $manager = str_ends_with(strtolower($s3Key), '.eps')
+                ? $this->imagickManager
+                : $this->imageManager;
+            $image = $manager->read($imageContent);
             $image->scale(width: 300, height: 300);
 
             // Convert to JPEG for consistency
