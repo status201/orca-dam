@@ -40,6 +40,11 @@
     let lastTimestamp = 0;
     let animFrameId = null;
 
+    // Touch state
+    let touchActive = false;
+    let touchX = 0, touchY = 0;
+    let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+
     // DOM refs
     let gameArea, orcaEl, hudScore, hudLives, footer, footerContent;
 
@@ -192,32 +197,59 @@
 
     // --- Instructions Overlay ---
     function showInstructions() {
+        const isTouch = 'ontouchstart' in window;
         const overlay = document.createElement('div');
         overlay.className = 'game-instructions';
-        overlay.innerHTML = `
-            <h2>ORCA FEEDING FRENZY</h2>
-            <div class="controls">
-                <span class="arrows">&uarr; &darr; &larr; &rarr;</span> SWIM AROUND<br>
-                <span>SPACE</span> JUMP
-            </div>
-            <div class="fish-info">
-                <span class="silver">SILVER FISH</span> = ${FAST_FISH_POINTS} PTS (fast!)<br>
-                <span class="gold">GOLD FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
-                <span class="danger">AVOID THE SHARKS!</span>
-            </div>
-            <div class="start-prompt">PRESS SPACE TO START</div>
-        `;
+
+        if (isTouch) {
+            overlay.innerHTML = `
+                <h2>ORCA FEEDING FRENZY</h2>
+                <div class="controls">
+                    <span>TOUCH & DRAG</span> TO SWIM<br>
+                    <span>TAP</span> TO JUMP
+                </div>
+                <div class="fish-info">
+                    <span class="silver">SILVER FISH</span> = ${FAST_FISH_POINTS} PTS (fast!)<br>
+                    <span class="gold">GOLD FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
+                    <span class="danger">AVOID THE SHARKS!</span>
+                </div>
+                <div class="start-prompt">TAP TO START</div>
+            `;
+        } else {
+            overlay.innerHTML = `
+                <h2>ORCA FEEDING FRENZY</h2>
+                <div class="controls">
+                    <span class="arrows">&uarr; &darr; &larr; &rarr;</span> SWIM AROUND<br>
+                    <span>SPACE</span> JUMP
+                </div>
+                <div class="fish-info">
+                    <span class="silver">SILVER FISH</span> = ${FAST_FISH_POINTS} PTS (fast!)<br>
+                    <span class="gold">GOLD FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
+                    <span class="danger">AVOID THE SHARKS!</span>
+                </div>
+                <div class="start-prompt">PRESS SPACE TO START</div>
+            `;
+        }
         gameArea.appendChild(overlay);
 
         function onStart(e) {
             if (e.code === 'Space' || e.key === ' ') {
                 e.preventDefault();
                 gameArea.removeEventListener('keydown', onStart);
+                gameArea.removeEventListener('touchstart', onTouchStart);
                 overlay.remove();
                 beginGameLoop();
             }
         }
+        function onTouchStart(e) {
+            e.preventDefault();
+            gameArea.removeEventListener('keydown', onStart);
+            gameArea.removeEventListener('touchstart', onTouchStart);
+            overlay.remove();
+            beginGameLoop();
+        }
         gameArea.addEventListener('keydown', onStart);
+        gameArea.addEventListener('touchstart', onTouchStart);
     }
 
     // --- Game Loop ---
@@ -227,6 +259,10 @@
 
         gameArea.addEventListener('keydown', onKeyDown);
         gameArea.addEventListener('keyup', onKeyUp);
+        gameArea.addEventListener('touchstart', onGameTouchStart, { passive: false });
+        gameArea.addEventListener('touchmove', onGameTouchMove, { passive: false });
+        gameArea.addEventListener('touchend', onGameTouchEnd);
+        gameArea.addEventListener('touchcancel', onGameTouchEnd);
 
         animFrameId = requestAnimationFrame(gameLoop);
     }
@@ -251,6 +287,20 @@
     function update(dt) {
         const areaWidth = gameArea.offsetWidth;
         gameTime += dt;
+
+        // Touch-to-keys mapping
+        if (touchActive) {
+            const orcaCenterX = orcaX + ORCA_W / 2;
+            const orcaCenterY = orcaY + ORCA_H / 2;
+            const dx = touchX - orcaCenterX;
+            const dy = touchY - orcaCenterY;
+            const DEADZONE = 15;
+
+            keys['ArrowLeft'] = dx < -DEADZONE;
+            keys['ArrowRight'] = dx > DEADZONE;
+            keys['ArrowUp'] = dy < -DEADZONE;
+            keys['ArrowDown'] = dy > DEADZONE;
+        }
 
         // Orca movement (arrow keys)
         if (keys['ArrowUp']) {
@@ -539,6 +589,11 @@
         if (animFrameId) cancelAnimationFrame(animFrameId);
         gameArea.removeEventListener('keydown', onKeyDown);
         gameArea.removeEventListener('keyup', onKeyUp);
+        gameArea.removeEventListener('touchstart', onGameTouchStart);
+        gameArea.removeEventListener('touchmove', onGameTouchMove);
+        gameArea.removeEventListener('touchend', onGameTouchEnd);
+        gameArea.removeEventListener('touchcancel', onGameTouchEnd);
+        touchActive = false;
 
         // Save high score
         let highScores = [];
@@ -606,6 +661,11 @@
         if (animFrameId) cancelAnimationFrame(animFrameId);
         gameArea.removeEventListener('keydown', onKeyDown);
         gameArea.removeEventListener('keyup', onKeyUp);
+        gameArea.removeEventListener('touchstart', onGameTouchStart);
+        gameArea.removeEventListener('touchmove', onGameTouchMove);
+        gameArea.removeEventListener('touchend', onGameTouchEnd);
+        gameArea.removeEventListener('touchcancel', onGameTouchEnd);
+        touchActive = false;
         keys = {};
 
         clearEntities();
@@ -635,6 +695,54 @@
 
     function onKeyUp(e) {
         keys[e.code] = false;
+    }
+
+    // --- Touch Handlers ---
+    function getTouchPos(e) {
+        const touch = e.touches[0] || e.changedTouches[0];
+        const rect = gameArea.getBoundingClientRect();
+        return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+
+    function onGameTouchStart(e) {
+        e.preventDefault();
+        const pos = getTouchPos(e);
+        touchActive = true;
+        touchX = pos.x;
+        touchY = pos.y;
+        touchStartX = pos.x;
+        touchStartY = pos.y;
+        touchStartTime = performance.now();
+    }
+
+    function onGameTouchMove(e) {
+        e.preventDefault();
+        const pos = getTouchPos(e);
+        touchX = pos.x;
+        touchY = pos.y;
+    }
+
+    function onGameTouchEnd(e) {
+        // Detect tap: short duration + small movement
+        const elapsed = performance.now() - touchStartTime;
+        const pos = e.changedTouches && e.changedTouches[0] ? (function () {
+            const rect = gameArea.getBoundingClientRect();
+            return { x: e.changedTouches[0].clientX - rect.left, y: e.changedTouches[0].clientY - rect.top };
+        })() : { x: touchStartX, y: touchStartY };
+        const dist = Math.hypot(pos.x - touchStartX, pos.y - touchStartY);
+
+        if (elapsed < 200 && dist < 15) {
+            // Trigger jump
+            keys['Space'] = true;
+            setTimeout(() => { keys['Space'] = false; }, 50);
+        }
+
+        // Clear directional keys set by touch
+        touchActive = false;
+        keys['ArrowLeft'] = false;
+        keys['ArrowRight'] = false;
+        keys['ArrowUp'] = false;
+        keys['ArrowDown'] = false;
     }
 
     // --- Helpers ---
