@@ -632,15 +632,24 @@
             </h3>
             <div class="actions flex flex-wrap gap-3">
                 <button @click="retryAllFailedJobs()"
-                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="queueStats.failed === 0">
                     <i class="fas fa-redo mr-2"></i>{{ __('Retry All Failed') }}
                 </button>
 
                 <button @click="flushFailedJobs()"
-                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         :disabled="queueStats.failed === 0">
                     <i class="fas fa-trash mr-2"></i>{{ __('Flush Failed') }}
+                </button>
+
+                <button @click="processQueueJobs()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        :disabled="queueStats.pending === 0 || processingJobs"
+                        title="{{ __('Process max 50 jobs on demand') }}">
+                    <i x-show="processingJobs" class="fas fa-spinner fa-spin mr-2"></i>
+                    <i x-show="!processingJobs" class="fas fa-play mr-2"></i>
+                    <span x-text="processingJobs ? @js(__('Processing jobs...')) : @js(__('Process Jobs'))"></span>
                 </button>
 
                 <button @click="restartWorkers()"
@@ -1264,6 +1273,7 @@ function systemAdmin() {
         pendingJobs: [],
         failedJobs: [],
         loadingQueue: false,
+        processingJobs: false,
 
         // Logs data
         logData: { exists: false, lines: [], size: 0, path: '' },
@@ -1520,6 +1530,33 @@ function systemAdmin() {
             } catch (error) {
                 console.error('Failed to restart workers:', error);
                 window.showToast(@js(__('Failed to restart workers')), 'error');
+            }
+        },
+
+        async processQueueJobs() {
+            if (this.processingJobs) return;
+            this.processingJobs = true;
+            try {
+                const response = await fetch('{{ route('system.process-queue') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    window.showToast(@js(__('Jobs processed successfully')), 'success');
+                } else {
+                    window.showToast(result.error || @js(__('Failed to process jobs')), 'error');
+                }
+                this.refreshQueueStatus();
+            } catch (error) {
+                console.error('Failed to process jobs:', error);
+                window.showToast(@js(__('Failed to process jobs')), 'error');
+            } finally {
+                this.processingJobs = false;
             }
         },
 

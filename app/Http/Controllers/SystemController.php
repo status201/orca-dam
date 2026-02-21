@@ -143,6 +143,18 @@ class SystemController extends Controller
     }
 
     /**
+     * Process pending queue jobs (bounded batch)
+     */
+    public function processQueue()
+    {
+        $this->authorize('access', SystemController::class);
+
+        $result = $this->systemService->executeCommand('queue:work --max-jobs=50 --tries=3 --stop-when-empty');
+
+        return response()->json($result);
+    }
+
+    /**
      * Queue restart (signal workers to restart)
      */
     public function restartQueue()

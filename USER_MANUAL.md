@@ -333,7 +333,3 @@ Preferences follow a priority: URL parameters > your user preference > global sy
 - Admins: see `README.md`, `CLAUDE.md`, and `DEPLOYMENT.md` for technical docs
 
 ---
-
-*Happy asset managing! 🐋*
-
-*— The ORCA Team*

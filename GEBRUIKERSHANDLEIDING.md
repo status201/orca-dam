@@ -333,7 +333,3 @@ Voorkeuren volgen een prioriteit: URL-parameters > jouw gebruikersvoorkeur > sys
 - Admins: zie `README.md`, `CLAUDE.md` en `DEPLOYMENT.md` voor technische documentatie
 
 ---
-
-*Veel plezier met je assets! 🐋*
-
-*— Het ORCA Team*

@@ -28,6 +28,7 @@ class SystemService
         'queue:retry all',
         'queue:flush',
         'queue:restart',
+        'queue:work',
         'migrate:status',
         'migrate:rollback',
         'migrate',
@@ -357,7 +358,7 @@ class SystemService
         if (DIRECTORY_SEPARATOR === '\\') {
             return [
                 'available' => false,
-                'message' => 'Supervisor is not available on Windows. Use a process manager like NSSM or run queue workers manually.',
+                'message' => __('Supervisor is not available on Windows. Use a process manager like NSSM or run queue workers manually.'),
                 'workers' => [],
             ];
         }
@@ -367,7 +368,7 @@ class SystemService
         if (empty($which)) {
             return [
                 'available' => false,
-                'message' => 'Supervisor is not installed. Install it to manage queue workers persistently.',
+                'message' => __('Supervisor is not installed. Install it to manage queue workers persistently.'),
                 'workers' => [],
             ];
         }
@@ -397,7 +398,7 @@ class SystemService
             if (empty($output)) {
                 return [
                     'available' => true,
-                    'message' => 'No queue worker processes found in supervisor. For manual setup see DEPLOYMENT.md, or use Laravel Forge for automatic configuration.',
+                    'message' => __('No queue worker processes found in supervisor. For manual setup see DEPLOYMENT.md, or use Laravel Forge for automatic configuration.'),
                     'workers' => [],
                 ];
             }
@@ -455,15 +456,15 @@ class SystemService
             if (empty($workers)) {
                 return [
                     'available' => true,
-                    'message' => 'No queue worker processes found in supervisor. For manual setup see DEPLOYMENT.md, or use Laravel Forge for automatic configuration.',
+                    'message' => __('No queue worker processes found in supervisor. For manual setup see DEPLOYMENT.md, or use Laravel Forge for automatic configuration.'),
                     'workers' => [],
                 ];
             }
 
             // Build appropriate message based on worker source
             $message = $workerSource === 'forge'
-                ? 'Laravel Forge is managing queue workers'
-                : 'Supervisor is managing queue workers';
+                ? __('Laravel Forge is managing queue workers')
+                : __('Supervisor is managing queue workers');
 
             return [
                 'available' => true,
