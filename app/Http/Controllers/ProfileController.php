@@ -20,17 +20,17 @@ class ProfileController extends Controller
     public function edit(Request $request): View
     {
         $rootFolder = S3Service::getRootFolder();
-        $folders = Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
+        $folders = S3Service::getConfiguredFolders();
 
         // Filter to folders within global root
         if ($rootFolder !== '') {
             $folders = array_values(array_filter($folders, fn ($f) => $f === $rootFolder || str_starts_with($f, $rootFolder.'/')
             ));
-        }
 
-        // Ensure root folder is in the list
-        if (! empty($rootFolder) && ! in_array($rootFolder, $folders)) {
-            array_unshift($folders, $rootFolder);
+            // Ensure root folder is in the list
+            if (! in_array($rootFolder, $folders)) {
+                array_unshift($folders, $rootFolder);
+            }
         }
 
         $globalItemsPerPage = (int) Setting::get('items_per_page', 24);

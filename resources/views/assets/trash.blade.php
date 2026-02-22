@@ -152,58 +152,8 @@
 </div>
 
 <script>
-function trashGrid() {
-    return {
-        init() {
-            console.log('Trash grid initialized');
-        }
-    }
-}
-
-function trashCard(assetId) {
-    return {
-        restoreAsset(id) {
-            if (confirm(@js(__('Restore this asset?')))) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/assets/${id}/restore`;
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = csrfToken;
-
-                form.appendChild(csrfInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
-        },
-
-        confirmDelete(id) {
-            if (confirm(@js(__("PERMANENTLY DELETE this asset?\n\nThis will:\n- Remove the database record\n- Delete the S3 object\n- Delete the thumbnail\n\nThis action CANNOT be undone!")))) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/assets/${id}/force-delete`;
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = csrfToken;
-
-                const methodInput = document.createElement('input');
-                methodInput.type = 'hidden';
-                methodInput.name = '_method';
-                methodInput.value = 'DELETE';
-
-                form.appendChild(csrfInput);
-                form.appendChild(methodInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-    }
-}
+    window.__pageData = window.__pageData || {};
+    window.__pageData.confirmRestore = @js(__('Restore this asset?'));
+    window.__pageData.confirmPermanentDelete = @js(__("PERMANENTLY DELETE this asset?\n\nThis will:\n- Remove the database record\n- Delete the S3 object\n- Delete the thumbnail\n\nThis action CANNOT be undone!"));
 </script>
 @endsection

@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\GenerateAiTags;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\Tag;
-use App\Services\RekognitionService;
+use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,12 +15,12 @@ class AssetApiController extends Controller
 {
     protected S3Service $s3Service;
 
-    protected RekognitionService $rekognitionService;
+    protected AssetProcessingService $assetProcessingService;
 
-    public function __construct(S3Service $s3Service, RekognitionService $rekognitionService)
+    public function __construct(S3Service $s3Service, AssetProcessingService $assetProcessingService)
     {
         $this->s3Service = $s3Service;
-        $this->rekognitionService = $rekognitionService;
+        $this->assetProcessingService = $assetProcessingService;
     }
 
     /**
@@ -54,40 +53,7 @@ class AssetApiController extends Controller
 
         // Apply sorting
         $sort = $request->input('sort', 'date_desc');
-        switch ($sort) {
-            case 'date_asc':
-                $query->oldest('updated_at');
-                break;
-            case 'date_desc':
-                $query->latest('updated_at');
-                break;
-            case 'upload_asc':
-                $query->oldest('created_at');
-                break;
-            case 'upload_desc':
-                $query->latest('created_at');
-                break;
-            case 'size_asc':
-                $query->orderBy('size', 'asc');
-                break;
-            case 'size_desc':
-                $query->orderBy('size', 'desc');
-                break;
-            case 'name_asc':
-                $query->orderBy('filename', 'asc');
-                break;
-            case 'name_desc':
-                $query->orderBy('filename', 'desc');
-                break;
-            case 's3key_asc':
-                $query->orderBy('s3_key', 'asc');
-                break;
-            case 's3key_desc':
-                $query->orderBy('s3_key', 'desc');
-                break;
-            default:
-                $query->latest('updated_at');
-        }
+        $query->applySort($sort);
 
         $perPage = min($request->input('per_page', 24), 100);
         $assets = $query->paginate($perPage);
@@ -119,30 +85,8 @@ class AssetApiController extends Controller
                 'user_id' => Auth::id(),
             ]);
 
-            if ($asset->isImage()) {
-                $thumbnailKey = $this->s3Service->generateThumbnail($asset->s3_key);
-                if ($thumbnailKey) {
-                    $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
-                }
-
-                // Generate resized images
-                try {
-                    $resizedKeys = $this->s3Service->generateResizedImages($asset->s3_key);
-                    if (! empty($resizedKeys)) {
-                        $asset->update([
-                            'resize_s_s3_key' => $resizedKeys['s'] ?? null,
-                            'resize_m_s3_key' => $resizedKeys['m'] ?? null,
-                            'resize_l_s3_key' => $resizedKeys['l'] ?? null,
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Resize generation failed for {$asset->filename}: ".$e->getMessage());
-                }
-
-                if ($this->rekognitionService->isEnabled()) {
-                    GenerateAiTags::dispatch($asset)->afterResponse();
-                }
-            }
+            // Generate thumbnail, resized images, and AI tags
+            $this->assetProcessingService->processImageAsset($asset);
 
             $uploadedAssets[] = $asset->fresh(['tags']);
         }
@@ -188,16 +132,7 @@ class AssetApiController extends Controller
 
         // Handle tags only if explicitly included in request
         if ($request->has('tags')) {
-            $tagIds = [];
-            $tags = $request->input('tags', []);
-
-            foreach ($tags as $tagName) {
-                $tag = Tag::firstOrCreate(
-                    ['name' => strtolower(trim($tagName))],
-                    ['type' => 'user']
-                );
-                $tagIds[] = $tag->id;
-            }
+            $tagIds = Tag::resolveUserTagIds($request->input('tags', []));
 
             $aiTagIds = $asset->aiTags()->pluck('tags.id')->toArray();
             $asset->tags()->sync(array_merge($aiTagIds, $tagIds));
@@ -251,40 +186,7 @@ class AssetApiController extends Controller
 
         // Apply sorting
         $sort = $request->input('sort', 'date_desc');
-        switch ($sort) {
-            case 'date_asc':
-                $query->oldest('updated_at');
-                break;
-            case 'date_desc':
-                $query->latest('updated_at');
-                break;
-            case 'upload_asc':
-                $query->oldest('created_at');
-                break;
-            case 'upload_desc':
-                $query->latest('created_at');
-                break;
-            case 'size_asc':
-                $query->orderBy('size', 'asc');
-                break;
-            case 'size_desc':
-                $query->orderBy('size', 'desc');
-                break;
-            case 'name_asc':
-                $query->orderBy('filename', 'asc');
-                break;
-            case 'name_desc':
-                $query->orderBy('filename', 'desc');
-                break;
-            case 's3key_asc':
-                $query->orderBy('s3_key', 'asc');
-                break;
-            case 's3key_desc':
-                $query->orderBy('s3_key', 'desc');
-                break;
-            default:
-                $query->latest('updated_at');
-        }
+        $query->applySort($sort);
 
         $perPage = min($request->input('per_page', 24), 100);
         $assets = $query->paginate($perPage);

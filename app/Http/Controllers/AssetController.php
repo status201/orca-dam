@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateAiTags;
 use App\Models\Asset;
-use App\Models\Setting;
 use App\Models\Tag;
+use App\Services\AssetProcessingService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -20,10 +19,13 @@ class AssetController extends Controller
 
     protected RekognitionService $rekognitionService;
 
-    public function __construct(S3Service $s3Service, RekognitionService $rekognitionService)
+    protected AssetProcessingService $assetProcessingService;
+
+    public function __construct(S3Service $s3Service, RekognitionService $rekognitionService, AssetProcessingService $assetProcessingService)
     {
         $this->s3Service = $s3Service;
         $this->rekognitionService = $rekognitionService;
+        $this->assetProcessingService = $assetProcessingService;
     }
 
     /**
@@ -68,40 +70,7 @@ class AssetController extends Controller
 
         // Apply sorting
         $sort = $request->input('sort', 'date_desc');
-        switch ($sort) {
-            case 'date_asc':
-                $query->oldest('updated_at');
-                break;
-            case 'date_desc':
-                $query->latest('updated_at');
-                break;
-            case 'upload_asc':
-                $query->oldest('created_at');
-                break;
-            case 'upload_desc':
-                $query->latest('created_at');
-                break;
-            case 'size_asc':
-                $query->orderBy('size', 'asc');
-                break;
-            case 'size_desc':
-                $query->orderBy('size', 'desc');
-                break;
-            case 'name_asc':
-                $query->orderBy('filename', 'asc');
-                break;
-            case 'name_desc':
-                $query->orderBy('filename', 'desc');
-                break;
-            case 's3key_asc':
-                $query->orderBy('s3_key', 'asc');
-                break;
-            case 's3key_desc':
-                $query->orderBy('s3_key', 'desc');
-                break;
-            default:
-                $query->latest('updated_at');
-        }
+        $query->applySort($sort);
 
         // Items per page: URL param > user preference > global setting
         $allowedPerPage = [12, 24, 36, 48, 60, 72, 96];
@@ -111,13 +80,7 @@ class AssetController extends Controller
         }
         $assets = $query->paginate((int) $perPage)->onEachSide(2)->withQueryString();
         $tags = Tag::orderBy('name')->get();
-        $folders = Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
-        if (empty($folders) && $rootFolder !== '') {
-            $folders = [$rootFolder];
-        }
-        if ($rootFolder === '' && ! in_array('', $folders)) {
-            array_unshift($folders, '');
-        }
+        $folders = S3Service::getConfiguredFolders();
 
         $missingCount = Asset::missing()->count();
 
@@ -132,13 +95,7 @@ class AssetController extends Controller
         $this->authorize('create', Asset::class);
 
         $rootFolder = S3Service::getRootFolder();
-        $folders = Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
-        if (empty($folders) && $rootFolder !== '') {
-            $folders = [$rootFolder];
-        }
-        if ($rootFolder === '' && ! in_array('', $folders)) {
-            array_unshift($folders, '');
-        }
+        $folders = S3Service::getConfiguredFolders();
 
         return view('assets.create', compact('folders', 'rootFolder'));
     }
@@ -176,42 +133,8 @@ class AssetController extends Controller
                         'user_id' => Auth::id(),
                     ]);
 
-                    // Generate thumbnail for images
-                    if ($asset->isImage()) {
-                        try {
-                            $thumbnailKey = $this->s3Service->generateThumbnail($asset->s3_key);
-                            if ($thumbnailKey) {
-                                $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
-                            }
-                        } catch (\Exception $e) {
-                            \Log::error("Thumbnail generation failed for {$asset->filename}: ".$e->getMessage());
-                            // Continue without thumbnail
-                        }
-
-                        // Generate resized images
-                        try {
-                            $resizedKeys = $this->s3Service->generateResizedImages($asset->s3_key);
-                            if (! empty($resizedKeys)) {
-                                $asset->update([
-                                    'resize_s_s3_key' => $resizedKeys['s'] ?? null,
-                                    'resize_m_s3_key' => $resizedKeys['m'] ?? null,
-                                    'resize_l_s3_key' => $resizedKeys['l'] ?? null,
-                                ]);
-                            }
-                        } catch (\Exception $e) {
-                            \Log::error("Resize generation failed for {$asset->filename}: ".$e->getMessage());
-                        }
-                    }
-
-                    // Auto-tag with AI if enabled
-                    if ($asset->isImage() && $this->rekognitionService->isEnabled()) {
-                        try {
-                            GenerateAiTags::dispatch($asset)->afterResponse();
-                        } catch (\Exception $e) {
-                            \Log::error("AI tagging failed for {$asset->filename}: ".$e->getMessage());
-                            // Continue without AI tags
-                        }
-                    }
+                    // Generate thumbnail, resized images, and AI tags
+                    $this->assetProcessingService->processImageAsset($asset);
 
                     $uploadedAssets[] = $asset;
                 } catch (\Exception $e) {
@@ -306,16 +229,7 @@ class AssetController extends Controller
 
         // Handle tags only if explicitly included in request
         if ($request->has('tags')) {
-            $tagIds = [];
-            $tags = $request->input('tags', []);
-
-            foreach ($tags as $tagName) {
-                $tag = Tag::firstOrCreate(
-                    ['name' => strtolower(trim($tagName))],
-                    ['type' => 'user']
-                );
-                $tagIds[] = $tag->id;
-            }
+            $tagIds = Tag::resolveUserTagIds($request->input('tags', []));
 
             // Keep AI tags, replace user tags
             $aiTagIds = $asset->aiTags()->pluck('tags.id')->toArray();
@@ -499,32 +413,8 @@ class AssetController extends Controller
                 'last_modified_by' => Auth::id(),
             ]);
 
-            // Regenerate thumbnail for images
-            if ($asset->isImage()) {
-                try {
-                    $thumbnailKey = $this->s3Service->generateThumbnail($asset->s3_key);
-                    if ($thumbnailKey) {
-                        $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::error('Thumbnail regeneration failed after replace: '.$e->getMessage());
-                    // Continue without thumbnail - not critical
-                }
-
-                // Regenerate resized images
-                try {
-                    $resizedKeys = $this->s3Service->generateResizedImages($asset->s3_key);
-                    if (! empty($resizedKeys)) {
-                        $asset->update([
-                            'resize_s_s3_key' => $resizedKeys['s'] ?? null,
-                            'resize_m_s3_key' => $resizedKeys['m'] ?? null,
-                            'resize_l_s3_key' => $resizedKeys['l'] ?? null,
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::error('Resize regeneration failed after replace: '.$e->getMessage());
-                }
-            }
+            // Regenerate thumbnail, resized images, and AI tags
+            $this->assetProcessingService->processImageAsset($asset);
 
             return response()->json([
                 'message' => 'Asset replaced successfully',
@@ -633,14 +523,7 @@ class AssetController extends Controller
             'tags.*' => 'string|max:50',
         ]);
 
-        $tagIds = [];
-        foreach ($request->tags as $tagName) {
-            $tag = Tag::firstOrCreate(
-                ['name' => strtolower(trim($tagName))],
-                ['type' => 'user']
-            );
-            $tagIds[] = $tag->id;
-        }
+        $tagIds = Tag::resolveUserTagIds($request->tags);
 
         $asset->tags()->syncWithoutDetaching($tagIds);
         $asset->update(['last_modified_by' => Auth::id()]);

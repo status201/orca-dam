@@ -7,13 +7,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Setting::create([
-            'key' => 's3_root_folder',
-            'value' => '',
-            'type' => 'string',
-            'group' => 'aws',
-            'description' => 'S3 prefix for new uploads. Leave empty for bucket root.',
-        ]);
+        Setting::firstOrCreate(
+            ['key' => 's3_root_folder'],
+            [
+                'value' => '',
+                'type' => 'string',
+                'group' => 'aws',
+                'description' => 'S3 prefix for new uploads. Leave empty for bucket root.',
+            ]
+        );
     }
 
     public function down(): void

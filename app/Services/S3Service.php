@@ -48,6 +48,24 @@ class S3Service
     }
 
     /**
+     * Get the list of configured S3 folders, normalized with root folder logic.
+     */
+    public static function getConfiguredFolders(): array
+    {
+        $rootFolder = static::getRootFolder();
+        $folders = Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
+
+        if (empty($folders) && $rootFolder !== '') {
+            $folders = [$rootFolder];
+        }
+        if ($rootFolder === '' && ! in_array('', $folders)) {
+            array_unshift($folders, '');
+        }
+
+        return $folders;
+    }
+
+    /**
      * Get the root folder as a prefix (with trailing slash), or empty string for bucket root.
      */
     public static function getRootPrefix(): string

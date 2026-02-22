@@ -44,6 +44,23 @@ class Tag extends Model
     }
 
     /**
+     * Resolve an array of tag names to tag IDs, creating missing tags as 'user' type.
+     */
+    public static function resolveUserTagIds(array $names): array
+    {
+        $tagIds = [];
+        foreach ($names as $name) {
+            $tag = static::firstOrCreate(
+                ['name' => strtolower(trim($name))],
+                ['type' => 'user']
+            );
+            $tagIds[] = $tag->id;
+        }
+
+        return $tagIds;
+    }
+
+    /**
      * Scope: Search tags by name
      */
     public function scopeSearch($query, ?string $search)

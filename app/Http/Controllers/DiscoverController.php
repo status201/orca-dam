@@ -33,11 +33,7 @@ class DiscoverController extends Controller
         $this->authorize('discover', Asset::class);
 
         $rootFolder = S3Service::getRootFolder();
-        $folders = \App\Models\Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
-
-        if (empty($folders) && $rootFolder !== '') {
-            $folders = [$rootFolder];
-        }
+        $folders = S3Service::getConfiguredFolders();
 
         // When root folder is configured (not bucket root), remove any stale '' entries
         // This prevents duplicate "/ (root)" options in the dropdown
@@ -46,11 +42,6 @@ class DiscoverController extends Controller
             // Ensure root folder is first
             if (! in_array($rootFolder, $folders)) {
                 array_unshift($folders, $rootFolder);
-            }
-        } else {
-            // Root is bucket root - ensure '' is in the list
-            if (! in_array('', $folders)) {
-                array_unshift($folders, '');
             }
         }
 

@@ -371,151 +371,19 @@
 </div>
 
 <script>
-function importMetadata() {
-    return {
-        step: 1,
-        matchField: 's3_key',
-        csvData: '',
-        csvFileName: '',
-        dragActive: false,
-        loading: false,
-        errorMessage: '',
-        previewData: { total: 0, matched: 0, unmatched: 0, skipped: 0, results: [] },
-        importResult: { updated: 0, skipped: 0, errors: [] },
-
-        get matchedResults() {
-            return this.previewData.results?.filter(r => r.status === 'matched') || [];
-        },
-
-        get unmatchedResults() {
-            return this.previewData.results?.filter(r => r.status === 'not_found') || [];
-        },
-
-        get hasValidationErrors() {
-            return this.matchedResults.some(r => r.errors && r.errors.length > 0);
-        },
-
-        handleFileDrop(e) {
-            this.dragActive = false;
-            const file = e.dataTransfer.files[0];
-            if (file) this.readCsvFile(file);
-        },
-
-        handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) this.readCsvFile(file);
-            e.target.value = '';
-        },
-
-        readCsvFile(file) {
-            if (!file.name.match(/\.(csv|txt)$/i)) {
-                this.errorMessage = '{{ __("Please select a CSV file.") }}';
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                this.csvData = e.target.result;
-                this.csvFileName = file.name;
-            };
-            reader.onerror = () => {
-                this.errorMessage = '{{ __("Failed to read file.") }}';
-            };
-            reader.readAsText(file);
-        },
-
-        extractError(data) {
-            if (data.error) return data.error;
-            if (data.errors) {
-                const firstField = Object.keys(data.errors)[0];
-                if (firstField) return data.errors[firstField][0];
-            }
-            if (data.message) return data.message;
-            return '{{ __("An unexpected error occurred. Please try again.") }}';
-        },
-
-        async previewImport() {
-            this.loading = true;
-            this.errorMessage = '';
-
-            try {
-                const response = await fetch('{{ route("import.preview") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        csv_data: this.csvData,
-                        match_field: this.matchField,
-                    }),
-                });
-
-                if (!response.ok) {
-                    try {
-                        const data = await response.json();
-                        this.errorMessage = this.extractError(data);
-                    } catch {
-                        this.errorMessage = '{{ __("An unexpected error occurred. Please try again.") }}' + ' (' + response.status + ')';
-                    }
-                    return;
-                }
-
-                this.previewData = await response.json();
-                this.step = 2;
-            } catch (e) {
-                this.errorMessage = '{{ __("Network error. Please check your connection and try again.") }}';
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async runImport() {
-            this.loading = true;
-            this.errorMessage = '';
-
-            try {
-                const response = await fetch('{{ route("import.import") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        csv_data: this.csvData,
-                        match_field: this.matchField,
-                    }),
-                });
-
-                if (!response.ok) {
-                    try {
-                        const data = await response.json();
-                        this.errorMessage = this.extractError(data);
-                    } catch {
-                        this.errorMessage = '{{ __("An unexpected error occurred. Please try again.") }}' + ' (' + response.status + ')';
-                    }
-                    return;
-                }
-
-                this.importResult = await response.json();
-                this.step = 3;
-            } catch (e) {
-                this.errorMessage = '{{ __("Network error. Please check your connection and try again.") }}';
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        startOver() {
-            this.step = 1;
-            this.csvData = '';
-            this.csvFileName = '';
-            this.previewData = { total: 0, matched: 0, unmatched: 0, skipped: 0, results: [] };
-            this.importResult = { updated: 0, skipped: 0, errors: [] };
-            this.errorMessage = '';
-        },
-    }
-}
+window.__pageData = window.__pageData || {};
+window.__pageData.import = {
+    csrfToken: @js(csrf_token()),
+    routes: {
+        importPreview: @js(route('import.preview')),
+        importImport: @js(route('import.import')),
+    },
+    translations: {
+        pleaseSelectCsv: @js(__('Please select a CSV file.')),
+        failedToReadFile: @js(__('Failed to read file.')),
+        unexpectedError: @js(__('An unexpected error occurred. Please try again.')),
+        networkError: @js(__('Network error. Please check your connection and try again.')),
+    },
+};
 </script>
 @endsection

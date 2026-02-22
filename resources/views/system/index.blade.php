@@ -261,7 +261,7 @@
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
-                    <i class="fab fa-aws mr-2 text-orange-500"></i>{{ __('S3 Storage') }}
+                    <i class="attention fab fa-aws mr-2 text-orange-500"></i>{{ __('S3 Storage') }}
                 </h4>
                 <p class="text-sm text-gray-500 mt-1">{{ __('Configure your S3 bucket connection and CDN settings') }}</p>
             </div>
@@ -301,7 +301,7 @@
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
-                    <i class="fas fa-desktop mr-2 text-blue-500"></i>{{ __('Display Settings') }}
+                    <i class="attention fas fa-desktop mr-2 text-blue-500"></i>{{ __('Display Settings') }}
                 </h4>
                 <p class="text-sm text-gray-500 mt-1">{{ __('Customize how assets and the interface are displayed') }}</p>
             </div>
@@ -375,7 +375,7 @@
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
-                    <i class="fas fa-expand mr-2 text-green-500"></i>{{ __('Image Resize Presets') }}
+                    <i class="attention fas fa-expand mr-2 text-green-500"></i>{{ __('Image Resize Presets') }}
                 </h4>
                 <p class="text-sm text-gray-500 mt-1">{{ __('Configure dimensions for automatically generated image resize variants. Leave height empty for automatic aspect ratio.') }}</p>
             </div>
@@ -479,7 +479,7 @@
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
-                    <i class="fas fa-brain mr-2 text-purple-500"></i>{{ __('AWS Rekognition Settings') }}
+                    <i class="attention fas fa-brain mr-2 text-purple-500"></i>{{ __('AWS Rekognition Settings') }}
                 </h4>
                 <p class="text-sm text-gray-500 mt-1">{{ __('Configure AI-powered image tagging via AWS Rekognition') }}</p>
             </div>
@@ -1273,711 +1273,86 @@
 
 @push('scripts')
 <script>
-function systemAdmin() {
-    return {
-        activeTab: 'overview',
-
-        // Queue data
-        queueStats: @json($queueStats),
-        pendingJobs: [],
-        failedJobs: [],
-        loadingQueue: false,
-        processingJobs: false,
-
-        // Logs data
-        logData: { exists: false, lines: [], size: 0, path: '' },
-        logLines: 50,
-        loadingLogs: false,
-
-        // Commands
-        customCommand: '',
-        commandOutput: '',
-        commandSuccess: false,
-        executingCommand: false,
-
-        // Diagnostics
-        testingS3: false,
-        s3TestResult: false,
-        s3TestSuccess: false,
-        s3TestMessage: '',
-
-        // Supervisor
-        supervisorStatus: {
-            available: false,
-            message: '',
-            workers: [],
-            total: 0,
-            running: 0
-        },
-        loadingSupervisor: false,
-
-        // Settings
-        settings: {
-            items_per_page: '{{ collect($settings)->firstWhere('key', 'items_per_page')['value'] ?? '24' }}',
-            timezone: '{{ collect($settings)->firstWhere('key', 'timezone')['value'] ?? 'UTC' }}',
-            locale: '{{ collect($settings)->firstWhere('key', 'locale')['value'] ?? 'en' }}',
-            s3_root_folder: '{{ collect($settings)->firstWhere('key', 's3_root_folder')['value'] ?? 'assets' }}',
-            custom_domain: '{{ collect($settings)->firstWhere('key', 'custom_domain')['value'] ?? '' }}',
-            rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
-            rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
-            rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '80' }}',
-            resize_s_width: '{{ collect($settings)->firstWhere('key', 'resize_s_width')['value'] ?? '250' }}',
-            resize_s_height: '{{ collect($settings)->firstWhere('key', 'resize_s_height')['value'] ?? '' }}',
-            resize_m_width: '{{ collect($settings)->firstWhere('key', 'resize_m_width')['value'] ?? '600' }}',
-            resize_m_height: '{{ collect($settings)->firstWhere('key', 'resize_m_height')['value'] ?? '' }}',
-            resize_l_width: '{{ collect($settings)->firstWhere('key', 'resize_l_width')['value'] ?? '1200' }}',
-            resize_l_height: '{{ collect($settings)->firstWhere('key', 'resize_l_height')['value'] ?? '' }}',
-            jwtSettingEnabled: '{{ collect($settings)->firstWhere('key', 'jwt_enabled_override')['value'] ?? '0' }}',
-            metaEndpointEnabled: '{{ collect($settings)->firstWhere('key', 'api_meta_endpoint_enabled')['value'] ?? '0' }}',
-        },
-        settingsSaved: false,
-        settingsError: '',
-        savingSettings: false,
-        regenerating: false,
-        verifyingIntegrity: false,
-        missingAssetsCount: {{ $missingAssetsCount }},
-        integrityCheckQueued: false,
-        integrityQueuedCount: 0,
-        refreshingIntegrity: false,
-
-        systemInfo: {
-          jwtEnvEnabled: '{{$systemInfo['jwt_enabled']}}',
-        },
-
-        // Documentation
-        selectedDoc: 'USER_MANUAL.md',
-        docContent: '',
-        docError: '',
-        loadingDoc: false,
-
-        // Tests
-        testSuite: 'all',
-        testFilter: '',
-        runningTests: false,
-        testOutput: '',
-        testProgress: 0,
-        testStats: {
-            total: 0,
-            passed: 0,
-            failed: 0,
-            skipped: 0,
-            assertions: 0,
-            duration: 0,
-            tests: []
-        },
-        expandedSuites: [],
-
-        validTabs: ['overview', 'settings', 'queue', 'logs', 'commands', 'diagnostics', 'documentation', 'tests'],
-
-        init() {
-            // Set active tab from URL hash
-            const hash = window.location.hash.substring(1);
-            if (hash && this.validTabs.includes(hash)) {
-                this.activeTab = hash;
-            }
-
-            // Update hash when tab changes
-            this.$watch('activeTab', (tab) => {
-                const newHash = '#' + tab;
-                if (window.location.hash !== newHash) {
-                    history.pushState(null, '', newHash);
-                }
-            });
-
-            // Handle browser back/forward
-            window.addEventListener('popstate', () => {
-                const hash = window.location.hash.substring(1);
-                if (hash && this.validTabs.includes(hash)) {
-                    this.activeTab = hash;
-                } else {
-                    this.activeTab = 'overview';
-                }
-            });
-
-            // Initial load
-            this.refreshQueueStatus();
-            this.refreshSupervisorStatus();
-        },
-
-        async refreshQueueStatus() {
-            this.loadingQueue = true;
-            try {
-                const response = await fetch('{{ route('system.queue-status') }}');
-                const data = await response.json();
-                this.queueStats = data.stats;
-                this.pendingJobs = data.pending_jobs;
-                this.failedJobs = data.failed_jobs;
-            } catch (error) {
-                console.error('Failed to refresh queue status:', error);
-                window.showToast(@js(__('Failed to refresh queue status')), 'error');
-            } finally {
-                this.loadingQueue = false;
-            }
-        },
-
-        async refreshLogs() {
-            this.loadingLogs = true;
-            try {
-                const response = await fetch(`{{ route('system.logs') }}?lines=${this.logLines}`);
-                this.logData = await response.json();
-            } catch (error) {
-                console.error('Failed to refresh logs:', error);
-                window.showToast(@js(__('Failed to refresh logs')), 'error');
-            } finally {
-                this.loadingLogs = false;
-            }
-        },
-
-        async executeCustomCommand() {
-            if (!this.customCommand) return;
-
-            this.executingCommand = true;
-            this.commandOutput = '';
-
-            try {
-                const response = await fetch('{{ route('system.execute-command') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify({ command: this.customCommand }),
-                });
-
-                const result = await response.json();
-                this.commandSuccess = result.success;
-                this.commandOutput = result.output || result.error || @js(__('No output'));
-
-                if (result.success) {
-                    window.showToast(@js(__('Command executed successfully')), 'success');
-                } else {
-                    window.showToast(@js(__('Command failed')), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to execute command:', error);
-                this.commandSuccess = false;
-                this.commandOutput = error.message;
-                window.showToast(@js(__('Failed to execute command')), 'error');
-            } finally {
-                this.executingCommand = false;
-            }
-        },
-
-        async retryJob(uuid) {
-            try {
-                const response = await fetch('{{ route('system.retry-job') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify({ job_id: uuid }),
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.showToast(@js(__('Job queued for retry')), 'success');
-                    this.refreshQueueStatus();
-                } else {
-                    window.showToast(@js(__('Failed to retry job')), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to retry job:', error);
-                window.showToast(@js(__('Failed to retry job')), 'error');
-            }
-        },
-
-        async retryAllFailedJobs() {
-            if (!confirm(@js(__('Retry all failed jobs?')))) return;
-
-            this.customCommand = 'queue:retry all';
-            await this.executeCustomCommand();
-            setTimeout(() => this.refreshQueueStatus(), 1000);
-        },
-
-        async flushFailedJobs() {
-            if (!confirm(@js(__('Delete all failed jobs? This cannot be undone.')))) return;
-
-            try {
-                const response = await fetch('{{ route('system.flush-queue') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.showToast(@js(__('Failed jobs flushed')), 'success');
-                    this.refreshQueueStatus();
-                } else {
-                    window.showToast(@js(__('Failed to flush queue')), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to flush queue:', error);
-                window.showToast(@js(__('Failed to flush queue')), 'error');
-            }
-        },
-
-        async restartWorkers() {
-            try {
-                const response = await fetch('{{ route('system.restart-queue') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.showToast(@js(__('Queue workers signaled to restart')), 'success');
-                } else {
-                    window.showToast(@js(__('Failed to restart workers')), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to restart workers:', error);
-                window.showToast(@js(__('Failed to restart workers')), 'error');
-            }
-        },
-
-        async processQueueJobs() {
-            if (this.processingJobs) return;
-            this.processingJobs = true;
-            try {
-                const response = await fetch('{{ route('system.process-queue') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.showToast(@js(__('Jobs processed successfully')), 'success');
-                } else {
-                    window.showToast(result.error || @js(__('Failed to process jobs')), 'error');
-                }
-                this.refreshQueueStatus();
-            } catch (error) {
-                console.error('Failed to process jobs:', error);
-                window.showToast(@js(__('Failed to process jobs')), 'error');
-            } finally {
-                this.processingJobs = false;
-            }
-        },
-
-        async refreshSupervisorStatus() {
-            this.loadingSupervisor = true;
-            try {
-                const response = await fetch('{{ route('system.supervisor-status') }}');
-                const data = await response.json();
-                this.supervisorStatus = data;
-            } catch (error) {
-                console.error('Failed to refresh supervisor status:', error);
-                this.supervisorStatus = {
-                    available: false,
-                    message: @js(__('Failed to check supervisor status')),
-                    workers: [],
-                    total: 0,
-                    running: 0
-                };
-            } finally {
-                this.loadingSupervisor = false;
-            }
-        },
-
-        async regenerateAllSizes() {
-            if (!confirm(@js(__('Are you sure you want to regenerate all resize variants? This will queue a job for every image asset.')))) {
-                return;
-            }
-
-            this.regenerating = true;
-            try {
-                const response = await fetch('{{ route('system.regenerate-resized-images') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.showToast(result.count + @js(' ' . __('resize job(s) queued')), 'success');
-                } else {
-                    window.showToast(@js(__('Failed to queue regeneration')), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to regenerate:', error);
-                window.showToast(@js(__('Failed to queue regeneration')), 'error');
-            } finally {
-                this.regenerating = false;
-            }
-        },
-
-        async verifyIntegrity() {
-            if (!confirm(@js(__('Are you sure? This will check every asset\'s S3 object.')))) {
-                return;
-            }
-
-            this.verifyingIntegrity = true;
-            try {
-                const response = await fetch('{{ route('system.verify-integrity') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    window.showToast(result.count + @js(' ' . __('integrity check(s) queued')), 'success');
-                    this.integrityCheckQueued = true;
-                    this.integrityQueuedCount = result.count;
-                    this.refreshQueueStatus();
-                } else {
-                    window.showToast(@js(__('Failed to queue integrity check')), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to verify integrity:', error);
-                window.showToast(@js(__('Failed to queue integrity check')), 'error');
-            } finally {
-                this.verifyingIntegrity = false;
-            }
-        },
-
-        async refreshIntegrityStatus() {
-            this.refreshingIntegrity = true;
-            try {
-                const response = await fetch('{{ route('system.integrity-status') }}');
-                const result = await response.json();
-                this.missingAssetsCount = result.missing;
-                this.integrityCheckQueued = false;
-                this.refreshQueueStatus();
-            } catch (error) {
-                console.error('Failed to refresh integrity status:', error);
-            } finally {
-                this.refreshingIntegrity = false;
-            }
-        },
-
-        async updateSetting(key, value) {
-            this.savingSettings = true;
-            this.settingsSaved = false;
-            this.settingsError = '';
-
-            try {
-                const response = await fetch('{{ route('system.update-setting') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify({ key, value }),
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    this.settingsSaved = true;
-                    window.showToast(@js(__('Setting saved')), 'success');
-                    setTimeout(() => { this.settingsSaved = false; }, 3000);
-
-                    // When root folder changes, refresh the folder hierarchy from S3
-                    if (key === 's3_root_folder') {
-                        await this.refreshFolderHierarchy();
-                    }
-                } else {
-                    this.settingsError = result.error || @js(__('Failed to save setting'));
-                    window.showToast(this.settingsError, 'error');
-                }
-            } catch (error) {
-                console.error('Failed to update setting:', error);
-                this.settingsError = @js(__('Failed to save setting'));
-                window.showToast(@js(__('Failed to save setting')), 'error');
-            } finally {
-                this.savingSettings = false;
-            }
-        },
-
-        async refreshFolderHierarchy() {
-            try {
-                const response = await fetch('{{ route('folders.scan') }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to refresh folders');
-                }
-
-                window.showToast(@js(__('Folder hierarchy refreshed from S3')), 'success');
-            } catch (error) {
-                console.error('Failed to refresh folder hierarchy:', error);
-                window.showToast(@js(__('Failed to refresh folder hierarchy')), 'error');
-            }
-        },
-
-        async testS3Connection() {
-            this.testingS3 = true;
-            this.s3TestResult = false;
-
-            try {
-                const response = await fetch('{{ route('system.test-s3') }}');
-                const result = await response.json();
-
-                this.s3TestResult = true;
-                this.s3TestSuccess = result.success;
-                this.s3TestMessage = result.message + (result.error ? ': ' + result.error : '');
-            } catch (error) {
-                console.error('S3 test failed:', error);
-                this.s3TestResult = true;
-                this.s3TestSuccess = false;
-                this.s3TestMessage = @js(__('Connection test failed:')) + ' ' + error.message;
-            } finally {
-                this.testingS3 = false;
-            }
-        },
-
-        formatBytes(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-        },
-
-        getLogLineColor(line) {
-            if (line.includes('ERROR') || line.includes('Exception')) return 'text-red-400';
-            if (line.includes('WARNING')) return 'text-yellow-400';
-            if (line.includes('INFO')) return 'text-blue-400';
-            return 'text-green-400';
-        },
-
-        async loadDocumentation() {
-            this.loadingDoc = true;
-            this.docError = '';
-            this.docContent = '';
-
-            try {
-                const response = await fetch(`{{ route('system.documentation') }}?file=${encodeURIComponent(this.selectedDoc)}`);
-                const result = await response.json();
-
-                if (result.success) {
-                    this.docContent = result.content;
-                } else {
-                    this.docError = result.error || @js(__('Failed to load documentation'));
-                }
-            } catch (error) {
-                console.error('Failed to load documentation:', error);
-                this.docError = @js(__('Failed to load documentation:')) + ' ' + error.message;
-            } finally {
-                this.loadingDoc = false;
-            }
-        },
-
-        async runTests() {
-            this.runningTests = true;
-            this.testOutput = '';
-            this.testProgress = 0;
-            this.testStats = {
-                total: 0,
-                passed: 0,
-                failed: 0,
-                skipped: 0,
-                assertions: 0,
-                duration: 0,
-                tests: []
-            };
-            this.expandedSuites = [];
-
-            // Simulate progress
-            const progressInterval = setInterval(() => {
-                if (this.testProgress < 90) {
-                    this.testProgress += Math.random() * 10;
-                }
-            }, 500);
-
-            try {
-                const response = await fetch('{{ route('system.run-tests') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify({
-                        suite: this.testSuite,
-                        filter: this.testFilter || null,
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    this.testOutput = result.output;
-                    this.testStats = result.stats;
-                    this.testProgress = 100;
-
-                    // Auto-expand suites with failures
-                    this.$nextTick(() => this.autoExpandFailedSuites());
-
-                    if (result.stats.failed > 0) {
-                        window.showToast(@js(__('Tests completed:')) + ' ' + result.stats.failed + ' ' + @js(__('failed')), 'error');
-                    } else {
-                        window.showToast(@js(__('All')) + ' ' + result.stats.passed + ' ' + @js(__('tests passed!')), 'success');
-                    }
-                } else {
-                    this.testOutput = result.error || @js(__('Failed to run tests'));
-                    window.showToast(@js(__('Failed to run tests')), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to run tests:', error);
-                this.testOutput = 'Error: ' + error.message;
-                window.showToast(@js(__('Failed to run tests')), 'error');
-            } finally {
-                clearInterval(progressInterval);
-                this.runningTests = false;
-            }
-        },
-
-        formatTestOutput(output) {
-            if (!output) return '';
-
-            // Escape HTML first
-            let formatted = output
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-
-            // Color code different parts
-            formatted = formatted
-                // Pass markers
-                .replace(/PASS/g, '<span class="text-green-400 font-bold">PASS</span>')
-                // Fail markers
-                .replace(/FAIL/g, '<span class="text-red-400 font-bold">FAIL</span>')
-                // Checkmarks (passed tests)
-                .replace(/✓/g, '<span class="text-green-400">✓</span>')
-                // X marks (failed tests)
-                .replace(/✗|×/g, '<span class="text-red-400">✗</span>')
-                // Test duration
-                .replace(/(\d+\.\d+s)/g, '<span class="text-gray-500">$1</span>')
-                // Tests summary line
-                .replace(/(Tests:\s*)(\d+\s*passed)/gi, '$1<span class="text-green-400 font-bold">$2</span>')
-                .replace(/(\d+\s*failed)/gi, '<span class="text-red-400 font-bold">$1</span>')
-                // Assertions
-                .replace(/\((\d+\s*assertions?)\)/gi, '(<span class="text-blue-400">$1</span>)')
-                // Duration line
-                .replace(/(Duration:\s*)([\d.]+s)/gi, '$1<span class="text-purple-400">$2</span>')
-                // Error messages
-                .replace(/(Error|Exception|Failed)/gi, '<span class="text-red-400">$1</span>')
-                // File paths in errors
-                .replace(/(tests\/[^\s:]+:\d+)/g, '<span class="text-yellow-400">$1</span>');
-
-            return formatted;
-        },
-
-        groupTestsBySuite() {
-            if (!this.testStats.tests || this.testStats.tests.length === 0) {
-                return {};
-            }
-
-            const grouped = {};
-            for (const test of this.testStats.tests) {
-                const suite = test.suite || 'Unknown';
-                if (!grouped[suite]) {
-                    grouped[suite] = [];
-                }
-                grouped[suite].push(test);
-            }
-
-            // Sort each suite's tests: failed first, then passed
-            for (const suite in grouped) {
-                grouped[suite].sort((a, b) => {
-                    if (a.status === 'failed' && b.status !== 'failed') return -1;
-                    if (a.status !== 'failed' && b.status === 'failed') return 1;
-                    return 0;
-                });
-            }
-
-            // Sort suites: those with failures first
-            const sortedGrouped = {};
-            const suites = Object.keys(grouped);
-            suites.sort((a, b) => {
-                const aHasFailures = grouped[a].some(t => t.status === 'failed');
-                const bHasFailures = grouped[b].some(t => t.status === 'failed');
-                if (aHasFailures && !bHasFailures) return -1;
-                if (!aHasFailures && bHasFailures) return 1;
-                return 0;
-            });
-            for (const suite of suites) {
-                sortedGrouped[suite] = grouped[suite];
-            }
-
-            return sortedGrouped;
-        },
-
-        autoExpandFailedSuites() {
-            if (!this.testStats.tests) return;
-
-            const grouped = this.groupTestsBySuite();
-            for (const suite in grouped) {
-                if (grouped[suite].some(t => t.status === 'failed')) {
-                    if (!this.expandedSuites.includes(suite)) {
-                        this.expandedSuites.push(suite);
-                    }
-                }
-            }
-        },
-
-        toggleSuite(suite) {
-            const index = this.expandedSuites.indexOf(suite);
-            if (index > -1) {
-                this.expandedSuites.splice(index, 1);
-            } else {
-                this.expandedSuites.push(suite);
-            }
-        },
-
-        copyTestOutput() {
-            const text = this.testOutput;
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => {
-                    window.showToast(@js(__('Output copied to clipboard')), 'success');
-                }).catch(err => {
-                    console.error('Failed to copy:', err);
-                    this.fallbackCopyToClipboard(text);
-                });
-            } else {
-                this.fallbackCopyToClipboard(text);
-            }
-        },
-
-        fallbackCopyToClipboard(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                window.showToast(@js(__('Output copied to clipboard')), 'success');
-            } catch (err) {
-                console.error('Fallback copy failed:', err);
-                window.showToast(@js(__('Failed to copy output')), 'error');
-            }
-            textArea.remove();
-        }
-    };
-}
+window.__systemPageData = {
+    queueStats: @json($queueStats),
+    missingAssetsCount: {{ $missingAssetsCount }},
+    jwtEnvEnabled: @js($systemInfo['jwt_enabled']),
+    settings: {
+        items_per_page: '{{ collect($settings)->firstWhere('key', 'items_per_page')['value'] ?? '24' }}',
+        timezone: '{{ collect($settings)->firstWhere('key', 'timezone')['value'] ?? 'UTC' }}',
+        locale: '{{ collect($settings)->firstWhere('key', 'locale')['value'] ?? 'en' }}',
+        s3_root_folder: '{{ collect($settings)->firstWhere('key', 's3_root_folder')['value'] ?? 'assets' }}',
+        custom_domain: '{{ collect($settings)->firstWhere('key', 'custom_domain')['value'] ?? '' }}',
+        rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
+        rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
+        rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '80' }}',
+        resize_s_width: '{{ collect($settings)->firstWhere('key', 'resize_s_width')['value'] ?? '250' }}',
+        resize_s_height: '{{ collect($settings)->firstWhere('key', 'resize_s_height')['value'] ?? '' }}',
+        resize_m_width: '{{ collect($settings)->firstWhere('key', 'resize_m_width')['value'] ?? '600' }}',
+        resize_m_height: '{{ collect($settings)->firstWhere('key', 'resize_m_height')['value'] ?? '' }}',
+        resize_l_width: '{{ collect($settings)->firstWhere('key', 'resize_l_width')['value'] ?? '1200' }}',
+        resize_l_height: '{{ collect($settings)->firstWhere('key', 'resize_l_height')['value'] ?? '' }}',
+        jwtSettingEnabled: '{{ collect($settings)->firstWhere('key', 'jwt_enabled_override')['value'] ?? '0' }}',
+        metaEndpointEnabled: '{{ collect($settings)->firstWhere('key', 'api_meta_endpoint_enabled')['value'] ?? '0' }}',
+    },
+    routes: {
+        queueStatus: '{{ route('system.queue-status') }}',
+        logs: '{{ route('system.logs') }}',
+        executeCommand: '{{ route('system.execute-command') }}',
+        retryJob: '{{ route('system.retry-job') }}',
+        flushQueue: '{{ route('system.flush-queue') }}',
+        restartQueue: '{{ route('system.restart-queue') }}',
+        processQueue: '{{ route('system.process-queue') }}',
+        supervisorStatus: '{{ route('system.supervisor-status') }}',
+        regenerateResizedImages: '{{ route('system.regenerate-resized-images') }}',
+        verifyIntegrity: '{{ route('system.verify-integrity') }}',
+        integrityStatus: '{{ route('system.integrity-status') }}',
+        updateSetting: '{{ route('system.update-setting') }}',
+        foldersScan: '{{ route('folders.scan') }}',
+        testS3: '{{ route('system.test-s3') }}',
+        documentation: '{{ route('system.documentation') }}',
+        runTests: '{{ route('system.run-tests') }}',
+    },
+    translations: {
+        failedRefreshQueueStatus: @js(__('Failed to refresh queue status')),
+        failedRefreshLogs: @js(__('Failed to refresh logs')),
+        noOutput: @js(__('No output')),
+        commandExecutedSuccessfully: @js(__('Command executed successfully')),
+        commandFailed: @js(__('Command failed')),
+        failedExecuteCommand: @js(__('Failed to execute command')),
+        jobQueuedForRetry: @js(__('Job queued for retry')),
+        failedRetryJob: @js(__('Failed to retry job')),
+        retryAllFailedJobsConfirm: @js(__('Retry all failed jobs?')),
+        deleteAllFailedJobsConfirm: @js(__('Delete all failed jobs? This cannot be undone.')),
+        failedJobsFlushed: @js(__('Failed jobs flushed')),
+        failedFlushQueue: @js(__('Failed to flush queue')),
+        queueWorkersSignaledToRestart: @js(__('Queue workers signaled to restart')),
+        failedRestartWorkers: @js(__('Failed to restart workers')),
+        jobsProcessedSuccessfully: @js(__('Jobs processed successfully')),
+        failedProcessJobs: @js(__('Failed to process jobs')),
+        failedCheckSupervisorStatus: @js(__('Failed to check supervisor status')),
+        regenerateAllSizesConfirm: @js(__('Are you sure you want to regenerate all resize variants? This will queue a job for every image asset.')),
+        resizeJobsQueued: @js(' ' . __('resize job(s) queued')),
+        failedQueueRegeneration: @js(__('Failed to queue regeneration')),
+        verifyIntegrityConfirm: @js(__('Are you sure? This will check every asset\'s S3 object.')),
+        integrityChecksQueued: @js(' ' . __('integrity check(s) queued')),
+        failedQueueIntegrityCheck: @js(__('Failed to queue integrity check')),
+        settingSaved: @js(__('Setting saved')),
+        failedSaveSetting: @js(__('Failed to save setting')),
+        folderHierarchyRefreshed: @js(__('Folder hierarchy refreshed from S3')),
+        failedRefreshFolderHierarchy: @js(__('Failed to refresh folder hierarchy')),
+        connectionTestFailed: @js(__('Connection test failed:')),
+        failedLoadDocumentation: @js(__('Failed to load documentation')),
+        failedLoadDocumentationColon: @js(__('Failed to load documentation:')),
+        testsCompleted: @js(__('Tests completed:')),
+        failed: @js(__('failed')),
+        all: @js(__('All')),
+        testsPassed: @js(__('tests passed!')),
+        failedRunTests: @js(__('Failed to run tests')),
+        outputCopiedToClipboard: @js(__('Output copied to clipboard')),
+        failedCopyOutput: @js(__('Failed to copy output')),
+    },
+};
 </script>
 @endpush
 

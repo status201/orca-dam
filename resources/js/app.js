@@ -2,6 +2,21 @@ import './bootstrap';
 
 import Alpine from 'alpinejs';
 
+import './alpine/asset-grid';
+import './alpine/asset-detail';
+import './alpine/asset-editor';
+import './alpine/trash';
+import './alpine/discover';
+import './alpine/import';
+import './alpine/export';
+import './alpine/tags';
+import './alpine/asset-uploader';
+import './alpine/asset-replacer';
+import './alpine/system-admin';
+import './alpine/api-docs';
+import './alpine/preferences';
+import './alpine/dashboard';
+
 window.Alpine = Alpine;
 
 // Defer Alpine start until DOM is fully loaded

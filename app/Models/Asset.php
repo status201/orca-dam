@@ -371,6 +371,25 @@ class Asset extends Model
     }
 
     /**
+     * Scope: Apply sorting
+     */
+    public function scopeApplySort($query, string $sort = 'date_desc')
+    {
+        return match ($sort) {
+            'date_asc' => $query->oldest('updated_at'),
+            'upload_asc' => $query->oldest('created_at'),
+            'upload_desc' => $query->latest('created_at'),
+            'size_asc' => $query->orderBy('size', 'asc'),
+            'size_desc' => $query->orderBy('size', 'desc'),
+            'name_asc' => $query->orderBy('filename', 'asc'),
+            'name_desc' => $query->orderBy('filename', 'desc'),
+            's3key_asc' => $query->orderBy('s3_key', 'asc'),
+            's3key_desc' => $query->orderBy('s3_key', 'desc'),
+            default => $query->latest('updated_at'), // date_desc
+        };
+    }
+
+    /**
      * Scope: Filter assets with missing S3 objects
      */
     public function scopeMissing($query)

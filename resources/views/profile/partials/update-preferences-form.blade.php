@@ -88,75 +88,22 @@
 
 @push('scripts')
 <script>
-function preferencesForm() {
-    return {
+window.__pageData = window.__pageData || {};
+Object.assign(window.__pageData, {
+    preferences: {
         homeFolder: @json($user->getPreference('home_folder') ?? ''),
         itemsPerPage: @json($user->getPreference('items_per_page') ?? 0),
         darkMode: @json($user->getPreference('dark_mode') ?? 'disabled'),
-        locale: @json($user->getPreference('locale') ?? ''),
-        saving: false,
-        refreshing: false,
-        errors: {},
-
-        async save() {
-            this.saving = true;
-            this.errors = {};
-
-            try {
-                const response = await fetch('{{ route('profile.preferences.update') }}', {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        home_folder: this.homeFolder,
-                        items_per_page: this.itemsPerPage,
-                        dark_mode: this.darkMode,
-                        locale: this.locale,
-                    }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    window.showToast(data.message || @js(__('Preferences saved successfully')));
-                } else if (response.status === 422) {
-                    // Validation errors
-                    this.errors = data.errors || {};
-                    const firstError = Object.values(this.errors)[0];
-                    window.showToast(Array.isArray(firstError) ? firstError[0] : firstError, 'error');
-                } else {
-                    window.showToast(data.message || @js(__('Failed to save preferences')), 'error');
-                }
-            } catch (error) {
-                console.error('Save error:', error);
-                window.showToast(@js(__('Failed to save preferences')), 'error');
-            } finally {
-                this.saving = false;
-            }
-        },
-
-        refreshFolders() {
-            this.refreshing = true;
-            window.showToast(@js(__('Refreshing folder list...')));
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
-        },
-
-        updateDarkModePreview() {
-            const html = document.documentElement;
-            html.classList.remove('dark-mode', 'light-mode');
-
-            if (this.darkMode === 'force_dark') {
-                html.classList.add('dark-mode');
-            } else if (this.darkMode === 'force_light') {
-                html.classList.add('light-mode');
-            }
-        }
-    };
-}
+        locale: @json($user->getPreference('locale') ?? '')
+    },
+    routes: Object.assign(window.__pageData.routes || {}, {
+        preferencesUpdate: '{{ route('profile.preferences.update') }}'
+    }),
+    translations: Object.assign(window.__pageData.translations || {}, {
+        preferencesSaved: @js(__('Preferences saved successfully')),
+        failedSavePreferences: @js(__('Failed to save preferences')),
+        refreshingFolders: @js(__('Refreshing folder list...'))
+    })
+});
 </script>
 @endpush

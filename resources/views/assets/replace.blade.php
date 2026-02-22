@@ -266,142 +266,20 @@
 
 @push('scripts')
 <script>
-function assetReplacer() {
-    return {
-        // State
-        dragActive: false,
-        selectedFile: null,
-        uploading: false,
-        uploadProgress: 0,
-        showConfirmation: false,
-        error: null,
-        success: false,
-        successMessage: '',
-        redirectCountdown: 2,
-
-        // Config
-        allowedExtension: '{{ $extension }}',
-        maxSize: 512 * 1024 * 1024, // 500MB
+    window.__pageData = {
+        allowedExtension: @js($extension),
         csrfToken: '{{ csrf_token() }}',
         replaceUrl: '{{ route('assets.replace.store', $asset) }}',
         editUrl: '{{ route('assets.edit', $asset) }}',
-
-        handleDrop(e) {
-            this.dragActive = false;
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                this.processFile(files[0]);
-            }
+        translations: {
+            fileMustHaveSameExtension: @js(__('The file must have the same extension.')),
+            fileTooLarge: @js(__('The file may not be greater than 500MB.')),
+            assetReplacedSuccessfully: @js(__('Asset replaced successfully')),
+            failedToReplace: @js(__('Failed to replace asset. Please try again.')),
+            networkError: @js(__('Network error. Please check your connection and try again.')),
+            unexpectedError: @js(__('An unexpected error occurred. Please try again.')),
         },
-
-        handleFiles(e) {
-            const files = e.target.files;
-            if (files.length > 0) {
-                this.processFile(files[0]);
-            }
-        },
-
-        processFile(file) {
-            this.error = null;
-
-            // Validate extension
-            const fileExtension = file.name.split('.').pop().toLowerCase();
-            if (fileExtension !== this.allowedExtension) {
-                this.error = @js(__('The file must have the same extension.')) + ` (.${this.allowedExtension})`;
-                return;
-            }
-
-            // Validate size
-            if (file.size > this.maxSize) {
-                this.error = @js(__('The file may not be greater than 500MB.'));
-                return;
-            }
-
-            this.selectedFile = file;
-        },
-
-        clearSelection() {
-            this.selectedFile = null;
-            this.error = null;
-            this.$refs.fileInput.value = '';
-        },
-
-        formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        },
-
-        async uploadFile() {
-            this.showConfirmation = false;
-            this.uploading = true;
-            this.uploadProgress = 0;
-            this.error = null;
-
-            const formData = new FormData();
-            formData.append('file', this.selectedFile);
-
-            try {
-                const xhr = new XMLHttpRequest();
-
-                xhr.upload.addEventListener('progress', (e) => {
-                    if (e.lengthComputable) {
-                        this.uploadProgress = Math.round((e.loaded / e.total) * 100);
-                    }
-                });
-
-                xhr.addEventListener('load', () => {
-                    this.uploading = false;
-
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        const response = JSON.parse(xhr.responseText);
-                        this.success = true;
-                        this.successMessage = response.message || @js(__('Asset replaced successfully'));
-                        this.startRedirectCountdown();
-                    } else {
-                        try {
-                            const errorResponse = JSON.parse(xhr.responseText);
-                            if (errorResponse.errors && errorResponse.errors.file) {
-                                this.error = errorResponse.errors.file[0];
-                            } else {
-                                this.error = errorResponse.message || @js(__('Failed to replace asset. Please try again.'));
-                            }
-                        } catch {
-                            this.error = @js(__('Failed to replace asset. Please try again.'));
-                        }
-                    }
-                });
-
-                xhr.addEventListener('error', () => {
-                    this.uploading = false;
-                    this.error = @js(__('Network error. Please check your connection and try again.'));
-                });
-
-                xhr.open('POST', this.replaceUrl);
-                xhr.setRequestHeader('X-CSRF-TOKEN', this.csrfToken);
-                xhr.setRequestHeader('Accept', 'application/json');
-                xhr.send(formData);
-
-            } catch (err) {
-                this.uploading = false;
-                this.error = @js(__('An unexpected error occurred. Please try again.'));
-            }
-        },
-
-        startRedirectCountdown() {
-            this.redirectCountdown = 2;
-            const interval = setInterval(() => {
-                this.redirectCountdown--;
-                if (this.redirectCountdown <= 0) {
-                    clearInterval(interval);
-                    window.location.href = this.editUrl + '?replaced=1';
-                }
-            }, 1000);
-        }
-    }
-}
+    };
 </script>
 @endpush
 @endsection

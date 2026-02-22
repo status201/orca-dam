@@ -179,20 +179,9 @@ class ImportController extends Controller
             // Handle user_tags
             if (isset($row['user_tags']) && trim($row['user_tags']) !== '') {
                 $tagNames = array_filter(array_map('trim', explode(',', $row['user_tags'])));
-                $tagIds = [];
 
-                foreach ($tagNames as $tagName) {
-                    if ($tagName === '') {
-                        continue;
-                    }
-                    $tag = Tag::firstOrCreate(
-                        ['name' => strtolower($tagName)],
-                        ['type' => 'user']
-                    );
-                    $tagIds[] = $tag->id;
-                }
-
-                if (! empty($tagIds)) {
+                if (! empty($tagNames)) {
+                    $tagIds = Tag::resolveUserTagIds($tagNames);
                     $asset->tags()->syncWithoutDetaching($tagIds);
                 }
             }

@@ -289,135 +289,43 @@
 
     @push('scripts')
     <script>
-    function featureTour(isAdmin) {
-        return {
-            currentSlide: 0,
-            isPlaying: true,
-            autoPlayInterval: null,
-            features: [
-                {
-                    icon: 'fas fa-cloud-upload-alt',
-                    bgColor: 'bg-blue-500',
-                    btnColor: 'bg-blue-600 hover:bg-blue-700',
-                    title: @js(__('Upload Assets')),
-                    description: @js(__('Upload files up to 500MB with drag & drop. Large files are automatically chunked for reliable uploads.')),
-                    link: '{{ route('assets.create') }}',
-                    btnText: @js(__('Upload Now'))
-                },
-                {
-                    icon: 'fas fa-search',
-                    bgColor: 'bg-green-500',
-                    btnColor: 'bg-green-600 hover:bg-green-700',
-                    title: @js(__('Search & Filter')),
-                    description: @js(__('Find assets quickly using search, tags, and file type filters. Save time with powerful filtering options.')),
-                    link: '{{ route('assets.index') }}',
-                    btnText: @js(__('Browse Assets'))
-                },
-                {
-                    icon: 'fas fa-tags',
-                    bgColor: 'bg-purple-500',
-                    btnColor: 'bg-purple-600 hover:bg-purple-700',
-                    title: @js(__('Smart Tagging')),
-                    description: @js(__('Organize with manual tags or let AI automatically tag your images using AWS Rekognition.')),
-                    link: '{{ route('tags.index') }}',
-                    btnText: @js(__('Manage Tags'))
-                },
-                {
-                    icon: 'fas fa-copy',
-                    bgColor: 'bg-yellow-500',
-                    btnColor: 'bg-yellow-600 hover:bg-yellow-700',
-                    title: @js(__('Share Assets')),
-                    description: @js(__('Copy public URLs instantly. All assets are accessible via permanent S3 URLs for easy integration.')),
-                    link: '{{ route('assets.index') }}',
-                    btnText: @js(__('View Assets'))
-                },
-                ...(isAdmin ? [
-                    {
-                        icon: 'fas fa-search-plus',
-                        bgColor: 'bg-indigo-500',
-                        btnColor: 'bg-indigo-600 hover:bg-indigo-700',
-                        title: @js(__('Discover Assets')),
-                        description: @js(__('Scan your S3 bucket for unmapped objects and import them with automatic metadata extraction.')),
-                        link: '{{ route('discover.index') }}',
-                        btnText: @js(__('Scan Bucket'))
-                    },
-                    {
-                        icon: 'fas fa-trash-restore',
-                        bgColor: 'bg-red-500',
-                        btnColor: 'bg-red-600 hover:bg-red-700',
-                        title: @js(__('Trash & Restore')),
-                        description: @js(__('Deleted assets are moved to trash. Restore them anytime or permanently delete to free up space.')),
-                        link: '{{ route('assets.trash') }}',
-                        btnText: @js(__('View Trash'))
-                    },
-                    {
-                        icon: 'fas fa-download',
-                        bgColor: 'bg-teal-500',
-                        btnColor: 'bg-teal-600 hover:bg-teal-700',
-                        title: @js(__('Export Data')),
-                        description: @js(__('Export asset metadata to CSV with separate columns for user and AI tags. Perfect for reporting.')),
-                        link: '{{ route('export.index') }}',
-                        btnText: @js(__('Export CSV'))
-                    },
-                    {
-                        icon: 'fas fa-users',
-                        bgColor: 'bg-pink-500',
-                        btnColor: 'bg-pink-600 hover:bg-pink-700',
-                        title: @js(__('Manage Users')),
-                        description: @js(__('Add editors and admins. Control who can upload, edit, and manage assets in your organization.')),
-                        link: '{{ route('users.index') }}',
-                        btnText: @js(__('Manage Users'))
-                    }
-                ] : [])
-            ],
-
-            nextSlide() {
-                if (this.currentSlide < this.features.length - 1) {
-                    this.currentSlide++;
-                } else {
-                    this.currentSlide = 0; // Loop back to start
-                }
-            },
-
-            previousSlide() {
-                if (this.currentSlide > 0) {
-                    this.currentSlide--;
-                } else {
-                    this.currentSlide = this.features.length - 1; // Loop to end
-                }
-            },
-
-            pauseAutoPlay() {
-                this.isPlaying = false;
-                if (this.autoPlayInterval) {
-                    clearInterval(this.autoPlayInterval);
-                    this.autoPlayInterval = null;
-                }
-            },
-
-            startAutoPlay() {
-                this.isPlaying = true;
-                if (!this.autoPlayInterval) {
-                    this.autoPlayInterval = setInterval(() => {
-                        this.nextSlide();
-                    }, 7000);
-                }
-            },
-
-            toggleAutoPlay() {
-                if (this.isPlaying) {
-                    this.pauseAutoPlay();
-                } else {
-                    this.startAutoPlay();
-                }
-            },
-
-            init() {
-                // Start auto-play
-                this.startAutoPlay();
-            }
+    window.__pageData = {
+        routes: {
+            assetsCreate: '{{ route('assets.create') }}',
+            assetsIndex: '{{ route('assets.index') }}',
+            tagsIndex: '{{ route('tags.index') }}',
+            discoverIndex: '{{ route('discover.index') }}',
+            assetsTrash: '{{ route('assets.trash') }}',
+            exportIndex: '{{ route('export.index') }}',
+            usersIndex: '{{ route('users.index') }}'
+        },
+        translations: {
+            uploadAssets: @js(__('Upload Assets')),
+            uploadAssetsDesc: @js(__('Upload files up to 500MB with drag & drop. Large files are automatically chunked for reliable uploads.')),
+            uploadNow: @js(__('Upload Now')),
+            searchFilter: @js(__('Search & Filter')),
+            searchFilterDesc: @js(__('Find assets quickly using search, tags, and file type filters. Save time with powerful filtering options.')),
+            browseAssets: @js(__('Browse Assets')),
+            smartTagging: @js(__('Smart Tagging')),
+            smartTaggingDesc: @js(__('Organize with manual tags or let AI automatically tag your images using AWS Rekognition.')),
+            manageTags: @js(__('Manage Tags')),
+            shareAssets: @js(__('Share Assets')),
+            shareAssetsDesc: @js(__('Copy public URLs instantly. All assets are accessible via permanent S3 URLs for easy integration.')),
+            viewAssets: @js(__('View Assets')),
+            discoverAssets: @js(__('Discover Assets')),
+            discoverAssetsDesc: @js(__('Scan your S3 bucket for unmapped objects and import them with automatic metadata extraction.')),
+            scanBucket: @js(__('Scan Bucket')),
+            trashRestore: @js(__('Trash & Restore')),
+            trashRestoreDesc: @js(__('Deleted assets are moved to trash. Restore them anytime or permanently delete to free up space.')),
+            viewTrash: @js(__('View Trash')),
+            exportData: @js(__('Export Data')),
+            exportDataDesc: @js(__('Export asset metadata to CSV with separate columns for user and AI tags. Perfect for reporting.')),
+            exportCsv: @js(__('Export CSV')),
+            manageUsers: @js(__('Manage Users')),
+            manageUsersDesc: @js(__('Add editors and admins. Control who can upload, edit, and manage assets in your organization.')),
+            manageUsersBtn: @js(__('Manage Users'))
         }
-    }
+    };
     </script>
     @endpush
 </x-app-layout>

@@ -10,7 +10,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::table('settings')->insert([
+        DB::table('settings')->insertOrIgnore([
             'key' => 'rekognition_min_confidence',
             'value' => '80',
             'type' => 'integer',

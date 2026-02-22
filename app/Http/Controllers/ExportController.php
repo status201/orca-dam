@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
-use App\Models\Setting;
 use App\Models\Tag;
 use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -35,13 +34,7 @@ class ExportController extends Controller
             ->values();
 
         $rootFolder = S3Service::getRootFolder();
-        $folders = Setting::get('s3_folders', $rootFolder !== '' ? [$rootFolder] : []);
-        if (empty($folders) && $rootFolder !== '') {
-            $folders = [$rootFolder];
-        }
-        if ($rootFolder === '' && ! in_array('', $folders)) {
-            array_unshift($folders, '');
-        }
+        $folders = S3Service::getConfiguredFolders();
 
         return view('export.index', [
             'tags' => $tags,

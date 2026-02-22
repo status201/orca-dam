@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Asset;
+use App\Services\AssetProcessingService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
 use Illuminate\Bus\Queueable;
@@ -24,7 +25,7 @@ class ProcessDiscoveredAsset implements ShouldQueue
         public int $assetId
     ) {}
 
-    public function handle(S3Service $s3Service, RekognitionService $rekognitionService): void
+    public function handle(S3Service $s3Service, RekognitionService $rekognitionService, AssetProcessingService $assetProcessingService): void
     {
         $asset = Asset::find($this->assetId);
 
@@ -43,25 +44,10 @@ class ProcessDiscoveredAsset implements ShouldQueue
                 }
             }
 
-            // Step 2: Generate thumbnail
-            $thumbnailKey = $s3Service->generateThumbnail($asset->s3_key);
-            if ($thumbnailKey) {
-                $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
-            }
+            // Step 2: Generate thumbnail and resized images (skip AI dispatch, handled below)
+            $assetProcessingService->processImageAsset($asset, dispatchAiTagging: false);
 
-            // Step 2b: Generate resized images
-            if ($asset->isImage()) {
-                $resizedKeys = $s3Service->generateResizedImages($asset->s3_key);
-                if (! empty($resizedKeys)) {
-                    $asset->update([
-                        'resize_s_s3_key' => $resizedKeys['s'] ?? null,
-                        'resize_m_s3_key' => $resizedKeys['m'] ?? null,
-                        'resize_l_s3_key' => $resizedKeys['l'] ?? null,
-                    ]);
-                }
-            }
-
-            // Step 3: Run AI tagging if enabled
+            // Step 3: Run AI tagging directly if enabled (already in a queue job, so run synchronously)
             if (config('services.aws.rekognition_enabled') && $asset->isImage()) {
                 Log::info("ProcessDiscoveredAsset: Running AI tagging for asset {$asset->id}");
                 $labels = $rekognitionService->autoTagAsset($asset);
