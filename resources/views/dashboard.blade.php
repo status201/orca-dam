@@ -208,16 +208,13 @@
                             <!-- Slideshow -->
                             <div class="relative min-h-[320px] flex items-center bg-white">
                                 <template x-for="(feature, index) in features" :key="index">
-                                    <div x-show="currentSlide === index"
-                                         x-cloak
-                                         x-transition:enter="transition-opacity ease-in-out duration-600"
-                                         x-transition:enter-start="opacity-0"
-                                         x-transition:enter-end="opacity-100"
-                                         x-transition:leave="transition-opacity ease-in-out duration-600"
-                                         x-transition:leave-start="opacity-100"
-                                         x-transition:leave-end="opacity-0"
-                                         class="absolute inset-0 bg-white space-y-4 flex flex-col justify-center px-4"
-                                         :style="'z-index: ' + (currentSlide === index ? 2 : 1)">
+                                    <div class="absolute inset-0 bg-white space-y-4 flex flex-col justify-center px-4"
+                                         :style="{
+                                             opacity: currentSlide === index || (isTransitioning && prevSlide === index) ? 1 : 0,
+                                             zIndex: currentSlide === index ? 20 : (isTransitioning && prevSlide === index ? 10 : 1),
+                                             transition: currentSlide === index ? 'opacity 500ms ease-in-out' : 'none',
+                                             pointerEvents: currentSlide === index ? 'auto' : 'none'
+                                         }">
 
                                         <!-- Icon -->
                                         <div class="flex justify-center">
@@ -255,7 +252,7 @@
                                 <!-- Dots -->
                                 <div class="flex space-x-2">
                                     <template x-for="(feature, index) in features" :key="index">
-                                        <button @click="currentSlide = index; pauseAutoPlay()"
+                                        <button @click="goToSlide(index); pauseAutoPlay()"
                                                 class="w-2.5 h-2.5 rounded-full transition-all hover:scale-125"
                                                 :class="currentSlide === index ? 'bg-blue-600 scale-110' : 'bg-gray-300 hover:bg-gray-400'">
                                         </button>

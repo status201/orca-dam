@@ -5,6 +5,9 @@ export function featureTour(isAdmin) {
 
     return {
         currentSlide: 0,
+        prevSlide: 0,
+        isTransitioning: false,
+        transitionTimer: null,
         isPlaying: true,
         autoPlayInterval: null,
         features: [
@@ -84,20 +87,23 @@ export function featureTour(isAdmin) {
             ] : [])
         ],
 
+        goToSlide(target) {
+            if (target === this.currentSlide) return;
+            if (this.transitionTimer) clearTimeout(this.transitionTimer);
+            this.prevSlide = this.currentSlide;
+            this.isTransitioning = true;
+            this.currentSlide = target;
+            this.transitionTimer = setTimeout(() => {
+                this.isTransitioning = false;
+            }, 500);
+        },
+
         nextSlide() {
-            if (this.currentSlide < this.features.length - 1) {
-                this.currentSlide++;
-            } else {
-                this.currentSlide = 0; // Loop back to start
-            }
+            this.goToSlide(this.currentSlide < this.features.length - 1 ? this.currentSlide + 1 : 0);
         },
 
         previousSlide() {
-            if (this.currentSlide > 0) {
-                this.currentSlide--;
-            } else {
-                this.currentSlide = this.features.length - 1; // Loop to end
-            }
+            this.goToSlide(this.currentSlide > 0 ? this.currentSlide - 1 : this.features.length - 1);
         },
 
         pauseAutoPlay() {
@@ -126,7 +132,6 @@ export function featureTour(isAdmin) {
         },
 
         init() {
-            // Start auto-play
             this.startAutoPlay();
         }
     }
