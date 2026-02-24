@@ -63,6 +63,7 @@
                     <img :src="imageSrc"
                          :alt="imageAlt"
                          class="h-auto my-0 mx-auto"
+                         :style="isBlurred ? 'filter: blur(12px)' + (document.documentElement.classList.contains('dark-mode') ? ' invert(1)' : '') + '; transition: filter 0.5s ease' : 'transition: filter 0.5s ease'"
                          x-ref="mainImage">
 
 

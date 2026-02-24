@@ -73,20 +73,28 @@ export function imageRefresher(url, alt) {
         imageAlt: alt,
         imageSrc: url,
         isRefreshing: false,
+        isBlurred: false,
 
         async refreshImage() {
             this.isRefreshing = true;
+            this.isBlurred = true;
+
+            // Wait for the blur-in transition to visually complete (matches CSS duration)
+            const blurInDelay = new Promise(resolve => setTimeout(resolve, 500));
 
             try {
-                // Fetch the image with no-cache headers
-                const response = await fetch(this.baseImageUrl, {
-                    cache: 'reload',
-                    headers: {
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache',
-                        'Expires': '0'
-                    }
-                });
+                // Run fetch and blur-in transition in parallel
+                const [response] = await Promise.all([
+                    fetch(this.baseImageUrl, {
+                        cache: 'reload',
+                        headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache',
+                            'Expires': '0'
+                        }
+                    }),
+                    blurInDelay
+                ]);
 
                 if (response.ok) {
                     const blob = await response.blob();
@@ -110,6 +118,7 @@ export function imageRefresher(url, alt) {
                 console.error('Failed to refresh image:', error);
             } finally {
                 this.isRefreshing = false;
+                this.isBlurred = false;
             }
         }
     }
