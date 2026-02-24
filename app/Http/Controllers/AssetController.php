@@ -79,7 +79,7 @@ class AssetController extends Controller
             $perPage = Auth::user()->getItemsPerPage();
         }
         $assets = $query->paginate((int) $perPage)->onEachSide(2)->withQueryString();
-        $tags = Tag::orderBy('name')->get();
+        $tags = Tag::withCount('assets')->orderBy('name')->get();
         $folders = S3Service::getConfiguredFolders();
 
         $missingCount = Asset::missing()->count();

@@ -8,7 +8,12 @@
     <div class="mb-6">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">{{ __('Assets') }}</h1>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    {{ __('Assets') }}
+                    <span class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
+                        {{ number_format($assets->total()) }}
+                    </span>
+                </h1>
                 <p class="text-gray-600 mt-2">{{ __('Browse and manage your digital assets') }}</p>
             </div>
 
@@ -42,6 +47,7 @@
                     <!-- Folder filter -->
                     <select x-model="folder"
                             @change="applyFilters"
+                            :class="folder ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono">
                         <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                     </select>
@@ -65,6 +71,7 @@
                     <!-- Type filter -->
                     <select x-model="type"
                             @change="applyFilters"
+                            :class="type ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <option value="">{{ __('All Types') }}</option>
                         <option value="image">{{ __('Images') }}</option>
@@ -74,6 +81,7 @@
 
                     <!-- Tag filter -->
                     <button @click="showTagFilter = !showTagFilter"
+                            :class="selectedTags.length > 0 ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="px-4 py-2 bg-white text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center">
                         <i class="fas fa-filter mr-2"></i>
                         <span x-text="selectedTags.length > 0 ? @js(__('Tags')) + ` (${selectedTags.length})` : @js(__('Filter Tags'))"></span>
@@ -129,9 +137,12 @@
                                    class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
                             <div class="flex flex-col gap-1 min-w-0 flex-1">
                                 <span class="text-sm font-medium truncate" x-text="tag.name"></span>
-                                <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
-                                      class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
-                                      x-text="tag.type"></span>
+                                <div class="flex items-center gap-1.5">
+                                    <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                                          class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
+                                          x-text="tag.type"></span>
+                                    <span class="text-xs text-gray-400" x-text="tag.assets_count"></span>
+                                </div>
                             </div>
                         </label>
                     </template>
@@ -142,6 +153,44 @@
             <p class="text-gray-500 text-sm">{{ __('No tags available yet.') }}</p>
             @endif
         </div>
+    </div>
+
+    <!-- Active Filters Bar -->
+    <div x-show="folder || type || selectedTags.length > 0" x-cloak class="mb-4 flex flex-wrap items-center gap-2">
+        <span class="text-sm text-gray-500 font-medium">{{ __('Active filters') }}:</span>
+
+        <!-- Folder pill -->
+        <template x-if="folder">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-folder text-xs"></i>
+                <span x-text="folder"></span>
+                <button @click="folder = ''; applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
+        <!-- Type pill -->
+        <template x-if="type">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-file text-xs"></i>
+                <span x-text="type.charAt(0).toUpperCase() + type.slice(1)"></span>
+                <button @click="type = ''; applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
+        <!-- Tag pills -->
+        <template x-for="tagId in selectedTags" :key="tagId">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-tag text-xs"></i>
+                <span x-text="allTagsData.find(t => t.id == tagId)?.name || tagId"></span>
+                <button @click="selectedTags = selectedTags.filter(id => id != tagId); applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
+        <!-- Clear all -->
+        <button @click="folder = ''; type = ''; selectedTags = []; applyFilters()"
+                class="text-sm text-gray-500 hover:text-gray-700 underline ml-2">
+            {{ __('Clear all filters') }}
+        </button>
     </div>
 
     <!-- View Toggle -->
@@ -573,6 +622,10 @@
     @endif
 </div>
 
+@php
+    $allTagsData = $tags->map(fn($t) => ['id' => (string)$t->id, 'name' => $t->name, 'type' => $t->type, 'assets_count' => $t->assets_count]);
+@endphp
+
 @push('scripts')
 <script>
 // Page data for Alpine.js components
@@ -586,7 +639,7 @@ window.assetGridConfig = {
     selectedTags: @json(request('tags', [])),
     initialTags: @json(request('tags', [])),
     perPage: '{{ $perPage }}',
-    allTagsData: @json($tags->map(fn($t) => ['id' => (string)$t->id, 'name' => $t->name, 'type' => $t->type])),
+    allTagsData: @json($allTagsData),
     indexRoute: '{{ route('assets.index') }}'
 };
 
