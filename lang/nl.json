@@ -696,6 +696,7 @@
     "Scan your S3 bucket for unmapped objects and import them with automatic metadata extraction.": "Scan je S3-bucket op niet-gekoppelde objecten en importeer ze met automatische metadata-extractie.",
     "Scanning...": "Scannen...",
     "Search & Filter": "Zoeken & filteren",
+    "Search... (+require -exclude)": "Zoeken... (+verplicht -uitsluiten)",
     "Search assets...": "Assets zoeken...",
     "Search tags...": "Tags zoeken...",
     "seconds...": "seconden...",

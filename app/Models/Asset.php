@@ -324,6 +324,58 @@ class Asset extends Model
     }
 
     /**
+     * Parse search string into regular, required (+), and excluded (-) terms.
+     */
+    private static function parseSearchTerms(string $search): array
+    {
+        $terms = ['regular' => [], 'required' => [], 'excluded' => []];
+
+        foreach (preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) as $token) {
+            if (str_starts_with($token, '+') && strlen($token) > 1) {
+                $terms['required'][] = substr($token, 1);
+            } elseif (str_starts_with($token, '-') && strlen($token) > 1) {
+                $terms['excluded'][] = substr($token, 1);
+            } elseif ($token !== '+' && $token !== '-') {
+                $terms['regular'][] = $token;
+            }
+        }
+
+        return $terms;
+    }
+
+    /**
+     * Add OR search condition across all searchable fields for a single term.
+     */
+    private static function addSearchCondition($query, string $term): void
+    {
+        $query->where('filename', 'like', "%{$term}%")
+            ->orWhere('s3_key', 'like', "%{$term}%")
+            ->orWhere('alt_text', 'like', "%{$term}%")
+            ->orWhere('caption', 'like', "%{$term}%")
+            ->orWhereHas('tags', function ($tagQuery) use ($term) {
+                $tagQuery->where('name', 'like', "%{$term}%");
+            });
+    }
+
+    /**
+     * Add exclusion condition: asset must NOT match term in any field.
+     */
+    private static function addExcludeCondition($query, string $term): void
+    {
+        $query->where('filename', 'not like', "%{$term}%")
+            ->where('s3_key', 'not like', "%{$term}%")
+            ->where(function ($q) use ($term) {
+                $q->whereNull('alt_text')->orWhere('alt_text', 'not like', "%{$term}%");
+            })
+            ->where(function ($q) use ($term) {
+                $q->whereNull('caption')->orWhere('caption', 'not like', "%{$term}%");
+            })
+            ->whereDoesntHave('tags', function ($tagQuery) use ($term) {
+                $tagQuery->where('name', 'like', "%{$term}%");
+            });
+    }
+
+    /**
      * Scope: Search assets
      */
     public function scopeSearch($query, ?string $search)
@@ -332,17 +384,43 @@ class Asset extends Model
             return $query;
         }
 
-        $search = self::normalizeSearchTerm($search);
+        $normalized = self::normalizeSearchTerm($search);
 
-        return $query->where(function ($q) use ($search) {
-            $q->where('filename', 'like', "%{$search}%")
-                ->orWhere('s3_key', 'like', "%{$search}%")
-                ->orWhere('alt_text', 'like', "%{$search}%")
-                ->orWhere('caption', 'like', "%{$search}%")
-                ->orWhereHas('tags', function ($tagQuery) use ($search) {
-                    $tagQuery->where('name', 'like', "%{$search}%");
-                });
-        });
+        // If the search was a URL (normalizeSearchTerm changed it), treat as single literal term
+        if ($normalized !== $search) {
+            return $query->where(function ($q) use ($normalized) {
+                self::addSearchCondition($q, $normalized);
+            });
+        }
+
+        $terms = self::parseSearchTerms($normalized);
+
+        // Regular terms: at least one must match (OR within a single where group)
+        if (! empty($terms['regular'])) {
+            $query->where(function ($q) use ($terms) {
+                foreach ($terms['regular'] as $term) {
+                    $q->orWhere(function ($sub) use ($term) {
+                        self::addSearchCondition($sub, $term);
+                    });
+                }
+            });
+        }
+
+        // Required terms: each must match in at least one field (AND)
+        foreach ($terms['required'] as $term) {
+            $query->where(function ($q) use ($term) {
+                self::addSearchCondition($q, $term);
+            });
+        }
+
+        // Excluded terms: must NOT match in any field
+        foreach ($terms['excluded'] as $term) {
+            $query->where(function ($q) use ($term) {
+                self::addExcludeCondition($q, $term);
+            });
+        }
+
+        return $query;
     }
 
     /**

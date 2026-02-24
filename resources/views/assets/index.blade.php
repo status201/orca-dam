@@ -23,7 +23,7 @@
                     <input type="text"
                            x-model="search"
                            @keyup.enter="applyFilters"
-                           placeholder="{{ __('Search assets...') }}"
+                           placeholder="{{ __('Search... (+require -exclude)') }}"
                            class="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     <button @click="applyFilters"
@@ -39,7 +39,7 @@
                         <input type="text"
                                x-model="search"
                                @keyup.enter="applyFilters"
-                               placeholder="{{ __('Search assets...') }}"
+                               placeholder="{{ __('Search... (+require -exclude)') }}"
                                class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     </div>

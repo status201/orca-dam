@@ -77,6 +77,46 @@ test('assets search strips S3 URL prefix to match s3_key', function () {
     $response->assertDontSee('other.pdf');
 });
 
+test('assets index search with exclude modifier', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'beach-sunset.jpg']);
+    Asset::factory()->create(['filename' => 'beach-morning.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', ['search' => 'beach -sunset']));
+
+    $response->assertStatus(200);
+    $response->assertSee('beach-morning.jpg');
+    $response->assertDontSee('beach-sunset.jpg');
+});
+
+test('assets index search with require modifier', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'beach-sunset.jpg', 'alt_text' => 'summer']);
+    Asset::factory()->create(['filename' => 'beach-morning.jpg', 'alt_text' => 'winter']);
+    Asset::factory()->create(['filename' => 'mountain-view.jpg', 'alt_text' => 'summer']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', ['search' => '+beach +summer']));
+
+    $response->assertStatus(200);
+    $response->assertSee('beach-sunset.jpg');
+    $response->assertDontSee('beach-morning.jpg');
+    $response->assertDontSee('mountain-view.jpg');
+});
+
+test('assets index search with mixed modifiers', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'beach-sunset.jpg', 'alt_text' => 'summer day']);
+    Asset::factory()->create(['filename' => 'beach-rain.jpg', 'alt_text' => 'summer day']);
+    Asset::factory()->create(['filename' => 'mountain-view.jpg', 'alt_text' => 'winter hike']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', ['search' => '+summer -rain']));
+
+    $response->assertStatus(200);
+    $response->assertSee('beach-sunset.jpg');
+    $response->assertDontSee('beach-rain.jpg');
+    $response->assertDontSee('mountain-view.jpg');
+});
+
 test('assets index can filter by type', function () {
     $user = User::factory()->create();
     Asset::factory()->image()->create(['filename' => 'image.jpg']);

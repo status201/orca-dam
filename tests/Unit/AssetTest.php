@@ -183,6 +183,97 @@ test('asset resize url accessors return null when keys are null', function () {
     expect($asset->resize_l_url)->toBeNull();
 });
 
+test('asset search with exclude modifier removes matching assets', function () {
+    Asset::factory()->create(['filename' => 'beach-sunset.jpg']);
+    Asset::factory()->create(['filename' => 'beach-morning.jpg']);
+    Asset::factory()->create(['filename' => 'mountain-view.jpg']);
+
+    $results = Asset::search('beach -sunset')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('beach-morning.jpg');
+});
+
+test('asset search with require modifier requires matching assets', function () {
+    Asset::factory()->create(['filename' => 'beach-sunset.jpg', 'alt_text' => 'summer day']);
+    Asset::factory()->create(['filename' => 'beach-morning.jpg', 'alt_text' => 'winter day']);
+    Asset::factory()->create(['filename' => 'mountain-view.jpg', 'alt_text' => 'summer hike']);
+
+    $results = Asset::search('+beach +summer')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('beach-sunset.jpg');
+});
+
+test('asset search with mixed modifiers works correctly', function () {
+    Asset::factory()->create(['filename' => 'beach-sunset.jpg', 'alt_text' => 'summer']);
+    Asset::factory()->create(['filename' => 'beach-rain.jpg', 'alt_text' => 'summer']);
+    Asset::factory()->create(['filename' => 'mountain-view.jpg', 'alt_text' => 'summer']);
+
+    $results = Asset::search('+summer -rain')->get();
+
+    expect($results)->toHaveCount(2);
+    expect($results->pluck('filename')->toArray())->not->toContain('beach-rain.jpg');
+});
+
+test('asset search with bare plus or minus is ignored', function () {
+    Asset::factory()->create(['filename' => 'test-image.jpg']);
+    Asset::factory()->create(['filename' => 'other-file.pdf']);
+
+    // Bare + and - should be ignored, "test" is a regular term
+    $results = Asset::search('+ - test')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('test-image.jpg');
+});
+
+test('asset search without modifiers works as before', function () {
+    Asset::factory()->create(['filename' => 'test-image.jpg']);
+    Asset::factory()->create(['filename' => 'document.pdf']);
+    Asset::factory()->create(['filename' => 'another-test.png']);
+
+    $results = Asset::search('test')->get();
+
+    expect($results)->toHaveCount(2);
+});
+
+test('asset search exclude works on tags', function () {
+    $tag = Tag::factory()->create(['name' => 'sunset']);
+
+    $asset1 = Asset::factory()->create(['filename' => 'beach-photo.jpg']);
+    $asset1->tags()->attach($tag);
+    $asset2 = Asset::factory()->create(['filename' => 'beach-other.jpg']);
+
+    $results = Asset::search('beach -sunset')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('beach-other.jpg');
+});
+
+test('asset search require works on tags', function () {
+    $tag = Tag::factory()->create(['name' => 'nature']);
+
+    $asset1 = Asset::factory()->create(['filename' => 'beach-photo.jpg']);
+    $asset1->tags()->attach($tag);
+    $asset2 = Asset::factory()->create(['filename' => 'beach-other.jpg']);
+
+    $results = Asset::search('+beach +nature')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('beach-photo.jpg');
+});
+
+test('asset search exclude handles null alt_text and caption', function () {
+    Asset::factory()->create(['filename' => 'photo.jpg', 'alt_text' => null, 'caption' => null]);
+    Asset::factory()->create(['filename' => 'sunset.jpg', 'alt_text' => 'sunset view', 'caption' => null]);
+
+    // Excluding "sunset" should keep the null alt_text asset
+    $results = Asset::search('-sunset')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('photo.jpg');
+});
+
 test('asset scope withTags filters by tag ids', function () {
     $tag1 = Tag::factory()->create();
     $tag2 = Tag::factory()->create();
