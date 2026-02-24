@@ -12,6 +12,7 @@ export function assetGrid() {
         fitMode: localStorage.getItem('orcaAssetFitMode') || 'cover',
         perPage: localStorage.getItem('orcaAssetsPerPage') || config.perPage || '24',
         tagSearch: '',
+        tagSort: 'name_asc',
         allTagsData: config.allTagsData || [],
         folderCount: config.folderCount || 1,
 
@@ -65,6 +66,25 @@ export function assetGrid() {
 
         copyUrl(url) {
             window.copyToClipboard(url);
+        },
+
+        get sortedTags() {
+            const sorted = [...this.allTagsData];
+            switch (this.tagSort) {
+                case 'name_desc':
+                    return sorted.sort((a, b) => b.name.localeCompare(a.name));
+                case 'most_used':
+                    return sorted.sort((a, b) => b.assets_count - a.assets_count);
+                case 'least_used':
+                    return sorted.sort((a, b) => a.assets_count - b.assets_count);
+                case 'newest':
+                    return sorted.sort((a, b) => b.created_at.localeCompare(a.created_at));
+                case 'oldest':
+                    return sorted.sort((a, b) => a.created_at.localeCompare(b.created_at));
+                case 'name_asc':
+                default:
+                    return sorted.sort((a, b) => a.name.localeCompare(b.name));
+            }
         },
 
         shouldShowTag(tag) {

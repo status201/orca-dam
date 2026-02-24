@@ -112,6 +112,16 @@
                                class="text-sm pl-8 pr-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent w-40">
                         <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                     </div>
+                    <!-- Tag sort dropdown -->
+                    <select x-model="tagSort"
+                            class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <option value="name_asc">{{ __('Name (A-Z)') }}</option>
+                        <option value="name_desc">{{ __('Name (Z-A)') }}</option>
+                        <option value="most_used">{{ __('Most used') }}</option>
+                        <option value="least_used">{{ __('Least used') }}</option>
+                        <option value="newest">{{ __('Newest') }}</option>
+                        <option value="oldest">{{ __('Oldest') }}</option>
+                    </select>
                     <div class="flex gap-2">
                         <button @click="applyFilters()"
                                 x-show="tagsChanged()"
@@ -128,7 +138,7 @@
             </div>
             <div class="max-h-96 overflow-y-auto invert-scrollbar-colors">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
-                    <template x-for="tag in allTagsData" :key="tag.id">
+                    <template x-for="tag in sortedTags" :key="tag.id">
                         <label x-show="shouldShowTag(tag)"
                                class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
                             <input type="checkbox"
@@ -623,7 +633,7 @@
 </div>
 
 @php
-    $allTagsData = $tags->map(fn($t) => ['id' => (string)$t->id, 'name' => $t->name, 'type' => $t->type, 'assets_count' => $t->assets_count]);
+    $allTagsData = $tags->map(fn($t) => ['id' => (string)$t->id, 'name' => $t->name, 'type' => $t->type, 'assets_count' => $t->assets_count, 'created_at' => $t->created_at->toISOString()]);
 @endphp
 
 @push('scripts')
