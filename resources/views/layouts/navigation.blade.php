@@ -15,9 +15,33 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
-                        {{ __('Assets') }}
-                    </x-nav-link>
+                    <div class="relative inline-flex items-stretch" x-data="{ submenu: false }" @mouseenter="submenu = true" @mouseleave="submenu = false">
+                        <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                            {{ __('Assets') }}
+                            <svg class="ml-1 h-3 w-3 fill-current {{ request()->routeIs('assets.*') ? 'text-gray-700' : '' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </x-nav-link>
+
+                        <div x-show="submenu"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95"
+                             class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50"
+                             style="display: none;">
+                            <a href="{{ route('assets.create') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.create') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <i class="fas fa-cloud-arrow-up mr-2 {{ request()->routeIs('assets.create') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Upload') }}
+                            </a>
+                            @can('restore', App\Models\Asset::class)
+                                <a href="{{ route('assets.trash') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.trash') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                    <i class="fas fa-trash mr-2 {{ request()->routeIs('assets.trash') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Trash') }}
+                                </a>
+                            @endcan
+                        </div>
+                    </div>
                     <x-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
                         {{ __('Tags') }}
                     </x-nav-link>
@@ -29,11 +53,6 @@
                     @can('export', App\Models\Asset::class)
                         <x-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')">
                             {{ __('Export') }}
-                        </x-nav-link>
-                    @endcan
-                    @can('restore', App\Models\Asset::class)
-                        <x-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')">
-                            {{ __('Trash') }}
                         </x-nav-link>
                     @endcan
                     @can('viewAny', App\Models\User::class)
@@ -111,6 +130,14 @@
             <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
                 {{ __('Assets') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('assets.create')" :active="request()->routeIs('assets.create')" class="pl-8">
+                <i class="fas fa-cloud-arrow-up mr-2 text-gray-400"></i>{{ __('Upload') }}
+            </x-responsive-nav-link>
+            @can('restore', App\Models\Asset::class)
+                <x-responsive-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')" class="pl-8">
+                    <i class="fas fa-trash mr-2 text-gray-400"></i>{{ __('Trash') }}
+                </x-responsive-nav-link>
+            @endcan
             <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
                 {{ __('Tags') }}
             </x-responsive-nav-link>
@@ -122,11 +149,6 @@
             @can('export', App\Models\Asset::class)
                 <x-responsive-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')">
                     {{ __('Export') }}
-                </x-responsive-nav-link>
-            @endcan
-            @can('restore', App\Models\Asset::class)
-                <x-responsive-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')">
-                    {{ __('Trash') }}
                 </x-responsive-nav-link>
             @endcan
             @can('viewAny', App\Models\User::class)
