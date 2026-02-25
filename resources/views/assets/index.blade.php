@@ -630,7 +630,7 @@
     <!-- Pagination -->
     <div class="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div class="flex items-center gap-2">
-            <label for="perPageSelect" class="text-sm text-gray-600">{{ __('Results per page:') }}</label>
+            <label for="perPageSelect" class="hidden lg:block text-sm text-gray-600">{{ __('Results per page:') }}</label>
             <select id="perPageSelect"
                     x-model="perPage"
                     @change="applyFilters()"
