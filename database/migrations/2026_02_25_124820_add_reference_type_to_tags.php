@@ -29,6 +29,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        DB::table('tags')->where('type', 'reference')->update(['type' => 'user']);
+
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE tags MODIFY COLUMN type ENUM('user','ai') NOT NULL DEFAULT 'user'");
         } elseif (DB::getDriverName() === 'sqlite') {

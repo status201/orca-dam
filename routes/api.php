@@ -23,12 +23,14 @@ Route::middleware('auth.multi')->group(function () {
     Route::get('tags', [TagController::class, 'index']);
     Route::get('tags/search', [TagController::class, 'search']);
 
-    // Reference Tags API
-    Route::post('reference-tags', [AssetApiController::class, 'addReferenceTags']);
-    Route::delete('reference-tags/{tag}', [AssetApiController::class, 'removeReferenceTag']);
-
     // Folders API
     Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
+});
+
+// Reference Tags API (rate-limited)
+Route::middleware(['auth.multi', 'throttle:100,1'])->group(function () {
+    Route::post('reference-tags', [AssetApiController::class, 'addReferenceTags']);
+    Route::delete('reference-tags/{tag}', [AssetApiController::class, 'removeReferenceTag']);
 });
 
 // Chunked upload endpoints

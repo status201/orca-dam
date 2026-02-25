@@ -180,6 +180,7 @@ class ImportController extends Controller
             $userTagIds = [];
             if (isset($row['user_tags']) && trim($row['user_tags']) !== '') {
                 $tagNames = array_filter(array_map('trim', explode(',', $row['user_tags'])));
+                $tagNames = array_filter($tagNames, fn ($name) => strlen($name) <= 100);
 
                 if (! empty($tagNames)) {
                     $userTagIds = Tag::resolveUserTagIds($tagNames);
@@ -191,6 +192,7 @@ class ImportController extends Controller
             $refTagIds = [];
             if (isset($row['reference_tags']) && trim($row['reference_tags']) !== '') {
                 $refTagNames = array_filter(array_map('trim', explode(',', $row['reference_tags'])));
+                $refTagNames = array_filter($refTagNames, fn ($name) => strlen($name) <= 100);
 
                 if (! empty($refTagNames)) {
                     $refTagIds = Tag::resolveReferenceTagIds($refTagNames);

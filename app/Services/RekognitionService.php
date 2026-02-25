@@ -177,10 +177,11 @@ class RekognitionService
 
         foreach ($labels as $label) {
             // Create or find tag
-            $tag = Tag::firstOrCreate(
-                ['name' => $label['name']],
-                ['type' => 'ai']
-            );
+            $tag = Tag::firstOrNew(['name' => $label['name']]);
+            if (! $tag->exists) {
+                $tag->type = 'ai';
+                $tag->save();
+            }
 
             $tagIds[] = $tag->id;
         }

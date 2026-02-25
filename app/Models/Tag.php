@@ -12,7 +12,6 @@ class Tag extends Model
 
     protected $fillable = [
         'name',
-        'type',
     ];
 
     protected $casts = [
@@ -53,15 +52,19 @@ class Tag extends Model
 
     /**
      * Resolve an array of tag names to tag IDs, creating missing tags as 'user' type.
+     *
+     * Note: Tag names are unique. If a tag already exists with a different type (e.g. 'ai'
+     * or 'reference'), the existing tag is reused — its type is NOT changed to 'user'.
      */
     public static function resolveUserTagIds(array $names): array
     {
         $tagIds = [];
         foreach ($names as $name) {
-            $tag = static::firstOrCreate(
-                ['name' => strtolower(trim($name))],
-                ['type' => 'user']
-            );
+            $tag = static::firstOrNew(['name' => strtolower(trim($name))]);
+            if (! $tag->exists) {
+                $tag->type = 'user';
+                $tag->save();
+            }
             $tagIds[] = $tag->id;
         }
 
@@ -70,15 +73,19 @@ class Tag extends Model
 
     /**
      * Resolve an array of tag names to tag IDs, creating missing tags as 'reference' type.
+     *
+     * Note: Tag names are unique. If a tag already exists with a different type (e.g. 'user'
+     * or 'ai'), the existing tag is reused — its type is NOT changed to 'reference'.
      */
     public static function resolveReferenceTagIds(array $names): array
     {
         $tagIds = [];
         foreach ($names as $name) {
-            $tag = static::firstOrCreate(
-                ['name' => strtolower(trim($name))],
-                ['type' => 'reference']
-            );
+            $tag = static::firstOrNew(['name' => strtolower(trim($name))]);
+            if (! $tag->exists) {
+                $tag->type = 'reference';
+                $tag->save();
+            }
             $tagIds[] = $tag->id;
         }
 

@@ -254,8 +254,8 @@ class AssetApiController extends Controller
     {
         $request->validate([
             'asset_id' => 'required_without:s3_key|integer|exists:assets,id',
-            's3_key' => 'required_without:asset_id|string',
-            'tags' => 'required|array|min:1',
+            's3_key' => 'required_without:asset_id|string|max:1024',
+            'tags' => 'required|array|min:1|max:100',
             'tags.*' => 'string|max:100',
         ]);
 
@@ -283,7 +283,7 @@ class AssetApiController extends Controller
     {
         $request->validate([
             'asset_id' => 'required_without:s3_key|integer|exists:assets,id',
-            's3_key' => 'required_without:asset_id|string',
+            's3_key' => 'required_without:asset_id|string|max:1024',
         ]);
 
         if ($tag->type !== 'reference') {
