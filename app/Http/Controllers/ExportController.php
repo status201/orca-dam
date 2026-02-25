@@ -117,6 +117,7 @@ class ExportController extends Controller
                 'last_modified_by_name',
                 'user_tags',
                 'ai_tags',
+                'reference_tags',
                 'url',
                 'thumbnail_url',
                 'resize_s_url',
@@ -131,6 +132,7 @@ class ExportController extends Controller
                 // Get user tags and AI tags separately
                 $userTagNames = $asset->userTags->pluck('name')->join(', ');
                 $aiTagNames = $asset->aiTags->pluck('name')->join(', ');
+                $referenceTagNames = $asset->tags->where('type', 'reference')->pluck('name')->join(', ');
 
                 fputcsv($file, [
                     $asset->id,
@@ -158,6 +160,7 @@ class ExportController extends Controller
                     $asset->modifier->name ?? '',
                     $userTagNames,
                     $aiTagNames,
+                    $referenceTagNames,
                     $asset->url,
                     $asset->thumbnail_url,
                     $asset->resize_s_url,

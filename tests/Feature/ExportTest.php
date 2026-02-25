@@ -126,9 +126,24 @@ test('export separates user tags and ai tags', function () {
 
     $content = $response->streamedContent();
 
-    // The CSV should have separate columns for user_tags and ai_tags
+    // The CSV should have separate columns for user_tags, ai_tags, and reference_tags
     expect($content)->toContain('user_tags');
     expect($content)->toContain('ai_tags');
+    expect($content)->toContain('reference_tags');
+});
+
+test('export includes reference tags data in csv', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $refTag = Tag::factory()->reference()->create(['name' => 'ref-export']);
+    $asset = Asset::factory()->create();
+    $asset->tags()->attach($refTag);
+
+    $response = $this->actingAs($admin)->post(route('export.download'));
+
+    $content = $response->streamedContent();
+    expect($content)->toContain('reference_tags');
+    expect($content)->toContain('ref-export');
 });
 
 test('export can filter by folder', function () {

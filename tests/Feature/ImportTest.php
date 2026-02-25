@@ -488,3 +488,43 @@ test('import requires csv_data and match_field', function () {
         ->assertStatus(422)
         ->assertJsonValidationErrors(['csv_data', 'match_field']);
 });
+
+// Reference tag import tests
+
+test('import creates reference tags from csv', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $asset = Asset::factory()->create(['s3_key' => 'assets/img.jpg']);
+
+    $csv = "s3_key,reference_tags\nassets/img.jpg,\"2F.4.6.2, REF-001\"";
+
+    $response = $this->actingAs($admin)->postJson(route('import.import'), [
+        'csv_data' => $csv,
+        'match_field' => 's3_key',
+    ]);
+
+    $response->assertOk()->assertJsonPath('updated', 1);
+
+    $asset->refresh();
+    $refTags = $asset->tags->where('type', 'reference');
+    expect($refTags)->toHaveCount(2);
+    expect($refTags->pluck('name')->sort()->values()->all())->toBe(['2f.4.6.2', 'ref-001']);
+});
+
+test('import preserves existing reference tags', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $asset = Asset::factory()->create(['s3_key' => 'assets/img.jpg']);
+    $existingRefTag = Tag::factory()->reference()->create(['name' => 'existing-ref']);
+    $asset->tags()->attach($existingRefTag);
+
+    $csv = "s3_key,reference_tags\nassets/img.jpg,new-ref";
+
+    $this->actingAs($admin)->postJson(route('import.import'), [
+        'csv_data' => $csv,
+        'match_field' => 's3_key',
+    ])->assertOk();
+
+    $asset->refresh();
+    $refTags = $asset->tags->where('type', 'reference');
+    expect($refTags)->toHaveCount(2);
+    expect($refTags->pluck('name')->sort()->values()->all())->toBe(['existing-ref', 'new-ref']);
+});

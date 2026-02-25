@@ -61,6 +61,10 @@
                class="attention py-4 px-1 border-b-2 {{ request('type') === 'ai' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} font-medium text-sm">
                 {{ __('AI Tags') }} @if(request('type') === 'ai')<span>(<span x-text="matchingCount"></span>)</span>@endif
             </a>
+            <a href="{{ route('tags.index', array_filter(['type' => 'reference', 'sort' => request('sort')])) }}"
+               class="attention py-4 px-1 border-b-2 {{ request('type') === 'reference' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} font-medium text-sm">
+                {{ __('Reference Tags') }} @if(request('type') === 'reference')<span>(<span x-text="matchingCount"></span>)</span>@endif
+            </a>
         </nav>
     </div>
 
@@ -80,14 +84,16 @@
                     <h3 class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate">{{ $tag->name }}</h3>
                 </a>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span class="tag attention px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
+                    <span class="tag attention px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : ($tag->type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700') }}">
                         {{ $tag->type }}
                         @if($tag->type === 'ai')
                         <i class="fas fa-robot ml-1"></i>
+                        @elseif($tag->type === 'reference')
+                        <i class="fas fa-link ml-1"></i>
                         @endif
                     </span>
 
-                    @if($tag->type === 'user')
+                    @if($tag->type !== 'ai')
                     <!-- Edit button (only for user tags) -->
                     <button @click="editTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
                             class="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded transition"
@@ -192,6 +198,7 @@ window.__pageData.translations = {
     tagDeleted: @js(__('Tag deleted successfully')),
     tagDeleteFailed: @js(__('Failed to delete tag')),
     aiTag: @js(__('AI tag')),
+    referenceTag: @js(__('Reference tag')),
     tag: @js(__('tag')),
     confirmDeleteThe: @js(__('Are you sure you want to delete the')),
     removeFromAllAssets: @js(__('This will remove it from all assets.'))

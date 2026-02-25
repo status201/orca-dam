@@ -44,6 +44,14 @@ class Tag extends Model
     }
 
     /**
+     * Scope: Reference tags only
+     */
+    public function scopeReferenceTags($query)
+    {
+        return $query->where('type', 'reference');
+    }
+
+    /**
      * Resolve an array of tag names to tag IDs, creating missing tags as 'user' type.
      */
     public static function resolveUserTagIds(array $names): array
@@ -53,6 +61,23 @@ class Tag extends Model
             $tag = static::firstOrCreate(
                 ['name' => strtolower(trim($name))],
                 ['type' => 'user']
+            );
+            $tagIds[] = $tag->id;
+        }
+
+        return $tagIds;
+    }
+
+    /**
+     * Resolve an array of tag names to tag IDs, creating missing tags as 'reference' type.
+     */
+    public static function resolveReferenceTagIds(array $names): array
+    {
+        $tagIds = [];
+        foreach ($names as $name) {
+            $tag = static::firstOrCreate(
+                ['name' => strtolower(trim($name))],
+                ['type' => 'reference']
             );
             $tagIds[] = $tag->id;
         }

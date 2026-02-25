@@ -30,4 +30,11 @@ class TagFactory extends Factory
             'type' => 'user',
         ]);
     }
+
+    public function reference(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'reference',
+        ]);
+    }
 }

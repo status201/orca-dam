@@ -378,3 +378,46 @@ test('bulk get tags requires authentication', function () {
 
     $response->assertUnauthorized();
 });
+
+// Reference tag tests
+
+test('tags index can filter by type reference', function () {
+    $user = User::factory()->create();
+    Tag::factory()->user()->create(['name' => 'user-tag']);
+    Tag::factory()->reference()->create(['name' => 'ref-tag']);
+    Tag::factory()->ai()->create(['name' => 'ai-tag']);
+
+    $response = $this->actingAs($user)->get(route('tags.index', ['type' => 'reference']));
+
+    $response->assertStatus(200);
+    $response->assertSee('ref-tag');
+    $response->assertDontSee('user-tag');
+    $response->assertDontSee('ai-tag');
+});
+
+test('reference tags can be renamed', function () {
+    $user = User::factory()->create();
+    $tag = Tag::factory()->reference()->create(['name' => 'old-ref']);
+
+    $response = $this->actingAs($user)
+        ->patchJson(route('tags.update', $tag), [
+            'name' => 'new-ref',
+        ]);
+
+    $response->assertOk();
+
+    $tag->refresh();
+    expect($tag->name)->toBe('new-ref');
+});
+
+test('ai tags still cannot be renamed after reference tag update', function () {
+    $user = User::factory()->create();
+    $tag = Tag::factory()->ai()->create(['name' => 'ai-tag']);
+
+    $response = $this->actingAs($user)
+        ->patchJson(route('tags.update', $tag), [
+            'name' => 'new-name',
+        ]);
+
+    $response->assertStatus(403);
+});

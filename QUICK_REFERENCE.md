@@ -254,6 +254,8 @@ PATCH  /api/assets/{id}        # Update asset
 DELETE /api/assets/{id}        # Delete asset
 GET    /api/tags               # List tags
 GET    /api/folders            # List S3 folders
+POST   /api/reference-tags         # Add reference tags to asset
+DELETE /api/reference-tags/{tag}   # Remove reference tag from asset
 
 # Chunked uploads (for large files ≥10MB)
 POST   /api/chunked-upload/init      # Initialize upload
@@ -289,7 +291,7 @@ POST   /api/chunked-upload/abort     # Cancel upload
 - created_at, updated_at, deleted_at
 
 ### tags
-- id, name, type (user|ai), created_at, updated_at
+- id, name, type (user|ai|reference), created_at, updated_at
 
 ### asset_tag
 - asset_id, tag_id, created_at, updated_at

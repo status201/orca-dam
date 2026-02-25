@@ -23,6 +23,10 @@ Route::middleware('auth.multi')->group(function () {
     Route::get('tags', [TagController::class, 'index']);
     Route::get('tags/search', [TagController::class, 'search']);
 
+    // Reference Tags API
+    Route::post('reference-tags', [AssetApiController::class, 'addReferenceTags']);
+    Route::delete('reference-tags/{tag}', [AssetApiController::class, 'removeReferenceTag']);
+
     // Folders API
     Route::get('folders', [FolderController::class, 'index'])->name('folders.index');
 });

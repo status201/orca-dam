@@ -875,6 +875,8 @@ return [
 | `PATCH` | `/api/assets/{id}` | Update asset metadata |
 | `GET` | `/api/tags` | List all tags |
 | `GET` | `/api/folders` | List available S3 folders (for folder dropdowns) |
+| `POST` | `/api/reference-tags` | Add reference tags to asset (by `asset_id` or `s3_key`) |
+| `DELETE` | `/api/reference-tags/{tag}` | Remove reference tag from asset |
 
 ### Common Query Parameters
 | Parameter | Description | Example |

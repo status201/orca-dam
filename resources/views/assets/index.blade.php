@@ -148,7 +148,7 @@
                             <div class="flex flex-col gap-1 min-w-0 flex-1">
                                 <span class="text-sm font-medium truncate" x-text="tag.name"></span>
                                 <div class="flex items-center gap-1.5">
-                                    <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                                    <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
                                           class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
                                           x-text="tag.type"></span>
                                     <span class="text-xs text-gray-400" x-text="tag.assets_count"></span>
@@ -361,7 +361,7 @@
                 @if($asset->tags->count() > 0)
                 <div class="flex flex-wrap gap-1 mt-2">
                     @foreach($asset->tags->take(2) as $tag)
-                    <span class="tag attention text-xs px-2 py-0.5 rounded-full {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
+                    <span class="tag attention text-xs px-2 py-0.5 rounded-full {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : ($tag->type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700') }}">
                         {{ $tag->name }}
                     </span>
                     @endforeach
@@ -535,7 +535,7 @@
                             <div class="flex flex-wrap gap-2">
                                 <!-- Existing Tags -->
                                 <template x-for="(tag, index) in tags" :key="tag.id">
-                                    <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                                    <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
                                           class="tag attention inline-flex items-center px-2 py-1 rounded text-xs font-medium">
                                         <span x-text="tag.name"></span>
                                         <button @click="removeTag(tag)"
@@ -730,7 +730,7 @@
                             <template x-for="tag in bulkRemoveTags" :key="tag.id">
                                 <button @click="bulkRemoveTag(tag.id)"
                                         :disabled="bulkLoading"
-                                        :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'"
+                                        :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200')"
                                         class="attention inline-flex items-center px-2 py-1 rounded text-xs font-medium disabled:opacity-50 transition-colors">
                                     <span x-text="tag.name"></span>
                                     <span class="ml-1 text-[0.65rem] opacity-70" x-text="'(' + tag.count + ')'"></span>

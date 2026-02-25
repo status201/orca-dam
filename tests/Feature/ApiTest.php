@@ -430,3 +430,121 @@ test('api assets index defaults to newest first when no sort specified', functio
     expect($data[0]['id'])->toBe($newer->id);
     expect($data[1]['id'])->toBe($older->id);
 });
+
+// Reference Tags API tests
+
+test('api can add reference tags to asset by asset_id', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+
+    $response = $this->postJson('/api/reference-tags', [
+        'asset_id' => $asset->id,
+        'tags' => ['2F.4.6.2', 'REF-001'],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tags added successfully']);
+
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(2);
+    expect($asset->tags->where('type', 'reference')->count())->toBe(2);
+});
+
+test('api can add reference tags to asset by s3_key', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['s3_key' => 'assets/test-ref.jpg']);
+
+    $response = $this->postJson('/api/reference-tags', [
+        's3_key' => 'assets/test-ref.jpg',
+        'tags' => ['EXT-123'],
+    ]);
+
+    $response->assertOk();
+
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(1);
+    expect($asset->tags->first()->type)->toBe('reference');
+    expect($asset->tags->first()->name)->toBe('ext-123');
+});
+
+test('api reference tags endpoint creates tags with type reference', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+
+    $this->postJson('/api/reference-tags', [
+        'asset_id' => $asset->id,
+        'tags' => ['new-ref-tag'],
+    ]);
+
+    $tag = Tag::where('name', 'new-ref-tag')->first();
+    expect($tag)->not->toBeNull();
+    expect($tag->type)->toBe('reference');
+});
+
+test('api can remove reference tag from asset', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+    $tag = Tag::factory()->reference()->create(['name' => 'ref-to-remove']);
+    $asset->tags()->attach($tag);
+
+    $response = $this->deleteJson("/api/reference-tags/{$tag->id}?asset_id={$asset->id}");
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tag removed successfully']);
+
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(0);
+});
+
+test('api cannot remove non-reference tag via reference-tags endpoint', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+    $tag = Tag::factory()->user()->create(['name' => 'user-tag-not-ref']);
+    $asset->tags()->attach($tag);
+
+    $response = $this->deleteJson("/api/reference-tags/{$tag->id}?asset_id={$asset->id}");
+
+    $response->assertStatus(422);
+    $response->assertJsonFragment(['message' => 'Only reference tags can be removed via this endpoint']);
+});
+
+test('api reference tags endpoint requires authentication', function () {
+    $response = $this->postJson('/api/reference-tags', [
+        'asset_id' => 1,
+        'tags' => ['test'],
+    ]);
+
+    $response->assertUnauthorized();
+});
+
+test('api update preserves reference tags when updating user tags', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['user_id' => $user->id]);
+    $refTag = Tag::factory()->reference()->create(['name' => 'ref-preserve']);
+    $aiTag = Tag::factory()->ai()->create(['name' => 'ai-preserve']);
+    $asset->tags()->attach([$refTag->id, $aiTag->id]);
+
+    $response = $this->patchJson("/api/assets/{$asset->id}", [
+        'tags' => ['new-user-tag'],
+    ]);
+
+    $response->assertOk();
+
+    $asset->refresh();
+    $tagNames = $asset->tags->pluck('name')->toArray();
+    expect($tagNames)->toContain('ref-preserve');
+    expect($tagNames)->toContain('ai-preserve');
+    expect($tagNames)->toContain('new-user-tag');
+});

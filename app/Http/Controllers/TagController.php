@@ -68,8 +68,8 @@ class TagController extends Controller
      */
     public function update(Request $request, Tag $tag)
     {
-        // Only allow updating user tags
-        if ($tag->type !== 'user') {
+        // Only allow updating user and reference tags (not AI tags)
+        if ($tag->type === 'ai') {
             return response()->json([
                 'message' => 'AI tags cannot be edited',
             ], 403);

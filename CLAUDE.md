@@ -91,7 +91,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 **Asset** (`app/Models/Asset.php`): Belongs to User, many-to-many Tags. Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` is editable display name; `s3_key` is immutable. Scopes: search, filterByTags, type, user, `inFolder`, `missing`. Search supports operators: `+term` (required), `-term` (excluded). License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
 
-**Tag** (`app/Models/Tag.php`): Type `user` or `ai`, many-to-many Assets.
+**Tag** (`app/Models/Tag.php`): Type `user`, `ai`, or `reference`, many-to-many Assets. Reference tags track external system usage (e.g., RTE integrations). Created via API only, editable/deletable in web UI.
 
 **Setting** (`app/Models/Setting.php`): Key-value store, cached 1 hour. `Setting::get('key', default)`, `Setting::set('key', value)`. Types: string, integer, boolean, json. Groups: general, display, aws.
 
@@ -109,6 +109,8 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 | GET | `/api/assets/meta` | **Public** (no auth) - metadata by URL |
 | GET | `/api/health` | **Public** (no auth) - health check (200/503) |
 | GET | `/api/tags` | List tags (optional type filter) |
+| POST | `/api/reference-tags` | Add reference tags to asset (by asset_id or s3_key) |
+| DELETE | `/api/reference-tags/{tag}` | Remove reference tag from asset |
 
 **Sort values**: `date_desc` (default), `date_asc`, `upload_desc`, `upload_asc`, `size_desc`, `size_asc`, `name_asc`, `name_desc`, `s3key_asc`, `s3key_desc`
 
@@ -133,7 +135,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 **upload_sessions**: `upload_id`, `session_token`, `filename`, `mime_type`, `file_size`, `s3_key`, `chunk_size`, `total_chunks`, `uploaded_chunks`, `part_etags` (JSON), `status` (pending/uploading/completed/failed/aborted), `user_id`, `last_activity_at`
 
-**tags**: `name` (unique), `type` (user/ai)
+**tags**: `name` (unique), `type` (user/ai/reference)
 
 **asset_tag**: `asset_id`, `tag_id`, timestamps
 
@@ -186,9 +188,9 @@ PHP_CLI_PATH=/usr/bin/php
 
 ## Testing
 
-**Pest PHP** with in-memory SQLite. ~253 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
+**Pest PHP** with in-memory SQLite. ~375 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
 
-**Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`), SettingFactory (`integer()`, `boolean()`)
+**Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
 
 ```
 tests/Feature/  - AssetTest, TagTest, ExportTest, ImportTest, ApiTest, SystemTest, IntegrityTest,

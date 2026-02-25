@@ -6,7 +6,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 
 - 🔐 Multi-user support (Editors & Admins)
 - 📁 Direct S3 bucket integration
-- 🏷️ Manual and AI-powered tagging (AWS Rekognition)
+- 🏷️ Manual, AI-powered (AWS Rekognition), and reference tagging
 - 🌍 Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
 - 🎯 Manual AI tag generation with configurable limits
 - ✏️ **Editable filenames** (display name only — S3 key and URLs stay the same)
@@ -22,7 +22,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔄 Smart retry logic with exponential backoff
 - 📝 License type and copyright metadata
 - ♿ Accessibility support (alt text, captions)
-- 📊 CSV export with separate user/AI tag columns
+- 📊 CSV export with separate user/AI/reference tag columns
 - 📥 Bulk metadata import from CSV (paste or upload)
 - 🔗 Easy URL copying for external integration
 - 🔎 Discover unmapped S3 objects
@@ -222,6 +222,8 @@ GET    /api/assets/meta         - Get metadata by URL (PUBLIC, no auth)
 GET    /api/health              - Health check (PUBLIC, no auth, 200/503)
 GET    /api/tags                - List tags for autocomplete
 GET    /api/folders             - List available S3 folders
+POST   /api/reference-tags      - Add reference tags to asset (by asset_id or s3_key)
+DELETE /api/reference-tags/{tag} - Remove reference tag from asset
 ```
 
 **Chunked Upload Endpoints** (for large files ≥10MB):

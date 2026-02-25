@@ -34,6 +34,15 @@ export function tagManager() {
             return aiTags.filter(tag => tag.name.toLowerCase().includes(query)).length;
         },
 
+        get matchingReferenceCount() {
+            const refTags = this.tags.filter(tag => tag.type === 'reference');
+            if (this.searchQuery.length === 0) {
+                return refTags.length;
+            }
+            const query = this.searchQuery.toLowerCase();
+            return refTags.filter(tag => tag.name.toLowerCase().includes(query)).length;
+        },
+
         matchesSearch(tagName) {
             if (this.searchQuery.length === 0) {
                 return true;
@@ -76,7 +85,7 @@ export function tagManager() {
         },
 
         async deleteTag(id, name, type) {
-            const tagType = type === 'ai' ? (t.aiTag || 'AI tag') : (t.tag || 'tag');
+            const tagType = type === 'ai' ? (t.aiTag || 'AI tag') : (type === 'reference' ? (t.referenceTag || 'reference tag') : (t.tag || 'tag'));
             if (!confirm((t.confirmDeleteThe || 'Are you sure you want to delete the') + ` ${tagType} "${name}"? ` + (t.removeFromAllAssets || 'This will remove it from all assets.'))) {
                 return;
             }

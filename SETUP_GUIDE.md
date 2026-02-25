@@ -256,11 +256,12 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 ### 2. Tagging System
 - ✅ Manual user tags
 - ✅ AI-powered auto-tagging (AWS Rekognition)
+- ✅ Reference tags for external system usage tracking (via API)
 - ✅ Manual AI tag generation button
 - ✅ Configurable max AI tags per asset
 - ✅ Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
 - ✅ Tag filtering and search
-- ✅ Tag browsing page
+- ✅ Tag browsing page with type tabs (User, AI, Reference)
 - ✅ Remove AI tags from assets
 - ✅ Delete both user and AI tags
 - ✅ Bulk add/remove tags on multiple selected assets
@@ -305,7 +306,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 
 ### 9. Export & Reporting
 - ✅ CSV export with all asset metadata
-- ✅ Separate columns for user tags and AI tags
+- ✅ Separate columns for user tags, AI tags, and reference tags
 - ✅ Includes license type and copyright information
 - ✅ Filter by file type and tags before export
 - ✅ Timestamped export filenames
@@ -525,6 +526,19 @@ GET /api/assets/search?q=keyword&tags=1,2&type=image
 #### List Tags
 ```
 GET /api/tags?type=user
+```
+
+#### Reference Tags (External System Usage Tracking)
+```
+POST /api/reference-tags
+Content-Type: application/json
+
+{
+    "s3_key": "assets/abc123-uuid.jpg",
+    "tags": ["2F.4.6.2", "REF-001"]
+}
+
+DELETE /api/reference-tags/{tag}?s3_key=assets/abc123-uuid.jpg
 ```
 
 #### List Folders

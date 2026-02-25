@@ -135,7 +135,8 @@ class AssetApiController extends Controller
             $tagIds = Tag::resolveUserTagIds($request->input('tags', []));
 
             $aiTagIds = $asset->aiTags()->pluck('tags.id')->toArray();
-            $asset->tags()->sync(array_merge($aiTagIds, $tagIds));
+            $referenceTagIds = $asset->referenceTags()->pluck('tags.id')->toArray();
+            $asset->tags()->sync(array_merge($aiTagIds, $referenceTagIds, $tagIds));
         }
 
         return response()->json([
@@ -243,6 +244,64 @@ class AssetApiController extends Controller
             'copyright' => $asset->copyright,
             'filename' => $asset->filename,
             'url' => $asset->url,
+        ]);
+    }
+
+    /**
+     * Add reference tags to an asset
+     */
+    public function addReferenceTags(Request $request)
+    {
+        $request->validate([
+            'asset_id' => 'required_without:s3_key|integer|exists:assets,id',
+            's3_key' => 'required_without:asset_id|string',
+            'tags' => 'required|array|min:1',
+            'tags.*' => 'string|max:100',
+        ]);
+
+        $asset = $request->has('asset_id')
+            ? Asset::find($request->input('asset_id'))
+            : Asset::where('s3_key', $request->input('s3_key'))->first();
+
+        if (! $asset) {
+            return response()->json(['message' => 'Asset not found'], 404);
+        }
+
+        $tagIds = Tag::resolveReferenceTagIds($request->input('tags'));
+        $asset->tags()->syncWithoutDetaching($tagIds);
+
+        return response()->json([
+            'message' => 'Reference tags added successfully',
+            'data' => $asset->fresh(['tags']),
+        ]);
+    }
+
+    /**
+     * Remove a reference tag from an asset
+     */
+    public function removeReferenceTag(Request $request, Tag $tag)
+    {
+        $request->validate([
+            'asset_id' => 'required_without:s3_key|integer|exists:assets,id',
+            's3_key' => 'required_without:asset_id|string',
+        ]);
+
+        if ($tag->type !== 'reference') {
+            return response()->json(['message' => 'Only reference tags can be removed via this endpoint'], 422);
+        }
+
+        $asset = $request->has('asset_id')
+            ? Asset::find($request->input('asset_id'))
+            : Asset::where('s3_key', $request->input('s3_key'))->first();
+
+        if (! $asset) {
+            return response()->json(['message' => 'Asset not found'], 404);
+        }
+
+        $asset->tags()->detach($tag->id);
+
+        return response()->json([
+            'message' => 'Reference tag removed successfully',
         ]);
     }
 }

@@ -177,16 +177,28 @@ class ImportController extends Controller
             }
 
             // Handle user_tags
+            $userTagIds = [];
             if (isset($row['user_tags']) && trim($row['user_tags']) !== '') {
                 $tagNames = array_filter(array_map('trim', explode(',', $row['user_tags'])));
 
                 if (! empty($tagNames)) {
-                    $tagIds = Tag::resolveUserTagIds($tagNames);
-                    $asset->tags()->syncWithoutDetaching($tagIds);
+                    $userTagIds = Tag::resolveUserTagIds($tagNames);
+                    $asset->tags()->syncWithoutDetaching($userTagIds);
                 }
             }
 
-            if (! empty($updateData) || ! empty($tagIds ?? [])) {
+            // Handle reference_tags
+            $refTagIds = [];
+            if (isset($row['reference_tags']) && trim($row['reference_tags']) !== '') {
+                $refTagNames = array_filter(array_map('trim', explode(',', $row['reference_tags'])));
+
+                if (! empty($refTagNames)) {
+                    $refTagIds = Tag::resolveReferenceTagIds($refTagNames);
+                    $asset->tags()->syncWithoutDetaching($refTagIds);
+                }
+            }
+
+            if (! empty($updateData) || ! empty($userTagIds) || ! empty($refTagIds)) {
                 $updated++;
             } else {
                 $skipped++;
@@ -253,6 +265,12 @@ class ImportController extends Controller
         if (isset($row['user_tags']) && trim($row['user_tags']) !== '') {
             $changes['user_tags'] = [
                 'add' => trim($row['user_tags']),
+            ];
+        }
+
+        if (isset($row['reference_tags']) && trim($row['reference_tags']) !== '') {
+            $changes['reference_tags'] = [
+                'add' => trim($row['reference_tags']),
             ];
         }
 

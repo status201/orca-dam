@@ -122,14 +122,17 @@ Klik op checkboxes om individuele assets te selecteren. Houd **Shift** ingedrukt
 
 ## Werken met tags
 
-Tags zijn labels waarmee je assets organiseert en vindt. Er zijn twee typen:
+Tags zijn labels waarmee je assets organiseert en vindt. Er zijn drie typen:
 
 | Type | Icoon | Hoe aangemaakt |
 |------|-------|----------------|
 | **Gebruikerstags** | Blauw badge | Handmatig door jou toegevoegd |
 | **AI-tags** | Paars badge | Automatisch gegenereerd door AI |
+| **Referentietags** | Oranje badge met link-icoon | Toegevoegd door externe systemen via API |
 
-**Tags zijn uniek** — je kunt geen twee tags met dezelfde naam hebben. Het type van een tag (gebruiker/AI) wordt bepaald bij aanmaak en verandert niet, zelfs als dezelfde tag later handmatig aan een ander asset wordt toegevoegd. Dit is vooral relevant voor statistieken, niet voor dagelijks gebruik.
+**Tags zijn uniek** — je kunt geen twee tags met dezelfde naam hebben. Het type van een tag (gebruiker/AI/referentie) wordt bepaald bij aanmaak en verandert niet, zelfs als dezelfde tag later handmatig aan een ander asset wordt toegevoegd. Dit is vooral relevant voor statistieken, niet voor dagelijks gebruik.
+
+**Referentietags** worden aangemaakt door externe systemen (bijv. een Rich Text Editor-integratie) om bij te houden welke assets ze gebruiken. Ze verschijnen als oranje badges met een link-icoon. Je kunt referentietags hernoemen of verwijderen net als gebruikerstags, maar ze kunnen alleen via de API worden aangemaakt.
 
 **Tags toevoegen:** Op de Bewerk-pagina typ je een tagnaam en druk je op Enter. In Lijstweergave klik je op de **+** knop in de Tags-kolom.
 
@@ -241,7 +244,7 @@ Klik op **Importvoorbeeld bekijken** om te zien welke assets matchen en wat er v
 
 ## Exporteren naar CSV (alleen admin)
 
-Admins kunnen de assetbibliotheek exporteren naar CSV: ga naar Assets, pas eventueel filters toe en klik op **Exporteren**. De export bevat bestandsgegevens, tags (gebruiker en AI in aparte kolommen), licentie-/auteursrechtinfo, publieke URLs en uploaderinformatie.
+Admins kunnen de assetbibliotheek exporteren naar CSV: ga naar Assets, pas eventueel filters toe en klik op **Exporteren**. De export bevat bestandsgegevens, tags (gebruiker, AI en referentie in aparte kolommen), licentie-/auteursrechtinfo, publieke URLs en uploaderinformatie.
 
 ---
 
@@ -327,6 +330,7 @@ Voorkeuren volgen een prioriteit: URL-parameters > jouw gebruikersvoorkeur > sys
 | **Hard delete** | Een bestand voorgoed verwijderen (niet herstelbaar) |
 | **AI-tags** | Tags die automatisch zijn gegenereerd door kunstmatige intelligentie |
 | **Gebruikerstags** | Tags die handmatig door mensen zijn toegevoegd |
+| **Referentietags** | Tags toegevoegd door externe systemen om assetgebruik bij te houden (oranje badges) |
 | **S3 Key** | Het technische pad/adres van een bestand in cloudopslag |
 | **Custom domain** | Een vriendelijke URL (zoals `cdn.example.com`) in plaats van de ruwe S3-bucket-URL |
 | **Rekognition** | Amazons AI-dienst die afbeeldingen analyseert en tags voorstelt |
