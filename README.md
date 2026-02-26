@@ -28,6 +28,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔎 Discover unmapped S3 objects
 - 🗑️ Trash & restore system with soft delete (keeps S3 objects)
 - ♻️ Permanent delete option for admins
+- 📦 Bulk move assets between S3 folders (maintenance mode)
 - ✔️ S3 integrity verification (detect missing assets in cloud storage)
 - 📱 Responsive design
 - 🌐 OpenAPI 3 for Rich Text Editor or System integration
@@ -169,6 +170,7 @@ php artisan serve  # Or use Herd
 - Export to CSV
 - Import metadata from CSV
 - Batch operations
+- Bulk move assets between folders (requires maintenance mode)
 - System administration (queue management, logs, diagnostics)
 - **Settings panel** - Configure items per page, AI tag limits, language, timezone, custom domain
 - **API Docs & Management** - API token management, JWT secret management, interactive API docs

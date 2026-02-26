@@ -47,7 +47,7 @@ php artisan queue:work --tries=3
 
 ### Core Services (`app/Services/`)
 
-**S3Service** - All S3 operations (upload/delete/list). Streams files to avoid memory issues. Generates JPEG thumbnails (skips GIFs). Thumbnails mirror folder structure (`assets/folder/img.jpg` -> `thumbnails/folder/img_thumb.jpg`). `generateResizedImages()` creates S/M/L presets at configurable dimensions (stored in `thumbnails/S|M|L/`), keeping original format (GIFs→JPEG). `deleteResizedImages()` removes all resize variants. Discovery finds unmapped S3 objects. Supports custom domain for CDN URLs via `getPublicBaseUrl()`.
+**S3Service** - All S3 operations (upload/delete/list/move). Streams files to avoid memory issues. Generates JPEG thumbnails (skips GIFs). Thumbnails mirror folder structure (`assets/folder/img.jpg` -> `thumbnails/folder/img_thumb.jpg`). `generateResizedImages()` creates S/M/L presets at configurable dimensions (stored in `thumbnails/S|M|L/`), keeping original format (GIFs→JPEG). `deleteResizedImages()` removes all resize variants. `moveObject()` copies then deletes (non-destructive on delete failure). Discovery finds unmapped S3 objects. Supports custom domain for CDN URLs via `getPublicBaseUrl()`.
 
 **AssetProcessingService** - Extracted shared asset processing logic used by multiple controllers. Handles thumbnail generation, resized image creation, dimension extraction, and AI tag dispatching. Called from `AssetController`, `AssetApiController`, `ChunkedUploadController`, and `ProcessDiscoveredAsset` job.
 
@@ -81,7 +81,7 @@ php artisan queue:work --tries=3
 - `admin`: Full access + trash management, discovery, export, user management, system settings
 - `api`: API-only (view, create, update; no delete, no admin features)
 
-Admin-only: restore, force delete, discover, export CSV, system page, API docs page
+Admin-only: restore, force delete, discover, export CSV, bulk move (requires `maintenance_mode`), system page, API docs page
 
 ### Locale System
 
@@ -122,6 +122,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 - `POST /assets/bulk/tags` - Bulk add tags to multiple assets
 - `POST /assets/bulk/tags/remove` - Bulk remove tags from multiple assets
 - `POST /assets/bulk/tags/list` - Get tags for selected assets
+- `POST /assets/bulk/move` - Bulk move assets between folders (admin, maintenance mode)
 - `PATCH/DELETE /assets/{asset}` - Update/delete asset
 - `POST /assets/{asset}/ai-tag` - Trigger AI tagging
 - `GET /api/folders` | `POST /folders/scan` (admin) | `POST /folders` (admin)
@@ -143,7 +144,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 **users** (extra columns): `jwt_secret` (encrypted), `jwt_secret_generated_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`)
 
-**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty)
+**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false
 
 ## Environment Configuration
 
@@ -193,7 +194,7 @@ PHP_CLI_PATH=/usr/bin/php
 **Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
 
 ```
-tests/Feature/  - AssetTest, TagTest, ExportTest, ImportTest, ApiTest, SystemTest, IntegrityTest,
+tests/Feature/  - AssetTest, TagTest, ExportTest, ImportTest, ApiTest, SystemTest, IntegrityTest, BulkMoveTest,
                   JwtAuthTest, JwtSecretManagementTest, LocaleTest, ProfileTest, TwoFactorAuthTest,
                   Auth/ (Authentication, Registration, PasswordReset, PasswordUpdate, PasswordConfirmation, EmailVerification)
 tests/Unit/     - AssetTest, TagTest, SettingTest, UserPreferencesTest, TwoFactorServiceTest, JwtGuardTest,
@@ -211,6 +212,8 @@ Web-based test runner at `/system` -> Tests tab (admin only).
 **Import Metadata** (admin): Paste/upload CSV -> preview matched assets with change diffs -> import. Matches by `s3_key` or `filename`. Updates metadata fields (alt_text, caption, license, copyright). Tags are lowercased, added via `syncWithoutDetaching` (never removed). Empty CSV fields are skipped. Invalid license types and date formats are rejected.
 
 **Trash** (admin): Soft delete keeps S3 files. Restore returns to active. Force delete removes S3 objects (original + thumbnail + resized variants) + DB permanently.
+
+**Bulk Move** (admin, maintenance mode): Select assets on index → pick destination folder → S3 objects moved (copy+delete) for original, thumbnail, and resize variants → DB keys updated. Destination must be within configured S3 folders. Shows copyable summary of old→new keys. Enable via `maintenance_mode` setting in System → Settings.
 
 **S3 Integrity** (admin): `assets:verify-integrity` command dispatches `VerifyAssetIntegrity` jobs for all assets -> each job checks S3 object existence via `getObjectMetadata()` -> sets `s3_missing_at` timestamp if missing, clears if found. System page card shows live status with AJAX refresh. Assets index supports `?missing=1` filter.
 

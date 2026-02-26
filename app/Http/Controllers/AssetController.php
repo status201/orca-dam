@@ -10,6 +10,8 @@ use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AssetController extends Controller
 {
@@ -594,6 +596,121 @@ class AssetController extends Controller
             'tags' => array_values($tagCounts),
             'total_assets' => $assets->count(),
         ]);
+    }
+
+    /**
+     * Move multiple assets to a different S3 folder
+     */
+    public function bulkMoveAssets(Request $request)
+    {
+        $this->authorize('move', Asset::class);
+
+        $configuredFolders = S3Service::getConfiguredFolders();
+
+        $request->validate([
+            'asset_ids' => 'required|array|max:500',
+            'asset_ids.*' => 'integer|exists:assets,id',
+            'destination_folder' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\/_-]+$/', function ($attribute, $value, $fail) use ($configuredFolders) {
+                $folder = rtrim($value, '/');
+                $isConfigured = collect($configuredFolders)->contains(function ($configured) use ($folder) {
+                    return $folder === $configured || str_starts_with($folder.'/', $configured.'/');
+                });
+                if (! $isConfigured) {
+                    $fail(__('The destination folder must be within a configured S3 folder.'));
+                }
+            }],
+        ]);
+
+        $destinationFolder = rtrim($request->input('destination_folder'), '/');
+        $assets = Asset::whereIn('id', $request->asset_ids)->get();
+        $moved = 0;
+        $failed = 0;
+        $moves = [];
+
+        foreach ($assets as $asset) {
+            $oldS3Key = $asset->s3_key;
+            $oldDir = dirname($oldS3Key);
+
+            // Skip if already in target folder
+            if ($oldDir === $destinationFolder) {
+                continue;
+            }
+
+            $rootPrefix = S3Service::getRootPrefix();
+
+            // Compute new s3_key
+            $newS3Key = $destinationFolder.'/'.basename($oldS3Key);
+
+            // Move main file
+            if (! $this->s3Service->moveObject($oldS3Key, $newS3Key)) {
+                $failed++;
+
+                continue;
+            }
+
+            $updateData = ['s3_key' => $newS3Key];
+
+            // Compute the new relative folder for thumbnail/resize key reconstruction
+            $newRelativePath = ($rootPrefix !== '' && str_starts_with($newS3Key, $rootPrefix))
+                ? substr($newS3Key, strlen($rootPrefix))
+                : $newS3Key;
+            $newFolder = dirname($newRelativePath);
+            $newFolder = ($newFolder === '.' || $newFolder === '') ? '' : $newFolder.'/';
+
+            // Move associated keys (thumbnail, resize variants)
+            $derivedKeys = $this->computeDerivedKeys($newS3Key, $newFolder);
+            foreach ($derivedKeys as $column => $newKey) {
+                if ($asset->{$column} && $newKey !== $asset->{$column}) {
+                    $this->s3Service->moveObject($asset->{$column}, $newKey);
+                    $updateData[$column] = $newKey;
+                }
+            }
+
+            $asset->update($updateData);
+
+            Log::info("Asset moved: {$oldS3Key} -> {$newS3Key}");
+            $moves[] = ['old' => $oldS3Key, 'new' => $newS3Key];
+            $moved++;
+        }
+
+        return response()->json([
+            'message' => __(':moved asset(s) moved successfully', ['moved' => $moved]),
+            'moved' => $moved,
+            'failed' => $failed,
+            'moves' => $moves,
+        ]);
+    }
+
+    /**
+     * Compute the expected thumbnail and resize keys for a given s3_key,
+     * mirroring the logic in S3Service::generateThumbnail/generateResizedImages.
+     */
+    private function computeDerivedKeys(string $newS3Key, string $relativeFolder): array
+    {
+        $basename = pathinfo(basename($newS3Key), PATHINFO_FILENAME);
+        $extension = strtolower(pathinfo($newS3Key, PATHINFO_EXTENSION));
+
+        // Thumbnail: thumbnails/{folder}/basename_thumb.jpg (always JPEG)
+        $thumbnailKey = 'thumbnails/'.$relativeFolder
+            .Str::replaceLast('.', '_thumb.', basename($newS3Key));
+        // Ensure .jpg extension (matches S3Service::uploadThumbnail)
+        $thumbnailKey = preg_replace('/\.[^.]+$/', '.jpg', $thumbnailKey);
+
+        // Resize variants: thumbnails/{S|M|L}/{folder}/basename.ext
+        // GIFs become JPEG, other non-jpg/png/webp become JPEG too (matches S3Service::generateResizedImages)
+        $outputExtension = $extension;
+        if (in_array($extension, ['gif', 'bmp', 'tiff', 'tif', 'eps'])) {
+            $outputExtension = 'jpg';
+        } elseif (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp'])) {
+            $outputExtension = 'jpg';
+        }
+
+        return [
+            'thumbnail_s3_key' => $thumbnailKey,
+            'resize_s_s3_key' => "thumbnails/S/{$relativeFolder}{$basename}.{$outputExtension}",
+            'resize_m_s3_key' => "thumbnails/M/{$relativeFolder}{$basename}.{$outputExtension}",
+            'resize_l_s3_key' => "thumbnails/L/{$relativeFolder}{$basename}.{$outputExtension}",
+        ];
     }
 
     /**

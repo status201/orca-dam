@@ -741,14 +741,82 @@
                     </div>
                 </div>
 
+                @if(auth()->user()->isAdmin() && \App\Models\Setting::get('maintenance_mode', false))
+                <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
+
+                <!-- Bulk move -->
+                <div class="relative">
+                    <button @click="bulkMoveOpen = !bulkMoveOpen"
+                            :disabled="bulkMoving"
+                            class="attention px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap">
+                        <i class="fas fa-folder-open mr-1"></i> {{ __('Move asset(s)') }}
+                        <i :class="bulkMoving ? 'fas fa-spinner fa-spin ml-1' : ''"></i>
+                    </button>
+
+                    <!-- Folder picker panel (opens upward) -->
+                    <div x-show="bulkMoveOpen"
+                         x-cloak
+                         @click.away="bulkMoveOpen = false"
+                         class="absolute bottom-full mb-2 left-0 w-72 bg-white border border-gray-300 rounded-lg shadow-xl p-3">
+                        <p class="text-xs text-gray-500 mb-2">{{ __('Select destination folder') }}</p>
+                        <select x-model="bulkMoveFolder" class="w-full text-black px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent mb-2">
+                            <option value="">{{ __('Select folder') }}...</option>
+                            <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
+                        </select>
+                        <button @click="bulkMoveApply()"
+                                :disabled="!bulkMoveFolder || bulkMoving"
+                                class="attention w-full px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50">
+                            <i class="fas fa-arrows-alt mr-1"></i> {{ __('Apply') }}
+                        </button>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Spacer -->
                 <div class="flex-1"></div>
 
                 <!-- Clear selection -->
-                <button @click="$store.bulkSelection.clear(); bulkShowRemovePanel = false"
+                <button @click="$store.bulkSelection.clear(); bulkShowRemovePanel = false; bulkMoveOpen = false"
                         class="px-3 py-1.5 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600 whitespace-nowrap">
                     <i class="fas fa-times mr-1"></i> {{ __('Clear selection') }}
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk move summary modal -->
+    <div x-show="bulkMoveShowSummary"
+         x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+         @keydown.escape.window="bulkMoveDismissSummary()">
+        <div class="bg-white rounded-lg shadow-xl max-w-xl w-full mx-4" @click.away="bulkMoveDismissSummary()">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="attention fas fa-check-circle text-green-500 mr-2"></i>{{ __('Assets moved') }}
+                </h3>
+                <button @click="bulkMoveDismissSummary()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-3">
+                    <span x-text="bulkMoveResults?.moved || 0"></span> {{ __('asset(s) moved. Old → new S3 keys:') }}
+                </p>
+                <textarea readonly
+                          x-ref="moveSummaryText"
+                          :value="bulkMoveSummaryText"
+                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
+                          @focus="$event.target.select()"></textarea>
+                <div class="mt-4 flex justify-end gap-3">
+                    <button @click="bulkMoveCopySummary()"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-copy mr-1"></i> {{ __('Copy') }}
+                    </button>
+                    <button @click="bulkMoveDismissSummary()"
+                            class="px-4 py-2 bg-orca-black text-white text-sm rounded-lg hover:bg-orca-black-hover">
+                        {{ __('Done') }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -806,7 +874,9 @@ window.assetTranslations = {
     licenseUpdateFailed: @js(__('Failed to update license')),
     deleteConfirm: @js(__('Are you sure you want to delete this asset? It will be moved to trash.')),
     assetDeleted: @js(__('Asset deleted successfully')),
-    assetDeleteFailed: @js(__('Failed to delete asset'))
+    assetDeleteFailed: @js(__('Failed to delete asset')),
+    moveConfirm: @js(__('This will change the S3 keys of the selected assets. External links to the old URLs will break. Are you sure?')),
+    moveFailed: @js(__('Failed to move assets'))
 };
 </script>
 @endpush

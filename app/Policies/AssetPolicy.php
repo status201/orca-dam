@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Asset;
+use App\Models\Setting;
 use App\Models\User;
 
 class AssetPolicy
@@ -98,5 +99,13 @@ class AssetPolicy
     public function export(User $user): bool
     {
         return $user->isAdmin();
+    }
+
+    /**
+     * Determine whether the user can move assets between folders.
+     */
+    public function move(User $user): bool
+    {
+        return $user->isAdmin() && (bool) Setting::get('maintenance_mode', false);
     }
 }

@@ -15,7 +15,8 @@
 7. [Assetgegevens bewerken](#assetgegevens-bewerken)
 8. [Assets vervangen](#assets-vervangen)
 9. [De Prullenbak (alleen admin)](#de-prullenbak-alleen-admin)
-10. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
+10. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
+11. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
 11. [Discover-functie (alleen admin)](#discover-functie-alleen-admin)
 12. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
 13. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
@@ -212,9 +213,25 @@ Dit is je vangnet: per ongeluk iets verwijderd? Herstel het! Wil je controleren 
 
 ---
 
+## Bulksgewijs verplaatsen (alleen admin)
+
+Admins kunnen assets tussen S3-mappen verplaatsen wanneer de **onderhoudsmodus** is ingeschakeld (Systeem → Instellingen → Onderhoud).
+
+1. Schakel **onderhoudsmodus** in via Systeem → Instellingen
+2. Ga naar de assetpagina en selecteer de bestanden die je wilt verplaatsen
+3. Klik op de oranje **Verplaatsen**-knop in de bulkactiebalk
+4. Kies de doelmap en klik op **Toepassen**
+5. Bevestig de waarschuwing — S3-keys veranderen, waardoor oude externe links niet meer werken
+6. Een overzicht toont oude → nieuwe keys (kopieerbaar) zodat je referenties kunt bijwerken
+7. Schakel de onderhoudsmodus uit wanneer je klaar bent
+
+Alle bijbehorende bestanden (miniatuur, formaatpresets S/M/L) worden automatisch meeverplaatst.
+
+---
+
 ## Bestanden verplaatsen (de omweg)
 
-Omdat ORCA geen bestanden kan verplaatsen (het zou links breken!), is hier de workaround:
+Als de onderhoudsmodus niet beschikbaar is, of je een enkel bestand zonder admin-toegang wilt verplaatsen, is hier de handmatige workaround:
 
 1. **Download** het bestand naar je computer
 2. **Soft delete** het origineel in ORCA

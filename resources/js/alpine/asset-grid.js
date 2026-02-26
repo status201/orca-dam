@@ -26,6 +26,11 @@ export function assetGrid() {
         bulkRemoveTags: [],
         bulkShowRemovePanel: false,
         bulkLoading: false,
+        bulkMoveOpen: false,
+        bulkMoveFolder: '',
+        bulkMoving: false,
+        bulkMoveResults: null,
+        bulkMoveShowSummary: false,
 
         init() {},
 
@@ -204,6 +209,70 @@ export function assetGrid() {
             } finally {
                 this.bulkLoading = false;
             }
+        },
+
+        async bulkMoveApply() {
+            const translations = window.assetTranslations || {};
+            if (!this.bulkMoveFolder) return;
+            if (!confirm(translations.moveConfirm || 'This will change the S3 keys of the selected assets. External links to the old URLs will break. Are you sure?')) {
+                return;
+            }
+
+            this.bulkMoving = true;
+            try {
+                const response = await fetch('/assets/bulk/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.getCsrfToken(),
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        asset_ids: Alpine.store('bulkSelection').selected,
+                        destination_folder: this.bulkMoveFolder,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Failed to move assets');
+                }
+
+                const data = await response.json();
+                window.showToast(data.message, 'success');
+
+                if (data.moves && data.moves.length > 0) {
+                    this.bulkMoveResults = data;
+                    this.bulkMoveShowSummary = true;
+                } else {
+                    setTimeout(() => window.location.reload(), 800);
+                }
+            } catch (error) {
+                console.error('Bulk move failed:', error);
+                window.showToast(translations.moveFailed || 'Failed to move assets', 'error');
+            } finally {
+                this.bulkMoving = false;
+                this.bulkMoveOpen = false;
+            }
+        },
+
+        get bulkMoveSummaryText() {
+            if (!this.bulkMoveResults || !this.bulkMoveResults.moves) return '';
+            return this.bulkMoveResults.moves.map(m => `${m.old} → ${m.new}`).join('\n');
+        },
+
+        bulkMoveCopySummary() {
+            if (window.copyToClipboard) {
+                window.copyToClipboard(this.bulkMoveSummaryText);
+            } else {
+                navigator.clipboard.writeText(this.bulkMoveSummaryText);
+            }
+        },
+
+        bulkMoveDismissSummary() {
+            this.bulkMoveShowSummary = false;
+            this.bulkMoveResults = null;
+            window.location.reload();
         },
 
         async bulkRemoveTag(tagId) {

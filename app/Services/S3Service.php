@@ -367,6 +367,35 @@ class S3Service
     }
 
     /**
+     * Move (copy + delete) an S3 object to a new key
+     */
+    public function moveObject(string $sourceKey, string $destinationKey): bool
+    {
+        try {
+            $this->s3Client->copyObject([
+                'Bucket' => $this->bucket,
+                'CopySource' => "{$this->bucket}/{$sourceKey}",
+                'Key' => $destinationKey,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("S3 copy failed ({$sourceKey} -> {$destinationKey}): ".$e->getMessage());
+
+            return false;
+        }
+
+        try {
+            $this->s3Client->deleteObject([
+                'Bucket' => $this->bucket,
+                'Key' => $sourceKey,
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning("S3 delete after copy failed ({$sourceKey}): ".$e->getMessage());
+        }
+
+        return true;
+    }
+
+    /**
      * Delete a file from S3
      */
     public function deleteFile(string $s3Key): bool

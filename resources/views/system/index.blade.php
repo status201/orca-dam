@@ -532,6 +532,37 @@
             </div>
         </div>
 
+        <!-- Maintenance Settings -->
+        <div class="bg-white rounded-lg shadow overflow-hidden border border-amber-200">
+            <div class="bg-amber-50 border-b border-amber-200 px-6 py-4">
+                <h4 class="text-base font-semibold text-gray-900">
+                    <i class="attention fas fa-tools mr-2 text-amber-500"></i>{{ __('Maintenance') }}
+                </h4>
+                <p class="text-sm text-gray-500 mt-1">{{ __('Maintenance tools for reorganizing assets') }}</p>
+            </div>
+            <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">
+                            {{ __('Maintenance mode') }}
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1">{{ __('Enables the bulk Move button on the assets page for admins') }}</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox"
+                               x-model="settings.maintenance_mode"
+                               @change="updateSetting('maintenance_mode', settings.maintenance_mode ? '1' : '0')"
+                               :checked="settings.maintenance_mode === '1' || settings.maintenance_mode === true"
+                               class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                </div>
+                <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p class="text-xs text-amber-700"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Moving assets changes their S3 keys. This will break any external links pointing to the old URLs. Only use this during initial setup or planned reorganization.') }}</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Info Box -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h4 class="text-sm font-semibold text-blue-900 mb-2">
@@ -1294,6 +1325,7 @@ window.__systemPageData = {
         resize_l_height: '{{ collect($settings)->firstWhere('key', 'resize_l_height')['value'] ?? '' }}',
         jwtSettingEnabled: '{{ filter_var(collect($settings)->firstWhere('key', 'jwt_enabled_override')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? '1' : '0' }}',
         metaEndpointEnabled: '{{ filter_var(collect($settings)->firstWhere('key', 'api_meta_endpoint_enabled')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? '1' : '0' }}',
+        maintenance_mode: {{ filter_var(collect($settings)->firstWhere('key', 'maintenance_mode')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' }},
     },
     routes: {
         queueStatus: '{{ route('system.queue-status') }}',

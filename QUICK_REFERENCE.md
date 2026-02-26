@@ -209,6 +209,7 @@ DELETE /assets/{id}/tags/{tag}  # Remove tag
 POST /assets/bulk/tags         # Bulk add tags to selected assets
 POST /assets/bulk/tags/remove  # Bulk remove tags from selected assets
 POST /assets/bulk/tags/list    # Get tags for selected assets
+POST /assets/bulk/move         # Bulk move assets between folders (admin, maintenance mode)
 GET  /assets/trash/index       # View trash (admin)
 POST /assets/{id}/restore      # Restore from trash (admin)
 DELETE /assets/{id}/force-delete # Permanent delete (admin)

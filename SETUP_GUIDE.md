@@ -280,7 +280,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 
 ### 5. User Roles
 - **Editors**: Upload and manage all assets (view, edit filenames/metadata, soft delete), set personal preferences
-- **Admins**: Full access including trash management, restore/permanent delete, discover, export, user management, system settings, and API token/JWT secret management
+- **Admins**: Full access including trash management, restore/permanent delete, discover, export, bulk move (maintenance mode), user management, system settings, and API token/JWT secret management
 - **API Users**: API-only access for external integrations (view, create, update assets; no delete or admin features)
 
 ### 6. User Preferences

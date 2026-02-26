@@ -15,7 +15,8 @@
 7. [Editing Asset Details](#editing-asset-details)
 8. [Replacing Assets](#replacing-assets)
 9. [The Trash (Admin Only)](#the-trash-admin-only)
-10. [Moving Files (The Long Way)](#moving-files-the-long-way)
+10. [Bulk Move (Admin Only)](#bulk-move-admin-only)
+11. [Moving Files (The Long Way)](#moving-files-the-long-way)
 11. [Discover Feature (Admin Only)](#discover-feature-admin-only)
 12. [Import Metadata (Admin Only)](#import-metadata-admin-only)
 13. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
@@ -212,9 +213,25 @@ It's your safety net: accidentally deleted something? Restore it! Need to audit 
 
 ---
 
+## Bulk Move (Admin Only)
+
+Admins can move assets between S3 folders when **maintenance mode** is enabled (System → Settings → Maintenance).
+
+1. Enable **maintenance mode** in System → Settings
+2. Go to the assets page and select the files you want to move
+3. Click the amber **Move** button in the bulk action bar
+4. Pick the destination folder and click **Apply**
+5. Confirm the warning — S3 keys will change, breaking any old external links
+6. A summary shows old → new keys (copyable) so you can update references
+7. Disable maintenance mode when done
+
+All associated files (thumbnail, resize variants S/M/L) are moved automatically.
+
+---
+
 ## Moving Files (The Long Way)
 
-Since ORCA doesn't allow moving files (it would break links!), here's the workaround:
+If maintenance mode is not available, or you need to move a single file without admin access, here's the manual workaround:
 
 1. **Download** the file to your computer
 2. **Soft delete** the original in ORCA
