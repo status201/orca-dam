@@ -401,6 +401,11 @@ export function systemAdmin() {
                     if (key === 's3_root_folder') {
                         await this.refreshFolderHierarchy();
                     }
+
+                    // Toggle caution tape on nav when maintenance mode changes
+                    if (key === 'maintenance_mode') {
+                        document.querySelector('nav')?.classList.toggle('maintenance-mode', value === '1');
+                    }
                 } else {
                     this.settingsError = result.error || pageData.translations.failedSaveSetting;
                     window.showToast(this.settingsError, 'error');

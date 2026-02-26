@@ -554,11 +554,11 @@
                                @change="updateSetting('maintenance_mode', settings.maintenance_mode ? '1' : '0')"
                                :checked="settings.maintenance_mode === '1' || settings.maintenance_mode === true"
                                class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <div class="attention w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
                 <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p class="text-xs text-amber-700"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Moving assets changes their S3 keys. This will break any external links pointing to the old URLs. Only use this during initial setup or planned reorganization.') }}</p>
+                    <p class="attention text-xs text-amber-700"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Moving assets changes their S3 keys. This will break any external links pointing to the old URLs. Only use this during initial setup or planned reorganization.') }}</p>
                 </div>
             </div>
         </div>
