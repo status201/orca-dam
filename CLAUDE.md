@@ -109,8 +109,8 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 | GET | `/api/assets/meta` | **Public** (no auth) - metadata by URL |
 | GET | `/api/health` | **Public** (no auth) - health check (200/503) |
 | GET | `/api/tags` | List tags (optional type filter) |
-| POST | `/api/reference-tags` | Add reference tags to asset (by asset_id or s3_key) |
-| DELETE | `/api/reference-tags/{tag}` | Remove reference tag from asset |
+| POST | `/api/reference-tags` | Add reference tags to asset(s) (by asset_id/asset_ids/s3_key/s3_keys) |
+| DELETE | `/api/reference-tags/{tag}` | Remove reference tag from asset(s) (by asset_id/asset_ids/s3_key/s3_keys) |
 
 **Sort values**: `date_desc` (default), `date_asc`, `upload_desc`, `upload_asc`, `size_desc`, `size_asc`, `name_asc`, `name_desc`, `s3key_asc`, `s3key_desc`
 

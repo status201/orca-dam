@@ -930,8 +930,8 @@
     "/api/reference-tags": {
       "post": {
         "tags": ["Reference Tags"],
-        "summary": "Add reference tags to asset",
-        "description": "Create and assign reference tags to an asset. Used by external systems to track which assets they reference. Identify the asset by either `asset_id` or `s3_key` (exactly one required).",
+        "summary": "Add reference tags to asset(s)",
+        "description": "Create and assign reference tags to one or more assets. Supports batch operations via `asset_ids` and `s3_keys` arrays. At least one identifier (`asset_id`, `asset_ids`, `s3_key`, or `s3_keys`) is required. All forms can be combined in a single request.",
         "operationId": "addReferenceTags",
         "requestBody": {
           "required": true,
@@ -942,33 +942,57 @@
                 "properties": {
                   "asset_id": {
                     "type": "integer",
-                    "description": "Asset ID (provide this OR s3_key, not both)"
+                    "description": "Single asset ID"
+                  },
+                  "asset_ids": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "maxItems": 500,
+                    "description": "Array of asset IDs (batch)"
                   },
                   "s3_key": {
                     "type": "string",
-                    "description": "S3 key of the asset (provide this OR asset_id, not both)"
+                    "description": "Single S3 key"
+                  },
+                  "s3_keys": {
+                    "type": "array",
+                    "items": { "type": "string", "maxLength": 1024 },
+                    "maxItems": 500,
+                    "description": "Array of S3 keys (batch)"
                   },
                   "tags": {
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "maxLength": 50
+                      "maxLength": 100
                     },
                     "description": "Array of reference tag names (e.g., external IDs like '2F.4.6.2')"
                   }
                 },
                 "required": ["tags"]
               },
-              "example": {
-                "s3_key": "assets/abc123-uuid.jpg",
-                "tags": ["2F.4.6.2", "REF-001"]
+              "examples": {
+                "single": {
+                  "summary": "Single asset",
+                  "value": {
+                    "s3_key": "assets/abc123-uuid.jpg",
+                    "tags": ["2F.4.6.2", "REF-001"]
+                  }
+                },
+                "batch": {
+                  "summary": "Batch (multiple assets)",
+                  "value": {
+                    "asset_ids": [1, 2, 3],
+                    "tags": ["slideshow-42"]
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Reference tags added successfully",
+            "description": "Reference tags added",
             "content": {
               "application/json": {
                 "schema": {
@@ -976,10 +1000,16 @@
                   "properties": {
                     "message": {
                       "type": "string",
-                      "example": "Reference tags added successfully"
+                      "example": "Reference tags added to 3 asset(s)"
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Asset"
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Asset" }
+                    },
+                    "not_found_s3_keys": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "S3 keys that did not match any asset (only present when s3_key/s3_keys had misses)"
                     }
                   }
                 }
@@ -1001,8 +1031,8 @@
     "/api/reference-tags/{tag}": {
       "delete": {
         "tags": ["Reference Tags"],
-        "summary": "Remove reference tag from asset",
-        "description": "Detach a reference tag from an asset. Only tags of type `reference` can be removed via this endpoint. Identify the asset by either `asset_id` or `s3_key` query parameter.",
+        "summary": "Remove reference tag from asset(s)",
+        "description": "Detach a reference tag from one or more assets. Only tags of type `reference` can be removed via this endpoint. Supports batch operations via `asset_ids` and `s3_keys` arrays. At least one identifier is required.",
         "operationId": "removeReferenceTag",
         "parameters": [
           {
@@ -1013,29 +1043,53 @@
             "schema": {
               "type": "integer"
             }
-          },
-          {
-            "name": "asset_id",
-            "in": "query",
-            "description": "Asset ID (provide this OR s3_key, not both)",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "s3_key",
-            "in": "query",
-            "description": "S3 key of the asset (provide this OR asset_id, not both)",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "asset_id": {
+                    "type": "integer",
+                    "description": "Single asset ID"
+                  },
+                  "asset_ids": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "maxItems": 500,
+                    "description": "Array of asset IDs (batch)"
+                  },
+                  "s3_key": {
+                    "type": "string",
+                    "description": "Single S3 key"
+                  },
+                  "s3_keys": {
+                    "type": "array",
+                    "items": { "type": "string", "maxLength": 1024 },
+                    "maxItems": 500,
+                    "description": "Array of S3 keys (batch)"
+                  }
+                }
+              },
+              "examples": {
+                "single": {
+                  "summary": "Single asset",
+                  "value": { "asset_id": 1 }
+                },
+                "batch": {
+                  "summary": "Batch (multiple assets)",
+                  "value": { "asset_ids": [1, 2, 3] }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Reference tag removed successfully",
+            "description": "Reference tag removed",
             "content": {
               "application/json": {
                 "schema": {
@@ -1043,7 +1097,12 @@
                   "properties": {
                     "message": {
                       "type": "string",
-                      "example": "Reference tag removed from asset"
+                      "example": "Reference tag removed from 3 asset(s)"
+                    },
+                    "not_found_s3_keys": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "S3 keys that did not match any asset (only present when s3_key/s3_keys had misses)"
                     }
                   }
                 }

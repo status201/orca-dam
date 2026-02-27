@@ -248,60 +248,171 @@ class AssetApiController extends Controller
     }
 
     /**
-     * Add reference tags to an asset
+     * Add reference tags to one or more assets
+     *
+     * Accepts singular (asset_id, s3_key) or batch (asset_ids, s3_keys) identifiers.
      */
     public function addReferenceTags(Request $request)
     {
-        $request->validate([
-            'asset_id' => 'required_without:s3_key|integer|exists:assets,id',
-            's3_key' => 'required_without:asset_id|string|max:1024',
+        $validator = validator($request->all(), [
+            'asset_id' => 'integer|exists:assets,id',
+            'asset_ids' => 'array|max:500',
+            'asset_ids.*' => 'integer|exists:assets,id',
+            's3_key' => 'string|max:1024',
+            's3_keys' => 'array|max:500',
+            's3_keys.*' => 'string|max:1024',
             'tags' => 'required|array|min:1|max:100',
             'tags.*' => 'string|max:100',
         ]);
 
-        $asset = $request->has('asset_id')
-            ? Asset::find($request->input('asset_id'))
-            : Asset::where('s3_key', $request->input('s3_key'))->first();
+        $validator->after(function ($validator) use ($request) {
+            if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
+                $validator->errors()->add('identifiers', 'At least one of asset_id, asset_ids, s3_key, or s3_keys is required.');
+            }
+        });
 
-        if (! $asset) {
-            return response()->json(['message' => 'Asset not found'], 404);
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
+
+        // Collect assets from all identifier sources
+        $assets = collect();
+        $notFoundS3Keys = [];
+
+        if ($request->has('asset_id')) {
+            $asset = Asset::find($request->input('asset_id'));
+            if ($asset) {
+                $assets->push($asset);
+            }
+        }
+
+        if ($request->has('asset_ids')) {
+            $found = Asset::whereIn('id', $request->input('asset_ids'))->get();
+            $assets = $assets->merge($found);
+        }
+
+        if ($request->has('s3_key')) {
+            $asset = Asset::where('s3_key', $request->input('s3_key'))->first();
+            if ($asset) {
+                $assets->push($asset);
+            } else {
+                $notFoundS3Keys[] = $request->input('s3_key');
+            }
+        }
+
+        if ($request->has('s3_keys')) {
+            $found = Asset::whereIn('s3_key', $request->input('s3_keys'))->get();
+            $assets = $assets->merge($found);
+
+            $foundKeys = $found->pluck('s3_key')->toArray();
+            $notFoundS3Keys = array_merge($notFoundS3Keys, array_diff($request->input('s3_keys'), $foundKeys));
+        }
+
+        $assets = $assets->unique('id');
+
+        if ($assets->isEmpty()) {
+            return response()->json(['message' => 'No assets found'], 404);
         }
 
         $tagIds = Tag::resolveReferenceTagIds($request->input('tags'));
-        $asset->tags()->syncWithoutDetaching($tagIds);
 
-        return response()->json([
-            'message' => 'Reference tags added successfully',
-            'data' => $asset->fresh(['tags']),
-        ]);
+        foreach ($assets as $asset) {
+            $asset->tags()->syncWithoutDetaching($tagIds);
+        }
+
+        $response = [
+            'message' => 'Reference tags added to '.$assets->count().' asset(s)',
+            'data' => Asset::with('tags')->whereIn('id', $assets->pluck('id'))->get(),
+        ];
+
+        if (! empty($notFoundS3Keys)) {
+            $response['not_found_s3_keys'] = array_values($notFoundS3Keys);
+        }
+
+        return response()->json($response);
     }
 
     /**
-     * Remove a reference tag from an asset
+     * Remove a reference tag from one or more assets
+     *
+     * Accepts singular (asset_id, s3_key) or batch (asset_ids, s3_keys) identifiers.
      */
     public function removeReferenceTag(Request $request, Tag $tag)
     {
-        $request->validate([
-            'asset_id' => 'required_without:s3_key|integer|exists:assets,id',
-            's3_key' => 'required_without:asset_id|string|max:1024',
+        $validator = validator($request->all(), [
+            'asset_id' => 'integer|exists:assets,id',
+            'asset_ids' => 'array|max:500',
+            'asset_ids.*' => 'integer|exists:assets,id',
+            's3_key' => 'string|max:1024',
+            's3_keys' => 'array|max:500',
+            's3_keys.*' => 'string|max:1024',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
+                $validator->errors()->add('identifiers', 'At least one of asset_id, asset_ids, s3_key, or s3_keys is required.');
+            }
+        });
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
 
         if ($tag->type !== 'reference') {
             return response()->json(['message' => 'Only reference tags can be removed via this endpoint'], 422);
         }
 
-        $asset = $request->has('asset_id')
-            ? Asset::find($request->input('asset_id'))
-            : Asset::where('s3_key', $request->input('s3_key'))->first();
+        // Collect assets from all identifier sources
+        $assets = collect();
+        $notFoundS3Keys = [];
 
-        if (! $asset) {
-            return response()->json(['message' => 'Asset not found'], 404);
+        if ($request->has('asset_id')) {
+            $asset = Asset::find($request->input('asset_id'));
+            if ($asset) {
+                $assets->push($asset);
+            }
         }
 
-        $asset->tags()->detach($tag->id);
+        if ($request->has('asset_ids')) {
+            $found = Asset::whereIn('id', $request->input('asset_ids'))->get();
+            $assets = $assets->merge($found);
+        }
 
-        return response()->json([
-            'message' => 'Reference tag removed successfully',
-        ]);
+        if ($request->has('s3_key')) {
+            $asset = Asset::where('s3_key', $request->input('s3_key'))->first();
+            if ($asset) {
+                $assets->push($asset);
+            } else {
+                $notFoundS3Keys[] = $request->input('s3_key');
+            }
+        }
+
+        if ($request->has('s3_keys')) {
+            $found = Asset::whereIn('s3_key', $request->input('s3_keys'))->get();
+            $assets = $assets->merge($found);
+
+            $foundKeys = $found->pluck('s3_key')->toArray();
+            $notFoundS3Keys = array_merge($notFoundS3Keys, array_diff($request->input('s3_keys'), $foundKeys));
+        }
+
+        $assets = $assets->unique('id');
+
+        if ($assets->isEmpty()) {
+            return response()->json(['message' => 'No assets found'], 404);
+        }
+
+        foreach ($assets as $asset) {
+            $asset->tags()->detach($tag->id);
+        }
+
+        $response = [
+            'message' => 'Reference tag removed from '.$assets->count().' asset(s)',
+        ];
+
+        if (! empty($notFoundS3Keys)) {
+            $response['not_found_s3_keys'] = array_values($notFoundS3Keys);
+        }
+
+        return response()->json($response);
     }
 }

@@ -445,7 +445,7 @@ test('api can add reference tags to asset by asset_id', function () {
     ]);
 
     $response->assertOk();
-    $response->assertJsonFragment(['message' => 'Reference tags added successfully']);
+    $response->assertJsonFragment(['message' => 'Reference tags added to 1 asset(s)']);
 
     $asset->refresh();
     expect($asset->tags)->toHaveCount(2);
@@ -498,7 +498,7 @@ test('api can remove reference tag from asset', function () {
     $response = $this->deleteJson("/api/reference-tags/{$tag->id}?asset_id={$asset->id}");
 
     $response->assertOk();
-    $response->assertJsonFragment(['message' => 'Reference tag removed successfully']);
+    $response->assertJsonFragment(['message' => 'Reference tag removed from 1 asset(s)']);
 
     $asset->refresh();
     expect($asset->tags)->toHaveCount(0);
@@ -525,6 +525,148 @@ test('api reference tags endpoint requires authentication', function () {
     ]);
 
     $response->assertUnauthorized();
+});
+
+// Batch Reference Tags API tests
+
+test('api can add reference tags to multiple assets via asset_ids', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $assets = Asset::factory()->count(3)->create();
+
+    $response = $this->postJson('/api/reference-tags', [
+        'asset_ids' => $assets->pluck('id')->toArray(),
+        'tags' => ['batch-ref-1', 'batch-ref-2'],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tags added to 3 asset(s)']);
+    expect($response->json('data'))->toHaveCount(3);
+
+    foreach ($assets as $asset) {
+        $asset->refresh();
+        expect($asset->tags->where('type', 'reference')->count())->toBe(2);
+    }
+});
+
+test('api can add reference tags to multiple assets via s3_keys', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset1 = Asset::factory()->create(['s3_key' => 'assets/batch-1.jpg']);
+    $asset2 = Asset::factory()->create(['s3_key' => 'assets/batch-2.jpg']);
+
+    $response = $this->postJson('/api/reference-tags', [
+        's3_keys' => ['assets/batch-1.jpg', 'assets/batch-2.jpg'],
+        'tags' => ['s3-batch-ref'],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tags added to 2 asset(s)']);
+
+    foreach ([$asset1, $asset2] as $asset) {
+        $asset->refresh();
+        expect($asset->tags->where('name', 's3-batch-ref')->count())->toBe(1);
+    }
+});
+
+test('api can add reference tags with mixed asset_ids and s3_keys', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset1 = Asset::factory()->create();
+    $asset2 = Asset::factory()->create(['s3_key' => 'assets/mixed-batch.jpg']);
+
+    $response = $this->postJson('/api/reference-tags', [
+        'asset_ids' => [$asset1->id],
+        's3_keys' => ['assets/mixed-batch.jpg'],
+        'tags' => ['mixed-ref'],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tags added to 2 asset(s)']);
+
+    foreach ([$asset1, $asset2] as $asset) {
+        $asset->refresh();
+        expect($asset->tags->where('name', 'mixed-ref')->count())->toBe(1);
+    }
+});
+
+test('api batch reference tags reports not found s3_keys', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['s3_key' => 'assets/exists.jpg']);
+
+    $response = $this->postJson('/api/reference-tags', [
+        's3_keys' => ['assets/exists.jpg', 'assets/missing.jpg'],
+        'tags' => ['partial-ref'],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tags added to 1 asset(s)']);
+    expect($response->json('not_found_s3_keys'))->toBe(['assets/missing.jpg']);
+
+    $asset->refresh();
+    expect($asset->tags->where('name', 'partial-ref')->count())->toBe(1);
+});
+
+test('api batch reference tags returns 422 when no identifiers provided', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson('/api/reference-tags', [
+        'tags' => ['orphan-ref'],
+    ]);
+
+    $response->assertStatus(422);
+});
+
+test('api can remove reference tag from multiple assets via asset_ids', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $assets = Asset::factory()->count(3)->create();
+    $tag = Tag::factory()->reference()->create(['name' => 'batch-remove']);
+    foreach ($assets as $asset) {
+        $asset->tags()->attach($tag);
+    }
+
+    $response = $this->deleteJson("/api/reference-tags/{$tag->id}", [
+        'asset_ids' => $assets->pluck('id')->toArray(),
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tag removed from 3 asset(s)']);
+
+    foreach ($assets as $asset) {
+        $asset->refresh();
+        expect($asset->tags)->toHaveCount(0);
+    }
+});
+
+test('api can remove reference tag from multiple assets via s3_keys', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset1 = Asset::factory()->create(['s3_key' => 'assets/rm-batch-1.jpg']);
+    $asset2 = Asset::factory()->create(['s3_key' => 'assets/rm-batch-2.jpg']);
+    $tag = Tag::factory()->reference()->create(['name' => 'rm-s3-batch']);
+    $asset1->tags()->attach($tag);
+    $asset2->tags()->attach($tag);
+
+    $response = $this->deleteJson("/api/reference-tags/{$tag->id}", [
+        's3_keys' => ['assets/rm-batch-1.jpg', 'assets/rm-batch-2.jpg'],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tag removed from 2 asset(s)']);
+
+    foreach ([$asset1, $asset2] as $asset) {
+        $asset->refresh();
+        expect($asset->tags)->toHaveCount(0);
+    }
 });
 
 test('api update preserves reference tags when updating user tags', function () {

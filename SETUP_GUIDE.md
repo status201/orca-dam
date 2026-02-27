@@ -529,16 +529,23 @@ GET /api/tags?type=user
 ```
 
 #### Reference Tags (External System Usage Tracking)
+
+Supports single and batch operations. Provide at least one of `asset_id`, `asset_ids`, `s3_key`, or `s3_keys`.
+
 ```
+# Single asset
 POST /api/reference-tags
-Content-Type: application/json
+{ "s3_key": "assets/abc123-uuid.jpg", "tags": ["2F.4.6.2", "REF-001"] }
 
-{
-    "s3_key": "assets/abc123-uuid.jpg",
-    "tags": ["2F.4.6.2", "REF-001"]
-}
+# Batch (multiple assets)
+POST /api/reference-tags
+{ "asset_ids": [1, 2, 3], "tags": ["slideshow-42"] }
 
-DELETE /api/reference-tags/{tag}?s3_key=assets/abc123-uuid.jpg
+# Remove (single or batch)
+DELETE /api/reference-tags/{tag}
+{ "asset_id": 1 }
+DELETE /api/reference-tags/{tag}
+{ "asset_ids": [1, 2, 3] }
 ```
 
 #### List Folders
