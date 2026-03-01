@@ -15,6 +15,7 @@ export function assetGrid() {
         perPage: config.perPage || '24',
         tagSearch: '',
         tagSort: 'name_asc',
+        tagType: '',
         folderCount: config.folderCount || 1,
 
         // Lazy-loaded tag filter state
@@ -158,6 +159,7 @@ export function assetGrid() {
                 params.set('per_page', '60');
                 params.set('sort', this.tagSort);
                 if (this.tagSearch.trim()) params.set('search', this.tagSearch.trim());
+                if (this.tagType) params.set('type', this.tagType);
 
                 const response = await fetch(`/tags?${params.toString()}`, {
                     headers: { 'Accept': 'application/json' }
@@ -202,6 +204,10 @@ export function assetGrid() {
         },
 
         onFilterTagSortChange() {
+            this.loadFilterTags(1);
+        },
+
+        onFilterTagTypeChange() {
             this.loadFilterTags(1);
         },
 

@@ -101,9 +101,9 @@
              x-cloak
              @click.away="if (selectedTags.length === 0) showTagFilter = false"
              class="mt-4 bg-white border text-sm border-gray-200 rounded-lg shadow-lg p-4">
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                 <h3 class="font-semibold">{{ __('Filter by Tags') }}</h3>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2">
                     <!-- Tag search input -->
                     <div class="relative">
                         <input type="text"
@@ -113,6 +113,14 @@
                                class="text-sm pl-8 pr-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent w-40">
                         <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                     </div>
+                    <!-- Tag type filter -->
+                    <select x-model="tagType" @change="onFilterTagTypeChange()"
+                            class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <option value="">{{ __('All Tags') }}</option>
+                        <option value="user">{{ __('User Tags') }}</option>
+                        <option value="ai">{{ __('AI Tags') }}</option>
+                        <option value="reference">{{ __('Reference Tags') }}</option>
+                    </select>
                     <!-- Tag sort dropdown -->
                     <select x-model="tagSort" @change="onFilterTagSortChange()"
                             class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">

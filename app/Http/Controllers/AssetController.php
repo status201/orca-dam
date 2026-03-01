@@ -593,8 +593,13 @@ class AssetController extends Controller
             }
         }
 
+        $tags = array_values($tagCounts);
+        usort($tags, function ($a, $b) {
+            return $b['count'] <=> $a['count'] ?: strcmp($a['name'], $b['name']);
+        });
+
         return response()->json([
-            'tags' => array_values($tagCounts),
+            'tags' => $tags,
             'total_assets' => $assets->count(),
         ]);
     }
