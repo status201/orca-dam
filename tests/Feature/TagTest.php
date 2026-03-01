@@ -18,83 +18,112 @@ test('authenticated users can access tags index', function () {
     $response->assertStatus(200);
 });
 
-test('tags index shows all tags', function () {
+test('tags index JSON returns paginated tags', function () {
+    $user = User::factory()->create();
+    Tag::factory()->count(5)->create();
+
+    $response = $this->actingAs($user)->getJson(route('tags.index'));
+
+    $response->assertOk();
+    $response->assertJsonStructure([
+        'data' => [['id', 'name', 'type', 'assets_count']],
+        'current_page',
+        'last_page',
+        'per_page',
+        'total',
+    ]);
+    $response->assertJsonPath('total', 5);
+});
+
+test('tags index JSON respects per_page parameter', function () {
+    $user = User::factory()->create();
+    Tag::factory()->count(30)->create();
+
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['per_page' => 10]));
+
+    $response->assertOk();
+    $response->assertJsonCount(10, 'data');
+    $response->assertJsonPath('per_page', 10);
+    $response->assertJsonPath('total', 30);
+    $response->assertJsonPath('last_page', 3);
+});
+
+test('tags index JSON supports search parameter', function () {
     $user = User::factory()->create();
     Tag::factory()->create(['name' => 'nature']);
+    Tag::factory()->create(['name' => 'natural']);
     Tag::factory()->create(['name' => 'landscape']);
 
-    $response = $this->actingAs($user)->get(route('tags.index'));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['search' => 'natur']));
 
-    $response->assertStatus(200);
-    $response->assertSee('nature');
-    $response->assertSee('landscape');
+    $response->assertOk();
+    $response->assertJsonCount(2, 'data');
 });
 
-test('tags index can filter by type user', function () {
+test('tags index JSON can filter by type user', function () {
     $user = User::factory()->create();
     Tag::factory()->user()->create(['name' => 'user-tag']);
     Tag::factory()->ai()->create(['name' => 'ai-tag']);
 
-    $response = $this->actingAs($user)->get(route('tags.index', ['type' => 'user']));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['type' => 'user']));
 
-    $response->assertStatus(200);
-    $response->assertSee('user-tag');
-    $response->assertDontSee('ai-tag');
+    $response->assertOk();
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.name', 'user-tag');
 });
 
-test('tags index can filter by type ai', function () {
+test('tags index JSON can filter by type ai', function () {
     $user = User::factory()->create();
     Tag::factory()->user()->create(['name' => 'user-tag']);
     Tag::factory()->ai()->create(['name' => 'ai-tag']);
 
-    $response = $this->actingAs($user)->get(route('tags.index', ['type' => 'ai']));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['type' => 'ai']));
 
-    $response->assertStatus(200);
-    $response->assertDontSee('user-tag');
-    $response->assertSee('ai-tag');
+    $response->assertOk();
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.name', 'ai-tag');
 });
 
-test('tags index sorts by name ascending by default', function () {
+test('tags index JSON can filter by type reference', function () {
+    $user = User::factory()->create();
+    Tag::factory()->user()->create(['name' => 'user-tag']);
+    Tag::factory()->reference()->create(['name' => 'ref-tag']);
+    Tag::factory()->ai()->create(['name' => 'ai-tag']);
+
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['type' => 'reference']));
+
+    $response->assertOk();
+    $response->assertJsonCount(1, 'data');
+    $response->assertJsonPath('data.0.name', 'ref-tag');
+});
+
+test('tags index JSON sorts by name ascending by default', function () {
     $user = User::factory()->create();
     Tag::factory()->create(['name' => 'zebra']);
     Tag::factory()->create(['name' => 'apple']);
     Tag::factory()->create(['name' => 'mango']);
 
-    $response = $this->actingAs($user)->get(route('tags.index'));
+    $response = $this->actingAs($user)->getJson(route('tags.index'));
 
-    $response->assertStatus(200);
-    $response->assertSeeInOrder(['apple', 'mango', 'zebra']);
+    $response->assertOk();
+    $names = collect($response->json('data'))->pluck('name')->toArray();
+    expect($names)->toBe(['apple', 'mango', 'zebra']);
 });
 
-test('tags index can sort by name descending', function () {
+test('tags index JSON can sort by name descending', function () {
     $user = User::factory()->create();
     Tag::factory()->create(['name' => 'zebra']);
     Tag::factory()->create(['name' => 'apple']);
     Tag::factory()->create(['name' => 'mango']);
 
-    $response = $this->actingAs($user)->get(route('tags.index', ['sort' => 'name_desc']));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['sort' => 'name_desc']));
 
-    $response->assertStatus(200);
-    $response->assertSeeInOrder(['zebra', 'mango', 'apple']);
+    $response->assertOk();
+    $names = collect($response->json('data'))->pluck('name')->toArray();
+    expect($names)->toBe(['zebra', 'mango', 'apple']);
 });
 
-test('tags index can sort by most used', function () {
-    $user = User::factory()->create();
-    $tagA = Tag::factory()->create(['name' => 'rarely-used']);
-    $tagB = Tag::factory()->create(['name' => 'often-used']);
-
-    // Attach assets to make tagB more used
-    $assets = Asset::factory()->count(3)->create();
-    $tagB->assets()->attach($assets->pluck('id'));
-    $tagA->assets()->attach($assets->first()->id);
-
-    $response = $this->actingAs($user)->get(route('tags.index', ['sort' => 'most_used']));
-
-    $response->assertStatus(200);
-    $response->assertSeeInOrder(['often-used', 'rarely-used']);
-});
-
-test('tags index can sort by least used', function () {
+test('tags index JSON can sort by most used', function () {
     $user = User::factory()->create();
     $tagA = Tag::factory()->create(['name' => 'rarely-used']);
     $tagB = Tag::factory()->create(['name' => 'often-used']);
@@ -103,45 +132,106 @@ test('tags index can sort by least used', function () {
     $tagB->assets()->attach($assets->pluck('id'));
     $tagA->assets()->attach($assets->first()->id);
 
-    $response = $this->actingAs($user)->get(route('tags.index', ['sort' => 'least_used']));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['sort' => 'most_used']));
 
-    $response->assertStatus(200);
-    $response->assertSeeInOrder(['rarely-used', 'often-used']);
+    $response->assertOk();
+    $names = collect($response->json('data'))->pluck('name')->toArray();
+    expect($names)->toBe(['often-used', 'rarely-used']);
 });
 
-test('tags index can sort by newest', function () {
+test('tags index JSON can sort by least used', function () {
+    $user = User::factory()->create();
+    $tagA = Tag::factory()->create(['name' => 'rarely-used']);
+    $tagB = Tag::factory()->create(['name' => 'often-used']);
+
+    $assets = Asset::factory()->count(3)->create();
+    $tagB->assets()->attach($assets->pluck('id'));
+    $tagA->assets()->attach($assets->first()->id);
+
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['sort' => 'least_used']));
+
+    $response->assertOk();
+    $names = collect($response->json('data'))->pluck('name')->toArray();
+    expect($names)->toBe(['rarely-used', 'often-used']);
+});
+
+test('tags index JSON can sort by newest', function () {
     $user = User::factory()->create();
     Tag::factory()->create(['name' => 'old-tag', 'created_at' => now()->subDays(5)]);
     Tag::factory()->create(['name' => 'new-tag', 'created_at' => now()]);
 
-    $response = $this->actingAs($user)->get(route('tags.index', ['sort' => 'newest']));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['sort' => 'newest']));
 
-    $response->assertStatus(200);
-    $response->assertSeeInOrder(['new-tag', 'old-tag']);
+    $response->assertOk();
+    $names = collect($response->json('data'))->pluck('name')->toArray();
+    expect($names)->toBe(['new-tag', 'old-tag']);
 });
 
-test('tags index can sort by oldest', function () {
+test('tags index JSON can sort by oldest', function () {
     $user = User::factory()->create();
     Tag::factory()->create(['name' => 'old-tag', 'created_at' => now()->subDays(5)]);
     Tag::factory()->create(['name' => 'new-tag', 'created_at' => now()]);
 
-    $response = $this->actingAs($user)->get(route('tags.index', ['sort' => 'oldest']));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['sort' => 'oldest']));
 
-    $response->assertStatus(200);
-    $response->assertSeeInOrder(['old-tag', 'new-tag']);
+    $response->assertOk();
+    $names = collect($response->json('data'))->pluck('name')->toArray();
+    expect($names)->toBe(['old-tag', 'new-tag']);
 });
 
-test('tags index sort works combined with type filter', function () {
+test('tags index JSON sort works combined with type filter', function () {
     $user = User::factory()->create();
     Tag::factory()->user()->create(['name' => 'zebra-user']);
     Tag::factory()->user()->create(['name' => 'apple-user']);
     Tag::factory()->ai()->create(['name' => 'ai-tag']);
 
-    $response = $this->actingAs($user)->get(route('tags.index', ['type' => 'user', 'sort' => 'name_desc']));
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['type' => 'user', 'sort' => 'name_desc']));
 
-    $response->assertStatus(200);
-    $response->assertSeeInOrder(['zebra-user', 'apple-user']);
-    $response->assertDontSee('ai-tag');
+    $response->assertOk();
+    $names = collect($response->json('data'))->pluck('name')->toArray();
+    expect($names)->toBe(['zebra-user', 'apple-user']);
+});
+
+test('tags index web view returns type counts', function () {
+    $user = User::factory()->create();
+    Tag::factory()->user()->count(3)->create();
+    Tag::factory()->ai()->count(2)->create();
+    Tag::factory()->reference()->count(1)->create();
+
+    $response = $this->actingAs($user)->get(route('tags.index'));
+
+    $response->assertOk();
+    $response->assertViewHas('typeCounts', [
+        'all' => 6,
+        'user' => 3,
+        'ai' => 2,
+        'reference' => 1,
+    ]);
+});
+
+test('tags by-ids returns correct tags', function () {
+    $user = User::factory()->create();
+    $tag1 = Tag::factory()->create(['name' => 'alpha']);
+    $tag2 = Tag::factory()->create(['name' => 'beta']);
+    Tag::factory()->create(['name' => 'gamma']);
+
+    $response = $this->actingAs($user)
+        ->postJson(route('tags.byIds'), ['ids' => [$tag1->id, $tag2->id]]);
+
+    $response->assertOk();
+    $response->assertJsonCount(2);
+    $names = collect($response->json())->pluck('name')->sort()->values()->toArray();
+    expect($names)->toBe(['alpha', 'beta']);
+});
+
+test('tags by-ids validates ids are required', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->postJson(route('tags.byIds'), []);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['ids']);
 });
 
 test('authenticated users can update user tags', function () {
@@ -380,20 +470,6 @@ test('bulk get tags requires authentication', function () {
 });
 
 // Reference tag tests
-
-test('tags index can filter by type reference', function () {
-    $user = User::factory()->create();
-    Tag::factory()->user()->create(['name' => 'user-tag']);
-    Tag::factory()->reference()->create(['name' => 'ref-tag']);
-    Tag::factory()->ai()->create(['name' => 'ai-tag']);
-
-    $response = $this->actingAs($user)->get(route('tags.index', ['type' => 'reference']));
-
-    $response->assertStatus(200);
-    $response->assertSee('ref-tag');
-    $response->assertDontSee('user-tag');
-    $response->assertDontSee('ai-tag');
-});
 
 test('reference tags can be renamed', function () {
     $user = User::factory()->create();

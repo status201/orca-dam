@@ -76,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
     // Tag routes
     Route::get('tags', [TagController::class, 'index'])->name('tags.index');
     Route::get('tags/search', [TagController::class, 'search'])->name('tags.search');
+    Route::post('tags/by-ids', [TagController::class, 'byIds'])->name('tags.byIds');
     Route::patch('tags/{tag}', [TagController::class, 'update'])->name('tags.update');
     Route::delete('tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
 

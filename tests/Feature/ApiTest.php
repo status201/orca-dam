@@ -112,7 +112,8 @@ test('api tags index returns all tags', function () {
     $response = $this->getJson('/api/tags');
 
     $response->assertOk();
-    $response->assertJsonCount(3);
+    $response->assertJsonCount(3, 'data');
+    $response->assertJsonPath('total', 3);
 });
 
 test('api tags index can filter by type', function () {
@@ -125,7 +126,8 @@ test('api tags index can filter by type', function () {
     $response = $this->getJson('/api/tags?type=user');
 
     $response->assertOk();
-    $response->assertJsonCount(2);
+    $response->assertJsonCount(2, 'data');
+    $response->assertJsonPath('total', 2);
 });
 
 test('api asset meta endpoint is public', function () {

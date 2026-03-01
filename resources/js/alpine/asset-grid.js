@@ -15,8 +15,20 @@ export function assetGrid() {
         perPage: config.perPage || '24',
         tagSearch: '',
         tagSort: 'name_asc',
-        allTagsData: config.allTagsData || [],
         folderCount: config.folderCount || 1,
+
+        // Lazy-loaded tag filter state
+        filterTags: [],
+        filterTagsLoading: false,
+        filterTagsLoadingMore: false,
+        filterTagsPage: 0,
+        filterTagsLastPage: 1,
+        filterTagsTotal: 0,
+        filterTagsLoaded: false,
+        pinnedTags: [],
+        _filterSearchDebounce: null,
+        _bulkSuggestDebounce: null,
+        _rowSuggestDebounce: null,
 
         // Bulk tag management state
         bulkTagInput: '',
@@ -35,7 +47,34 @@ export function assetGrid() {
         bulkDeleteResults: null,
         bulkDeleteShowSummary: false,
 
-        init() {},
+        init() {
+            // If page loaded with selected tags, resolve their names for pill display
+            if (this.selectedTags.length > 0) {
+                this.fetchPinnedTags(this.selectedTags);
+            }
+
+            // Sync pinnedTags when selection changes
+            this.$watch('selectedTags', (ids) => {
+                // Add newly selected tags to pinnedTags
+                for (const id of ids) {
+                    const alreadyPinned = this.pinnedTags.some(t => String(t.id) === String(id));
+                    if (!alreadyPinned) {
+                        const tag = this.filterTags.find(t => String(t.id) === String(id));
+                        if (tag) this.pinnedTags.push(tag);
+                    }
+                }
+                // Remove unchecked tags from pinnedTags
+                const idSet = new Set(ids.map(id => String(id)));
+                this.pinnedTags = this.pinnedTags.filter(t => idSet.has(String(t.id)));
+            });
+
+            // When tag filter opens, load first page of tags
+            this.$watch('showTagFilter', (open) => {
+                if (open && !this.filterTagsLoaded) {
+                    this.loadFilterTags(1);
+                }
+            });
+        },
 
         saveViewMode() {
             localStorage.setItem('orcaAssetViewMode', this.viewMode);
@@ -77,35 +116,93 @@ export function assetGrid() {
             window.copyToClipboard(url);
         },
 
-        get sortedTags() {
-            const sorted = [...this.allTagsData];
-            switch (this.tagSort) {
-                case 'name_desc':
-                    return sorted.sort((a, b) => b.name.localeCompare(a.name));
-                case 'most_used':
-                    return sorted.sort((a, b) => b.assets_count - a.assets_count);
-                case 'least_used':
-                    return sorted.sort((a, b) => a.assets_count - b.assets_count);
-                case 'newest':
-                    return sorted.sort((a, b) => b.created_at.localeCompare(a.created_at));
-                case 'oldest':
-                    return sorted.sort((a, b) => a.created_at.localeCompare(b.created_at));
-                case 'name_asc':
-                default:
-                    return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        get displayTags() {
+            // Filter out already-selected tags (shown in pinned section)
+            const selectedSet = new Set(this.selectedTags.map(id => String(id)));
+            return this.filterTags.filter(tag => !selectedSet.has(String(tag.id)));
+        },
+
+        get filterHasMore() {
+            return this.filterTagsPage < this.filterTagsLastPage;
+        },
+
+        async fetchPinnedTags(ids) {
+            try {
+                const response = await fetch('/tags/by-ids', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.getCsrfToken(),
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ ids: ids.map(id => parseInt(id)) })
+                });
+                if (response.ok) {
+                    this.pinnedTags = await response.json();
+                }
+            } catch (error) {
+                console.error('Failed to fetch pinned tags:', error);
             }
         },
 
-        shouldShowTag(tag) {
-            // Always show selected tags
-            if (this.selectedTags.includes(tag.id)) {
-                return true;
+        async loadFilterTags(page) {
+            if (page === 1) {
+                this.filterTagsLoading = true;
+            } else {
+                this.filterTagsLoadingMore = true;
             }
-            // Filter unselected tags by search
-            if (!this.tagSearch.trim()) {
-                return true;
+
+            try {
+                const params = new URLSearchParams();
+                params.set('page', page);
+                params.set('per_page', '60');
+                params.set('sort', this.tagSort);
+                if (this.tagSearch.trim()) params.set('search', this.tagSearch.trim());
+
+                const response = await fetch(`/tags?${params.toString()}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error('Failed to load tags');
+
+                const data = await response.json();
+
+                if (page === 1) {
+                    this.filterTags = data.data;
+                } else {
+                    this.filterTags = [...this.filterTags, ...data.data];
+                }
+
+                this.filterTagsPage = data.current_page;
+                this.filterTagsLastPage = data.last_page;
+                this.filterTagsTotal = data.total;
+                this.filterTagsLoaded = true;
+            } catch (error) {
+                console.error('Failed to load filter tags:', error);
+            } finally {
+                this.filterTagsLoading = false;
+                this.filterTagsLoadingMore = false;
             }
-            return tag.name.toLowerCase().includes(this.tagSearch.toLowerCase());
+        },
+
+        onFilterScroll(event) {
+            const el = event.target;
+            if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+                if (this.filterHasMore && !this.filterTagsLoadingMore) {
+                    this.loadFilterTags(this.filterTagsPage + 1);
+                }
+            }
+        },
+
+        onFilterTagSearch() {
+            clearTimeout(this._filterSearchDebounce);
+            this._filterSearchDebounce = setTimeout(() => {
+                this.loadFilterTags(1);
+            }, 300);
+        },
+
+        onFilterTagSortChange() {
+            this.loadFilterTags(1);
         },
 
         // Bulk tag management methods
@@ -114,16 +211,24 @@ export function assetGrid() {
         },
 
         bulkFilterTagSuggestions() {
-            const input = this.bulkTagInput.toLowerCase().trim();
-            if (input === '') {
-                this.bulkFilteredSuggestions = (window.allTags || []).slice(0, 10);
-            } else {
-                this.bulkFilteredSuggestions = (window.allTags || [])
-                    .filter(tag => tag.toLowerCase().includes(input))
-                    .slice(0, 10);
-            }
-            this.bulkShowSuggestions = true;
-            this.bulkSelectedSuggestionIndex = -1;
+            clearTimeout(this._bulkSuggestDebounce);
+            this._bulkSuggestDebounce = setTimeout(async () => {
+                try {
+                    const input = this.bulkTagInput.trim();
+                    const response = await fetch(`/tags/search?q=${encodeURIComponent(input)}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (response.ok) {
+                        const tags = await response.json();
+                        this.bulkFilteredSuggestions = tags.map(t => t.name).slice(0, 10);
+                    }
+                } catch (error) {
+                    console.error('Tag suggest failed:', error);
+                    this.bulkFilteredSuggestions = [];
+                }
+                this.bulkShowSuggestions = true;
+                this.bulkSelectedSuggestionIndex = -1;
+            }, 200);
         },
 
         bulkSelectSuggestion(suggestion) {
@@ -466,26 +571,29 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
         },
 
         filterTagSuggestions() {
-            const input = this.newTagName.toLowerCase().trim();
-            const existingTagNames = this.tags.map(t => t.name.toLowerCase());
+            clearTimeout(this._suggestDebounce);
+            this._suggestDebounce = setTimeout(async () => {
+                try {
+                    const input = this.newTagName.trim();
+                    const existingTagNames = this.tags.map(t => t.name.toLowerCase());
 
-            if (input === '') {
-                // Show all tags not already on this asset
-                this.filteredSuggestions = (window.allTags || [])
-                    .filter(tag => !existingTagNames.includes(tag.toLowerCase()))
-                    .slice(0, 10);
-            } else {
-                // Filter tags that match the input and aren't already on this asset
-                this.filteredSuggestions = (window.allTags || [])
-                    .filter(tag =>
-                        tag.toLowerCase().includes(input) &&
-                        !existingTagNames.includes(tag.toLowerCase())
-                    )
-                    .slice(0, 10);
-            }
-
-            this.showSuggestions = true;
-            this.selectedSuggestionIndex = -1;
+                    const response = await fetch(`/tags/search?q=${encodeURIComponent(input)}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (response.ok) {
+                        const tags = await response.json();
+                        this.filteredSuggestions = tags
+                            .map(t => t.name)
+                            .filter(name => !existingTagNames.includes(name.toLowerCase()))
+                            .slice(0, 10);
+                    }
+                } catch (error) {
+                    console.error('Tag suggest failed:', error);
+                    this.filteredSuggestions = [];
+                }
+                this.showSuggestions = true;
+                this.selectedSuggestionIndex = -1;
+            }, 200);
         },
 
         selectSuggestion(suggestion) {

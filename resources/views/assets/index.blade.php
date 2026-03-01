@@ -108,12 +108,13 @@
                     <div class="relative">
                         <input type="text"
                                x-model="tagSearch"
+                               @input="onFilterTagSearch()"
                                placeholder="{{ __('Search tags...') }}"
                                class="text-sm pl-8 pr-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent w-40">
                         <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                     </div>
                     <!-- Tag sort dropdown -->
-                    <select x-model="tagSort"
+                    <select x-model="tagSort" @change="onFilterTagSortChange()"
                             class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <option value="name_asc">{{ __('Name (A-Z)') }}</option>
                         <option value="name_desc">{{ __('Name (Z-A)') }}</option>
@@ -136,32 +137,70 @@
                     </div>
                 </div>
             </div>
-            <div class="max-h-96 overflow-y-auto invert-scrollbar-colors">
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
-                    <template x-for="tag in sortedTags" :key="tag.id">
-                        <label x-show="shouldShowTag(tag)"
-                               class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
-                            <input type="checkbox"
-                                   :value="tag.id"
-                                   x-model="selectedTags"
-                                   class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
-                            <div class="flex flex-col gap-1 min-w-0 flex-1">
-                                <span class="text-sm font-medium truncate" x-text="tag.name"></span>
-                                <div class="flex items-center gap-1.5">
-                                    <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
-                                          class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
-                                          x-text="tag.type === 'reference' ? 'ref' : tag.type"></span>
-                                    <span class="text-xs text-gray-400" x-text="tag.assets_count"></span>
+
+            <!-- Pinned selected tags -->
+            <template x-if="pinnedTags.length > 0">
+                <div class="mb-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+                        <template x-for="tag in pinnedTags" :key="'pinned-' + tag.id">
+                            <label class="flex items-start space-x-2 p-2 bg-blue-50 hover:bg-blue-100 rounded cursor-pointer border border-blue-200">
+                                <input type="checkbox"
+                                       :value="tag.id"
+                                       x-model="selectedTags"
+                                       class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                <div class="flex flex-col gap-1 min-w-0 flex-1">
+                                    <span class="text-sm font-medium truncate" x-text="tag.name"></span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
+                                              class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
+                                              x-text="tag.type === 'reference' ? 'ref' : tag.type"></span>
+                                        <span class="text-xs text-gray-400" x-text="tag.assets_count"></span>
+                                    </div>
                                 </div>
-                            </div>
-                        </label>
-                    </template>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <div class="max-h-96 overflow-y-auto invert-scrollbar-colors" @scroll="onFilterScroll($event)">
+                <!-- Loading state -->
+                <div x-show="filterTagsLoading" class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
+                    <span class="text-gray-500 text-sm">{{ __('Loading tags...') }}</span>
+                </div>
+
+                <div x-show="!filterTagsLoading">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+                        <template x-for="tag in displayTags" :key="tag.id">
+                            <label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
+                                <input type="checkbox"
+                                       :value="tag.id"
+                                       x-model="selectedTags"
+                                       class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                <div class="flex flex-col gap-1 min-w-0 flex-1">
+                                    <span class="text-sm font-medium truncate" x-text="tag.name"></span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
+                                              class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
+                                              x-text="tag.type === 'reference' ? 'ref' : tag.type"></span>
+                                        <span class="text-xs text-gray-400" x-text="tag.assets_count"></span>
+                                    </div>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+
+                    <!-- Loading more spinner -->
+                    <div x-show="filterTagsLoadingMore" class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
+                        <span class="text-gray-500 text-sm">{{ __('Loading more tags...') }}</span>
+                    </div>
+
+                    <!-- No tags message -->
+                    <p x-show="!filterTagsLoading && filterTags.length === 0" class="text-gray-500 text-sm py-4 text-center">{{ __('No tags available yet.') }}</p>
                 </div>
             </div>
-
-            @if(count($tags) === 0)
-            <p class="text-gray-500 text-sm">{{ __('No tags available yet.') }}</p>
-            @endif
         </div>
     </div>
 
@@ -191,7 +230,7 @@
         <template x-for="tagId in selectedTags" :key="tagId">
             <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
                 <i class="fas fa-tag text-xs"></i>
-                <span x-text="allTagsData.find(t => t.id == tagId)?.name || tagId"></span>
+                <span x-text="pinnedTags.find(t => t.id == tagId)?.name || tagId"></span>
                 <button @click="selectedTags = selectedTags.filter(id => id != tagId); applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
             </span>
         </template>
@@ -952,14 +991,9 @@
     @endif
 </div>
 
-@php
-    $allTagsData = $tags->map(fn($t) => ['id' => (string)$t->id, 'name' => $t->name, 'type' => $t->type, 'assets_count' => $t->assets_count, 'created_at' => $t->created_at->toISOString()]);
-@endphp
-
 @push('scripts')
 <script>
 // Page data for Alpine.js components
-window.allTags = @json($tags->pluck('name')->toArray());
 window.currentPageAssetIds = @json($assets->pluck('id')->toArray());
 
 window.assetGridConfig = {
@@ -972,7 +1006,6 @@ window.assetGridConfig = {
     selectedTags: @json(request('tags', [])),
     initialTags: @json(request('tags', [])),
     perPage: '{{ $perPage }}',
-    allTagsData: @json($allTagsData),
     indexRoute: '{{ route('assets.index') }}'
 };
 

@@ -36,13 +36,18 @@ class TagController extends Controller
      */
     public function index(Request $request)
     {
-        $type = $request->input('type'); // 'user' or 'ai' or null for all
+        $type = $request->input('type'); // 'user' or 'ai' or 'reference' or null for all
         $sort = $request->input('sort', 'name_asc');
+        $search = $request->input('search');
 
         $query = Tag::withCount('assets');
 
         if ($type) {
             $query->where('type', $type);
+        }
+
+        if ($search) {
+            $query->search($search);
         }
 
         match ($sort) {
@@ -54,13 +59,40 @@ class TagController extends Controller
             default => $query->orderBy('name', 'asc'),
         };
 
-        $tags = $query->get();
-
         if ($request->expectsJson()) {
-            return response()->json($tags);
+            $perPage = (int) $request->input('per_page', 60);
+            $perPage = min(max($perPage, 10), 200);
+
+            return response()->json($query->paginate($perPage));
         }
 
-        return view('tags.index', compact('tags'));
+        // For web view, only pass type counts and config — no tags collection
+        $counts = Tag::selectRaw('type, COUNT(*) as count')->groupBy('type')->pluck('count', 'type');
+        $typeCounts = [
+            'all' => $counts->sum(),
+            'user' => $counts->get('user', 0),
+            'ai' => $counts->get('ai', 0),
+            'reference' => $counts->get('reference', 0),
+        ];
+
+        return view('tags.index', compact('typeCounts'));
+    }
+
+    /**
+     * Resolve tags by IDs (for displaying selected tag names)
+     */
+    public function byIds(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+
+        $tags = Tag::withCount('assets')
+            ->whereIn('id', $request->input('ids'))
+            ->get();
+
+        return response()->json($tags);
     }
 
     /**

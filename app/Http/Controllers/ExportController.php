@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
-use App\Models\Tag;
 use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -18,9 +17,6 @@ class ExportController extends Controller
     public function index()
     {
         $this->authorize('export', Asset::class);
-
-        // Get all tags for the filter dropdown
-        $tags = Tag::orderBy('name')->get();
 
         // Get unique file types (mime type prefixes)
         $fileTypes = Asset::select('mime_type')
@@ -37,7 +33,6 @@ class ExportController extends Controller
         $folders = S3Service::getConfiguredFolders();
 
         return view('export.index', [
-            'tags' => $tags,
             'fileTypes' => $fileTypes,
             'folders' => $folders,
             'rootFolder' => $rootFolder,
@@ -130,8 +125,8 @@ class ExportController extends Controller
             // Data rows
             foreach ($assets as $asset) {
                 // Get user tags and AI tags separately
-                $userTagNames = $asset->userTags->pluck('name')->join(', ');
-                $aiTagNames = $asset->aiTags->pluck('name')->join(', ');
+                $userTagNames = $asset->tags->where('type', 'user')->pluck('name')->join(', ');
+                $aiTagNames = $asset->tags->where('type', 'ai')->pluck('name')->join(', ');
                 $referenceTagNames = $asset->tags->where('type', 'reference')->pluck('name')->join(', ');
 
                 fputcsv($file, [

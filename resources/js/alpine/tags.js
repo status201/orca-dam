@@ -1,53 +1,113 @@
 export function tagManager() {
     const t = window.__pageData?.translations || {};
+    const config = window.__pageData?.tagConfig || {};
 
     return {
         showEditModal: false,
         editingTagId: null,
         editingTagName: '',
         searchQuery: '',
-        tags: window.__pageData?.tags || [],
+        activeSearch: '',
+        type: config.type || '',
+        sort: config.sort || 'name_asc',
+        typeCounts: config.typeCounts || { all: 0, user: 0, ai: 0, reference: 0 },
 
-        get matchingCount() {
-            if (this.searchQuery.length === 0) {
-                return this.tags.length;
-            }
-            const query = this.searchQuery.toLowerCase();
-            return this.tags.filter(tag => tag.name.toLowerCase().includes(query)).length;
+        // Pagination state
+        tags: [],
+        loading: false,
+        loadingMore: false,
+        currentPage: 0,
+        lastPage: 1,
+        total: 0,
+        _searchDebounce: null,
+
+        init() {
+            this.loadPage(1);
+
+            // Set up IntersectionObserver for infinite scroll
+            this.$nextTick(() => {
+                const sentinel = this.$refs.scrollSentinel;
+                if (sentinel) {
+                    const observer = new IntersectionObserver((entries) => {
+                        if (entries[0].isIntersecting && this.hasMore && !this.loadingMore) {
+                            this.loadPage(this.currentPage + 1);
+                        }
+                    }, { rootMargin: '200px' });
+                    observer.observe(sentinel);
+                }
+            });
         },
 
-        get matchingUserCount() {
-            const userTags = this.tags.filter(tag => tag.type === 'user');
-            if (this.searchQuery.length === 0) {
-                return userTags.length;
-            }
-            const query = this.searchQuery.toLowerCase();
-            return userTags.filter(tag => tag.name.toLowerCase().includes(query)).length;
+        get hasMore() {
+            return this.currentPage < this.lastPage;
         },
 
-        get matchingAiCount() {
-            const aiTags = this.tags.filter(tag => tag.type === 'ai');
-            if (this.searchQuery.length === 0) {
-                return aiTags.length;
+        async loadPage(page) {
+            if (page === 1) {
+                this.loading = true;
+            } else {
+                this.loadingMore = true;
             }
-            const query = this.searchQuery.toLowerCase();
-            return aiTags.filter(tag => tag.name.toLowerCase().includes(query)).length;
+
+            try {
+                const params = new URLSearchParams();
+                params.set('page', page);
+                params.set('per_page', '60');
+                params.set('sort', this.sort);
+                if (this.type) params.set('type', this.type);
+                if (this.activeSearch) params.set('search', this.activeSearch);
+
+                const response = await fetch(`/tags?${params.toString()}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error('Failed to load tags');
+
+                const data = await response.json();
+
+                if (page === 1) {
+                    this.tags = data.data;
+                } else {
+                    this.tags = [...this.tags, ...data.data];
+                }
+
+                this.currentPage = data.current_page;
+                this.lastPage = data.last_page;
+                this.total = data.total;
+            } catch (error) {
+                console.error('Failed to load tags:', error);
+            } finally {
+                this.loading = false;
+                this.loadingMore = false;
+            }
         },
 
-        get matchingReferenceCount() {
-            const refTags = this.tags.filter(tag => tag.type === 'reference');
-            if (this.searchQuery.length === 0) {
-                return refTags.length;
-            }
-            const query = this.searchQuery.toLowerCase();
-            return refTags.filter(tag => tag.name.toLowerCase().includes(query)).length;
+        onSearchInput() {
+            clearTimeout(this._searchDebounce);
+            this._searchDebounce = setTimeout(() => {
+                this.activeSearch = this.searchQuery;
+                this.loadPage(1);
+            }, 300);
         },
 
-        matchesSearch(tagName) {
-            if (this.searchQuery.length === 0) {
-                return true;
-            }
-            return tagName.toLowerCase().includes(this.searchQuery.toLowerCase());
+        changeType(newType) {
+            this.type = newType;
+            this.loadPage(1);
+            this.updateUrl();
+        },
+
+        changeSort(newSort) {
+            this.sort = newSort;
+            this.loadPage(1);
+            this.updateUrl();
+        },
+
+        updateUrl() {
+            const params = new URLSearchParams();
+            if (this.type) params.set('type', this.type);
+            if (this.sort && this.sort !== 'name_asc') params.set('sort', this.sort);
+            const qs = params.toString();
+            history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
         },
 
         editTag(id, name) {
@@ -73,8 +133,13 @@ export function tagManager() {
                 const data = await response.json();
 
                 if (response.ok) {
+                    // Update local array instead of reloading
+                    const tag = this.tags.find(t => t.id === this.editingTagId);
+                    if (tag) {
+                        tag.name = data.tag.name;
+                    }
+                    this.showEditModal = false;
                     window.showToast(t.tagUpdated || 'Tag updated successfully');
-                    window.location.reload();
                 } else {
                     window.showToast(data.message || t.tagUpdateFailed || 'Failed to update tag', 'error');
                 }
@@ -102,8 +167,15 @@ export function tagManager() {
                 const data = await response.json();
 
                 if (response.ok) {
+                    // Remove from local array instead of reloading
+                    this.tags = this.tags.filter(tag => tag.id !== id);
+                    this.total--;
+                    // Update type counts
+                    if (this.typeCounts[type] !== undefined) {
+                        this.typeCounts[type]--;
+                    }
+                    this.typeCounts.all--;
                     window.showToast(t.tagDeleted || 'Tag deleted successfully');
-                    window.location.reload();
                 } else {
                     window.showToast(data.message || t.tagDeleteFailed || 'Failed to delete tag', 'error');
                 }

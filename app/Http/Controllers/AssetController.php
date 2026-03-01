@@ -81,12 +81,11 @@ class AssetController extends Controller
             $perPage = Auth::user()->getItemsPerPage();
         }
         $assets = $query->paginate((int) $perPage)->onEachSide(2)->withQueryString();
-        $tags = Tag::withCount('assets')->orderBy('name')->get();
         $folders = S3Service::getConfiguredFolders();
 
         $missingCount = Asset::missing()->count();
 
-        return view('assets.index', compact('assets', 'tags', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount'));
+        return view('assets.index', compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount'));
     }
 
     /**
@@ -531,8 +530,9 @@ class AssetController extends Controller
         foreach ($assets as $asset) {
             $this->authorize('update', $asset);
             $asset->tags()->syncWithoutDetaching($tagIds);
-            $asset->update(['last_modified_by' => Auth::id()]);
         }
+
+        Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
 
         return response()->json([
             'message' => __(':count asset(s) updated', ['count' => $assets->count()]),
@@ -556,8 +556,9 @@ class AssetController extends Controller
         foreach ($assets as $asset) {
             $this->authorize('update', $asset);
             $asset->tags()->detach($request->tag_ids);
-            $asset->update(['last_modified_by' => Auth::id()]);
         }
+
+        Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
 
         return response()->json([
             'message' => __(':count asset(s) updated', ['count' => $assets->count()]),
