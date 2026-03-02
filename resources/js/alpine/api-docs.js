@@ -17,6 +17,7 @@ export function apiDocs() {
             apiUserCount: 0,
             jwtEnvEnabled: pageData.jwtEnvEnabled || false,
             jwtSettingEnabled: true,
+            uploadEndpointEnabled: true,
             metaEndpointEnabled: true
         },
         savingSettings: false,
@@ -124,6 +125,7 @@ export function apiDocs() {
                     apiUserCount: data.apiUserCount,
                     jwtEnvEnabled: data.jwtEnvEnabled,
                     jwtSettingEnabled: data.jwtSettingEnabled,
+                    uploadEndpointEnabled: data.uploadEndpointEnabled,
                     metaEndpointEnabled: data.metaEndpointEnabled
                 };
                 // Also update the counts used by other tabs
@@ -159,6 +161,8 @@ export function apiDocs() {
                     if (key === 'jwt_enabled_override') {
                         this.dashboardData.jwtSettingEnabled = value;
                         this.jwtSettingEnabled = value;
+                    } else if (key === 'api_upload_enabled') {
+                        this.dashboardData.uploadEndpointEnabled = value;
                     } else if (key === 'api_meta_endpoint_enabled') {
                         this.dashboardData.metaEndpointEnabled = value;
                     }

@@ -66,6 +66,10 @@ class AssetApiController extends Controller
      */
     public function store(Request $request)
     {
+        if (! Setting::get('api_upload_enabled', true)) {
+            return response()->json(['message' => 'Upload endpoints are disabled.'], 403);
+        }
+
         $request->validate([
             'files.*' => 'required|file|max:512000', // 500MB max
         ]);

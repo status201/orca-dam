@@ -93,7 +93,7 @@
                     </h3>
                 </div>
                 <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <!-- Sanctum Status -->
                         <div class="flex items-center p-3 bg-gray-50 rounded-lg">
                             <div class="attention w-3 h-3 rounded-full bg-green-500 mr-3"></div>
@@ -121,6 +121,18 @@
                                         <span>{{ __('Disabled (setting)') }}</span>
                                     </template>
                                 </p>
+                            </div>
+                        </div>
+
+                        <!-- Upload Endpoints Status -->
+                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <div class="attention w-3 h-3 rounded-full mr-3"
+                                 :class="dashboardData.uploadEndpointEnabled ? 'bg-green-500' : 'bg-red-500'"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ __('Upload') }}</p>
+                                <p class="attention text-xs"
+                                   :class="dashboardData.uploadEndpointEnabled ? 'text-green-600' : 'text-red-600'"
+                                   x-text="dashboardData.uploadEndpointEnabled ? @js(__('Enabled')) : @js(__('Disabled'))"></p>
                             </div>
                         </div>
 
@@ -182,6 +194,30 @@
                                     {{ __('To enable JWT, set') }} <code class="bg-yellow-100 px-1 rounded">JWT_ENABLED=true</code> {{ __('and restart the application.') }}
                                 </p>
                             </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <!-- Upload Endpoints Setting -->
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-gray-900">{{ __('Upload Endpoints') }}</h4>
+                            <p class="text-sm text-gray-500 mt-1">
+                                {{ __('Enable or disable the API upload endpoints.') }}
+                                {{ __('This includes direct upload and chunked upload endpoints.') }}
+                            </p>
+                        </div>
+                        <div class="ml-4">
+                            <button @click="saveApiSetting('api_upload_enabled', !dashboardData.uploadEndpointEnabled)"
+                                    :disabled="savingSettings"
+                                    class="attention relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orca-black focus:ring-offset-2"
+                                    :class="dashboardData.uploadEndpointEnabled ? 'bg-green-600' : 'bg-gray-200'"
+                                    role="switch"
+                                    :aria-checked="dashboardData.uploadEndpointEnabled">
+                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                      :class="dashboardData.uploadEndpointEnabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                            </button>
                         </div>
                     </div>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\Setting;
 use App\Models\UploadSession;
 use App\Services\AssetProcessingService;
 use App\Services\ChunkedUploadService;
@@ -34,6 +35,10 @@ class ChunkedUploadController extends Controller
      */
     public function initiate(Request $request)
     {
+        if (! Setting::get('api_upload_enabled', true)) {
+            return response()->json(['message' => 'Upload endpoints are disabled.'], 403);
+        }
+
         $this->authorize('create', Asset::class);
 
         $request->validate([

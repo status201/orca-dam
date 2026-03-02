@@ -159,7 +159,7 @@
                 </h3>
             </div>
             <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <!-- Sanctum Status -->
                     <div class="flex items-center p-3 bg-gray-50 rounded-lg">
                         <div class="attention w-3 h-3 rounded-full bg-green-500 mr-3"></div>
@@ -187,6 +187,18 @@
                                     <span>{{ __('Disabled (setting)') }}</span>
                                 </template>
                             </p>
+                        </div>
+                    </div>
+
+                    <!-- Upload Endpoints Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full mr-3"
+                             :class="settings.uploadEndpointEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ __('Upload') }}</p>
+                            <p class="attention text-xs"
+                               :class="settings.uploadEndpointEnabled === '1' ? 'text-green-600' : 'text-red-600'"
+                               x-text="settings.uploadEndpointEnabled === '1' ? @js(__('Enabled')) : @js(__('Disabled'))"></p>
                         </div>
                     </div>
 
@@ -1324,6 +1336,7 @@ window.__systemPageData = {
         resize_l_width: '{{ collect($settings)->firstWhere('key', 'resize_l_width')['value'] ?? '1200' }}',
         resize_l_height: '{{ collect($settings)->firstWhere('key', 'resize_l_height')['value'] ?? '' }}',
         jwtSettingEnabled: '{{ filter_var(collect($settings)->firstWhere('key', 'jwt_enabled_override')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? '1' : '0' }}',
+        uploadEndpointEnabled: '{{ filter_var(collect($settings)->firstWhere('key', 'api_upload_enabled')['value'] ?? '1', FILTER_VALIDATE_BOOLEAN) ? '1' : '0' }}',
         metaEndpointEnabled: '{{ filter_var(collect($settings)->firstWhere('key', 'api_meta_endpoint_enabled')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? '1' : '0' }}',
         maintenance_mode: {{ filter_var(collect($settings)->firstWhere('key', 'maintenance_mode')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' }},
     },

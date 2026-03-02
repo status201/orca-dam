@@ -33,6 +33,7 @@ class ApiDocsController extends Controller
         $jwtEnvEnabled = config('jwt.enabled', false);
         $jwtSettingEnabled = Setting::get('jwt_enabled_override', true);
         $metaEndpointEnabled = Setting::get('api_meta_endpoint_enabled', true);
+        $uploadEndpointEnabled = Setting::get('api_upload_enabled', true);
 
         return response()->json([
             'tokenCount' => $tokenCount,
@@ -40,6 +41,7 @@ class ApiDocsController extends Controller
             'apiUserCount' => $apiUserCount,
             'jwtEnvEnabled' => $jwtEnvEnabled,
             'jwtSettingEnabled' => $jwtSettingEnabled,
+            'uploadEndpointEnabled' => $uploadEndpointEnabled,
             'metaEndpointEnabled' => $metaEndpointEnabled,
         ]);
     }
@@ -50,7 +52,7 @@ class ApiDocsController extends Controller
     public function updateSettings(Request $request): JsonResponse
     {
         $request->validate([
-            'key' => 'required|string|in:jwt_enabled_override,api_meta_endpoint_enabled',
+            'key' => 'required|string|in:jwt_enabled_override,api_upload_enabled,api_meta_endpoint_enabled',
             'value' => 'required|boolean',
         ]);
 
