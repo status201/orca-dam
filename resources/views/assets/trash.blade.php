@@ -276,7 +276,7 @@
                         <td class="actions-icons px-4 py-3">
                             <div class="flex gap-3">
                                 <button @click="restoreAsset({{ $asset->id }})"
-                                        class="text-green-600 hover:text-green-800"
+                                        class="attention text-green-600 hover:text-green-800"
                                         title="{{ __('Restore') }}">
                                     <i class="fas fa-undo"></i>
                                 </button>
