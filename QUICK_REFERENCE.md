@@ -307,7 +307,7 @@ POST   /api/chunked-upload/abort     # Cancel upload
 - id, key (unique), value, type, group, description
 - Default settings: items_per_page, timezone, locale, s3_root_folder, custom_domain,
   rekognition_max_labels, rekognition_min_confidence, rekognition_language,
-  jwt_enabled_override, api_meta_endpoint_enabled
+  jwt_enabled_override, api_meta_endpoint_enabled, api_upload_enabled
 
 ---
 
@@ -359,6 +359,7 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 **API settings** (configured via API Docs → Dashboard):
 - `jwt_enabled_override` — Enable/disable JWT authentication at runtime
 - `api_meta_endpoint_enabled` — Enable/disable the public `/api/assets/meta` endpoint
+- `api_upload_enabled` — Enable/disable API upload endpoints (direct and chunked)
 
 ---
 

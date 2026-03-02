@@ -303,6 +303,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Pagination support
 - ✅ Search and filter API
 - ✅ Public metadata endpoint (no auth required)
+- ✅ Toggle API uploads on/off at runtime (API Docs → Dashboard)
 
 ### 9. Export & Reporting
 - ✅ CSV export with all asset metadata

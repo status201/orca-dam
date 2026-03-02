@@ -344,7 +344,7 @@ return [
 | `GET` | `/api/assets/search` | Search assets (optimized for picker) |
 | `GET` | `/api/assets/{id}` | Single asset details |
 | `GET` | `/api/assets/meta?url=` | Metadata by URL (**public**, no auth) |
-| `POST` | `/api/assets` | Upload files |
+| `POST` | `/api/assets` | Upload files (can be disabled via admin toggle) |
 | `PATCH` | `/api/assets/{id}` | Update metadata |
 | `GET` | `/api/tags` | List all tags |
 | `GET` | `/api/folders` | List S3 folders |

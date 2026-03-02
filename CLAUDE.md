@@ -93,7 +93,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 **Tag** (`app/Models/Tag.php`): Type `user`, `ai`, or `reference`, many-to-many Assets. Reference tags track external system usage (e.g., RTE integrations). Created via API only, editable/deletable in web UI.
 
-**Setting** (`app/Models/Setting.php`): Key-value store, cached 1 hour. `Setting::get('key', default)`, `Setting::set('key', value)`. Types: string, integer, boolean, json. Groups: general, display, aws.
+**Setting** (`app/Models/Setting.php`): Key-value store, cached 1 hour. `Setting::get('key', default)`, `Setting::set('key', value)`. Types: string, integer, boolean, json. Groups: general, display, aws, api.
 
 ## API Endpoints
 
@@ -145,7 +145,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 **users** (extra columns): `jwt_secret` (encrypted), `jwt_secret_generated_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`)
 
-**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false
+**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `api_upload_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false
 
 ## Environment Configuration
 
@@ -206,7 +206,7 @@ Web-based test runner at `/system` -> Tests tab (admin only).
 
 ## Key Workflows
 
-**Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> S3Service streams to S3 -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled.
+**Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> S3Service streams to S3 -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled. API upload endpoints can be disabled at runtime via `api_upload_enabled` setting (API Docs → Dashboard); returns 403 when disabled.
 
 **Discovery** (admin): S3Service finds unmapped objects -> admin selects to import -> Asset records created -> thumbnails + resized images + AI tags applied. Soft-deleted assets shown with "Deleted" badge to prevent re-import.
 

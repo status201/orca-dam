@@ -16,16 +16,17 @@
 8. [Replacing Assets](#replacing-assets)
 9. [The Trash (Admin Only)](#the-trash-admin-only)
 10. [Bulk Move (Admin Only)](#bulk-move-admin-only)
-11. [Moving Files (The Long Way)](#moving-files-the-long-way)
-11. [Discover Feature (Admin Only)](#discover-feature-admin-only)
-12. [Import Metadata (Admin Only)](#import-metadata-admin-only)
-13. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
-13. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
-14. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
-15. [User Preferences](#user-preferences)
-16. [Tips & Tricks](#tips--tricks)
-17. [Glossary](#glossary)
-18. [Getting Help](#getting-help)
+11. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
+12. [Moving Files (The Long Way)](#moving-files-the-long-way)
+13. [Discover Feature (Admin Only)](#discover-feature-admin-only)
+14. [Import Metadata (Admin Only)](#import-metadata-admin-only)
+15. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
+16. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
+17. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
+18. [User Preferences](#user-preferences)
+19. [Tips & Tricks](#tips--tricks)
+20. [Glossary](#glossary)
+21. [Getting Help](#getting-help)
 
 ---
 
@@ -304,6 +305,15 @@ For frontend integrations (e.g., rich text editors). Your external backend gener
 Revoke from the list when no longer needed.
 
 > JWT authentication must be enabled (`JWT_ENABLED=true` in `.env`). You can also toggle it at runtime from the API Docs dashboard.
+
+### Upload Endpoints
+
+Control whether external systems can upload files via the API.
+
+1. Go to API Docs → **Dashboard** tab
+2. Toggle **Upload Endpoints** on or off
+
+When disabled, both direct upload (`POST /api/assets`) and chunked upload endpoints return **403 Forbidden**. Existing assets and other API operations are not affected.
 
 ---
 

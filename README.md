@@ -245,6 +245,8 @@ POST   /api/chunked-upload/abort    - Cancel and cleanup failed upload
 
 Authentication: Laravel Sanctum (SPA token) or JWT bearer token - except `/api/assets/meta` and `/api/health` which are public
 
+> **Note:** Upload endpoints (`POST /api/assets` and chunked upload) can be disabled at runtime via **API Docs → Dashboard → Upload Endpoints** toggle. Returns 403 when disabled.
+
 ## Testing
 
 ORCA DAM includes a comprehensive test suite built with Pest PHP.

@@ -16,16 +16,17 @@
 8. [Assets vervangen](#assets-vervangen)
 9. [De Prullenbak (alleen admin)](#de-prullenbak-alleen-admin)
 10. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
-11. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
-11. [Discover-functie (alleen admin)](#discover-functie-alleen-admin)
-12. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
-13. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
-13. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
-14. [S3-integriteitscontrole (alleen admin)](#s3-integriteitscontrole-alleen-admin)
-15. [Gebruikersvoorkeuren](#gebruikersvoorkeuren)
-16. [Tips & trucs](#tips--trucs)
-17. [Woordenlijst](#woordenlijst)
-18. [Hulp nodig?](#hulp-nodig)
+11. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
+12. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
+13. [Discover-functie (alleen admin)](#discover-functie-alleen-admin)
+14. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
+15. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
+16. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
+17. [S3-integriteitscontrole (alleen admin)](#s3-integriteitscontrole-alleen-admin)
+18. [Gebruikersvoorkeuren](#gebruikersvoorkeuren)
+19. [Tips & trucs](#tips--trucs)
+20. [Woordenlijst](#woordenlijst)
+21. [Hulp nodig?](#hulp-nodig)
 
 ---
 
@@ -304,6 +305,15 @@ Voor frontend-integraties (bijv. rich text editors). Je externe backend genereer
 Intrekken kan vanuit de lijst wanneer het niet meer nodig is.
 
 > JWT-authenticatie moet ingeschakeld zijn (`JWT_ENABLED=true` in `.env`). Je kunt het ook aan/uitzetten vanuit het API Docs-dashboard.
+
+### Upload-endpoints
+
+Bepaal of externe systemen bestanden kunnen uploaden via de API.
+
+1. Ga naar API Docs → **Dashboard** tab
+2. Zet **Upload Endpoints** aan of uit
+
+Wanneer uitgeschakeld, geven zowel directe upload (`POST /api/assets`) als chunked upload endpoints **403 Forbidden** terug. Bestaande assets en andere API-bewerkingen worden niet beïnvloed.
 
 ---
 
