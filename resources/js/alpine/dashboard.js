@@ -47,6 +47,15 @@ export function featureTour(isAdmin) {
                 link: routes.assetsIndex,
                 btnText: t.viewAssets
             },
+            {
+                icon: 'fas fa-user-cog',
+                bgColor: 'bg-orange-500',
+                btnColor: 'bg-orange-600 hover:bg-orange-700',
+                title: t.profileSettings,
+                description: t.profileSettingsDesc,
+                link: routes.profileEdit,
+                btnText: t.editProfile
+            },
             ...(isAdmin ? [
                 {
                     icon: 'fas fa-search-plus',
@@ -83,6 +92,33 @@ export function featureTour(isAdmin) {
                     description: t.manageUsersDesc,
                     link: routes.usersIndex,
                     btnText: t.manageUsersBtn
+                },
+                {
+                    icon: 'fas fa-server',
+                    bgColor: 'bg-gray-500',
+                    btnColor: 'bg-gray-600 hover:bg-gray-700',
+                    title: t.systemAdministration,
+                    description: t.systemAdminDesc,
+                    link: routes.systemIndex,
+                    btnText: t.systemAdminBtn
+                },
+                {
+                    icon: 'fas fa-plug',
+                    bgColor: 'bg-cyan-500',
+                    btnColor: 'bg-cyan-600 hover:bg-cyan-700',
+                    title: t.apiSettingsTitle,
+                    description: t.apiSettingsDesc,
+                    link: routes.apiIndex,
+                    btnText: t.apiSettingsBtn
+                },
+                {
+                    icon: 'fas fa-file-import',
+                    bgColor: 'bg-amber-500',
+                    btnColor: 'bg-amber-600 hover:bg-amber-700',
+                    title: t.importMetadata,
+                    description: t.importMetadataDesc,
+                    link: routes.importIndex,
+                    btnText: t.importData
                 }
             ] : [])
         ],

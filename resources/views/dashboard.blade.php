@@ -318,7 +318,11 @@
             discoverIndex: '{{ route('discover.index') }}',
             assetsTrash: '{{ route('assets.trash') }}',
             exportIndex: '{{ route('export.index') }}',
-            usersIndex: '{{ route('users.index') }}'
+            usersIndex: '{{ route('users.index') }}',
+            profileEdit: '{{ route('profile.edit') }}',
+            systemIndex: '{{ route('system.index') }}',
+            apiIndex: '{{ route('api.index') }}',
+            importIndex: '{{ route('import.index') }}'
         },
         translations: {
             uploadAssets: @js(__('Upload Assets')),
@@ -344,7 +348,19 @@
             exportCsv: @js(__('Export CSV')),
             manageUsers: @js(__('Manage Users')),
             manageUsersDesc: @js(__('Add editors and admins. Control who can upload, edit, and manage assets in your organization.')),
-            manageUsersBtn: @js(__('Manage Users'))
+            manageUsersBtn: @js(__('Manage Users')),
+            profileSettings: @js(__('Profile Settings')),
+            profileSettingsDesc: @js(__('Manage your preferences, password, two-factor authentication, and dark mode settings.')),
+            editProfile: @js(__('Edit Profile')),
+            systemAdministration: @js(__('System Administration')),
+            systemAdminDesc: @js(__('Run diagnostics, configure system settings, monitor queues, and view application logs.')),
+            systemAdminBtn: @js(__('System Admin')),
+            apiSettingsTitle: @js(__('API Settings')),
+            apiSettingsDesc: @js(__('Browse API documentation, manage authentication tokens, and configure JWT settings.')),
+            apiSettingsBtn: @js(__('API Settings')),
+            importMetadata: @js(__('Import Metadata')),
+            importMetadataDesc: @js(__('Bulk import asset metadata from CSV files with preview matching and change diffs before applying.')),
+            importData: @js(__('Import Data'))
         }
     };
     </script>
