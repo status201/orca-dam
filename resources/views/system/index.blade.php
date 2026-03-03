@@ -284,13 +284,23 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             {{ __('Root folder prefix') }}
                         </label>
-                        <input type="text"
-                               x-model="settings.s3_root_folder"
-                               @change="updateSetting('s3_root_folder', settings.s3_root_folder)"
-                               placeholder=""
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <div class="relative">
+                            <input type="text"
+                                   x-model="settings.s3_root_folder"
+                                   @change="updateSetting('s3_root_folder', settings.s3_root_folder)"
+                                   :readonly="rootFolderLocked"
+                                   placeholder=""
+                                   class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent"
+                                   :class="rootFolderLocked ? 'bg-gray-100 cursor-not-allowed' : ''">
+                            <button type="button"
+                                    @click="rootFolderLocked ? unlockRootFolder() : (rootFolderLocked = true)"
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                                    :title="rootFolderLocked ? '{{ __('Unlock to edit') }}' : '{{ __('Lock field') }}'">
+                                <i class="fas" :class="rootFolderLocked ? 'fa-lock' : 'fa-lock-open'"></i>
+                            </button>
+                        </div>
                         <p class="text-xs text-gray-500 mt-1">{{ __('S3 prefix for root folder view & uploads. Leave empty for bucket root.') }}</p>
-                        <p class="text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Changing this does not move existing assets, but does change new thumb and resize paths!') }}</p>
+                        <p class="attention text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Changing this does not move existing assets, but does change new thumb and resize paths!') }}</p>
                     </div>
 
                     <!-- Custom Domain -->
@@ -566,7 +576,7 @@
                                @change="updateSetting('maintenance_mode', settings.maintenance_mode ? '1' : '0')"
                                :checked="settings.maintenance_mode === '1' || settings.maintenance_mode === true"
                                class="sr-only peer">
-                        <div class="attention w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
                 <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -1382,6 +1392,7 @@ window.__systemPageData = {
         verifyIntegrityConfirm: @js(__('Are you sure? This will check every asset\'s S3 object.')),
         integrityChecksQueued: @js(' ' . __('integrity check(s) queued')),
         failedQueueIntegrityCheck: @js(__('Failed to queue integrity check')),
+        rootFolderUnlockConfirm: @js(__('Changing the root folder prefix can cause orphaned thumbnails and resize variants. Only change this when starting fresh, migrating, or deliberately rearranging assets. Do you want to unlock this field?')),
         settingSaved: @js(__('Setting saved')),
         failedSaveSetting: @js(__('Failed to save setting')),
         folderHierarchyRefreshed: @js(__('Folder hierarchy refreshed from S3')),

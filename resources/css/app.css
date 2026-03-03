@@ -362,6 +362,8 @@ html.dark-mode #orca-game-loader {
 
 /* Maintenance mode caution tape */
 nav.maintenance-mode {
+    position: relative;
+    z-index: 2;
     background-image: linear-gradient(
         -45deg,
         #fbbf24 25%,
@@ -376,9 +378,10 @@ nav.maintenance-mode {
     animation: caution-tape-scroll 1s linear infinite;
     border-bottom: 3px solid #d97706 !important;
     border-color: #d97706 !important;
+    filter: brightness(90%);
 }
 html.dark-mode nav.maintenance-mode {
-    filter: invert(1);
+    filter: invert(1) brightness(200%);
 }
 html.dark-mode nav.maintenance-mode svg {
     filter: invert(0);

@@ -40,6 +40,7 @@ export function systemAdmin() {
 
         // Settings
         settings: pageData.settings,
+        rootFolderLocked: true,
         settingsSaved: false,
         settingsError: '',
         savingSettings: false,
@@ -372,6 +373,12 @@ export function systemAdmin() {
                 console.error('Failed to refresh integrity status:', error);
             } finally {
                 this.refreshingIntegrity = false;
+            }
+        },
+
+        unlockRootFolder() {
+            if (confirm(pageData.translations.rootFolderUnlockConfirm)) {
+                this.rootFolderLocked = false;
             }
         },
 

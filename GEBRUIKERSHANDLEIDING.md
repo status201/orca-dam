@@ -18,7 +18,7 @@
 10. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
 11. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
 12. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
-13. [Discover-functie (alleen admin)](#discover-functie-alleen-admin)
+13. [Ontdek-functie (alleen admin)](#ontdek-functie-alleen-admin)
 14. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
 15. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
 16. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
@@ -256,9 +256,9 @@ Ja, het is omslachtig. Dat is met opzet — het dwingt je om goed na te denken e
 
 ---
 
-## Discover-functie (alleen admin)
+## Ontdek-functie (alleen admin)
 
-Soms belanden bestanden in S3 zonder via ORCA te gaan (directe uploads, migraties, etc.). **Discover** laat admins S3 scannen op niet-gekoppelde bestanden, ze bekijken en geselecteerde bestanden importeren in ORCA.
+Soms belanden bestanden in S3 zonder via ORCA te gaan (directe uploads, migraties, etc.). **Ontdek** laat admins S3 scannen op niet-gekoppelde bestanden, ze bekijken en geselecteerde bestanden importeren in ORCA.
 
 Bestanden die bij assets in de prullenbak horen krijgen een rood "Verwijderd"-badge om te voorkomen dat je iets per ongeluk opnieuw importeert dat bewust is verwijderd.
 
