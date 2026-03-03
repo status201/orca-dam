@@ -34,11 +34,11 @@
                              class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50"
                              style="display: none;">
                             <a href="{{ route('assets.create') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.create') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
-                                <i class="fas fa-cloud-arrow-up mr-2 {{ request()->routeIs('assets.create') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Upload') }}
+                                <i class="fas fa-cloud-arrow-up fa-fw mr-2 {{ request()->routeIs('assets.create') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Upload') }}
                             </a>
                             @can('restore', App\Models\Asset::class)
                                 <a href="{{ route('assets.trash') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.trash') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
-                                    <i class="fas fa-trash mr-2 {{ request()->routeIs('assets.trash') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Trash') }}
+                                    <i class="fas fa-trash fa-fw mr-2 {{ request()->routeIs('assets.trash') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Trash') }}
                                 </a>
                             @endcan
                         </div>
@@ -81,18 +81,18 @@
 
                     <x-slot name="content">
                         <a href="{{ route('profile.edit') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('profile.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
-                            <i class="fas fa-user mr-2 {{ request()->routeIs('profile.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Profile') }}
+                            <i class="fas fa-user fa-fw mr-2 {{ request()->routeIs('profile.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Profile') }}
                         </a>
 
                         @can('access', App\Http\Controllers\SystemController::class)
                             <a href="{{ route('system.index') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('system.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
-                                <i class="fas fa-cog mr-2 {{ request()->routeIs('system.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('System') }}
+                                <i class="fas fa-cog fa-fw mr-2 {{ request()->routeIs('system.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('System') }}
                             </a>
                             <a href="{{ route('api.index') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('api.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
-                                <i class="fas fa-code mr-2 {{ request()->routeIs('api.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('API') }}
+                                <i class="fas fa-code fa-fw mr-2 {{ request()->routeIs('api.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('API') }}
                             </a>
                             <a href="{{ route('import.index') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('import.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
-                                <i class="fas fa-file-import mr-2 {{ request()->routeIs('import.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Import') }}
+                                <i class="fas fa-file-import fa-fw mr-2 {{ request()->routeIs('import.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Import') }}
                             </a>
                         @endcan
 
@@ -101,7 +101,7 @@
                             @csrf
 
                             <a href="{{ route('logout') }}" onclick="event.preventDefault(); this.closest('form').submit();" class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 hover:bg-gray-100 focus:outline-none transition duration-150 ease-in-out">
-                                <i class="fas fa-arrow-right-from-bracket mr-2 text-gray-400"></i>{{ __('Log Out') }}
+                                <i class="fas fa-arrow-right-from-bracket fa-fw mr-2 text-gray-400"></i>{{ __('Log Out') }}
                             </a>
                         </form>
                     </x-slot>
@@ -130,11 +130,11 @@
                 {{ __('Assets') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('assets.create')" :active="request()->routeIs('assets.create')" class="pl-8">
-                <i class="fas fa-cloud-arrow-up mr-2 text-gray-400"></i>{{ __('Upload') }}
+                <i class="fas fa-cloud-arrow-up fa-fw mr-2 text-gray-400"></i>{{ __('Upload') }}
             </x-responsive-nav-link>
             @can('restore', App\Models\Asset::class)
                 <x-responsive-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')" class="pl-8">
-                    <i class="fas fa-trash mr-2 text-gray-400"></i>{{ __('Trash') }}
+                    <i class="fas fa-trash fa-fw mr-2 text-gray-400"></i>{{ __('Trash') }}
                 </x-responsive-nav-link>
             @endcan
             <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
@@ -166,18 +166,18 @@
 
             <div class="mt-3 space-y-1">
                 <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
-                    <i class="fas fa-user mr-2"></i>{{ __('Profile') }}
+                    <i class="fas fa-user fa-fw mr-2"></i>{{ __('Profile') }}
                 </x-responsive-nav-link>
 
                 @can('access', App\Http\Controllers\SystemController::class)
                     <x-responsive-nav-link :href="route('system.index')" :active="request()->routeIs('system.*')">
-                        <i class="fas fa-cog mr-2"></i>{{ __('System') }}
+                        <i class="fas fa-cog fa-fw mr-2"></i>{{ __('System') }}
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('api.index')" :active="request()->routeIs('api.*')">
-                        <i class="fas fa-code mr-2"></i>{{ __('API') }}
+                        <i class="fas fa-code fa-fw mr-2"></i>{{ __('API') }}
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
-                        <i class="fas fa-file-import mr-2"></i>{{ __('Import') }}
+                        <i class="fas fa-file-import fa-fw mr-2"></i>{{ __('Import') }}
                     </x-responsive-nav-link>
                 @endcan
 
@@ -188,7 +188,7 @@
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">
-                        <i class="fas fa-arrow-right-from-bracket mr-2"></i>{{ __('Log Out') }}
+                        <i class="fas fa-arrow-right-from-bracket fa-fw mr-2"></i>{{ __('Log Out') }}
                     </x-responsive-nav-link>
                 </form>
             </div>
