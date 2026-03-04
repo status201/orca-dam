@@ -764,6 +764,86 @@ class AssetController extends Controller
     }
 
     /**
+     * Bulk restore trashed assets
+     */
+    public function bulkRestore(Request $request)
+    {
+        $this->authorize('restore', Asset::class);
+
+        $request->validate([
+            'asset_ids' => 'required|array|max:500',
+            'asset_ids.*' => 'integer',
+        ]);
+
+        $assets = Asset::onlyTrashed()->whereIn('id', $request->asset_ids)->get();
+        $restored = 0;
+        $failed = 0;
+        $restoredFilenames = [];
+
+        foreach ($assets as $asset) {
+            try {
+                $asset->restore();
+                $restoredFilenames[] = $asset->filename;
+                $restored++;
+            } catch (\Exception $e) {
+                Log::error("Bulk restore failed for asset {$asset->id}: ".$e->getMessage());
+                $failed++;
+            }
+        }
+
+        return response()->json([
+            'message' => __(':restored asset(s) restored', ['restored' => $restored]),
+            'restored' => $restored,
+            'failed' => $failed,
+            'restored_filenames' => $restoredFilenames,
+        ]);
+    }
+
+    /**
+     * Bulk permanently delete trashed assets and their S3 objects
+     */
+    public function bulkForceDeleteTrashed(Request $request)
+    {
+        $this->authorize('forceDelete', Asset::class);
+
+        $request->validate([
+            'asset_ids' => 'required|array|max:500',
+            'asset_ids.*' => 'integer',
+        ]);
+
+        $assets = Asset::onlyTrashed()->whereIn('id', $request->asset_ids)->get();
+        $deleted = 0;
+        $failed = 0;
+        $deletedKeys = [];
+
+        foreach ($assets as $asset) {
+            try {
+                $this->s3Service->deleteFile($asset->s3_key);
+
+                if ($asset->thumbnail_s3_key) {
+                    $this->s3Service->deleteFile($asset->thumbnail_s3_key);
+                }
+
+                $this->s3Service->deleteResizedImages($asset);
+
+                $deletedKeys[] = $asset->s3_key;
+                $asset->forceDelete();
+                $deleted++;
+            } catch (\Exception $e) {
+                Log::error("Bulk force delete (trash) failed for asset {$asset->id}: ".$e->getMessage());
+                $failed++;
+            }
+        }
+
+        return response()->json([
+            'message' => __(':deleted asset(s) permanently deleted', ['deleted' => $deleted]),
+            'deleted' => $deleted,
+            'failed' => $failed,
+            'deleted_keys' => $deletedKeys,
+        ]);
+    }
+
+    /**
      * Add tags to an asset
      */
     public function addTags(Request $request, Asset $asset)

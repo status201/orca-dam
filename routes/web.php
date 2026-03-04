@@ -61,6 +61,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('assets/trash/index', [AssetController::class, 'trash'])->name('assets.trash');
         Route::post('assets/{id}/restore', [AssetController::class, 'restore'])->name('assets.restore');
         Route::delete('assets/{id}/force-delete', [AssetController::class, 'forceDelete'])->name('assets.force-delete');
+        Route::post('assets/trash/bulk-restore', [AssetController::class, 'bulkRestore'])->name('assets.trash.bulk-restore');
+        Route::delete('assets/trash/bulk-force-delete', [AssetController::class, 'bulkForceDeleteTrashed'])->name('assets.trash.bulk-force-delete');
     });
 
     // AI tagging
