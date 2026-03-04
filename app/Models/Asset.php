@@ -309,6 +309,59 @@ class Asset extends Model
     }
 
     /**
+     * Get the Tailwind color class for this asset's file type icon
+     */
+    public function getIconColorClass(): string
+    {
+        return match ($this->getFileIcon()) {
+            'fa-file-pdf' => 'text-red-500',
+            'fa-file-word' => 'text-blue-600',
+            'fa-file-excel' => 'text-green-600',
+            'fa-file-powerpoint' => 'text-orange-500',
+            'fa-file-zipper' => 'text-yellow-600',
+            'fa-file-code' => 'text-purple-600',
+            'fa-file-video' => 'text-pink-600',
+            'fa-file-audio' => 'text-indigo-600',
+            'fa-file-csv' => 'text-teal-600',
+            'fa-file-lines' => 'text-gray-500',
+            'fa-file-image' => 'text-emerald-600',
+            default => 'text-gray-400',
+        };
+    }
+
+    /**
+     * Get all license types with their translated labels
+     */
+    public static function licenseTypes(): array
+    {
+        return [
+            'public_domain' => __('Public Domain'),
+            'cc0' => __('CC0 (No Rights Reserved)'),
+            'cc_by' => __('CC BY (Attribution)'),
+            'cc_by_sa' => __('CC BY-SA (Attribution-ShareAlike)'),
+            'cc_by_nd' => __('CC BY-ND (Attribution-NoDerivs)'),
+            'cc_by_nc' => __('CC BY-NC (Attribution-NonCommercial)'),
+            'cc_by_nc_sa' => __('CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)'),
+            'cc_by_nc_nd' => __('CC BY-NC-ND (Attribution-NonCommercial-NoDerivs)'),
+            'fair_use' => __('Fair Use'),
+            'all_rights_reserved' => __('All Rights Reserved'),
+            'other' => __('Other'),
+        ];
+    }
+
+    /**
+     * Get the translated label for this asset's license type
+     */
+    public function getLicenseLabel(): string
+    {
+        if (! $this->license_type) {
+            return '';
+        }
+
+        return static::licenseTypes()[$this->license_type] ?? $this->license_type;
+    }
+
+    /**
      * Strip known URL prefixes from a search term so it matches S3 keys.
      */
     private static function normalizeSearchTerm(string $search): string

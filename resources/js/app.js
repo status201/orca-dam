@@ -165,13 +165,15 @@ window.showToast = function(message, type = 'success') {
 };
 
 // Copy to clipboard utility
-window.copyToClipboard = function(text) {
+window.copyToClipboard = function(text, successMessage, errorMessage) {
+    const success = successMessage || 'URL copied to clipboard!';
+    const error = errorMessage || 'Failed to copy URL';
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
-            window.showToast('URL copied to clipboard!');
+            window.showToast(success);
         }).catch(err => {
             console.error('Failed to copy:', err);
-            window.showToast('Failed to copy URL', 'error');
+            window.showToast(error, 'error');
         });
     } else {
         // Fallback for older browsers
@@ -183,10 +185,10 @@ window.copyToClipboard = function(text) {
         textArea.select();
         try {
             document.execCommand('copy');
-            window.showToast('URL copied to clipboard!');
+            window.showToast(success);
         } catch (err) {
             console.error('Failed to copy:', err);
-            window.showToast('Failed to copy URL', 'error');
+            window.showToast(error, 'error');
         }
         textArea.remove();
     }

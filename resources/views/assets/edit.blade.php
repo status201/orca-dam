@@ -16,23 +16,7 @@
     <div class="bg-white rounded-lg shadow-lg p-6">
         <h1 class="text-3xl font-bold mb-6">{{ __('Edit Asset') }}</h1>
 
-        @if(session('success'))
-        <div class="attention mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
-            <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
-        </div>
-        @endif
-
-        @if(session('error'))
-        <div class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
-            <i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}
-        </div>
-        @endif
-
-        @if(session('warning'))
-        <div class="attention mb-6 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
-            <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('warning') }}
-        </div>
-        @endif
+        <x-alert-messages />
 
         @if($asset->is_missing)
         <div class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
@@ -83,23 +67,7 @@
                              class="max-w-sm rounded-lg">
                     @else
                         <div class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                            @php
-                                $icon = $asset->getFileIcon();
-                                $colorClass = match($icon) {
-                                    'fa-file-pdf' => 'text-red-500',
-                                    'fa-file-word' => 'text-blue-600',
-                                    'fa-file-excel' => 'text-green-600',
-                                    'fa-file-powerpoint' => 'text-orange-500',
-                                    'fa-file-zipper' => 'text-yellow-600',
-                                    'fa-file-code' => 'text-purple-600',
-                                    'fa-file-video' => 'text-pink-600',
-                                    'fa-file-audio' => 'text-indigo-600',
-                                    'fa-file-csv' => 'text-teal-600',
-                                    'fa-file-lines' => 'text-gray-500',
-                                    default => 'text-gray-400'
-                                };
-                            @endphp
-                            <i class="fas {{ $icon }} {{ $colorClass }} opacity-60" style="font-size: 8rem;"></i>
+                            <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60" style="font-size: 8rem;"></i>
                         </div>
                     @endif
                     <div class="mt-3 text-center space-y-2">
@@ -216,17 +184,9 @@
                             name="license_type"
                             class="w-full px-4 py-2 pr-dropdown border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <option value="">{{ __('Select a license...') }}</option>
-                        <option value="public_domain" {{ old('license_type', $asset->license_type) == 'public_domain' ? 'selected' : '' }}>{{ __('Public Domain') }}</option>
-                        <option value="cc0" {{ old('license_type', $asset->license_type) == 'cc0' ? 'selected' : '' }}>{{ __('CC0 (No Rights Reserved)') }}</option>
-                        <option value="cc_by" {{ old('license_type', $asset->license_type) == 'cc_by' ? 'selected' : '' }}>{{ __('CC BY (Attribution)') }}</option>
-                        <option value="cc_by_sa" {{ old('license_type', $asset->license_type) == 'cc_by_sa' ? 'selected' : '' }}>{{ __('CC BY-SA (Attribution-ShareAlike)') }}</option>
-                        <option value="cc_by_nd" {{ old('license_type', $asset->license_type) == 'cc_by_nd' ? 'selected' : '' }}>{{ __('CC BY-ND (Attribution-NoDerivs)') }}</option>
-                        <option value="cc_by_nc" {{ old('license_type', $asset->license_type) == 'cc_by_nc' ? 'selected' : '' }}>{{ __('CC BY-NC (Attribution-NonCommercial)') }}</option>
-                        <option value="cc_by_nc_sa" {{ old('license_type', $asset->license_type) == 'cc_by_nc_sa' ? 'selected' : '' }}>{{ __('CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)') }}</option>
-                        <option value="cc_by_nc_nd" {{ old('license_type', $asset->license_type) == 'cc_by_nc_nd' ? 'selected' : '' }}>{{ __('CC BY-NC-ND (Attribution-NonCommercial-NoDerivs)') }}</option>
-                        <option value="fair_use" {{ old('license_type', $asset->license_type) == 'fair_use' ? 'selected' : '' }}>{{ __('Fair Use') }}</option>
-                        <option value="all_rights_reserved" {{ old('license_type', $asset->license_type) == 'all_rights_reserved' ? 'selected' : '' }}>{{ __('All Rights Reserved') }}</option>
-                        <option value="other" {{ old('license_type', $asset->license_type) == 'other' ? 'selected' : '' }}>{{ __('Other') }}</option>
+                        @foreach(\App\Models\Asset::licenseTypes() as $value => $label)
+                        <option value="{{ $value }}" {{ old('license_type', $asset->license_type) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
                     </select>
                     @error('license_type')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

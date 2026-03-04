@@ -114,7 +114,8 @@ export function assetGrid() {
         },
 
         copyUrl(url) {
-            window.copyToClipboard(url);
+            const translations = window.assetTranslations || {};
+            window.copyToClipboard(url, translations.urlCopied, translations.failedToCopy);
         },
 
         get displayTags() {
@@ -376,8 +377,9 @@ export function assetGrid() {
         },
 
         bulkMoveCopySummary() {
+            const translations = window.assetTranslations || {};
             if (window.copyToClipboard) {
-                window.copyToClipboard(this.bulkMoveSummaryText);
+                window.copyToClipboard(this.bulkMoveSummaryText, translations.copied);
             } else {
                 navigator.clipboard.writeText(this.bulkMoveSummaryText);
             }
@@ -438,8 +440,9 @@ export function assetGrid() {
         },
 
         bulkDeleteCopySummary() {
+            const translations = window.assetTranslations || {};
             if (window.copyToClipboard) {
-                window.copyToClipboard(this.bulkDeleteSummaryText);
+                window.copyToClipboard(this.bulkDeleteSummaryText, translations.copied);
             } else {
                 navigator.clipboard.writeText(this.bulkDeleteSummaryText);
             }
@@ -510,7 +513,8 @@ export function assetCard(assetId) {
         },
 
         copyAssetUrl(url) {
-            window.copyToClipboard(url);
+            const translations = window.assetTranslations || {};
+            window.copyToClipboard(url, translations.urlCopied, translations.failedToCopy);
             this.copied = true;
             setTimeout(() => {
                 this.copied = false;
@@ -550,8 +554,9 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
         },
 
         copyUrl() {
+            const translations = window.assetTranslations || {};
             if (window.copyToClipboard) {
-                window.copyToClipboard(this.assetUrl);
+                window.copyToClipboard(this.assetUrl, translations.urlCopied, translations.failedToCopy);
             } else {
                 navigator.clipboard.writeText(this.assetUrl);
             }

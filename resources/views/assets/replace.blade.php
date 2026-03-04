@@ -46,23 +46,7 @@
                                  class="max-w-full max-h-64 rounded-lg shadow">
                         @else
                             <div class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                                @php
-                                    $icon = $asset->getFileIcon();
-                                    $colorClass = match($icon) {
-                                        'fa-file-pdf' => 'text-red-500',
-                                        'fa-file-word' => 'text-blue-600',
-                                        'fa-file-excel' => 'text-green-600',
-                                        'fa-file-powerpoint' => 'text-orange-500',
-                                        'fa-file-zipper' => 'text-yellow-600',
-                                        'fa-file-code' => 'text-purple-600',
-                                        'fa-file-video' => 'text-pink-600',
-                                        'fa-file-audio' => 'text-indigo-600',
-                                        'fa-file-csv' => 'text-teal-600',
-                                        'fa-file-lines' => 'text-gray-500',
-                                        default => 'text-gray-400'
-                                    };
-                                @endphp
-                                <i class="fas {{ $icon }} {{ $colorClass }} opacity-60" style="font-size: 4rem;"></i>
+                                <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60" style="font-size: 4rem;"></i>
                             </div>
                         @endif
                     </div>

@@ -13,23 +13,7 @@
         <x-asset-breadcrumb :asset="$asset" />
     </div>
 
-    @if(session('success'))
-    <div class="attention mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
-        <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
-    </div>
-    @endif
-
-    @if(session('error'))
-    <div class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
-        <i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}
-    </div>
-    @endif
-
-    @if(session('warning'))
-    <div class="attention mb-6 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg">
-        <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('warning') }}
-    </div>
-    @endif
+    <x-alert-messages />
 
     @if($asset->is_missing)
     <div class="attention mb-6 p-4 border border-red-200 text-red-800 rounded-lg">
@@ -75,24 +59,7 @@
                 @else
                     <div class="aspect-video bg-gray-100 flex items-center justify-center">
                         <div class="text-center">
-                            @php
-                                $icon = $asset->getFileIcon();
-                                $colorClass = match($icon) {
-                                    'fa-file-pdf' => 'text-red-500',
-                                    'fa-file-word' => 'text-blue-600',
-                                    'fa-file-excel' => 'text-green-600',
-                                    'fa-file-powerpoint' => 'text-orange-500',
-                                    'fa-file-zipper' => 'text-yellow-600',
-                                    'fa-file-code' => 'text-purple-600',
-                                    'fa-file-video' => 'text-pink-600',
-                                    'fa-file-audio' => 'text-indigo-600',
-                                    'fa-file-csv' => 'text-teal-600',
-                                    'fa-file-lines' => 'text-gray-500',
-                                    'fa-file-image' => 'text-emerald-600',
-                                    default => 'text-gray-400'
-                                };
-                            @endphp
-                            <i class="fas {{ $icon }} {{ $colorClass }} opacity-60 mb-4" style="font-size: 12rem;"></i>
+                            <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60 mb-4" style="font-size: 12rem;"></i>
                             <p class="text-gray-600 font-medium">{{ $asset->mime_type }}</p>
                             <p class="text-gray-500 text-sm mt-1">{{ strtoupper(pathinfo($asset->filename, PATHINFO_EXTENSION)) }} {{ __('File') }}</p>
                         </div>
@@ -257,45 +224,7 @@
                 @if($asset->license_type)
                 <div class="mt-4 pt-4 border-t">
                     <h4 class="text-sm font-semibold text-gray-700 mb-1">{{ __('License Type') }}</h4>
-                    <p class="text-sm text-gray-600">
-                        @switch($asset->license_type)
-                            @case('public_domain')
-                                {{ __('Public Domain') }}
-                                @break
-                            @case('cc0')
-                                {{ __('CC0 (No Rights Reserved)') }}
-                                @break
-                            @case('cc_by')
-                                {{ __('CC BY (Attribution)') }}
-                                @break
-                            @case('cc_by_sa')
-                                {{ __('CC BY-SA (Attribution-ShareAlike)') }}
-                                @break
-                            @case('cc_by_nd')
-                                {{ __('CC BY-ND (Attribution-NoDerivs)') }}
-                                @break
-                            @case('cc_by_nc')
-                                {{ __('CC BY-NC (Attribution-NonCommercial)') }}
-                                @break
-                            @case('cc_by_nc_sa')
-                                {{ __('CC BY-NC-SA (Attribution-NonCommercial-ShareAlike)') }}
-                                @break
-                            @case('cc_by_nc_nd')
-                                {{ __('CC BY-NC-ND (Attribution-NonCommercial-NoDerivs)') }}
-                                @break
-                            @case('fair_use')
-                                {{ __('Fair Use') }}
-                                @break
-                            @case('all_rights_reserved')
-                                {{ __('All Rights Reserved') }}
-                                @break
-                            @case('other')
-                                {{ __('Other') }}
-                                @break
-                            @default
-                                {{ $asset->license_type }}
-                        @endswitch
-                    </p>
+                    <p class="text-sm text-gray-600">{{ $asset->getLicenseLabel() }}</p>
                 </div>
                 @endif
 

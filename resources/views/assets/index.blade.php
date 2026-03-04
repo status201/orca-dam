@@ -349,24 +349,7 @@
                     </div>
                 @else
                     <div class="w-full h-full flex items-center justify-center">
-                        @php
-                            $icon = $asset->getFileIcon();
-                            $colorClass = match($icon) {
-                                'fa-file-pdf' => 'text-red-500',
-                                'fa-file-word' => 'text-blue-600',
-                                'fa-file-excel' => 'text-green-600',
-                                'fa-file-powerpoint' => 'text-orange-500',
-                                'fa-file-zipper' => 'text-yellow-600',
-                                'fa-file-code' => 'text-purple-600',
-                                'fa-file-video' => 'text-pink-600',
-                                'fa-file-audio' => 'text-indigo-600',
-                                'fa-file-csv' => 'text-teal-600',
-                                'fa-file-lines' => 'text-gray-500',
-                                'fa-file-image' => 'text-emerald-600',
-                                default => 'text-gray-400'
-                            };
-                        @endphp
-                        <i class="fas {{ $icon }} text-9xl {{ $colorClass }} opacity-60"></i>
+                        <i class="fas {{ $asset->getFileIcon() }} text-9xl {{ $asset->getIconColorClass() }} opacity-60"></i>
                     </div>
                 @endif
 
@@ -502,24 +485,7 @@
                                             </div>
                                         </div>
                                     @else
-                                        @php
-                                            $icon = $asset->getFileIcon();
-                                            $colorClass = match($icon) {
-                                                'fa-file-pdf' => 'text-red-500',
-                                                'fa-file-word' => 'text-blue-600',
-                                                'fa-file-excel' => 'text-green-600',
-                                                'fa-file-powerpoint' => 'text-orange-500',
-                                                'fa-file-zipper' => 'text-yellow-600',
-                                                'fa-file-code' => 'text-purple-600',
-                                                'fa-file-video' => 'text-pink-600',
-                                                'fa-file-audio' => 'text-indigo-600',
-                                                'fa-file-csv' => 'text-teal-600',
-                                                'fa-file-lines' => 'text-gray-500',
-                                                'fa-file-image' => 'text-emerald-600',
-                                                default => 'text-gray-400'
-                                            };
-                                        @endphp
-                                        <i class="fas {{ $icon }} text-3xl {{ $colorClass }} opacity-60"></i>
+                                        <i class="fas {{ $asset->getFileIcon() }} text-3xl {{ $asset->getIconColorClass() }} opacity-60"></i>
                                     @endif
                                 </div>
                             </a>
@@ -1031,7 +997,10 @@ window.assetTranslations = {
     moveConfirm: @js(__('This will change the S3 keys of the selected assets. External links to the old URLs will break. Are you sure?')),
     moveFailed: @js(__('Failed to move assets')),
     forceDeleteConfirm: @js(__('This will PERMANENTLY delete the selected assets, their thumbnails, and all resized formats from S3. External links will no longer work. This action cannot be undone. Are you sure?')),
-    forceDeleteFailed: @js(__('Failed to permanently delete assets'))
+    forceDeleteFailed: @js(__('Failed to permanently delete assets')),
+    urlCopied: @js(__('URL copied to clipboard!')),
+    copied: @js(__('Copied!')),
+    failedToCopy: @js(__('Failed to copy URL'))
 };
 </script>
 @endpush

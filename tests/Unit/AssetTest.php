@@ -274,6 +274,46 @@ test('asset search exclude handles null alt_text and caption', function () {
     expect($results->first()->filename)->toBe('photo.jpg');
 });
 
+test('asset getIconColorClass returns correct color for different file types', function () {
+    $pdfAsset = Asset::factory()->create(['mime_type' => 'application/pdf']);
+    $wordAsset = Asset::factory()->create(['mime_type' => 'application/msword']);
+    $videoAsset = Asset::factory()->create(['mime_type' => 'video/mp4']);
+    $unknownAsset = Asset::factory()->create(['mime_type' => 'application/octet-stream', 'filename' => 'data.bin']);
+    $epsAsset = Asset::factory()->create(['mime_type' => 'application/postscript']);
+
+    expect($pdfAsset->getIconColorClass())->toBe('text-red-500');
+    expect($wordAsset->getIconColorClass())->toBe('text-blue-600');
+    expect($videoAsset->getIconColorClass())->toBe('text-pink-600');
+    expect($unknownAsset->getIconColorClass())->toBe('text-gray-400');
+    expect($epsAsset->getIconColorClass())->toBe('text-emerald-600');
+});
+
+test('asset licenseTypes returns all license types with labels', function () {
+    $types = Asset::licenseTypes();
+
+    expect($types)->toBeArray();
+    expect($types)->toHaveCount(11);
+    expect($types)->toHaveKeys([
+        'public_domain', 'cc0', 'cc_by', 'cc_by_sa', 'cc_by_nd',
+        'cc_by_nc', 'cc_by_nc_sa', 'cc_by_nc_nd', 'fair_use',
+        'all_rights_reserved', 'other',
+    ]);
+});
+
+test('asset getLicenseLabel returns translated label for license type', function () {
+    $asset = Asset::factory()->create(['license_type' => 'cc_by']);
+    expect($asset->getLicenseLabel())->toBe('CC BY (Attribution)');
+
+    $asset2 = Asset::factory()->create(['license_type' => 'public_domain']);
+    expect($asset2->getLicenseLabel())->toBe('Public Domain');
+
+    $asset3 = Asset::factory()->create(['license_type' => null]);
+    expect($asset3->getLicenseLabel())->toBe('');
+
+    $asset4 = Asset::factory()->create(['license_type' => 'unknown_type']);
+    expect($asset4->getLicenseLabel())->toBe('unknown_type');
+});
+
 test('asset scope withTags filters by tag ids', function () {
     $tag1 = Tag::factory()->create();
     $tag2 = Tag::factory()->create();

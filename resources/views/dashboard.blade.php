@@ -54,170 +54,36 @@
                     <!-- Stats in 2-column grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                        <!-- Assets Stats -->
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6 h-full">
-                                <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-blue-500 rounded-md p-3 w-14 text-center">
-                                        <i class="fas fa-images text-white text-2xl"></i>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">{{ __('Total Assets') }}</dt>
-                                            <dd class="text-3xl font-semibold text-gray-900">{{ number_format($stats['total_assets']) }}</dd>
-                                        </dl>
-                                    </div>
-                                    <a href="{{ route('assets.index') }}" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-arrow-right"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+                        <x-stat-card icon="fas fa-images" bgClass="bg-blue-500" :label="__('Total Assets')" :value="number_format($stats['total_assets'])" :link="route('assets.index')" linkClass="text-blue-600 hover:text-blue-800" />
 
-                        <!-- My Assets -->
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6 h-full">
-                                <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-green-500 rounded-md p-3 w-14 text-center">
-                                        <i class="fas fa-user text-white text-2xl"></i>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">{{ __('My Assets') }}</dt>
-                                            <dd class="text-3xl font-semibold text-gray-900">{{ number_format($stats['my_assets']) }}</dd>
-                                        </dl>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <x-stat-card icon="fas fa-user" bgClass="bg-green-500" :label="__('My Assets')" :value="number_format($stats['my_assets'])" />
 
-                        <!-- Tags Stats -->
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6 h-full">
-                                <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-purple-500 rounded-md p-3 w-14 text-center">
-                                        <i class="fas fa-tags text-white text-2xl"></i>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">{{ __('Total Tags') }}</dt>
-                                            <dd class="text-3xl font-semibold text-gray-900">{{ number_format($stats['total_tags']) }}</dd>
-                                            <dd class="text-xs text-gray-500 mt-1">
-                                                {{ __(':count user', ['count' => number_format($stats['user_tags'])]) }} • {{ __(':count AI', ['count' => number_format($stats['ai_tags'])]) }}
-                                            </dd>
-                                        </dl>
-                                    </div>
-                                    <a href="{{ route('tags.index') }}" class="text-purple-600 hover:text-purple-800">
-                                        <i class="fas fa-arrow-right"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+                        <x-stat-card icon="fas fa-tags" bgClass="bg-purple-500" :label="__('Total Tags')" :value="number_format($stats['total_tags'])" :link="route('tags.index')" linkClass="text-purple-600 hover:text-purple-800">
+                            <dd class="text-xs text-gray-500 mt-1">
+                                {{ __(':count user', ['count' => number_format($stats['user_tags'])]) }} • {{ __(':count AI', ['count' => number_format($stats['ai_tags'])]) }}
+                            </dd>
+                        </x-stat-card>
 
-                        <!-- Storage Stats -->
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div class="p-6 h-full">
-                                <div class="flex items-center h-full">
-                                    <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3 w-14 text-center">
-                                        <i class="fas fa-database text-white text-2xl"></i>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">{{ __('Total Storage') }}</dt>
-                                            <dd class="text-3xl font-semibold text-gray-900">{{ $stats['total_storage'] }}</dd>
-                                        </dl>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <x-stat-card icon="fas fa-database" bgClass="bg-yellow-500" :label="__('Total Storage')" :value="$stats['total_storage']" />
 
                         @if(!$isAdmin)
-                            <!-- My Tags -->
-                            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                                <div class="p-6 h-full">
-                                    <div class="flex items-center h-full">
-                                        <div class="flex-shrink-0 bg-teal-500 rounded-md p-3 w-14 text-center">
-                                            <i class="fas fa-tag text-white text-2xl"></i>
-                                        </div>
-                                        <div class="ml-5 w-0 flex-1">
-                                            <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">{{ __('My Tags') }}</dt>
-                                                <dd class="text-3xl font-semibold text-gray-900">{{ number_format($stats['my_tags']) }}</dd>
-                                                <dd class="text-xs text-gray-500 mt-1">
-                                                    {{ __(':count user', ['count' => number_format($stats['my_user_tags'])]) }} • {{ __(':count AI', ['count' => number_format($stats['my_ai_tags'])]) }}
-                                                </dd>
-                                            </dl>
-                                        </div>
-                                        <a href="{{ route('tags.index') }}" class="text-teal-600 hover:text-teal-800">
-                                            <i class="fas fa-arrow-right"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+                            <x-stat-card icon="fas fa-tag" bgClass="bg-teal-500" :label="__('My Tags')" :value="number_format($stats['my_tags'])" :link="route('tags.index')" linkClass="text-teal-600 hover:text-teal-800">
+                                <dd class="text-xs text-gray-500 mt-1">
+                                    {{ __(':count user', ['count' => number_format($stats['my_user_tags'])]) }} • {{ __(':count AI', ['count' => number_format($stats['my_ai_tags'])]) }}
+                                </dd>
+                            </x-stat-card>
 
-                            <!-- Results per page -->
-                            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                                <div class="p-6 h-full">
-                                    <div class="flex items-center h-full">
-                                        <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3 w-14 text-center">
-                                            <i class="fas fa-table-list text-white text-2xl"></i>
-                                        </div>
-                                        <div class="ml-5 w-0 flex-1">
-                                            <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">{{ __('Results per page') }}</dt>
-                                                <dd class="text-3xl font-semibold text-gray-900">{{ $stats['items_per_page'] }}</dd>
-                                                <dd class="text-xs text-gray-500 mt-1">
-                                                    {{ $stats['items_per_page_is_default'] ? __('Default') : __('Custom') }}
-                                                </dd>
-                                            </dl>
-                                        </div>
-                                        <a href="{{ route('profile.edit') }}" class="text-indigo-600 hover:text-indigo-800">
-                                            <i class="fas fa-arrow-right"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+                            <x-stat-card icon="fas fa-table-list" bgClass="bg-indigo-500" :label="__('Results per page')" :value="$stats['items_per_page']" :link="route('profile.edit')" linkClass="text-indigo-600 hover:text-indigo-800">
+                                <dd class="text-xs text-gray-500 mt-1">
+                                    {{ $stats['items_per_page_is_default'] ? __('Default') : __('Custom') }}
+                                </dd>
+                            </x-stat-card>
                         @endif
 
                         @if($isAdmin)
-                            <!-- Admin Stats -->
-                            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                                <div class="p-6 h-full">
-                                    <div class="flex items-center h-full">
-                                        <div class="flex-shrink-0 bg-red-500 rounded-md p-3 w-14 text-center">
-                                            <i class="fas fa-users text-white text-2xl"></i>
-                                        </div>
-                                        <div class="ml-5 w-0 flex-1">
-                                            <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">{{ __('Total Users') }}</dt>
-                                                <dd class="text-3xl font-semibold text-gray-900">{{ number_format($stats['total_users']) }}</dd>
-                                            </dl>
-                                        </div>
-                                        <a href="{{ route('users.index') }}" class="text-red-600 hover:text-red-800">
-                                            <i class="fas fa-arrow-right"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+                            <x-stat-card icon="fas fa-users" bgClass="bg-red-500" :label="__('Total Users')" :value="number_format($stats['total_users'])" :link="route('users.index')" linkClass="text-red-600 hover:text-red-800" />
 
-                            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                                <div class="p-6 h-full">
-                                    <div class="flex items-center h-full">
-                                        <div class="flex-shrink-0 bg-gray-500 rounded-md p-3 w-14 text-center">
-                                            <i class="fas fa-trash text-white text-2xl"></i>
-                                        </div>
-                                        <div class="ml-5 w-0 flex-1">
-                                            <dl>
-                                                <dt class="text-sm font-medium text-gray-500 truncate">{{ __('Trashed Assets') }}</dt>
-                                                <dd class="text-3xl font-semibold text-gray-900">{{ number_format($stats['trashed_assets']) }}</dd>
-                                            </dl>
-                                        </div>
-                                        <a href="{{ route('assets.trash') }}" class="text-gray-600 hover:text-gray-800">
-                                            <i class="fas fa-arrow-right"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+                            <x-stat-card icon="fas fa-trash" bgClass="bg-gray-500" :label="__('Trashed Assets')" :value="number_format($stats['trashed_assets'])" :link="route('assets.trash')" linkClass="text-gray-600 hover:text-gray-800" />
                         @endif
                     </div>
                 </div>
