@@ -127,6 +127,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const loader = document.getElementById('orca-game-loader');
             if (loader) loader.style.display = '';
 
+            // If script already loaded from a previous session, just re-init
+            if (window.__orcaGameScriptLoaded) {
+                if (window.OrcaGame) window.OrcaGame.init();
+                return;
+            }
+
             // Lazy-load game CSS
             const link = document.createElement('link');
             link.rel = 'stylesheet';
@@ -137,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const script = document.createElement('script');
             script.src = '/games/orca-game.js';
             script.onload = function () {
+                window.__orcaGameScriptLoaded = true;
                 if (window.OrcaGame) window.OrcaGame.init();
             };
             script.onerror = function () {

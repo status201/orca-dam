@@ -39,6 +39,8 @@
     let running = false;
     let lastTimestamp = 0;
     let animFrameId = null;
+    let gameOverKeyHandler = null;
+    let deathTimeoutId = null;
 
     // Touch state
     let touchActive = false;
@@ -117,6 +119,11 @@
 
     // --- Start Game ---
     function startGame() {
+        // Cancel any previously running game loop
+        running = false;
+        if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+        if (deathTimeoutId) { clearTimeout(deathTimeoutId); deathTimeoutId = null; }
+
         footer = document.getElementById('orca-footer');
         footerContent = document.getElementById('footer-content');
         gameArea = document.getElementById('orca-game-area');
@@ -423,7 +430,7 @@
 
                     if (lives <= 0) {
                         running = false;
-                        setTimeout(() => gameOver(), 1700);
+                        deathTimeoutId = setTimeout(() => gameOver(), 1700);
                         return;
                     }
                 }
@@ -628,37 +635,48 @@
 
         gameArea.appendChild(overlay);
 
+        function removeGameOverKeyHandler() {
+            if (gameOverKeyHandler) {
+                gameArea.removeEventListener('keydown', gameOverKeyHandler);
+                gameOverKeyHandler = null;
+            }
+        }
+
         overlay.querySelector('.play-again').addEventListener('click', () => {
+            removeGameOverKeyHandler();
             overlay.remove();
             clearEntities();
             startGame();
         });
 
         overlay.querySelector('.quit').addEventListener('click', () => {
+            removeGameOverKeyHandler();
             overlay.remove();
             quitGame();
         });
 
         // Also allow keyboard: R to retry, Q/Esc to quit
-        function onGameOverKey(e) {
+        gameOverKeyHandler = function onGameOverKey(e) {
             if (e.code === 'KeyR') {
-                gameArea.removeEventListener('keydown', onGameOverKey);
+                removeGameOverKeyHandler();
                 overlay.remove();
                 clearEntities();
                 startGame();
             } else if (e.code === 'KeyQ' || e.code === 'Escape') {
-                gameArea.removeEventListener('keydown', onGameOverKey);
+                removeGameOverKeyHandler();
                 overlay.remove();
                 quitGame();
             }
-        }
-        gameArea.addEventListener('keydown', onGameOverKey);
+        };
+        gameArea.addEventListener('keydown', gameOverKeyHandler);
     }
 
     // --- Quit Game ---
     function quitGame() {
         running = false;
-        if (animFrameId) cancelAnimationFrame(animFrameId);
+        if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+        if (deathTimeoutId) { clearTimeout(deathTimeoutId); deathTimeoutId = null; }
+        if (gameOverKeyHandler) { gameArea.removeEventListener('keydown', gameOverKeyHandler); gameOverKeyHandler = null; }
         gameArea.removeEventListener('keydown', onKeyDown);
         gameArea.removeEventListener('keyup', onKeyUp);
         gameArea.removeEventListener('touchstart', onGameTouchStart);
