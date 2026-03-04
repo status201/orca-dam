@@ -23,6 +23,20 @@
     const SHARK_H = 48;
     const FAST_FISH_POINTS = 50;
     const SLOW_FISH_POINTS = 10;
+    const SALMON_SPEED = 350;
+    const SALMON_POINTS = 75;
+    const SALMON_W = 44;
+    const SALMON_H = 26;
+    const SALMON_SPAWN_AFTER = 30;
+    const SALMON_COURSE_INTERVAL = 1.5;
+    const SALMON_COURSE_AMP = 60;
+    const SWORDFISH_SPEED_MIN = 450;
+    const SWORDFISH_SPEED_MAX = 580;
+    const SWORDFISH_W = 150;
+    const SWORDFISH_H = 48;
+    const SWORDFISH_SPAWN_AFTER = 60;
+    const SWORDFISH_MIN_INTERVAL = 8;
+    const SWORDFISH_MAX_INTERVAL = 18;
     const COLLISION_MARGIN = 8;
 
     // Idle swim drift constants
@@ -33,7 +47,7 @@
 
     // --- State ---
     let score, lives, orcaX, orcaY, orcaVelocity, isJumping, restingY;
-    let entities, spawnTimer, sharkTimer, nextSharkInterval;
+    let entities, spawnTimer, sharkTimer, nextSharkInterval, swordfishTimer, nextSwordfishInterval;
     let gameTime; // total elapsed game time for idle drift
     let keys = {};
     let running = false;
@@ -92,6 +106,19 @@
       </g>
     </svg>`;
 
+    // Medium herringbone (for salmon, matches 44×26)
+    const BONE_SALMON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 26" width="44" height="26">
+      <g fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" opacity="0.9">
+        <line x1="5" y1="13" x2="37" y2="13"/>
+        <circle cx="6" cy="13" r="2.8" fill="white" stroke="none"/>
+        <line x1="13" y1="13" x2="10" y2="5"/><line x1="13" y1="13" x2="10" y2="21"/>
+        <line x1="20" y1="13" x2="17" y2="5"/><line x1="20" y1="13" x2="17" y2="21"/>
+        <line x1="27" y1="13" x2="24" y2="5"/><line x1="27" y1="13" x2="24" y2="21"/>
+        <line x1="34" y1="13" x2="31" y2="5"/><line x1="34" y1="13" x2="31" y2="21"/>
+        <line x1="37" y1="13" x2="43" y2="5"/><line x1="37" y1="13" x2="43" y2="21"/>
+      </g>
+    </svg>`;
+
     // --- Init (called after lazy load) ---
     function init() {
         const basePath = '/games/';
@@ -99,10 +126,14 @@
             fetch(basePath + 'fish-silver.svg').then(r => r.text()),
             fetch(basePath + 'fish-gold.svg').then(r => r.text()),
             fetch(basePath + 'shark.svg').then(r => r.text()),
-        ]).then(([silver, gold, shark]) => {
+            fetch(basePath + 'fish-salmon.svg').then(r => r.text()),
+            fetch(basePath + 'swordfish.svg').then(r => r.text()),
+        ]).then(([silver, gold, shark, salmon, swordfish]) => {
             svgCache.silver = silver;
             svgCache.gold = gold;
             svgCache.shark = shark;
+            svgCache.salmon = salmon;
+            svgCache.swordfish = swordfish;
 
             // Hide loader
             const loader = document.getElementById('orca-game-loader');
@@ -166,8 +197,10 @@
         entities = [];
         spawnTimer = 0;
         sharkTimer = 0;
+        swordfishTimer = 0;
         gameTime = 0;
         nextSharkInterval = randomRange(SHARK_MIN_INTERVAL, SHARK_MAX_INTERVAL);
+        nextSwordfishInterval = randomRange(SWORDFISH_MIN_INTERVAL, SWORDFISH_MAX_INTERVAL);
         keys = {};
 
         // Create orca element
@@ -216,9 +249,11 @@
                     <span>TAP</span> TO JUMP
                 </div>
                 <div class="fish-info">
+                    <span class="salmon">SALMON</span> = ${SALMON_POINTS} PTS (fast & tricky!)<br>
                     <span class="silver">SILVER FISH</span> = ${FAST_FISH_POINTS} PTS (fast!)<br>
                     <span class="gold">GOLD FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
-                    <span class="danger">AVOID THE SHARKS!</span>
+                    <span class="danger">AVOID THE SHARKS!</span><br>
+                    <span class="danger">BEWARE THE SWORDFISH!</span>
                 </div>
                 <div class="start-prompt">TAP TO START</div>
             `;
@@ -230,9 +265,11 @@
                     <span>SPACE</span> JUMP
                 </div>
                 <div class="fish-info">
+                    <span class="salmon">SALMON</span> = ${SALMON_POINTS} PTS (fast & tricky!)<br>
                     <span class="silver">SILVER FISH</span> = ${FAST_FISH_POINTS} PTS (fast!)<br>
                     <span class="gold">GOLD FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
-                    <span class="danger">AVOID THE SHARKS!</span>
+                    <span class="danger">AVOID THE SHARKS!</span><br>
+                    <span class="danger">BEWARE THE SWORDFISH!</span>
                 </div>
                 <div class="start-prompt">PRESS SPACE TO START</div>
             `;
@@ -364,6 +401,16 @@
             spawnShark(areaWidth);
         }
 
+        // Spawn swordfish (after 60s)
+        if (gameTime >= SWORDFISH_SPAWN_AFTER) {
+            swordfishTimer += dt;
+            if (swordfishTimer >= nextSwordfishInterval) {
+                swordfishTimer = 0;
+                nextSwordfishInterval = randomRange(SWORDFISH_MIN_INTERVAL, SWORDFISH_MAX_INTERVAL);
+                spawnSwordfish(areaWidth);
+            }
+        }
+
         // Move entities and check collisions
         for (let i = entities.length - 1; i >= 0; i--) {
             const e = entities[i];
@@ -382,6 +429,25 @@
                 e.y += dir * 300 * dt;
                 if ((dir === 1 && e.y >= e.lungeTarget) || (dir === -1 && e.y <= e.lungeTarget)) {
                     e.y = e.lungeTarget;
+                }
+            }
+
+            // Salmon course changes — zigzag vertically
+            if (e.courseTimer !== undefined) {
+                e.courseTimer += dt;
+                if (e.courseTimer >= e.courseInterval) {
+                    e.courseTimer = 0;
+                    e.courseInterval = SALMON_COURSE_INTERVAL + (Math.random() - 0.5) * 0.6;
+                    const minY = 100;
+                    const maxY = GAME_HEIGHT - e.h;
+                    e.targetY = Math.max(minY, Math.min(maxY, e.y + (Math.random() - 0.5) * 2 * SALMON_COURSE_AMP));
+                }
+                if (e.targetY !== null && e.y !== e.targetY) {
+                    const dir = e.targetY > e.y ? 1 : -1;
+                    e.y += dir * 120 * dt;
+                    if ((dir === 1 && e.y >= e.targetY) || (dir === -1 && e.y <= e.targetY)) {
+                        e.y = e.targetY;
+                    }
                 }
             }
 
@@ -404,10 +470,10 @@
                     // Catch fish
                     score += e.points;
                     showCatchEffect(e.x, e.y, '+' + e.points);
-                    showBoneEffect(e.x, e.y, e.points === FAST_FISH_POINTS);
+                    showBoneEffect(e.x, e.y, e.fishType === 'salmon' ? 'salmon' : (e.points === FAST_FISH_POINTS ? 'small' : 'large'));
                     e.el.remove();
                     entities.splice(i, 1);
-                } else if (e.type === 'shark') {
+                } else if (e.type === 'shark' || e.type === 'swordfish') {
                     // Hit by shark
                     lives--;
                     updateLivesDisplay();
@@ -455,13 +521,44 @@
 
     // --- Spawn Functions ---
     function spawnFish(areaWidth) {
-        const isFast = Math.random() < 0.4;
-        const el = document.createElement('div');
-        el.className = 'game-fish ' + (isFast ? 'fast' : 'slow');
-        el.innerHTML = isFast ? svgCache.silver : svgCache.gold;
+        const roll = Math.random();
+        let fishType;
+        if (gameTime >= SALMON_SPAWN_AFTER) {
+            // After 30s: 25% salmon, 30% silver, 45% gold
+            if (roll < 0.25) fishType = 'salmon';
+            else if (roll < 0.55) fishType = 'fast';
+            else fishType = 'slow';
+        } else {
+            // Before 30s: 40% silver, 60% gold
+            fishType = roll < 0.4 ? 'fast' : 'slow';
+        }
 
-        const w = isFast ? 36 : 52;
-        const h = isFast ? 21 : 29;
+        const el = document.createElement('div');
+        let w, h, speed, points;
+
+        if (fishType === 'salmon') {
+            el.className = 'game-fish salmon';
+            el.innerHTML = svgCache.salmon;
+            w = SALMON_W;
+            h = SALMON_H;
+            speed = SALMON_SPEED;
+            points = SALMON_POINTS;
+        } else if (fishType === 'fast') {
+            el.className = 'game-fish fast';
+            el.innerHTML = svgCache.silver;
+            w = 36;
+            h = 21;
+            speed = FAST_FISH_SPEED;
+            points = FAST_FISH_POINTS;
+        } else {
+            el.className = 'game-fish slow';
+            el.innerHTML = svgCache.gold;
+            w = 52;
+            h = 29;
+            speed = SLOW_FISH_SPEED;
+            points = SLOW_FISH_POINTS;
+        }
+
         // Spawn below the wave area (top ~100px) across the remaining height
         const minY = 100;
         const y = minY + Math.random() * (GAME_HEIGHT * 0.7 - minY);
@@ -470,16 +567,26 @@
         el.style.top = y + 'px';
         gameArea.appendChild(el);
 
-        entities.push({
+        const entity = {
             type: 'fish',
             el: el,
             x: areaWidth,
             y: y,
             w: w,
             h: h,
-            speed: isFast ? FAST_FISH_SPEED : SLOW_FISH_SPEED,
-            points: isFast ? FAST_FISH_POINTS : SLOW_FISH_POINTS,
-        });
+            speed: speed,
+            points: points,
+        };
+
+        // Salmon gets course-change properties for zigzag movement
+        if (fishType === 'salmon') {
+            entity.fishType = 'salmon';
+            entity.courseTimer = 0;
+            entity.courseInterval = SALMON_COURSE_INTERVAL + (Math.random() - 0.5) * 0.6;
+            entity.targetY = null;
+        }
+
+        entities.push(entity);
     }
 
     function spawnShark(areaWidth) {
@@ -523,6 +630,32 @@
                 lungeTarget: y,
             });
         }
+    }
+
+    function spawnSwordfish(areaWidth) {
+        const el = document.createElement('div');
+        el.className = 'game-swordfish';
+        el.innerHTML = svgCache.swordfish;
+
+        const w = SWORDFISH_W;
+        const h = SWORDFISH_H;
+        const minY = 100;
+        const y = minY + Math.random() * (GAME_HEIGHT - h - minY);
+        const speed = randomRange(SWORDFISH_SPEED_MIN, SWORDFISH_SPEED_MAX);
+
+        el.style.left = areaWidth + 'px';
+        el.style.top = y + 'px';
+        gameArea.appendChild(el);
+
+        entities.push({
+            type: 'swordfish',
+            el: el,
+            x: areaWidth,
+            y: y,
+            w: w,
+            h: h,
+            speed: speed,
+        });
     }
 
     // --- Effects ---
@@ -570,10 +703,10 @@
         setTimeout(() => ouch.remove(), 800);
     }
 
-    function showBoneEffect(x, y, isFast) {
+    function showBoneEffect(x, y, fishSize) {
         const el = document.createElement('div');
         el.className = 'game-bone-effect';
-        el.innerHTML = isFast ? BONE_SMALL_SVG : BONE_LARGE_SVG;
+        el.innerHTML = fishSize === 'small' ? BONE_SMALL_SVG : (fishSize === 'salmon' ? BONE_SALMON_SVG : BONE_LARGE_SVG);
         el.style.left = x + 'px';
         el.style.top = y + 'px';
         gameArea.appendChild(el);
