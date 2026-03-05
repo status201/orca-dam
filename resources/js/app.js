@@ -1,6 +1,7 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import { applyShiftSelect } from './shift-select';
 
 import './alpine/asset-grid';
 import './alpine/asset-detail';
@@ -32,26 +33,8 @@ Alpine.store('bulkSelection', {
         }
     },
     shiftToggle(id, event) {
-        this.toggle(id);
         const pageIds = window.currentPageAssetIds || [];
-        const currentIndex = pageIds.indexOf(id);
-
-        if (event.shiftKey && this.lastClickedIndex !== null && currentIndex !== this.lastClickedIndex) {
-            const isNowSelected = this.isSelected(id);
-            const start = Math.min(this.lastClickedIndex, currentIndex);
-            const end = Math.max(this.lastClickedIndex, currentIndex);
-            for (let i = start; i <= end; i++) {
-                const itemId = pageIds[i];
-                if (itemId === id) continue;
-                const alreadySelected = this.isSelected(itemId);
-                if (isNowSelected && !alreadySelected) {
-                    this.selected.push(itemId);
-                } else if (!isNowSelected && alreadySelected) {
-                    this.selected.splice(this.selected.indexOf(itemId), 1);
-                }
-            }
-        }
-        this.lastClickedIndex = currentIndex;
+        this.lastClickedIndex = applyShiftSelect(pageIds, this.selected, id, this.lastClickedIndex, event);
     },
     isSelected(id) {
         return this.selected.includes(id);

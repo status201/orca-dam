@@ -1,3 +1,5 @@
+import { applyShiftSelect } from '../shift-select';
+
 function discoverObjects() {
     const pageData = window.__pageData?.discover || {};
 
@@ -7,6 +9,7 @@ function discoverObjects() {
         importing: false,
         unmappedObjects: [],
         selectedObjects: [],
+        lastClickedIndex: null,
         selectedFolder: pageData.rootFolder || '',
         scanningFolders: false,
 
@@ -43,6 +46,7 @@ function discoverObjects() {
             this.scanned = false;
             this.unmappedObjects = [];
             this.selectedObjects = [];
+            this.lastClickedIndex = null;
 
             try {
                 const response = await fetch(pageData.routes.discoverScan, {
@@ -75,6 +79,12 @@ function discoverObjects() {
 
         deselectAll() {
             this.selectedObjects = [];
+            this.lastClickedIndex = null;
+        },
+
+        shiftToggle(key, event) {
+            const keys = this.unmappedObjects.map(obj => obj.key);
+            this.lastClickedIndex = applyShiftSelect(keys, this.selectedObjects, key, this.lastClickedIndex, event);
         },
 
         async importSelected() {
@@ -113,6 +123,7 @@ function discoverObjects() {
                         obj => !this.selectedObjects.includes(obj.key)
                     );
                     this.selectedObjects = [];
+                    this.lastClickedIndex = null;
 
                     // Refresh scan results after short delay
                     setTimeout(() => {

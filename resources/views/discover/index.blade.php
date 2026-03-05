@@ -128,8 +128,8 @@
                             <tr :class="selectedObjects.includes(object.key) ? 'bg-blue-50' : ''">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <input type="checkbox"
-                                           :value="object.key"
-                                           x-model="selectedObjects"
+                                           :checked="selectedObjects.includes(object.key)"
+                                           @click="shiftToggle(object.key, $event)"
                                            class="rounded text-blue-600 focus:ring-blue-500">
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
