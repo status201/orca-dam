@@ -10,6 +10,9 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">
                     {{ __('Trash') }}
+                    <span class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
+                        {{ number_format($assets->total()) }}
+                    </span>
                 </h1>
                 <p class="text-gray-600 mt-2">{{ __('Soft-deleted assets (S3 objects are kept)') }}</p>
             </div>
