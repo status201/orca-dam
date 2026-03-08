@@ -97,12 +97,16 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xxl:grid-cols-6 gap-4">
                 <template x-for="tag in tags" :key="tag.id">
                     <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
-                        <div class="flex items-start justify-between mb-2 gap-3">
-                            <a :href="`{{ route('assets.index') }}?tags[]=${tag.id}`"
-                               :title="tag.name"
-                               class="flex-1 min-w-0">
-                                <h3 class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate" x-text="tag.name"></h3>
-                            </a>
+                        <a :href="`{{ route('assets.index') }}?tags[]=${tag.id}`"
+                           :title="tag.name"
+                           class="block mb-2">
+                            <h3 class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate" x-text="tag.name"></h3>
+                        </a>
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-images mr-1"></i>
+                                <span x-text="tag.assets_count"></span> <span x-text="tag.assets_count === 1 ? 'asset' : 'assets'"></span>
+                            </p>
                             <div class="flex items-center gap-2 flex-shrink-0">
                                 <span class="tag attention px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap"
                                       :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')">
@@ -128,10 +132,6 @@
                                 </button>
                             </div>
                         </div>
-                        <p class="text-sm text-gray-600">
-                            <i class="fas fa-images mr-1"></i>
-                            <span x-text="tag.assets_count"></span> <span x-text="tag.assets_count === 1 ? 'asset' : 'assets'"></span>
-                        </p>
                     </div>
                 </template>
             </div>
