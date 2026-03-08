@@ -354,9 +354,14 @@ orca-dam/
 │   └── Services/
 │       ├── AssetProcessingService.php # Shared asset processing logic
 │       ├── ChunkedUploadService.php   # S3 multipart uploads
+│       ├── CsvExportService.php       # CSV export formatting
+│       ├── CsvImportService.php       # CSV parsing and import logic
+│       ├── ImageProcessingService.php # Image manipulation (thumbnails, resize)
+│       ├── QueueService.php           # Queue dashboard data
 │       ├── RekognitionService.php     # AWS Rekognition AI tagging
 │       ├── S3Service.php              # S3 operations, thumbnails & URLs
 │       ├── SystemService.php          # System admin utilities
+│       ├── TestRunnerService.php      # Web-based test runner
 │       └── TwoFactorService.php       # 2FA TOTP management
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
@@ -392,9 +397,9 @@ orca-dam/
 │   ├── auth.php                       # Authentication routes
 │   └── console.php                    # Artisan command routes
 ├── tests/
-│   ├── Feature/                       # 17 feature test files
-│   │   └── Auth/                      # Authentication test suite
-│   └── Unit/                          # 10 unit test files
+│   ├── Feature/                       # 15 feature test files
+│   │   └── Auth/                      # 6 authentication test files
+│   └── Unit/                          # 14 unit test files
 └── bootstrap/
     └── app.php                        # Scheduled tasks config
 ```
