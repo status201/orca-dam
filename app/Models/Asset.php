@@ -44,7 +44,7 @@ class Asset extends Model
         's3_missing_at' => 'datetime',
     ];
 
-    protected $appends = [
+    public const APPEND_FIELDS = [
         'url',
         'thumbnail_url',
         'resize_s_url',
@@ -236,76 +236,75 @@ class Asset extends Model
         return str_starts_with($this->mime_type, 'video/');
     }
 
+    private static array $mimeIcons = [
+        'application/pdf' => 'fa-file-pdf',
+        'application/msword' => 'fa-file-word',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'fa-file-word',
+        'application/vnd.ms-excel' => 'fa-file-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'fa-file-excel',
+        'application/vnd.ms-powerpoint' => 'fa-file-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'fa-file-powerpoint',
+        'application/zip' => 'fa-file-zipper',
+        'application/x-zip-compressed' => 'fa-file-zipper',
+        'application/x-rar-compressed' => 'fa-file-zipper',
+        'application/x-7z-compressed' => 'fa-file-zipper',
+        'text/plain' => 'fa-file-lines',
+        'text/csv' => 'fa-file-csv',
+        'application/json' => 'fa-file-code',
+        'text/html' => 'fa-file-code',
+        'text/css' => 'fa-file-code',
+        'text/javascript' => 'fa-file-code',
+        'application/javascript' => 'fa-file-code',
+        'video/mp4' => 'fa-file-video',
+        'video/mpeg' => 'fa-file-video',
+        'video/quicktime' => 'fa-file-video',
+        'video/x-msvideo' => 'fa-file-video',
+        'audio/mpeg' => 'fa-file-audio',
+        'audio/wav' => 'fa-file-audio',
+        'audio/ogg' => 'fa-file-audio',
+        'application/postscript' => 'fa-file-image',
+        'application/eps' => 'fa-file-image',
+        'image/x-eps' => 'fa-file-image',
+        'image/eps' => 'fa-file-image',
+    ];
+
+    private static array $extensionIcons = [
+        'pdf' => 'fa-file-pdf',
+        'doc' => 'fa-file-word',
+        'docx' => 'fa-file-word',
+        'xls' => 'fa-file-excel',
+        'xlsx' => 'fa-file-excel',
+        'ppt' => 'fa-file-powerpoint',
+        'pptx' => 'fa-file-powerpoint',
+        'zip' => 'fa-file-zipper',
+        'rar' => 'fa-file-zipper',
+        '7z' => 'fa-file-zipper',
+        'txt' => 'fa-file-lines',
+        'csv' => 'fa-file-csv',
+        'json' => 'fa-file-code',
+        'html' => 'fa-file-code',
+        'css' => 'fa-file-code',
+        'js' => 'fa-file-code',
+        'mp4' => 'fa-file-video',
+        'mov' => 'fa-file-video',
+        'avi' => 'fa-file-video',
+        'mp3' => 'fa-file-audio',
+        'wav' => 'fa-file-audio',
+        'eps' => 'fa-file-image',
+    ];
+
     /**
      * Get the appropriate Font Awesome icon for this file type
      */
     public function getFileIcon(): string
     {
-        // Check by mime type first
-        $icons = [
-            'application/pdf' => 'fa-file-pdf',
-            'application/msword' => 'fa-file-word',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'fa-file-word',
-            'application/vnd.ms-excel' => 'fa-file-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'fa-file-excel',
-            'application/vnd.ms-powerpoint' => 'fa-file-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'fa-file-powerpoint',
-            'application/zip' => 'fa-file-zipper',
-            'application/x-zip-compressed' => 'fa-file-zipper',
-            'application/x-rar-compressed' => 'fa-file-zipper',
-            'application/x-7z-compressed' => 'fa-file-zipper',
-            'text/plain' => 'fa-file-lines',
-            'text/csv' => 'fa-file-csv',
-            'application/json' => 'fa-file-code',
-            'text/html' => 'fa-file-code',
-            'text/css' => 'fa-file-code',
-            'text/javascript' => 'fa-file-code',
-            'application/javascript' => 'fa-file-code',
-            'video/mp4' => 'fa-file-video',
-            'video/mpeg' => 'fa-file-video',
-            'video/quicktime' => 'fa-file-video',
-            'video/x-msvideo' => 'fa-file-video',
-            'audio/mpeg' => 'fa-file-audio',
-            'audio/wav' => 'fa-file-audio',
-            'audio/ogg' => 'fa-file-audio',
-            'application/postscript' => 'fa-file-image',
-            'application/eps' => 'fa-file-image',
-            'image/x-eps' => 'fa-file-image',
-            'image/eps' => 'fa-file-image',
-        ];
-
-        if (isset($icons[$this->mime_type])) {
-            return $icons[$this->mime_type];
+        if (isset(self::$mimeIcons[$this->mime_type])) {
+            return self::$mimeIcons[$this->mime_type];
         }
 
-        // Check by file extension as fallback
         $extension = strtolower(pathinfo($this->filename, PATHINFO_EXTENSION));
-        $extensionIcons = [
-            'pdf' => 'fa-file-pdf',
-            'doc' => 'fa-file-word',
-            'docx' => 'fa-file-word',
-            'xls' => 'fa-file-excel',
-            'xlsx' => 'fa-file-excel',
-            'ppt' => 'fa-file-powerpoint',
-            'pptx' => 'fa-file-powerpoint',
-            'zip' => 'fa-file-zipper',
-            'rar' => 'fa-file-zipper',
-            '7z' => 'fa-file-zipper',
-            'txt' => 'fa-file-lines',
-            'csv' => 'fa-file-csv',
-            'json' => 'fa-file-code',
-            'html' => 'fa-file-code',
-            'css' => 'fa-file-code',
-            'js' => 'fa-file-code',
-            'mp4' => 'fa-file-video',
-            'mov' => 'fa-file-video',
-            'avi' => 'fa-file-video',
-            'mp3' => 'fa-file-audio',
-            'wav' => 'fa-file-audio',
-            'eps' => 'fa-file-image',
-        ];
 
-        return $extensionIcons[$extension] ?? 'fa-file';
+        return self::$extensionIcons[$extension] ?? 'fa-file';
     }
 
     /**

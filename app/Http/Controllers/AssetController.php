@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreAssetRequest;
+use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Services\AssetProcessingService;
@@ -11,7 +13,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class AssetController extends Controller
 {
@@ -104,15 +105,11 @@ class AssetController extends Controller
     /**
      * Store newly uploaded assets
      */
-    public function store(Request $request)
+    public function store(StoreAssetRequest $request)
     {
         $this->authorize('create', Asset::class);
 
         try {
-            $request->validate([
-                'files.*' => 'required|file|max:512000', // 500MB max
-                'folder' => 'nullable|string|max:255',
-            ]);
 
             $folder = $request->input('folder', S3Service::getRootFolder());
             $uploadedAssets = [];
@@ -156,6 +153,10 @@ class AssetController extends Controller
             }
 
             if ($request->expectsJson()) {
+                foreach ($uploadedAssets as $a) {
+                    $a->append(Asset::APPEND_FIELDS);
+                }
+
                 return response()->json([
                     'message' => count($uploadedAssets).' file(s) uploaded successfully',
                     'assets' => $uploadedAssets,
@@ -206,21 +207,9 @@ class AssetController extends Controller
     /**
      * Update the specified asset
      */
-    public function update(Request $request, Asset $asset)
+    public function update(UpdateAssetRequest $request, Asset $asset)
     {
         $this->authorize('update', $asset);
-
-        $request->validate([
-            'filename' => 'sometimes|required|string|max:255',
-            'alt_text' => 'nullable|string|max:500',
-            'caption' => 'nullable|string|max:1000',
-            'license_type' => 'nullable|string|max:255',
-            'license_expiry_date' => 'nullable|date',
-            'copyright' => 'nullable|string|max:500',
-            'copyright_source' => 'nullable|string|max:500',
-            'tags' => 'nullable|array',
-            'tags.*' => 'string|max:50',
-        ]);
 
         // Update metadata
         $asset->update(array_merge(
@@ -240,7 +229,7 @@ class AssetController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Asset updated successfully',
-                'asset' => $asset->fresh(['tags']),
+                'asset' => $asset->fresh(['tags'])->append(Asset::APPEND_FIELDS),
             ]);
         }
 
@@ -287,9 +276,8 @@ class AssetController extends Controller
     /**
      * Restore a soft-deleted asset
      */
-    public function restore($id)
+    public function restore(Asset $asset)
     {
-        $asset = Asset::onlyTrashed()->findOrFail($id);
         $this->authorize('restore', $asset);
 
         $asset->restore();
@@ -307,22 +295,11 @@ class AssetController extends Controller
     /**
      * Permanently delete asset and remove S3 objects
      */
-    public function forceDelete($id)
+    public function forceDelete(Asset $asset)
     {
-        $asset = Asset::onlyTrashed()->findOrFail($id);
         $this->authorize('forceDelete', $asset);
 
-        // Delete from S3
-        $this->s3Service->deleteFile($asset->s3_key);
-
-        if ($asset->thumbnail_s3_key) {
-            $this->s3Service->deleteFile($asset->thumbnail_s3_key);
-        }
-
-        // Delete resized images
-        $this->s3Service->deleteResizedImages($asset);
-
-        // Permanently delete from database
+        $this->s3Service->deleteAssetFiles($asset);
         $asset->forceDelete();
 
         if (request()->expectsJson()) {
@@ -623,14 +600,7 @@ class AssetController extends Controller
 
         foreach ($assets as $asset) {
             try {
-                $this->s3Service->deleteFile($asset->s3_key);
-
-                if ($asset->thumbnail_s3_key) {
-                    $this->s3Service->deleteFile($asset->thumbnail_s3_key);
-                }
-
-                $this->s3Service->deleteResizedImages($asset);
-
+                $this->s3Service->deleteAssetFiles($asset);
                 $deletedKeys[] = $asset->s3_key;
                 $asset->forceDelete();
                 $deleted++;
@@ -686,8 +656,6 @@ class AssetController extends Controller
                 continue;
             }
 
-            $rootPrefix = S3Service::getRootPrefix();
-
             // Compute new s3_key
             $newS3Key = $destinationFolder.'/'.basename($oldS3Key);
 
@@ -700,15 +668,8 @@ class AssetController extends Controller
 
             $updateData = ['s3_key' => $newS3Key];
 
-            // Compute the new relative folder for thumbnail/resize key reconstruction
-            $newRelativePath = ($rootPrefix !== '' && str_starts_with($newS3Key, $rootPrefix))
-                ? substr($newS3Key, strlen($rootPrefix))
-                : $newS3Key;
-            $newFolder = dirname($newRelativePath);
-            $newFolder = ($newFolder === '.' || $newFolder === '') ? '' : $newFolder.'/';
-
             // Move associated keys (thumbnail, resize variants)
-            $derivedKeys = $this->computeDerivedKeys($newS3Key, $newFolder);
+            $derivedKeys = $this->s3Service->computeDerivedKeys($newS3Key);
             foreach ($derivedKeys as $column => $newKey) {
                 if ($asset->{$column} && $newKey !== $asset->{$column}) {
                     $this->s3Service->moveObject($asset->{$column}, $newKey);
@@ -729,38 +690,6 @@ class AssetController extends Controller
             'failed' => $failed,
             'moves' => $moves,
         ]);
-    }
-
-    /**
-     * Compute the expected thumbnail and resize keys for a given s3_key,
-     * mirroring the logic in S3Service::generateThumbnail/generateResizedImages.
-     */
-    private function computeDerivedKeys(string $newS3Key, string $relativeFolder): array
-    {
-        $basename = pathinfo(basename($newS3Key), PATHINFO_FILENAME);
-        $extension = strtolower(pathinfo($newS3Key, PATHINFO_EXTENSION));
-
-        // Thumbnail: thumbnails/{folder}/basename_thumb.jpg (always JPEG)
-        $thumbnailKey = 'thumbnails/'.$relativeFolder
-            .Str::replaceLast('.', '_thumb.', basename($newS3Key));
-        // Ensure .jpg extension (matches S3Service::uploadThumbnail)
-        $thumbnailKey = preg_replace('/\.[^.]+$/', '.jpg', $thumbnailKey);
-
-        // Resize variants: thumbnails/{S|M|L}/{folder}/basename.ext
-        // GIFs become JPEG, other non-jpg/png/webp become JPEG too (matches S3Service::generateResizedImages)
-        $outputExtension = $extension;
-        if (in_array($extension, ['gif', 'bmp', 'tiff', 'tif', 'eps'])) {
-            $outputExtension = 'jpg';
-        } elseif (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp'])) {
-            $outputExtension = 'jpg';
-        }
-
-        return [
-            'thumbnail_s3_key' => $thumbnailKey,
-            'resize_s_s3_key' => "thumbnails/S/{$relativeFolder}{$basename}.{$outputExtension}",
-            'resize_m_s3_key' => "thumbnails/M/{$relativeFolder}{$basename}.{$outputExtension}",
-            'resize_l_s3_key' => "thumbnails/L/{$relativeFolder}{$basename}.{$outputExtension}",
-        ];
     }
 
     /**
@@ -818,14 +747,7 @@ class AssetController extends Controller
 
         foreach ($assets as $asset) {
             try {
-                $this->s3Service->deleteFile($asset->s3_key);
-
-                if ($asset->thumbnail_s3_key) {
-                    $this->s3Service->deleteFile($asset->thumbnail_s3_key);
-                }
-
-                $this->s3Service->deleteResizedImages($asset);
-
+                $this->s3Service->deleteAssetFiles($asset);
                 $deletedKeys[] = $asset->s3_key;
                 $asset->forceDelete();
                 $deleted++;

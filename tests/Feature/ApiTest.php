@@ -798,3 +798,33 @@ test('api update preserves reference tags when updating user tags', function () 
     expect($tagNames)->toContain('ai-preserve');
     expect($tagNames)->toContain('new-user-tag');
 });
+
+test('api assets index response includes url per item', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    Asset::factory()->count(2)->create();
+
+    $response = $this->getJson('/api/assets');
+
+    $response->assertOk();
+    $items = $response->json('data');
+    expect($items)->not->toBeEmpty();
+
+    foreach ($items as $item) {
+        expect($item)->toHaveKey('url');
+        expect($item['url'])->toBeString()->not->toBeEmpty();
+    }
+});
+
+test('api assets show response includes url', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['s3_key' => 'assets/test.jpg']);
+
+    $response = $this->getJson("/api/assets/{$asset->id}");
+
+    $response->assertOk();
+    $response->assertJsonPath('url', fn ($url) => is_string($url) && str_contains($url, 'assets/test.jpg'));
+});

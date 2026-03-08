@@ -146,6 +146,34 @@ test('export includes reference tags data in csv', function () {
     expect($content)->toContain('ref-export');
 });
 
+test('export with no assets produces only header row', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->post(route('export.download'));
+
+    $content = $response->streamedContent();
+    $lines = array_filter(explode("\n", trim($content)));
+
+    // Only the header row — no data rows
+    expect(count($lines))->toBe(1);
+    expect($lines[array_key_first($lines)])->toContain('id');
+});
+
+test('export includes license_type and license_expiry_date values in rows', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Asset::factory()->create([
+        'license_type' => 'cc_by_sa',
+        'license_expiry_date' => '2027-01-15',
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('export.download'));
+
+    $content = $response->streamedContent();
+
+    expect($content)->toContain('cc_by_sa');
+    expect($content)->toContain('2027-01-15');
+});
+
 test('export can filter by folder', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     Asset::factory()->create(['s3_key' => 'assets/photos/img1.jpg', 'filename' => 'img1.jpg']);

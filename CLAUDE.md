@@ -59,6 +59,16 @@ php artisan queue:work --tries=3
 
 **TwoFactorService** - Two-factor authentication setup, verification, and recovery code management.
 
+**CsvExportService** - Generates CSV rows from assets. `generateHeaders()` returns the 33-column header array; `formatRow(Asset)` formats one row with separated user/ai/reference tag columns.
+
+**CsvImportService** - CSV parsing and import logic. `parseCsv()` splits raw CSV into associative rows. `calculateChanges()` diffs a row against an existing asset. `validateRow()` checks license type and date format. Constants: `ALLOWED_LICENSE_TYPES`, `UPDATABLE_FIELDS`.
+
+**ImageProcessingService** - Image manipulation via Intervention Image (GD). `createThumbnailContent()` scales to 300×300 JPEG (returns null for animated GIFs). `createResizedContent()` scales preserving format (GIFs→JPEG). `getImageDimensions()` extracts width/height. `isAnimatedGif()` detects multi-frame GIFs by walking block structure.
+
+**QueueService** - Queue dashboard data for SystemController. `getQueueStats()` counts pending/failed/batches. `getFailedJobs()` and `getPendingJobs()` return formatted job lists with optional limit.
+
+**TestRunnerService** - Runs Pest suite in a subprocess for the web test runner. `run()` executes `php artisan test` with correct env variables. Parses output into per-test pass/fail results.
+
 ### Authentication
 
 - **Sanctum Tokens** - Long-lived tokens for backend integrations
@@ -190,16 +200,19 @@ PHP_CLI_PATH=/usr/bin/php
 
 ## Testing
 
-**Pest PHP** with in-memory SQLite. ~375 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
+**Pest PHP** with in-memory SQLite. ~509 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
 
 **Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
 
 ```
-tests/Feature/  - AssetTest, TagTest, ExportTest, ImportTest, ApiTest, SystemTest, IntegrityTest, BulkMoveTest, BulkForceDeleteTest,
+tests/Feature/  - AssetTest, TagTest, ExportTest, ImportTest, ApiTest, SystemTest, IntegrityTest,
+                  BulkMoveTest, BulkForceDeleteTest, BulkTrashTest,
                   JwtAuthTest, JwtSecretManagementTest, LocaleTest, ProfileTest, TwoFactorAuthTest,
                   Auth/ (Authentication, Registration, PasswordReset, PasswordUpdate, PasswordConfirmation, EmailVerification)
 tests/Unit/     - AssetTest, TagTest, SettingTest, UserPreferencesTest, TwoFactorServiceTest, JwtGuardTest,
-                  AssetProcessingServiceTest, S3ServiceTest, AssetSortScopeTest
+                  AssetProcessingServiceTest, S3ServiceTest, AssetSortScopeTest,
+                  CsvExportServiceTest, CsvImportServiceTest, ImageProcessingServiceTest,
+                  QueueServiceTest, TestRunnerServiceTest
 ```
 
 Web-based test runner at `/system` -> Tests tab (admin only).
@@ -243,7 +256,7 @@ app/
 │   │   ├── JwtSecretController, ChunkedUploadController
 │   │   └── Controller (base)
 │   ├── Middleware/ (AuthenticateMultiple, SetLocale)
-│   └── Requests/ (ProfileUpdateRequest, Auth/LoginRequest)
+│   └── Requests/ (StoreAssetRequest, UpdateAssetRequest, ProfileUpdateRequest, Auth/LoginRequest)
 ├── Jobs/
 │   ├── GenerateAiTags, ProcessDiscoveredAsset
 │   ├── RegenerateResizedImage, VerifyAssetIntegrity
@@ -252,6 +265,8 @@ app/
 ├── Services/
 │   ├── S3Service, AssetProcessingService, ChunkedUploadService
 │   ├── RekognitionService, SystemService, TwoFactorService
+│   ├── CsvExportService, CsvImportService, ImageProcessingService
+│   ├── QueueService, TestRunnerService
 └── View/Components/ (AppLayout, GuestLayout)
 
 resources/
@@ -277,10 +292,13 @@ resources/
 
 tests/
 ├── Feature/ (Asset, Tag, Export, Import, Api, System, Integrity,
+│             BulkMove, BulkForceDelete, BulkTrash,
 │             JwtAuth, JwtSecretManagement, Locale, Profile, TwoFactorAuth)
 ├── Feature/Auth/ (Authentication, Registration, PasswordReset, etc.)
 └── Unit/ (Asset, Tag, Setting, UserPreferences, TwoFactorService,
-           JwtGuard, AssetProcessingService, S3Service, AssetSortScope)
+           JwtGuard, AssetProcessingService, S3Service, AssetSortScope,
+           CsvExportService, CsvImportService, ImageProcessingService,
+           QueueService, TestRunnerService)
 
 config/ (app, auth, cache, database, filesystems, jwt, logging, mail, queue, services, session, two-factor)
 database/migrations/ (25 migrations)

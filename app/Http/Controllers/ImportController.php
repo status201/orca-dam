@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\Tag;
+use App\Services\CsvImportService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
@@ -11,27 +12,7 @@ class ImportController extends Controller
 {
     use AuthorizesRequests;
 
-    private const ALLOWED_LICENSE_TYPES = [
-        'public_domain',
-        'cc_by',
-        'cc_by_sa',
-        'cc_by_nd',
-        'cc_by_nc',
-        'cc_by_nc_sa',
-        'cc_by_nc_nd',
-        'fair_use',
-        'all_rights_reserved',
-    ];
-
-    private const UPDATABLE_FIELDS = [
-        'filename',
-        'alt_text',
-        'caption',
-        'license_type',
-        'license_expiry_date',
-        'copyright',
-        'copyright_source',
-    ];
+    public function __construct(protected CsvImportService $csvImportService) {}
 
     public function index()
     {
@@ -49,7 +30,7 @@ class ImportController extends Controller
             'match_field' => 'required|in:s3_key,filename',
         ]);
 
-        $rows = $this->parseCsv($request->input('csv_data'));
+        $rows = $this->csvImportService->parseCsv($request->input('csv_data'));
 
         if (empty($rows)) {
             return response()->json(['error' => __('No valid CSV data found.')], 422);
@@ -92,7 +73,7 @@ class ImportController extends Controller
             }
 
             $matched++;
-            $changes = $this->calculateChanges($asset, $row);
+            $changes = $this->csvImportService->calculateChanges($asset, $row);
 
             $results[] = [
                 'row' => $index + 2,
@@ -105,7 +86,7 @@ class ImportController extends Controller
                     's3_key' => $asset->s3_key,
                 ],
                 'changes' => $changes,
-                'errors' => $this->validateRow($row),
+                'errors' => $this->csvImportService->validateRow($row),
             ];
         }
 
@@ -127,7 +108,7 @@ class ImportController extends Controller
             'match_field' => 'required|in:s3_key,filename',
         ]);
 
-        $rows = $this->parseCsv($request->input('csv_data'));
+        $rows = $this->csvImportService->parseCsv($request->input('csv_data'));
         $matchField = $request->input('match_field');
 
         $updated = 0;
@@ -151,7 +132,7 @@ class ImportController extends Controller
                 continue;
             }
 
-            $rowErrors = $this->validateRow($row);
+            $rowErrors = $this->csvImportService->validateRow($row);
             if (! empty($rowErrors)) {
                 $errors[] = [
                     'row' => $index + 2,
@@ -165,7 +146,7 @@ class ImportController extends Controller
 
             $updateData = [];
 
-            foreach (self::UPDATABLE_FIELDS as $field) {
+            foreach (CsvImportService::UPDATABLE_FIELDS as $field) {
                 if (isset($row[$field]) && trim($row[$field]) !== '') {
                     $updateData[$field] = trim($row[$field]);
                 }
@@ -212,90 +193,5 @@ class ImportController extends Controller
             'skipped' => $skipped,
             'errors' => $errors,
         ]);
-    }
-
-    private function parseCsv(string $csvData): array
-    {
-        $lines = preg_split('/\r\n|\r|\n/', trim($csvData));
-
-        if (count($lines) < 2) {
-            return [];
-        }
-
-        $headers = str_getcsv(array_shift($lines));
-        $headers = array_map('trim', $headers);
-
-        $rows = [];
-        foreach ($lines as $line) {
-            if (trim($line) === '') {
-                continue;
-            }
-
-            $values = str_getcsv($line);
-            $row = [];
-            foreach ($headers as $i => $header) {
-                $row[$header] = $values[$i] ?? '';
-            }
-            $rows[] = $row;
-        }
-
-        return $rows;
-    }
-
-    private function calculateChanges(Asset $asset, array $row): array
-    {
-        $changes = [];
-
-        foreach (self::UPDATABLE_FIELDS as $field) {
-            if (isset($row[$field]) && trim($row[$field]) !== '') {
-                $newValue = trim($row[$field]);
-                $currentValue = (string) ($asset->$field ?? '');
-
-                if ($field === 'license_expiry_date' && $asset->license_expiry_date) {
-                    $currentValue = $asset->license_expiry_date->format('Y-m-d');
-                }
-
-                if ($newValue !== $currentValue) {
-                    $changes[$field] = [
-                        'from' => $currentValue,
-                        'to' => $newValue,
-                    ];
-                }
-            }
-        }
-
-        if (isset($row['user_tags']) && trim($row['user_tags']) !== '') {
-            $changes['user_tags'] = [
-                'add' => trim($row['user_tags']),
-            ];
-        }
-
-        if (isset($row['reference_tags']) && trim($row['reference_tags']) !== '') {
-            $changes['reference_tags'] = [
-                'add' => trim($row['reference_tags']),
-            ];
-        }
-
-        return $changes;
-    }
-
-    private function validateRow(array $row): array
-    {
-        $errors = [];
-
-        if (isset($row['license_type']) && trim($row['license_type']) !== '') {
-            if (! in_array(trim($row['license_type']), self::ALLOWED_LICENSE_TYPES)) {
-                $errors[] = __('Invalid license type: ":value"', ['value' => trim($row['license_type'])]);
-            }
-        }
-
-        if (isset($row['license_expiry_date']) && trim($row['license_expiry_date']) !== '') {
-            $date = trim($row['license_expiry_date']);
-            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || ! strtotime($date)) {
-                $errors[] = __('Invalid date format: ":value". Use YYYY-MM-DD.', ['value' => $date]);
-            }
-        }
-
-        return $errors;
     }
 }

@@ -129,7 +129,12 @@ orca-dam/
 │       ├── RekognitionService.php     # AWS Rekognition AI tagging
 │       ├── S3Service.php              # S3 operations, thumbnails & URLs
 │       ├── SystemService.php          # System admin utilities
-│       └── TwoFactorService.php       # 2FA TOTP management
+│       ├── TwoFactorService.php       # 2FA TOTP management
+│       ├── CsvExportService.php       # CSV export row generation
+│       ├── CsvImportService.php       # CSV parsing, diffing & validation
+│       ├── ImageProcessingService.php # Thumbnails, resizing, dimensions
+│       ├── QueueService.php           # Queue stats & job listings
+│       └── TestRunnerService.php      # Web test runner subprocess
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
 │   └── two-factor.php                 # 2FA configuration
@@ -165,6 +170,9 @@ orca-dam/
 │   │   ├── ExportTest.php             # CSV export
 │   │   ├── ImportTest.php             # CSV metadata import
 │   │   ├── IntegrityTest.php          # S3 integrity verification
+│   │   ├── BulkMoveTest.php           # Bulk asset move
+│   │   ├── BulkForceDeleteTest.php    # Bulk permanent delete
+│   │   ├── BulkTrashTest.php          # Bulk soft delete
 │   │   ├── JwtAuthTest.php            # JWT authentication
 │   │   ├── JwtSecretManagementTest.php# JWT secret management
 │   │   ├── LocaleTest.php             # Language/locale
@@ -174,15 +182,20 @@ orca-dam/
 │   │   ├── TwoFactorAuthTest.php      # 2FA functionality
 │   │   └── Auth/                      # Authentication tests (6 files)
 │   └── Unit/
-│       ├── AssetTest.php              # Model relationships, scopes
+│       ├── AssetTest.php                  # Model relationships, scopes
 │       ├── AssetProcessingServiceTest.php # Asset processing logic
-│       ├── AssetSortScopeTest.php     # Asset sorting scopes
-│       ├── JwtGuardTest.php           # JWT guard
-│       ├── S3ServiceTest.php          # S3 service tests
-│       ├── SettingTest.php            # Setting model, caching
-│       ├── TagTest.php                # Tag model
-│       ├── TwoFactorServiceTest.php   # 2FA service
-│       └── UserPreferencesTest.php    # User preference helpers
+│       ├── AssetSortScopeTest.php         # Asset sorting scopes
+│       ├── JwtGuardTest.php               # JWT guard
+│       ├── S3ServiceTest.php              # S3 service tests
+│       ├── SettingTest.php                # Setting model, caching
+│       ├── TagTest.php                    # Tag model
+│       ├── TwoFactorServiceTest.php       # 2FA service
+│       ├── UserPreferencesTest.php        # User preference helpers
+│       ├── CsvExportServiceTest.php       # CSV export service
+│       ├── CsvImportServiceTest.php       # CSV import service
+│       ├── ImageProcessingServiceTest.php # Image processing service
+│       ├── QueueServiceTest.php           # Queue service
+│       └── TestRunnerServiceTest.php      # Test runner service
 └── bootstrap/
     └── app.php                        # Scheduled tasks config
 ```
