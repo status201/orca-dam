@@ -50,14 +50,21 @@ class ChunkedUploadService
         string $mimeType,
         int $fileSize,
         int $userId,
-        ?string $folder = null
+        ?string $folder = null,
+        bool $keepOriginalFilename = false
     ): UploadSession {
-        // Generate unique S3 key with folder support
+        // Generate S3 key with folder support
         $folder = $folder ?? S3Service::getRootFolder();
-        $extension = pathinfo($filename, PATHINFO_EXTENSION);
         $folder = rtrim($folder, '/');
-        $uuidName = Str::uuid().($extension ? '.'.$extension : '');
-        $s3Key = $folder !== '' ? $folder.'/'.$uuidName : $uuidName;
+
+        if ($keepOriginalFilename) {
+            $safeName = S3Service::sanitizeFilename($filename);
+        } else {
+            $extension = pathinfo($filename, PATHINFO_EXTENSION);
+            $safeName = Str::uuid().($extension ? '.'.$extension : '');
+        }
+
+        $s3Key = $folder !== '' ? $folder.'/'.$safeName : $safeName;
 
         // Initiate S3 multipart upload
         $result = $this->s3Client->createMultipartUpload([
@@ -184,8 +191,11 @@ class ChunkedUploadService
 
             $etag = trim($result['ETag'], '"');
 
-            // Check for duplicate by etag
-            if (! empty($etag)) {
+            // Check if an asset with this s3_key already exists (original filename mode)
+            $existingByKey = Asset::withTrashed()->where('s3_key', $session->s3_key)->first();
+
+            // Check for duplicate by etag (skip when overwriting by s3_key)
+            if (! $existingByKey && ! empty($etag)) {
                 $existing = Asset::withTrashed()->where('etag', $etag)->first();
                 if ($existing) {
                     // Clean up the just-completed S3 object
@@ -199,17 +209,40 @@ class ChunkedUploadService
             // Get dimensions for images (if applicable)
             $dimensions = $this->extractDimensions($session);
 
-            // Create Asset record
-            $asset = Asset::create([
-                's3_key' => $session->s3_key,
-                'filename' => $session->filename,
-                'mime_type' => $session->mime_type,
-                'size' => $session->file_size,
-                'etag' => $etag,
-                'width' => $dimensions['width'] ?? null,
-                'height' => $dimensions['height'] ?? null,
-                'user_id' => $session->user_id,
-            ]);
+            if ($existingByKey) {
+                // Overwrite: clean up old derived files, update existing record
+                $this->s3Service->deleteAssetFiles($existingByKey, keepOriginal: true);
+
+                $existingByKey->update([
+                    'filename' => $session->filename,
+                    'mime_type' => $session->mime_type,
+                    'size' => $session->file_size,
+                    'etag' => $etag,
+                    'width' => $dimensions['width'] ?? null,
+                    'height' => $dimensions['height'] ?? null,
+                    'thumbnail_s3_key' => null,
+                    'resize_s_s3_key' => null,
+                    'resize_m_s3_key' => null,
+                    'resize_l_s3_key' => null,
+                    'user_id' => $session->user_id,
+                    'deleted_at' => null,
+                    'last_modified_by' => $session->user_id,
+                ]);
+
+                $asset = $existingByKey;
+            } else {
+                // Create Asset record
+                $asset = Asset::create([
+                    's3_key' => $session->s3_key,
+                    'filename' => $session->filename,
+                    'mime_type' => $session->mime_type,
+                    'size' => $session->file_size,
+                    'etag' => $etag,
+                    'width' => $dimensions['width'] ?? null,
+                    'height' => $dimensions['height'] ?? null,
+                    'user_id' => $session->user_id,
+                ]);
+            }
 
             // Mark session as completed
             $session->update(['status' => 'completed']);

@@ -16,6 +16,7 @@ class StoreAssetRequest extends FormRequest
         return [
             'files.*' => 'required|file|max:512000', // 500MB max
             'folder' => 'nullable|string|max:255',
+            'keep_original_filename' => 'nullable|boolean',
         ];
     }
 }

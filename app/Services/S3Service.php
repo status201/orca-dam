@@ -74,10 +74,12 @@ class S3Service
     /**
      * Upload a file to S3
      */
-    public function uploadFile(UploadedFile $file, ?string $directory = null): array
+    public function uploadFile(UploadedFile $file, ?string $directory = null, bool $keepOriginalFilename = false): array
     {
         $directory = $directory ?? self::getRootFolder();
-        $filename = $this->generateUniqueFilename($file);
+        $filename = $keepOriginalFilename
+            ? self::sanitizeFilename($file->getClientOriginalName())
+            : $this->generateUniqueFilename($file);
         $s3Key = $directory !== '' ? "{$directory}/{$filename}" : $filename;
 
         // Get image dimensions before upload if it's an image (to avoid memory issues later)
@@ -336,9 +338,11 @@ class S3Service
      * Delete all S3 files belonging to an asset (original, thumbnail, resize variants).
      * Use this instead of repeating the three-step deletion pattern in callers.
      */
-    public function deleteAssetFiles(Asset $asset): void
+    public function deleteAssetFiles(Asset $asset, bool $keepOriginal = false): void
     {
-        $this->deleteFile($asset->s3_key);
+        if (! $keepOriginal) {
+            $this->deleteFile($asset->s3_key);
+        }
 
         if ($asset->thumbnail_s3_key) {
             $this->deleteFile($asset->thumbnail_s3_key);
@@ -639,6 +643,35 @@ class S3Service
         $extension = $file->getClientOriginalExtension();
 
         return Str::uuid().'.'.$extension;
+    }
+
+    /**
+     * Sanitize a filename for use as an S3 key.
+     * Keeps the original name readable but URL-safe.
+     */
+    public static function sanitizeFilename(string $filename): string
+    {
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $name = pathinfo($filename, PATHINFO_FILENAME);
+
+        // Replace spaces and underscores with hyphens
+        $name = preg_replace('/[\s_]+/', '-', $name);
+
+        // Remove anything that's not alphanumeric, hyphens, or dots
+        $name = preg_replace('/[^a-zA-Z0-9\-.]/', '', $name);
+
+        // Collapse multiple hyphens
+        $name = preg_replace('/-{2,}/', '-', $name);
+
+        // Trim hyphens from ends
+        $name = trim($name, '-');
+
+        // Ensure we have a name
+        if ($name === '') {
+            $name = Str::uuid();
+        }
+
+        return $extension !== '' ? "{$name}.{$extension}" : $name;
     }
 
     /**

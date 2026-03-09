@@ -112,16 +112,17 @@ class AssetController extends Controller
         try {
 
             $folder = $request->input('folder', S3Service::getRootFolder());
+            $keepOriginalFilename = $request->boolean('keep_original_filename');
             $uploadedAssets = [];
             $duplicates = [];
 
             foreach ($request->file('files') as $file) {
                 try {
                     // Upload to S3 with folder support
-                    $fileData = $this->s3Service->uploadFile($file, $folder);
+                    $fileData = $this->s3Service->uploadFile($file, $folder, $keepOriginalFilename);
 
-                    // Check for duplicate by etag
-                    if (! empty($fileData['etag'])) {
+                    // Check for duplicate by etag (skip when keeping original filename, as overwrite is intentional)
+                    if (! $keepOriginalFilename && ! empty($fileData['etag'])) {
                         $existing = Asset::withTrashed()->where('etag', $fileData['etag'])->first();
                         if ($existing) {
                             // Clean up the just-uploaded S3 object
@@ -136,17 +137,43 @@ class AssetController extends Controller
                         }
                     }
 
-                    // Create asset record
-                    $asset = Asset::create([
-                        's3_key' => $fileData['s3_key'],
-                        'filename' => $fileData['filename'],
-                        'mime_type' => $fileData['mime_type'],
-                        'size' => $fileData['size'],
-                        'etag' => $fileData['etag'] ?? null,
-                        'width' => $fileData['width'],
-                        'height' => $fileData['height'],
-                        'user_id' => Auth::id(),
-                    ]);
+                    // Handle s3_key collision when keeping original filename
+                    $existingByKey = Asset::withTrashed()->where('s3_key', $fileData['s3_key'])->first();
+                    if ($existingByKey) {
+                        // Clean up old thumbnails and resized images
+                        $this->s3Service->deleteAssetFiles($existingByKey, keepOriginal: true);
+
+                        // Update existing asset record
+                        $existingByKey->update([
+                            'filename' => $fileData['filename'],
+                            'mime_type' => $fileData['mime_type'],
+                            'size' => $fileData['size'],
+                            'etag' => $fileData['etag'] ?? null,
+                            'width' => $fileData['width'],
+                            'height' => $fileData['height'],
+                            'thumbnail_s3_key' => null,
+                            'resize_s_s3_key' => null,
+                            'resize_m_s3_key' => null,
+                            'resize_l_s3_key' => null,
+                            'user_id' => Auth::id(),
+                            'deleted_at' => null,
+                            'last_modified_by' => Auth::id(),
+                        ]);
+
+                        $asset = $existingByKey;
+                    } else {
+                        // Create asset record
+                        $asset = Asset::create([
+                            's3_key' => $fileData['s3_key'],
+                            'filename' => $fileData['filename'],
+                            'mime_type' => $fileData['mime_type'],
+                            'size' => $fileData['size'],
+                            'etag' => $fileData['etag'] ?? null,
+                            'width' => $fileData['width'],
+                            'height' => $fileData['height'],
+                            'user_id' => Auth::id(),
+                        ]);
+                    }
 
                     // Generate thumbnail, resized images, and AI tags
                     $this->assetProcessingService->processImageAsset($asset);

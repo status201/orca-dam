@@ -70,6 +70,19 @@
             <p class="mt-1 text-xs text-gray-500">{{ __('Files will be uploaded to:') }} <span class="font-mono" x-text="selectedFolder"></span></p>
         </div>
 
+        <!-- Keep original filename option -->
+        <div class="mb-6">
+            <label class="inline-flex items-center cursor-pointer">
+                <input type="checkbox"
+                       :checked="keepOriginalFilename"
+                       @change="toggleKeepOriginalFilename()"
+                       :disabled="uploading"
+                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500">
+                <span class="ml-2 text-sm font-medium text-gray-700">{{ __('Keep original filename') }}</span>
+            </label>
+            <p class="mt-1 text-xs text-gray-500">{{ __('Use the original filename in the URL instead of a generated name. Useful for download links.') }}</p>
+        </div>
+
         <!-- Drag and drop area -->
         <div @drop.prevent="handleDrop"
              @dragover.prevent="dragActive = true"
@@ -182,6 +195,7 @@
             failedToInitUpload: @js(__('Failed to initialize upload')),
             chunkUploadFailed: @js(__('Chunk upload failed')),
             failedToCompleteUpload: @js(__('Failed to complete upload')),
+            keepOriginalFilenameWarning: @js(__("Warning: When using original filenames, the filename becomes part of the permanent URL and cannot be easily changed later. Files with the same name in the same folder will be overwritten.\n\nDo you want to continue?")),
             serverError: @js(__('Server error occurred. Please try a smaller file.')),
             fileTooLarge: @js(__('File is too large. Maximum size is 500MB per file.')),
             invalidFormat: @js(__('Invalid file format or validation error.')),

@@ -46,9 +46,11 @@ class ChunkedUploadController extends Controller
             'mime_type' => 'required|string',
             'file_size' => 'required|integer|min:1|max:524288000', // 500MB in bytes
             'folder' => 'nullable|string|max:255',
+            'keep_original_filename' => 'nullable|boolean',
         ]);
 
         $folder = $request->input('folder', S3Service::getRootFolder());
+        $keepOriginalFilename = $request->boolean('keep_original_filename');
 
         try {
             $session = $this->chunkedUploadService->initiateUpload(
@@ -56,7 +58,8 @@ class ChunkedUploadController extends Controller
                 $request->mime_type,
                 $request->file_size,
                 Auth::id(),
-                $folder
+                $folder,
+                $keepOriginalFilename
             );
 
             return response()->json([

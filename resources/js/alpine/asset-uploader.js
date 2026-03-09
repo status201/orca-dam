@@ -9,10 +9,26 @@ export function assetUploader() {
         CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
         CHUNKED_THRESHOLD: 10 * 1024 * 1024, // Use chunked upload for files >= 10MB
         selectedFolder: pageData.selectedFolder,
+        keepOriginalFilename: false,
+        keepOriginalFilenameConfirmed: false,
         showNewFolderInput: false,
         newFolderName: '',
         creatingFolder: false,
         scanningFolders: false,
+
+        toggleKeepOriginalFilename() {
+            if (!this.keepOriginalFilename) {
+                // Turning on: show confirmation
+                if (confirm(pageData.translations.keepOriginalFilenameWarning)) {
+                    this.keepOriginalFilename = true;
+                    this.keepOriginalFilenameConfirmed = true;
+                }
+            } else {
+                // Turning off: no confirmation needed
+                this.keepOriginalFilename = false;
+                this.keepOriginalFilenameConfirmed = false;
+            }
+        },
 
         handleDrop(e) {
             this.dragActive = false;
@@ -147,6 +163,9 @@ export function assetUploader() {
             const formData = new FormData();
             formData.append('files[]', file);
             formData.append('folder', this.selectedFolder);
+            if (this.keepOriginalFilename) {
+                formData.append('keep_original_filename', '1');
+            }
 
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
@@ -219,6 +238,7 @@ export function assetUploader() {
                     mime_type: file.type,
                     file_size: file.size,
                     folder: this.selectedFolder,
+                    keep_original_filename: this.keepOriginalFilename,
                 }),
             });
 
