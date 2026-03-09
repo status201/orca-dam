@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApiDocsController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\ExportController;
@@ -12,7 +13,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\TokenController;
-use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -57,12 +57,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('assets/{asset}/replace', [AssetController::class, 'showReplace'])->name('assets.replace');
     Route::post('assets/{asset}/replace', [AssetController::class, 'replace'])->name('assets.replace.store');
 
-    // Trash routes (admin only)
+    // Trash routes — restore (editors + admins)
     Route::middleware(['can:restore,App\Models\Asset'])->group(function () {
         Route::get('assets/trash/index', [AssetController::class, 'trash'])->name('assets.trash');
         Route::post('assets/{asset}/restore', [AssetController::class, 'restore'])->withTrashed()->name('assets.restore');
-        Route::delete('assets/{asset}/force-delete', [AssetController::class, 'forceDelete'])->withTrashed()->name('assets.force-delete');
         Route::post('assets/trash/bulk-restore', [AssetController::class, 'bulkRestore'])->name('assets.trash.bulk-restore');
+    });
+
+    // Trash routes — force delete (admins only)
+    Route::middleware(['can:forceDelete,App\Models\Asset'])->group(function () {
+        Route::delete('assets/{asset}/force-delete', [AssetController::class, 'forceDelete'])->withTrashed()->name('assets.force-delete');
         Route::delete('assets/trash/bulk-force-delete', [AssetController::class, 'bulkForceDeleteTrashed'])->name('assets.trash.bulk-force-delete');
     });
 

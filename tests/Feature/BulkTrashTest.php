@@ -25,12 +25,12 @@ test('admin can bulk restore trashed assets', function () {
     expect(Asset::find($asset2->id)->deleted_at)->toBeNull();
 });
 
-test('non-admin gets 403 on bulk restore', function () {
-    $editor = User::factory()->create(['role' => 'editor']);
+test('api user gets 403 on bulk restore', function () {
+    $apiUser = User::factory()->create(['role' => 'api']);
 
     $asset = Asset::factory()->create(['deleted_at' => now()]);
 
-    $response = $this->actingAs($editor)->postJson(route('assets.trash.bulk-restore'), [
+    $response = $this->actingAs($apiUser)->postJson(route('assets.trash.bulk-restore'), [
         'asset_ids' => [$asset->id],
     ]);
 
@@ -189,4 +189,62 @@ test('bulk force delete trashed only affects trashed assets', function () {
     $response->assertJsonPath('deleted', 1);
     expect(Asset::find($activeAsset->id))->not->toBeNull();
     expect(Asset::withTrashed()->find($trashedAsset->id))->toBeNull();
+});
+
+// --- Editor trash access tests ---
+
+test('editor can view trash page', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+
+    $response = $this->actingAs($editor)->get(route('assets.trash'));
+
+    $response->assertOk();
+});
+
+test('editor can restore single asset', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+    $asset = Asset::factory()->create(['deleted_at' => now()]);
+
+    $response = $this->actingAs($editor)->post(route('assets.restore', $asset));
+
+    $response->assertRedirect(route('assets.trash'));
+    expect(Asset::find($asset->id)->deleted_at)->toBeNull();
+});
+
+test('editor can bulk restore trashed assets', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+
+    $asset1 = Asset::factory()->create(['deleted_at' => now()]);
+    $asset2 = Asset::factory()->create(['deleted_at' => now()]);
+
+    $response = $this->actingAs($editor)->postJson(route('assets.trash.bulk-restore'), [
+        'asset_ids' => [$asset1->id, $asset2->id],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('restored', 2);
+    expect(Asset::find($asset1->id)->deleted_at)->toBeNull();
+    expect(Asset::find($asset2->id)->deleted_at)->toBeNull();
+});
+
+test('editor gets 403 on force delete', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+    $asset = Asset::factory()->create(['deleted_at' => now()]);
+
+    $response = $this->actingAs($editor)->delete(route('assets.force-delete', $asset));
+
+    $response->assertForbidden();
+    expect(Asset::onlyTrashed()->find($asset->id))->not->toBeNull();
+});
+
+test('editor gets 403 on bulk force delete', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+    $asset = Asset::factory()->create(['deleted_at' => now()]);
+
+    $response = $this->actingAs($editor)->deleteJson(route('assets.trash.bulk-force-delete'), [
+        'asset_ids' => [$asset->id],
+    ]);
+
+    $response->assertForbidden();
+    expect(Asset::onlyTrashed()->find($asset->id))->not->toBeNull();
 });

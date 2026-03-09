@@ -209,26 +209,34 @@ test('authenticated users can soft delete asset', function () {
     expect(Asset::withTrashed()->find($assetId))->not->toBeNull();
 });
 
-test('only admins can access trash', function () {
+test('editors and admins can access trash', function () {
     $editor = User::factory()->create(['role' => 'editor']);
     $admin = User::factory()->create(['role' => 'admin']);
+    $apiUser = User::factory()->create(['role' => 'api']);
 
     $editorResponse = $this->actingAs($editor)->get(route('assets.trash'));
     $adminResponse = $this->actingAs($admin)->get(route('assets.trash'));
+    $apiResponse = $this->actingAs($apiUser)->get(route('assets.trash'));
 
-    $editorResponse->assertForbidden();
+    $editorResponse->assertStatus(200);
     $adminResponse->assertStatus(200);
+    $apiResponse->assertForbidden();
 });
 
-test('only admins can restore assets', function () {
+test('editors and admins can restore assets', function () {
     $admin = User::factory()->create(['role' => 'admin']);
-    $asset = Asset::factory()->create();
-    $asset->delete();
+    $editor = User::factory()->create(['role' => 'editor']);
 
-    $response = $this->actingAs($admin)->post(route('assets.restore', $asset->id));
+    $asset1 = Asset::factory()->create();
+    $asset1->delete();
+    $asset2 = Asset::factory()->create();
+    $asset2->delete();
 
-    $response->assertRedirect();
-    expect(Asset::find($asset->id))->not->toBeNull();
+    $this->actingAs($admin)->post(route('assets.restore', $asset1->id))->assertRedirect();
+    expect(Asset::find($asset1->id))->not->toBeNull();
+
+    $this->actingAs($editor)->post(route('assets.restore', $asset2->id))->assertRedirect();
+    expect(Asset::find($asset2->id))->not->toBeNull();
 });
 
 test('only admins can force delete assets', function () {

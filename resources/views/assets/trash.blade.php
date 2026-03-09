@@ -133,11 +133,13 @@
                             title="{{ __('Restore') }}">
                         <i class="fas fa-undo"></i>
                     </button>
+                    @can('forceDelete', App\Models\Asset::class)
                     <button @click.stop="confirmDelete({{ $asset->id }})"
                             class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
                             title="{{ __('Permanently Delete') }}">
                         <i class="fas fa-trash"></i>
                     </button>
+                    @endcan
                 </div>
             </div>
 
@@ -285,11 +287,13 @@
                                         title="{{ __('Restore') }}">
                                     <i class="fas fa-undo"></i>
                                 </button>
+                                @can('forceDelete', App\Models\Asset::class)
                                 <button @click="confirmDelete({{ $asset->id }})"
                                         class="text-red-600 hover:text-red-800"
                                         title="{{ __('Permanently Delete') }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                @endcan
                             </div>
                         </td>
                     </tr>
@@ -332,6 +336,7 @@
                     <i :class="bulkRestoring ? 'fas fa-spinner fa-spin ml-1' : ''"></i>
                 </button>
 
+                @can('forceDelete', App\Models\Asset::class)
                 <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
 
                 <!-- Bulk permanent delete -->
@@ -341,6 +346,7 @@
                     <i class="fas fa-skull-crossbones mr-1"></i> {{ __('Permanent delete') }}
                     <i :class="bulkDeleting ? 'fas fa-spinner fa-spin ml-1' : ''"></i>
                 </button>
+                @endcan
 
                 <!-- Spacer -->
                 <div class="flex-1"></div>

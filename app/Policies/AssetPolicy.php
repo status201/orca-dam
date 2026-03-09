@@ -74,7 +74,7 @@ class AssetPolicy
      */
     public function restore(User $user, Asset|string|null $asset = null): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $user->isEditor();
     }
 
     /**
