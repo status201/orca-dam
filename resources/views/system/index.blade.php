@@ -1125,7 +1125,7 @@
                     <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
                     <p x-text="docError"></p>
                 </div>
-                <div x-show="!loadingDoc && !docError && docContent" class="prose-doc">
+                <div x-show="!loadingDoc && !docError && docContent" class="prose-doc" @click="handleDocClick($event)">
                     <div x-html="docContent"></div>
                 </div>
                 <div x-show="!loadingDoc && !docError && !docContent" class="text-center py-8 text-gray-500">

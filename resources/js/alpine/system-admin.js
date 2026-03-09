@@ -492,7 +492,7 @@ export function systemAdmin() {
                 const result = await response.json();
 
                 if (result.success) {
-                    this.docContent = result.content;
+                    this.docContent = this.addHeadingIds(result.content);
                 } else {
                     this.docError = result.error || pageData.translations.failedLoadDocumentation;
                 }
@@ -677,6 +677,32 @@ export function systemAdmin() {
                 });
             } else {
                 this.fallbackCopyToClipboard(text);
+            }
+        },
+
+        addHeadingIds(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            div.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(heading => {
+                if (!heading.id) {
+                    heading.id = heading.textContent.trim()
+                        .toLowerCase()
+                        .replace(/[^\w\s-]/g, '')
+                        .replace(/\s+/g, '-');
+                }
+            });
+            return div.innerHTML;
+        },
+
+        handleDocClick(event) {
+            const link = event.target.closest('a[href^="#"]');
+            if (!link) return;
+
+            event.preventDefault();
+            const targetId = link.getAttribute('href').substring(1);
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
             }
         },
 
