@@ -245,7 +245,8 @@ export function assetGrid() {
             this.bulkAddTag();
         },
 
-        bulkSelectNextSuggestion() {
+        bulkSelectNextSuggestion() {bulkSelectSuggestion
+
             if (this.bulkFilteredSuggestions.length === 0) return;
             this.bulkSelectedSuggestionIndex =
                 (this.bulkSelectedSuggestionIndex + 1) % this.bulkFilteredSuggestions.length;

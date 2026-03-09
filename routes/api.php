@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AssetApiController;
-use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
@@ -34,10 +33,4 @@ Route::middleware(['auth.multi', 'throttle:100,1'])->group(function () {
     Route::delete('reference-tags/{tag}', [AssetApiController::class, 'removeReferenceTag']);
 });
 
-// Chunked upload endpoints
-Route::middleware(['auth.multi', 'throttle:100,1'])->prefix('chunked-upload')->group(function () {
-    Route::post('init', [ChunkedUploadController::class, 'initiate']);
-    Route::post('chunk', [ChunkedUploadController::class, 'uploadChunk']);
-    Route::post('complete', [ChunkedUploadController::class, 'complete']);
-    Route::post('abort', [ChunkedUploadController::class, 'abort']);
-});
+// Chunked upload endpoints are in web.php (session auth for web uploader)

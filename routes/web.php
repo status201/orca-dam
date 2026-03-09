@@ -12,6 +12,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\TokenController;
+use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -144,6 +145,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('api-docs/jwt-secrets/{user}', [JwtSecretController::class, 'generate'])->name('api.jwt-secrets.generate');
         Route::delete('api-docs/jwt-secrets/{user}', [JwtSecretController::class, 'revoke'])->name('api.jwt-secrets.revoke');
     });
+});
+
+// Chunked upload endpoints (web routes for session auth, also supports API token auth via auth.multi)
+Route::middleware(['auth.multi:web,sanctum,jwt', 'throttle:100,1'])->prefix('api/chunked-upload')->group(function () {
+    Route::post('init', [ChunkedUploadController::class, 'initiate'])->name('chunked-upload.init');
+    Route::post('chunk', [ChunkedUploadController::class, 'uploadChunk'])->name('chunked-upload.chunk');
+    Route::post('complete', [ChunkedUploadController::class, 'complete'])->name('chunked-upload.complete');
+    Route::post('abort', [ChunkedUploadController::class, 'abort'])->name('chunked-upload.abort');
 });
 
 require __DIR__.'/auth.php';
