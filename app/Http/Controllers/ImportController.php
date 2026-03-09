@@ -165,7 +165,7 @@ class ImportController extends Controller
 
                 if (! empty($tagNames)) {
                     $userTagIds = Tag::resolveUserTagIds($tagNames);
-                    $asset->tags()->syncWithoutDetaching($userTagIds);
+                    $asset->syncTagsWithAttribution($userTagIds, 'user');
                 }
             }
 
@@ -177,7 +177,7 @@ class ImportController extends Controller
 
                 if (! empty($refTagNames)) {
                     $refTagIds = Tag::resolveReferenceTagIds($refTagNames);
-                    $asset->tags()->syncWithoutDetaching($refTagIds);
+                    $asset->syncTagsWithAttribution($refTagIds, 'reference');
                 }
             }
 

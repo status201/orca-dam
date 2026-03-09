@@ -188,14 +188,7 @@ class RekognitionService
 
         // Attach tags to asset (only AI tags, don't remove user tags)
         if (! empty($tagIds)) {
-            // Get existing tag IDs
-            $existingTagIds = $asset->tags()->pluck('tags.id')->toArray();
-
-            // Merge with new AI tags (remove duplicates)
-            $allTagIds = array_unique(array_merge($existingTagIds, $tagIds));
-
-            // Sync all tags
-            $asset->tags()->sync($allTagIds);
+            $asset->syncTagsWithAttribution($tagIds, 'ai');
         }
 
         return $labels;

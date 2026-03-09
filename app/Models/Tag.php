@@ -23,7 +23,7 @@ class Tag extends Model
      */
     public function assets(): BelongsToMany
     {
-        return $this->belongsToMany(Asset::class)->withTimestamps();
+        return $this->belongsToMany(Asset::class)->withPivot('attached_by')->withTimestamps();
     }
 
     /**

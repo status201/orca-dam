@@ -391,9 +391,7 @@
                 @if($asset->tags->count() > 0)
                 <div class="flex flex-wrap gap-1 mt-2">
                     @foreach($asset->tags->take(2) as $tag)
-                    <span class="tag attention text-xs px-2 py-0.5 rounded-full {{ $tag->type === 'ai' ? 'bg-purple-100 text-purple-700' : ($tag->type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700') }}">
-                        {{ $tag->name }}
-                    </span>
+                    <x-tag-badge :tag="$tag" size="xs" />
                     @endforeach
 
                     @if($asset->tags->count() > 2)
@@ -446,7 +444,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($assets as $asset)
-                    <tr x-data="assetRow({{ $asset->id }}, @js($asset->tags->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type])->toArray()), '{{ $asset->license_type }}', '{{ $asset->url }}')"
+                    <tr x-data="assetRow({{ $asset->id }}, @js($asset->tags->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'attached_by' => $t->pivot->attached_by ?? $t->type])->toArray()), '{{ $asset->license_type }}', '{{ $asset->url }}')"
                         class="hover:bg-gray-50 transition-colors">
 
                         <!-- Selection checkbox -->
@@ -548,7 +546,11 @@
                             <div class="flex flex-wrap gap-2">
                                 <!-- Existing Tags -->
                                 <template x-for="(tag, index) in tags" :key="tag.id">
-                                    <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
+                                    <span :class="[
+                                            tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'),
+                                            tag.attached_by && tag.attached_by !== tag.type ? (tag.attached_by === 'ai' ? 'ring-2 ring-purple-400' : (tag.attached_by === 'reference' ? 'ring-2 ring-orange-400' : 'ring-2 ring-blue-400')) : ''
+                                          ]"
+                                          :title="tag.attached_by && tag.attached_by !== tag.type ? tag.name + ' — {{ __('Created as') }}: ' + tag.type + ', {{ __('Attached by') }}: ' + tag.attached_by : ''"
                                           class="tag attention inline-flex items-center px-2 py-1 rounded text-xs font-medium">
                                         <span x-text="tag.name"></span>
                                         <button @click="removeTag(tag)"

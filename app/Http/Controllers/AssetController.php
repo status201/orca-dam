@@ -291,9 +291,13 @@ class AssetController extends Controller
         if ($request->has('tags')) {
             $tagIds = Tag::resolveUserTagIds($request->input('tags', []));
 
-            // Keep AI tags, replace user tags
-            $aiTagIds = $asset->aiTags()->pluck('tags.id')->toArray();
-            $asset->tags()->sync(array_merge($aiTagIds, $tagIds));
+            // Keep AI tags with their current attached_by, replace user tags
+            $aiPivotData = [];
+            foreach ($asset->aiTags as $aiTag) {
+                $aiPivotData[$aiTag->id] = ['attached_by' => $aiTag->pivot->attached_by];
+            }
+            $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
+            $asset->tags()->sync($aiPivotData + $userPivotData);
         }
 
         if ($request->expectsJson()) {
@@ -576,7 +580,7 @@ class AssetController extends Controller
 
         foreach ($assets as $asset) {
             $this->authorize('update', $asset);
-            $asset->tags()->syncWithoutDetaching($tagIds);
+            $asset->syncTagsWithAttribution($tagIds, 'user');
         }
 
         Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
@@ -849,7 +853,7 @@ class AssetController extends Controller
 
         $tagIds = Tag::resolveUserTagIds($request->tags);
 
-        $asset->tags()->syncWithoutDetaching($tagIds);
+        $asset->syncTagsWithAttribution($tagIds, 'user');
         $asset->update(['last_modified_by' => Auth::id()]);
 
         return response()->json([

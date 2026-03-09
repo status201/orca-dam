@@ -154,9 +154,16 @@ class AssetApiController extends Controller
         if ($request->has('tags')) {
             $tagIds = Tag::resolveUserTagIds($request->input('tags', []));
 
-            $aiTagIds = $asset->aiTags()->pluck('tags.id')->toArray();
-            $referenceTagIds = $asset->referenceTags()->pluck('tags.id')->toArray();
-            $asset->tags()->sync(array_merge($aiTagIds, $referenceTagIds, $tagIds));
+            // Preserve AI and reference tags with their current attached_by
+            $preservedPivotData = [];
+            foreach ($asset->aiTags as $tag) {
+                $preservedPivotData[$tag->id] = ['attached_by' => $tag->pivot->attached_by];
+            }
+            foreach ($asset->referenceTags as $tag) {
+                $preservedPivotData[$tag->id] = ['attached_by' => $tag->pivot->attached_by];
+            }
+            $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
+            $asset->tags()->sync($preservedPivotData + $userPivotData);
         }
 
         return response()->json([
@@ -299,7 +306,7 @@ class AssetApiController extends Controller
         $tagIds = Tag::resolveReferenceTagIds($request->input('tags'));
 
         foreach ($assets as $asset) {
-            $asset->tags()->syncWithoutDetaching($tagIds);
+            $asset->syncTagsWithAttribution($tagIds, 'reference');
         }
 
         $response = [

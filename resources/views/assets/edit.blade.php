@@ -345,15 +345,14 @@
                 @if($asset->aiTags->count() > 0)
                     <div class="flex flex-wrap gap-2" x-data="aiTagManager()">
                         @foreach($asset->aiTags as $tag)
-                            <span class="tag attention inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-700">
-                    {{ $tag->name }}
-                    <button type="button"
-                            @click="removeAiTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
-                            class="ml-2 hover:text-purple-900"
-                            title="{{ __('Remove this AI tag') }}">
-                        <i class="fas fa-times text-xs"></i>
-                    </button>
-                </span>
+                            <x-tag-badge :tag="$tag">
+                                <button type="button"
+                                        @click="removeAiTag({{ $tag->id }}, '{{ addslashes($tag->name) }}')"
+                                        class="ml-2 hover:text-purple-900"
+                                        title="{{ __('Remove this AI tag') }}">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </x-tag-badge>
                         @endforeach
                     </div>
                 @else

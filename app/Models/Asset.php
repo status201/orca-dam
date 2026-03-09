@@ -83,8 +83,20 @@ class Asset extends Model
      */
     public function tags(): BelongsToMany
     {
-        return $this->belongsToMany(Tag::class)->withTimestamps()
+        return $this->belongsToMany(Tag::class)->withPivot('attached_by')->withTimestamps()
             ->orderByRaw("CASE WHEN tags.type = 'user' THEN 0 WHEN tags.type = 'reference' THEN 1 ELSE 2 END");
+    }
+
+    /**
+     * Sync tags with attribution, using "last attacher wins" semantics.
+     */
+    public function syncTagsWithAttribution(array $tagIds, string $attachedBy): void
+    {
+        $pivotData = array_fill_keys($tagIds, ['attached_by' => $attachedBy]);
+        $this->tags()->syncWithoutDetaching($pivotData);
+        foreach ($tagIds as $tagId) {
+            $this->tags()->updateExistingPivot($tagId, ['attached_by' => $attachedBy]);
+        }
     }
 
     /**
