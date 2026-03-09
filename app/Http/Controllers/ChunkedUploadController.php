@@ -35,7 +35,7 @@ class ChunkedUploadController extends Controller
      */
     public function initiate(Request $request)
     {
-        if (! Setting::get('api_upload_enabled', true)) {
+        if (! Auth::guard('web')->check() && ! Setting::get('api_upload_enabled', true)) {
             return response()->json(['message' => 'Upload endpoints are disabled.'], 403);
         }
 
