@@ -74,15 +74,33 @@ class AssetApiController extends Controller
         }
 
         $uploadedAssets = [];
+        $duplicates = [];
 
         foreach ($request->file('files') as $file) {
             $fileData = $this->s3Service->uploadFile($file);
+
+            // Check for duplicate by etag
+            if (! empty($fileData['etag'])) {
+                $existing = Asset::withTrashed()->where('etag', $fileData['etag'])->first();
+                if ($existing) {
+                    // Clean up the just-uploaded S3 object
+                    $this->s3Service->deleteFile($fileData['s3_key']);
+                    $duplicates[] = [
+                        'filename' => $fileData['filename'],
+                        'existing_asset_id' => $existing->id,
+                        'existing_asset_url' => $existing->trashed() ? null : $existing->url,
+                    ];
+
+                    continue;
+                }
+            }
 
             $asset = Asset::create([
                 's3_key' => $fileData['s3_key'],
                 'filename' => $fileData['filename'],
                 'mime_type' => $fileData['mime_type'],
                 'size' => $fileData['size'],
+                'etag' => $fileData['etag'] ?? null,
                 'width' => $fileData['width'],
                 'height' => $fileData['height'],
                 'user_id' => Auth::id(),
@@ -94,10 +112,18 @@ class AssetApiController extends Controller
             $uploadedAssets[] = $asset->fresh(['tags'])->append(Asset::APPEND_FIELDS);
         }
 
-        return response()->json([
+        if (empty($uploadedAssets) && ! empty($duplicates)) {
+            return response()->json([
+                'message' => 'All files are duplicates of existing assets.',
+                'duplicates' => $duplicates,
+            ], 409);
+        }
+
+        return response()->json(array_filter([
             'message' => count($uploadedAssets).' file(s) uploaded successfully',
             'data' => $uploadedAssets,
-        ], 201);
+            'duplicates' => $duplicates ?: null,
+        ]), 201);
     }
 
     /**

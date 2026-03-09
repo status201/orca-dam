@@ -35,6 +35,9 @@ class SystemService
         'migrate --force',
         'two-factor:status',
         'two-factor:disable',
+        'assets:backfill-etags',
+        'assets:deduplicate',
+        'assets:deduplicate --force',
     ];
 
     /**
@@ -466,6 +469,21 @@ class SystemService
     public function getSuggestedCommands(): array
     {
         return [
+            [
+                'command' => 'assets:backfill-etags',
+                'description' => 'Fetch missing etags from S3 for assets without one',
+                'category' => 'Assets',
+            ],
+            [
+                'command' => 'assets:deduplicate',
+                'description' => 'Dry-run: find duplicate assets by etag',
+                'category' => 'Assets',
+            ],
+            [
+                'command' => 'assets:deduplicate --force',
+                'description' => 'Soft-delete duplicate assets (keeps oldest, skips referenced)',
+                'category' => 'Assets',
+            ],
             [
                 'command' => 'cache:clear',
                 'description' => 'Clear application cache',

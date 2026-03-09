@@ -113,11 +113,28 @@ class AssetController extends Controller
 
             $folder = $request->input('folder', S3Service::getRootFolder());
             $uploadedAssets = [];
+            $duplicates = [];
 
             foreach ($request->file('files') as $file) {
                 try {
                     // Upload to S3 with folder support
                     $fileData = $this->s3Service->uploadFile($file, $folder);
+
+                    // Check for duplicate by etag
+                    if (! empty($fileData['etag'])) {
+                        $existing = Asset::withTrashed()->where('etag', $fileData['etag'])->first();
+                        if ($existing) {
+                            // Clean up the just-uploaded S3 object
+                            $this->s3Service->deleteFile($fileData['s3_key']);
+                            $duplicates[] = [
+                                'filename' => $fileData['filename'],
+                                'existing_asset_id' => $existing->id,
+                                'existing_asset_url' => $existing->trashed() ? null : route('assets.show', $existing),
+                            ];
+
+                            continue;
+                        }
+                    }
 
                     // Create asset record
                     $asset = Asset::create([
@@ -142,6 +159,18 @@ class AssetController extends Controller
             }
 
             if (empty($uploadedAssets)) {
+                if (! empty($duplicates)) {
+                    $dupeMessage = __('Duplicate file(s) detected. These files already exist in the library.');
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'message' => $dupeMessage,
+                            'duplicates' => $duplicates,
+                        ], 409);
+                    }
+
+                    return redirect()->back()->with('error', $dupeMessage);
+                }
+
                 if ($request->expectsJson()) {
                     return response()->json([
                         'message' => 'All uploads failed. Please check the logs for details.',
@@ -157,14 +186,28 @@ class AssetController extends Controller
                     $a->append(Asset::APPEND_FIELDS);
                 }
 
-                return response()->json([
+                $response = [
                     'message' => count($uploadedAssets).' file(s) uploaded successfully',
                     'assets' => $uploadedAssets,
+                ];
+                if (! empty($duplicates)) {
+                    $response['duplicates'] = $duplicates;
+                }
+
+                return response()->json($response);
+            }
+
+            $successMessage = count($uploadedAssets).' file(s) uploaded successfully';
+            if (! empty($duplicates)) {
+                $dupeNames = array_column($duplicates, 'filename');
+                $successMessage .= '. '.__('Skipped :count duplicate(s): :names', [
+                    'count' => count($duplicates),
+                    'names' => implode(', ', $dupeNames),
                 ]);
             }
 
             return redirect()->route('assets.index')
-                ->with('success', count($uploadedAssets).' file(s) uploaded successfully');
+                ->with('success', $successMessage);
         } catch (\Exception $e) {
             \Log::error('Upload process failed: '.$e->getMessage());
 

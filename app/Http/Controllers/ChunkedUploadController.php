@@ -162,6 +162,16 @@ class ChunkedUploadController extends Controller
                 'asset' => $asset->load('tags'),
             ]);
 
+        } catch (\App\Exceptions\DuplicateAssetException $e) {
+            return response()->json([
+                'message' => 'Duplicate file detected. This file already exists in the library.',
+                'duplicates' => [[
+                    'filename' => $session->filename ?? null,
+                    'existing_asset_id' => $e->existingAsset->id,
+                    'existing_asset_url' => $e->existingAsset->trashed() ? null : $e->existingAsset->url,
+                ]],
+            ], 409);
+
         } catch (\Exception $e) {
             Log::error('Upload completion failed', [
                 'session_token' => $request->session_token,

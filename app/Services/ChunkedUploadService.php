@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\DuplicateAssetException;
 use App\Models\Asset;
 use App\Models\UploadSession;
 use Aws\S3\S3Client;
@@ -182,6 +183,18 @@ class ChunkedUploadService
             ]);
 
             $etag = trim($result['ETag'], '"');
+
+            // Check for duplicate by etag
+            if (! empty($etag)) {
+                $existing = Asset::withTrashed()->where('etag', $etag)->first();
+                if ($existing) {
+                    // Clean up the just-completed S3 object
+                    $this->s3Service->deleteFile($session->s3_key);
+                    $session->update(['status' => 'failed']);
+
+                    throw new DuplicateAssetException($existing);
+                }
+            }
 
             // Get dimensions for images (if applicable)
             $dimensions = $this->extractDimensions($session);
