@@ -88,8 +88,7 @@ test('admin can bulk force delete trashed assets', function () {
     ]);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile')->times(4); // 2 originals + 2 thumbnails
-        $mock->shouldReceive('deleteResizedImages')->twice();
+        $mock->shouldReceive('deleteAssetFiles')->twice();
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.trash.bulk-force-delete'), [
@@ -128,8 +127,7 @@ test('bulk force delete trashed does NOT require maintenance_mode', function () 
     ]);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile')->once();
-        $mock->shouldReceive('deleteResizedImages')->once();
+        $mock->shouldReceive('deleteAssetFiles')->once();
     });
 
     // No maintenance_mode setting created — should still work
@@ -154,9 +152,7 @@ test('bulk force delete trashed cleans up S3 objects', function () {
     ]);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile')->with('assets/folder/file.jpg')->once();
-        $mock->shouldReceive('deleteFile')->with('thumbnails/folder/file_thumb.jpg')->once();
-        $mock->shouldReceive('deleteResizedImages')->once();
+        $mock->shouldReceive('deleteAssetFiles')->once();
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.trash.bulk-force-delete'), [
@@ -181,8 +177,7 @@ test('bulk force delete trashed only affects trashed assets', function () {
     ]);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile');
-        $mock->shouldReceive('deleteResizedImages');
+        $mock->shouldReceive('deleteAssetFiles');
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.trash.bulk-force-delete'), [

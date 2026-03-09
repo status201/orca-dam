@@ -29,8 +29,7 @@ test('admin can bulk force delete assets when maintenance mode is enabled', func
     ]);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile')->times(4); // 2 originals + 2 thumbnails
-        $mock->shouldReceive('deleteResizedImages')->twice();
+        $mock->shouldReceive('deleteAssetFiles')->twice();
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.bulk.force-delete'), [
@@ -124,8 +123,7 @@ test('bulk force delete skips thumbnail deletion when no thumbnail exists', func
     ]);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile')->once(); // Only the original
-        $mock->shouldReceive('deleteResizedImages')->once();
+        $mock->shouldReceive('deleteAssetFiles')->once();
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.bulk.force-delete'), [
@@ -144,14 +142,11 @@ test('bulk force delete reports failures when S3 deletion throws', function () {
     $assetFail = Asset::factory()->create(['s3_key' => 'assets/folder/fail.jpg']);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile')->andReturnUsing(function ($key) {
-            if (str_contains($key, 'fail')) {
+        $mock->shouldReceive('deleteAssetFiles')->andReturnUsing(function ($asset) {
+            if (str_contains($asset->s3_key, 'fail')) {
                 throw new \Exception('S3 error');
             }
-
-            return true;
         });
-        $mock->shouldReceive('deleteResizedImages');
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.bulk.force-delete'), [
@@ -174,8 +169,7 @@ test('bulk force delete works on non-trashed assets', function () {
     ]);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile');
-        $mock->shouldReceive('deleteResizedImages');
+        $mock->shouldReceive('deleteAssetFiles');
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.bulk.force-delete'), [
@@ -195,8 +189,7 @@ test('bulk force delete returns deleted s3 keys in response', function () {
     $asset2 = Asset::factory()->create(['s3_key' => 'assets/b/two.png']);
 
     $this->mock(S3Service::class, function ($mock) {
-        $mock->shouldReceive('deleteFile');
-        $mock->shouldReceive('deleteResizedImages');
+        $mock->shouldReceive('deleteAssetFiles');
     });
 
     $response = $this->actingAs($admin)->deleteJson(route('assets.bulk.force-delete'), [

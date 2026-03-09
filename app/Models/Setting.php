@@ -62,8 +62,9 @@ class Setting extends Model
             $setting->update(['value' => $stringValue]);
         }
 
-        // Clear cache
         Cache::forget(self::CACHE_PREFIX.$key);
+        Cache::forget('settings:all');
+        Cache::forget('settings:grouped');
 
         return true;
     }
@@ -73,9 +74,11 @@ class Setting extends Model
      */
     public static function allSettings(): array
     {
-        return self::query()->get()->mapWithKeys(function ($setting) {
-            return [$setting->key => self::castValue($setting->value, $setting->type)];
-        })->toArray();
+        return Cache::remember('settings:all', self::CACHE_TTL, function () {
+            return self::query()->get()->mapWithKeys(function ($setting) {
+                return [$setting->key => self::castValue($setting->value, $setting->type)];
+            })->toArray();
+        });
     }
 
     /**
@@ -83,15 +86,17 @@ class Setting extends Model
      */
     public static function allGrouped(): array
     {
-        return self::query()->get()->groupBy('group')->map(function ($group) {
-            return $group->mapWithKeys(function ($setting) {
-                return [$setting->key => [
-                    'value' => self::castValue($setting->value, $setting->type),
-                    'type' => $setting->type,
-                    'description' => $setting->description,
-                ]];
-            });
-        })->toArray();
+        return Cache::remember('settings:grouped', self::CACHE_TTL, function () {
+            return self::query()->get()->groupBy('group')->map(function ($group) {
+                return $group->mapWithKeys(function ($setting) {
+                    return [$setting->key => [
+                        'value' => self::castValue($setting->value, $setting->type),
+                        'type' => $setting->type,
+                        'description' => $setting->description,
+                    ]];
+                });
+            })->toArray();
+        });
     }
 
     /**
@@ -121,5 +126,8 @@ class Setting extends Model
         foreach ($keys as $key) {
             Cache::forget(self::CACHE_PREFIX.$key);
         }
+
+        Cache::forget('settings:all');
+        Cache::forget('settings:grouped');
     }
 }

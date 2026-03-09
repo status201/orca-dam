@@ -7,8 +7,6 @@ use App\Models\Setting;
 use Aws\S3\S3Client;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\ImageManager;
 
 class S3Service
 {
@@ -18,12 +16,13 @@ class S3Service
 
     protected string $region;
 
-    protected ImageManager $imageManager;
+    protected ImageProcessingService $imageProcessingService;
 
-    public function __construct()
+    public function __construct(ImageProcessingService $imageProcessingService)
     {
         $this->bucket = config('filesystems.disks.s3.bucket');
         $this->region = config('filesystems.disks.s3.region');
+        $this->imageProcessingService = $imageProcessingService;
 
         $this->s3Client = new S3Client([
             'version' => 'latest',
@@ -33,9 +32,6 @@ class S3Service
                 'secret' => config('filesystems.disks.s3.secret'),
             ],
         ]);
-
-        // Initialize Intervention Image 3.x (GD for general use)
-        $this->imageManager = new ImageManager(new Driver);
     }
 
     /**
@@ -174,19 +170,14 @@ class S3Service
 
             $imageContent = (string) $result['Body'];
 
-            // Skip animated GIFs to avoid memory issues (static GIFs are fine)
-            if (str_ends_with(strtolower($s3Key), '.gif') && $this->isAnimatedGif($imageContent)) {
+            $thumbnailContent = $this->imageProcessingService->createThumbnailContent($imageContent, basename($s3Key));
+
+            // Skip animated GIFs (createThumbnailContent returns null)
+            if ($thumbnailContent === null) {
                 \Log::info("Skipping thumbnail generation for animated GIF: $s3Key");
 
                 return null;
             }
-
-            // Generate thumbnail (300x300 max, maintain aspect ratio)
-            $image = $this->imageManager->read($imageContent);
-            $image->scale(width: 300, height: 300);
-
-            // Convert to JPEG for consistency
-            $thumbnailContent = $image->toJpeg(quality: 80);
 
             // Extract folder from s3_key and mirror it for thumbnails
             // e.g., assets/marketing/abc.jpg -> thumbnails/marketing/abc_thumb.jpg
@@ -250,7 +241,7 @@ class S3Service
             $imageContent = (string) $result['Body'];
 
             // Skip animated GIFs to avoid memory issues (static GIFs are fine)
-            if ($extension === 'gif' && $this->isAnimatedGif($imageContent)) {
+            if ($extension === 'gif' && $this->imageProcessingService->isAnimatedGif($imageContent)) {
                 \Log::info("Skipping resize generation for animated GIF: $s3Key");
 
                 return [];
@@ -276,40 +267,15 @@ class S3Service
                     continue;
                 }
 
-                $image = $this->imageManager->read($imageContent);
-
-                // scaleDown: fits inside box, keeps aspect ratio, never upscales
-                $image->scaleDown(width: $w, height: $h);
-
-                // Determine output format and content type
-                $outputExtension = $extension;
-                if ($extension === 'gif') {
-                    // GIFs become static JPEG
-                    $encoded = $image->toJpeg(quality: 85);
-                    $contentType = 'image/jpeg';
-                    $outputExtension = 'jpg';
-                } elseif ($extension === 'png') {
-                    $encoded = $image->toPng();
-                    $contentType = 'image/png';
-                } elseif ($extension === 'webp') {
-                    $encoded = $image->toWebp(quality: 85);
-                    $contentType = 'image/webp';
-                } else {
-                    $encoded = $image->toJpeg(quality: 85);
-                    $contentType = 'image/jpeg';
-                    if (! in_array($outputExtension, ['jpg', 'jpeg'])) {
-                        $outputExtension = 'jpg';
-                    }
-                }
-
+                $result = $this->imageProcessingService->createResizedContent($imageContent, $extension, $w, $h);
                 $sizeLabel = strtoupper($sizeKey);
-                $resizedKey = "thumbnails/{$sizeLabel}/{$folder}{$basename}.{$outputExtension}";
+                $resizedKey = "thumbnails/{$sizeLabel}/{$folder}{$basename}.{$result['extension']}";
 
                 $this->s3Client->putObject([
                     'Bucket' => $this->bucket,
                     'Key' => $resizedKey,
-                    'Body' => $encoded,
-                    'ContentType' => $contentType,
+                    'Body' => $result['content'],
+                    'ContentType' => $result['mime_type'],
                 ]);
 
                 $resizedKeys[$sizeKey] = $resizedKey;
@@ -364,6 +330,53 @@ class S3Service
                 $this->deleteFile($asset->{$field});
             }
         }
+    }
+
+    /**
+     * Delete all S3 files belonging to an asset (original, thumbnail, resize variants).
+     * Use this instead of repeating the three-step deletion pattern in callers.
+     */
+    public function deleteAssetFiles(Asset $asset): void
+    {
+        $this->deleteFile($asset->s3_key);
+
+        if ($asset->thumbnail_s3_key) {
+            $this->deleteFile($asset->thumbnail_s3_key);
+        }
+
+        $this->deleteResizedImages($asset);
+    }
+
+    /**
+     * Compute the expected thumbnail and resize S3 keys for a given s3_key,
+     * mirroring the naming conventions used by uploadThumbnail() and generateResizedImages().
+     * Used when moving assets so derived keys can be updated to their new paths.
+     *
+     * @return array{thumbnail_s3_key: string, resize_s_s3_key: string, resize_m_s3_key: string, resize_l_s3_key: string}
+     */
+    public function computeDerivedKeys(string $s3Key): array
+    {
+        $rootPrefix = self::getRootPrefix();
+        $relativePath = ($rootPrefix !== '' && str_starts_with($s3Key, $rootPrefix))
+            ? substr($s3Key, strlen($rootPrefix))
+            : $s3Key;
+        $folder = dirname($relativePath);
+        $relativeFolder = ($folder === '.' || $folder === '') ? '' : $folder.'/';
+
+        $basename = pathinfo(basename($s3Key), PATHINFO_FILENAME);
+        $extension = strtolower(pathinfo($s3Key, PATHINFO_EXTENSION));
+
+        $thumbnailKey = 'thumbnails/'.$relativeFolder.Str::replaceLast('.', '_thumb.', basename($s3Key));
+        $thumbnailKey = preg_replace('/\.[^.]+$/', '.jpg', $thumbnailKey);
+
+        $outputExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp']) ? $extension : 'jpg';
+
+        return [
+            'thumbnail_s3_key' => $thumbnailKey,
+            'resize_s_s3_key' => "thumbnails/S/{$relativeFolder}{$basename}.{$outputExtension}",
+            'resize_m_s3_key' => "thumbnails/M/{$relativeFolder}{$basename}.{$outputExtension}",
+            'resize_l_s3_key' => "thumbnails/L/{$relativeFolder}{$basename}.{$outputExtension}",
+        ];
     }
 
     /**
@@ -629,128 +642,11 @@ class S3Service
     }
 
     /**
-     * Get image dimensions
+     * Get image dimensions — delegates to ImageProcessingService
      */
     protected function getImageDimensions(UploadedFile $file): array
     {
-        if (! str_starts_with($file->getMimeType(), 'image/')) {
-            return [];
-        }
-
-        // EPS: dimensions are nice-to-have, skip gracefully
-        if (str_ends_with(strtolower($file->getClientOriginalName()), '.eps')) {
-            return [];
-        }
-
-        // Skip dimension detection for GIFs to avoid memory issues
-        if ($file->getMimeType() === 'image/gif') {
-            try {
-                // Use getimagesize which is much more memory efficient
-                $size = @getimagesize($file->getRealPath());
-                if ($size !== false) {
-                    return [
-                        'width' => $size[0],
-                        'height' => $size[1],
-                    ];
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to get GIF dimensions: '.$e->getMessage());
-            }
-
-            return [];
-        }
-
-        try {
-            $image = $this->imageManager->read($file->getRealPath());
-
-            return [
-                'width' => $image->width(),
-                'height' => $image->height(),
-            ];
-        } catch (\Exception $e) {
-            \Log::warning('Failed to get image dimensions: '.$e->getMessage());
-
-            return [];
-        }
-    }
-
-    /**
-     * Check whether raw GIF data contains multiple frames (i.e. is animated).
-     * Walks the GIF block structure to count actual image descriptor blocks.
-     */
-    protected function isAnimatedGif(string $imageData): bool
-    {
-        $len = strlen($imageData);
-        if ($len < 13) {
-            return false;
-        }
-
-        // Skip header (6 bytes) + Logical Screen Descriptor (7 bytes)
-        $offset = 10;
-        // Check for Global Color Table
-        $packed = ord($imageData[10]);
-        if ($packed & 0x80) {
-            $gctSize = 3 * (1 << (($packed & 0x07) + 1));
-            $offset = 13 + $gctSize;
-        } else {
-            $offset = 13;
-        }
-
-        $frameCount = 0;
-
-        while ($offset < $len) {
-            $byte = ord($imageData[$offset]);
-
-            if ($byte === 0x3B) {
-                // Trailer — end of GIF
-                break;
-            } elseif ($byte === 0x2C) {
-                // Image Descriptor
-                $frameCount++;
-                if ($frameCount >= 2) {
-                    return true;
-                }
-                // Skip Image Descriptor fixed fields (9 bytes total including introducer)
-                $offset += 9;
-                if ($offset >= $len) {
-                    break;
-                }
-                // Check for Local Color Table
-                $localPacked = ord($imageData[$offset - 1]);
-                if ($localPacked & 0x80) {
-                    $lctSize = 3 * (1 << (($localPacked & 0x07) + 1));
-                    $offset += $lctSize;
-                }
-                // Skip LZW Minimum Code Size byte
-                $offset++;
-                // Skip sub-blocks
-                while ($offset < $len) {
-                    $blockSize = ord($imageData[$offset]);
-                    $offset++;
-                    if ($blockSize === 0) {
-                        break;
-                    }
-                    $offset += $blockSize;
-                }
-            } elseif ($byte === 0x21) {
-                // Extension block
-                $offset += 2; // skip introducer + label
-                // Skip sub-blocks
-                while ($offset < $len) {
-                    $blockSize = ord($imageData[$offset]);
-                    $offset++;
-                    if ($blockSize === 0) {
-                        break;
-                    }
-                    $offset += $blockSize;
-                }
-            } else {
-                // Unknown byte, advance to avoid infinite loop
-                $offset++;
-            }
-        }
-
-        return false;
+        return $this->imageProcessingService->getImageDimensions($file);
     }
 
     /**

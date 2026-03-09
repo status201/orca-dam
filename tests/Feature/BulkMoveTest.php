@@ -27,6 +27,7 @@ test('admin can move assets when maintenance mode is enabled', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
+        $mock->shouldReceive('computeDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -84,6 +85,7 @@ test('assets already in target folder are skipped', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->never();
+        $mock->shouldReceive('computeDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -111,6 +113,7 @@ test('partial S3 failures report correct counts', function () {
             // First call succeeds, second fails
             return $callCount === 1;
         });
+        $mock->shouldReceive('computeDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -137,6 +140,7 @@ test('all key columns are updated after move', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
+        $mock->shouldReceive('computeDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -197,6 +201,7 @@ test('moves response includes old and new keys', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
+        $mock->shouldReceive('computeDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -224,6 +229,7 @@ test('assets at root folder are moved with thumbnails and resizes', function () 
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
+        $mock->shouldReceive('computeDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [

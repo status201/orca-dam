@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreAssetRequest;
+use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\Tag;
@@ -57,6 +59,7 @@ class AssetApiController extends Controller
 
         $perPage = min($request->input('per_page', 24), 100);
         $assets = $query->paginate($perPage);
+        $assets->through(fn ($a) => $a->append(Asset::APPEND_FIELDS));
 
         return response()->json($assets);
     }
@@ -64,15 +67,11 @@ class AssetApiController extends Controller
     /**
      * Upload new assets
      */
-    public function store(Request $request)
+    public function store(StoreAssetRequest $request)
     {
         if (! Setting::get('api_upload_enabled', true)) {
             return response()->json(['message' => 'Upload endpoints are disabled.'], 403);
         }
-
-        $request->validate([
-            'files.*' => 'required|file|max:512000', // 500MB max
-        ]);
 
         $uploadedAssets = [];
 
@@ -92,7 +91,7 @@ class AssetApiController extends Controller
             // Generate thumbnail, resized images, and AI tags
             $this->assetProcessingService->processImageAsset($asset);
 
-            $uploadedAssets[] = $asset->fresh(['tags']);
+            $uploadedAssets[] = $asset->fresh(['tags'])->append(Asset::APPEND_FIELDS);
         }
 
         return response()->json([
@@ -108,26 +107,17 @@ class AssetApiController extends Controller
     {
         $asset->load(['tags', 'user']);
 
-        return response()->json($asset);
+        return response()->json($asset->append(Asset::APPEND_FIELDS));
     }
 
     /**
      * Update asset metadata
      */
-    public function update(Request $request, Asset $asset)
+    public function update(UpdateAssetRequest $request, Asset $asset)
     {
         if (! Auth::user()->isAdmin() && $asset->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
-
-        $request->validate([
-            'alt_text' => 'nullable|string|max:500',
-            'caption' => 'nullable|string|max:1000',
-            'license_type' => 'nullable|string|max:255',
-            'copyright' => 'nullable|string|max:500',
-            'tags' => 'nullable|array',
-            'tags.*' => 'string|max:50',
-        ]);
 
         $asset->update(array_merge(
             $request->only(['alt_text', 'caption', 'license_type', 'copyright']),
@@ -145,7 +135,7 @@ class AssetApiController extends Controller
 
         return response()->json([
             'message' => 'Asset updated successfully',
-            'data' => $asset->fresh(['tags']),
+            'data' => $asset->fresh(['tags'])->append(Asset::APPEND_FIELDS),
         ]);
     }
 
@@ -195,6 +185,7 @@ class AssetApiController extends Controller
 
         $perPage = min($request->input('per_page', 24), 100);
         $assets = $query->paginate($perPage);
+        $assets->through(fn ($a) => $a->append(Asset::APPEND_FIELDS));
 
         return response()->json($assets);
     }
@@ -258,16 +249,10 @@ class AssetApiController extends Controller
      */
     public function addReferenceTags(Request $request)
     {
-        $validator = validator($request->all(), [
-            'asset_id' => 'integer|exists:assets,id',
-            'asset_ids' => 'array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
-            's3_key' => 'string|max:1024',
-            's3_keys' => 'array|max:500',
-            's3_keys.*' => 'string|max:1024',
+        $validator = validator($request->all(), array_merge($this->assetIdentifierRules(), [
             'tags' => 'required|array|min:1|max:100',
             'tags.*' => 'string|max:100',
-        ]);
+        ]));
 
         $validator->after(function ($validator) use ($request) {
             if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
@@ -279,40 +264,7 @@ class AssetApiController extends Controller
             return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
-        // Collect assets from all identifier sources
-        $assets = collect();
-        $notFoundS3Keys = [];
-
-        if ($request->has('asset_id')) {
-            $asset = Asset::find($request->input('asset_id'));
-            if ($asset) {
-                $assets->push($asset);
-            }
-        }
-
-        if ($request->has('asset_ids')) {
-            $found = Asset::whereIn('id', $request->input('asset_ids'))->get();
-            $assets = $assets->merge($found);
-        }
-
-        if ($request->has('s3_key')) {
-            $asset = Asset::where('s3_key', $request->input('s3_key'))->first();
-            if ($asset) {
-                $assets->push($asset);
-            } else {
-                $notFoundS3Keys[] = $request->input('s3_key');
-            }
-        }
-
-        if ($request->has('s3_keys')) {
-            $found = Asset::whereIn('s3_key', $request->input('s3_keys'))->get();
-            $assets = $assets->merge($found);
-
-            $foundKeys = $found->pluck('s3_key')->toArray();
-            $notFoundS3Keys = array_merge($notFoundS3Keys, array_diff($request->input('s3_keys'), $foundKeys));
-        }
-
-        $assets = $assets->unique('id');
+        [$assets, $notFoundS3Keys] = $this->collectAssetsFromRequest($request);
 
         if ($assets->isEmpty()) {
             return response()->json(['message' => 'No assets found'], 404);
@@ -343,14 +295,7 @@ class AssetApiController extends Controller
      */
     public function removeReferenceTag(Request $request, Tag $tag)
     {
-        $validator = validator($request->all(), [
-            'asset_id' => 'integer|exists:assets,id',
-            'asset_ids' => 'array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
-            's3_key' => 'string|max:1024',
-            's3_keys' => 'array|max:500',
-            's3_keys.*' => 'string|max:1024',
-        ]);
+        $validator = validator($request->all(), $this->assetIdentifierRules());
 
         $validator->after(function ($validator) use ($request) {
             if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
@@ -366,40 +311,7 @@ class AssetApiController extends Controller
             return response()->json(['message' => 'Only reference tags can be removed via this endpoint'], 422);
         }
 
-        // Collect assets from all identifier sources
-        $assets = collect();
-        $notFoundS3Keys = [];
-
-        if ($request->has('asset_id')) {
-            $asset = Asset::find($request->input('asset_id'));
-            if ($asset) {
-                $assets->push($asset);
-            }
-        }
-
-        if ($request->has('asset_ids')) {
-            $found = Asset::whereIn('id', $request->input('asset_ids'))->get();
-            $assets = $assets->merge($found);
-        }
-
-        if ($request->has('s3_key')) {
-            $asset = Asset::where('s3_key', $request->input('s3_key'))->first();
-            if ($asset) {
-                $assets->push($asset);
-            } else {
-                $notFoundS3Keys[] = $request->input('s3_key');
-            }
-        }
-
-        if ($request->has('s3_keys')) {
-            $found = Asset::whereIn('s3_key', $request->input('s3_keys'))->get();
-            $assets = $assets->merge($found);
-
-            $foundKeys = $found->pluck('s3_key')->toArray();
-            $notFoundS3Keys = array_merge($notFoundS3Keys, array_diff($request->input('s3_keys'), $foundKeys));
-        }
-
-        $assets = $assets->unique('id');
+        [$assets, $notFoundS3Keys] = $this->collectAssetsFromRequest($request);
 
         if ($assets->isEmpty()) {
             return response()->json(['message' => 'No assets found'], 404);
@@ -418,5 +330,62 @@ class AssetApiController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Validation rules for asset identifier fields (asset_id, asset_ids, s3_key, s3_keys).
+     */
+    private function assetIdentifierRules(): array
+    {
+        return [
+            'asset_id' => 'integer|exists:assets,id',
+            'asset_ids' => 'array|max:500',
+            'asset_ids.*' => 'integer|exists:assets,id',
+            's3_key' => 'string|max:1024',
+            's3_keys' => 'array|max:500',
+            's3_keys.*' => 'string|max:1024',
+        ];
+    }
+
+    /**
+     * Collect Asset models from the four identifier types in the request.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: array} [$assets, $notFoundS3Keys]
+     */
+    private function collectAssetsFromRequest(Request $request): array
+    {
+        $assets = collect();
+        $notFoundS3Keys = [];
+
+        if ($request->has('asset_id')) {
+            $asset = Asset::find($request->input('asset_id'));
+            if ($asset) {
+                $assets->push($asset);
+            }
+        }
+
+        if ($request->has('asset_ids')) {
+            $assets = $assets->merge(Asset::whereIn('id', $request->input('asset_ids'))->get());
+        }
+
+        if ($request->has('s3_key')) {
+            $asset = Asset::where('s3_key', $request->input('s3_key'))->first();
+            if ($asset) {
+                $assets->push($asset);
+            } else {
+                $notFoundS3Keys[] = $request->input('s3_key');
+            }
+        }
+
+        if ($request->has('s3_keys')) {
+            $found = Asset::whereIn('s3_key', $request->input('s3_keys'))->get();
+            $assets = $assets->merge($found);
+            $notFoundS3Keys = array_merge(
+                $notFoundS3Keys,
+                array_diff($request->input('s3_keys'), $found->pluck('s3_key')->toArray())
+            );
+        }
+
+        return [$assets->unique('id'), $notFoundS3Keys];
     }
 }

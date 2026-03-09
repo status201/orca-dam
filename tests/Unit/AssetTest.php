@@ -326,6 +326,63 @@ test('asset getLicenseLabel returns translated label for license type', function
     expect($asset4->getLicenseLabel())->toBe('unknown_type');
 });
 
+// ─── folder accessor ─────────────────────────────────────────────────────────
+
+test('folder accessor returns parent path for nested s3_key', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'assets/photos/img.jpg']);
+
+    expect($asset->folder)->toBe('assets/photos');
+});
+
+test('folder accessor returns single segment path for top-level s3_key', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'assets/img.jpg']);
+
+    expect($asset->folder)->toBe('assets');
+});
+
+test('folder accessor falls back to S3Service root folder for root-only key', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'img.jpg']);
+    $expected = \App\Services\S3Service::getRootFolder();
+
+    expect($asset->folder)->toBe($expected);
+});
+
+// ─── APPEND_FIELDS constant ───────────────────────────────────────────────────
+
+test('APPEND_FIELDS constant contains exactly 7 expected field names', function () {
+    expect(Asset::APPEND_FIELDS)->toBe([
+        'url',
+        'thumbnail_url',
+        'resize_s_url',
+        'resize_m_url',
+        'resize_l_url',
+        'formatted_size',
+        'folder',
+    ]);
+});
+
+// ─── thumbnail_url branches ───────────────────────────────────────────────────
+
+test('thumbnail_url returns url for GIF without thumbnail_s3_key', function () {
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/anim.gif',
+        'thumbnail_s3_key' => null,
+        'mime_type' => 'image/gif',
+    ]);
+
+    expect($asset->thumbnail_url)->toBe($asset->url);
+});
+
+test('thumbnail_url returns null for non-GIF without thumbnail_s3_key', function () {
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/photo.jpg',
+        'thumbnail_s3_key' => null,
+        'mime_type' => 'image/jpeg',
+    ]);
+
+    expect($asset->thumbnail_url)->toBeNull();
+});
+
 test('asset scope withTags filters by tag ids', function () {
     $tag1 = Tag::factory()->create();
     $tag2 = Tag::factory()->create();
