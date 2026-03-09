@@ -45,7 +45,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 ## Installation
 
 ### Prerequisites
-- PHP 8.3+ with minimum 256MB memory limit
+- PHP 8.4+ with minimum 256MB memory limit
 - Composer
 - MySQL/PostgreSQL
 - Node.js & NPM
@@ -283,7 +283,7 @@ Admins can run tests from the browser via **System → Tests** tab:
 
 **Note for shared hosting:** If you get "php not found" errors, add to `.env`:
 ```env
-PHP_CLI_PATH=/opt/plesk/php/8.3/bin/php  # Adjust path for your server
+PHP_CLI_PATH=/opt/plesk/php/8.4/bin/php  # Adjust path for your server
 ```
 Find your path via SSH: `which php`
 

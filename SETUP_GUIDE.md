@@ -4,7 +4,7 @@
 
 ### Prerequisites
 ```bash
-- PHP 8.2 or higher with minimum 256MB memory limit
+- PHP 8.4 or higher with minimum 256MB memory limit
 - Composer
 - Node.js & NPM
 - MySQL or PostgreSQL
