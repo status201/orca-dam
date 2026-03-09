@@ -507,7 +507,17 @@ class Asset extends Model
             return $query;
         }
 
-        return $query->where('mime_type', 'like', "{$type}/%");
+        // Normalize common friendly/plural type names to MIME type prefixes
+        $typeMap = [
+            'images' => 'image',
+            'videos' => 'video',
+            'documents' => 'application',
+            'audio' => 'audio',
+        ];
+
+        $mimePrefix = $typeMap[strtolower($type)] ?? $type;
+
+        return $query->where('mime_type', 'like', "{$mimePrefix}/%");
     }
 
     /**

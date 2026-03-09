@@ -106,6 +106,18 @@ test('asset scope ofType filters by mime type prefix', function () {
     expect($documents)->toHaveCount(1);
 });
 
+test('asset scope ofType accepts plural/friendly type names', function () {
+    Asset::factory()->create(['mime_type' => 'image/jpeg']);
+    Asset::factory()->create(['mime_type' => 'image/png']);
+    Asset::factory()->create(['mime_type' => 'video/mp4']);
+    Asset::factory()->create(['mime_type' => 'application/pdf']);
+
+    expect(Asset::ofType('images')->get())->toHaveCount(2);
+    expect(Asset::ofType('videos')->get())->toHaveCount(1);
+    expect(Asset::ofType('documents')->get())->toHaveCount(1);
+    expect(Asset::ofType('Images')->get())->toHaveCount(2);
+});
+
 test('asset url uses custom domain when configured', function () {
     $asset = Asset::factory()->create(['s3_key' => 'assets/test-image.jpg']);
 
