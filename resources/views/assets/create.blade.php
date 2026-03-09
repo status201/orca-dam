@@ -75,7 +75,7 @@
             <label class="inline-flex items-center cursor-pointer">
                 <input type="checkbox"
                        :checked="keepOriginalFilename"
-                       @change="toggleKeepOriginalFilename()"
+                       @change="toggleKeepOriginalFilename($event)"
                        :disabled="uploading"
                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500">
                 <span class="ml-2 text-sm font-medium text-gray-700">{{ __('Keep original filename') }}</span>

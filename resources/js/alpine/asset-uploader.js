@@ -16,12 +16,15 @@ export function assetUploader() {
         creatingFolder: false,
         scanningFolders: false,
 
-        toggleKeepOriginalFilename() {
+        toggleKeepOriginalFilename(event) {
             if (!this.keepOriginalFilename) {
                 // Turning on: show confirmation
                 if (confirm(pageData.translations.keepOriginalFilenameWarning)) {
                     this.keepOriginalFilename = true;
                     this.keepOriginalFilenameConfirmed = true;
+                } else {
+                    // Cancel: uncheck the checkbox that the browser already checked
+                    event.target.checked = false;
                 }
             } else {
                 // Turning off: no confirmation needed
