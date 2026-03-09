@@ -26,8 +26,11 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 📥 Bulk metadata import from CSV (paste or upload)
 - 🔗 Easy URL copying for external integration
 - 🔎 Discover unmapped S3 objects
+- 🛡️ **Duplicate prevention** (etag-based deduplication on upload)
+- 📎 **Keep original filename** option during upload
+- 🏷️ **Tag attribution** — shows who last assigned a tag (User or AI)
 - 🗑️ Trash & restore system with soft delete (keeps S3 objects)
-- ♻️ Permanent delete option for admins
+- ♻️ Restore for editors and admins; permanent delete for admins only
 - 📦 Bulk move assets between S3 folders (maintenance mode)
 - 🗑️ Bulk permanent delete from index page (maintenance mode)
 - ✔️ S3 integrity verification (detect missing assets in cloud storage)
@@ -160,11 +163,11 @@ php artisan serve  # Or use Herd
 - Search and browse all assets
 - Copy URLs
 - Soft delete assets (moves to trash)
+- Access trash and restore deleted assets
 - Set personal preferences (home folder, items per page, language)
 
 **Admins:**
 - All editor permissions
-- Access trash and restore deleted assets
 - Permanently delete assets (removes S3 objects)
 - User management
 - Discover unmapped S3 objects
@@ -193,20 +196,20 @@ php artisan serve  # Or use Herd
 4. Click "Preview Import" to review matched assets and changes
 5. Click "Import" to apply updates
 
-### Trash & Restore (Admin Only)
+### Trash & Restore
 
 **Soft Delete:**
 - Deleting an asset moves it to trash
 - S3 objects (file + thumbnail) are kept
 - Asset hidden from normal views
 
-**Restore:**
-1. Navigate to Admin > Trash
+**Restore** (editors and admins):
+1. Navigate to Trash
 2. Click restore button (green undo icon)
 3. Asset returns to active state
 
-**Permanent Delete:**
-1. Navigate to Admin > Trash
+**Permanent Delete** (admin only):
+1. Navigate to Trash
 2. Click permanent delete button (red trash icon)
 3. Confirm deletion
 4. Removes S3 objects AND database record (cannot be undone)
@@ -303,7 +306,9 @@ orca-dam/
 │   ├── Auth/
 │   │   └── JwtGuard.php               # JWT authentication guard
 │   ├── Console/Commands/
+│   │   ├── BackfillEtags.php          # Backfill etags from S3 for dedup
 │   │   ├── CleanupStaleUploads.php    # Cleanup stale chunked uploads
+│   │   ├── DeduplicateAssets.php      # Find & soft-delete duplicate assets
 │   │   ├── JwtGenerateCommand.php     # Generate JWT secret for user
 │   │   ├── JwtListCommand.php         # List users with JWT secrets
 │   │   ├── JwtRevokeCommand.php       # Revoke JWT secret
@@ -368,7 +373,7 @@ orca-dam/
 │   └── two-factor.php                 # 2FA configuration
 ├── database/
 │   ├── factories/                     # Test factories
-│   └── migrations/                    # 25 migrations
+│   └── migrations/                    # 33 migrations
 ├── resources/
 │   ├── js/
 │   │   ├── app.js                     # App init & Alpine registration
@@ -397,7 +402,7 @@ orca-dam/
 │   ├── auth.php                       # Authentication routes
 │   └── console.php                    # Artisan command routes
 ├── tests/
-│   ├── Feature/                       # 15 feature test files
+│   ├── Feature/                       # 17 feature test files
 │   │   └── Auth/                      # 6 authentication test files
 │   └── Unit/                          # 14 unit test files
 └── bootstrap/

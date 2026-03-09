@@ -244,6 +244,8 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ **Automatic upload method selection (direct <10MB, chunked ≥10MB)**
 - ✅ **Smart retry logic with exponential backoff**
 - ✅ **Editable filenames** (display name only — S3 key/URL unchanged)
+- ✅ **Keep original filename** option during upload
+- ✅ **Duplicate prevention** — rejects uploads with identical content (etag-based)
 - ✅ Automatic thumbnail generation
 - ✅ Image dimension detection
 - ✅ File size tracking
@@ -257,6 +259,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Manual user tags
 - ✅ AI-powered auto-tagging (AWS Rekognition)
 - ✅ Reference tags for external system usage tracking (via API)
+- ✅ **Tag attribution** — shows who last assigned each tag (User or AI)
 - ✅ Manual AI tag generation button
 - ✅ Configurable max AI tags per asset
 - ✅ Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
@@ -279,8 +282,8 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Metadata extraction
 
 ### 5. User Roles
-- **Editors**: Upload and manage all assets (view, edit filenames/metadata, soft delete), set personal preferences
-- **Admins**: Full access including trash management, restore/permanent delete, discover, export, bulk move (maintenance mode), bulk permanent delete (maintenance mode), user management, system settings, and API token/JWT secret management
+- **Editors**: Upload and manage all assets (view, edit filenames/metadata, soft delete), access trash and restore deleted assets, set personal preferences
+- **Admins**: Full access including permanent delete, discover, export, bulk move (maintenance mode), bulk permanent delete (maintenance mode), user management, system settings, and API token/JWT secret management
 - **API Users**: API-only access for external integrations (view, create, update assets; no delete or admin features)
 
 ### 6. User Preferences
@@ -312,11 +315,11 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Filter by file type and tags before export
 - ✅ Timestamped export filenames
 
-### 10. Trash & Restore (Admin Only)
+### 10. Trash & Restore
 - ✅ Soft delete keeps S3 objects when assets are deleted
 - ✅ Trash page shows all soft-deleted assets
-- ✅ Restore assets from trash back to active state
-- ✅ Permanent delete removes database record AND S3 objects
+- ✅ Editors and admins can restore assets from trash
+- ✅ Permanent delete (admin only) removes database record AND S3 objects
 - ✅ Bulk permanent delete from index page (admin, maintenance mode)
 - ✅ Discovery marks soft-deleted assets to prevent re-import
 
@@ -615,7 +618,7 @@ Click the copy icon on any asset thumbnail or use the copy button on the asset d
 ### 5. Batch Operations
 Select multiple unmapped objects in Discover to import in bulk.
 
-### 6. Using the Trash Feature (Admin Only)
+### 6. Using the Trash Feature
 
 **Soft Delete (Default Behavior):**
 - When you delete an asset, it's moved to trash
@@ -624,16 +627,16 @@ Select multiple unmapped objects in Discover to import in bulk.
 - Asset is hidden from normal views
 
 **Accessing Trash:**
-1. Navigate to the "Trash" link in the top navigation (admin only)
+1. Navigate to the "Trash" link in the top navigation (editors and admins)
 2. View all soft-deleted assets with deletion timestamps
 
-**Restoring Assets:**
+**Restoring Assets** (editors and admins):
 1. Go to Trash page
 2. Find the asset you want to restore
 3. Click the green restore button (undo icon)
 4. Asset returns to active state immediately
 
-**Permanent Delete:**
+**Permanent Delete** (admin only):
 1. Go to Trash page
 2. Click the red trash icon on an asset
 3. Confirm the deletion warning

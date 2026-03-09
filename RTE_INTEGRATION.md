@@ -355,7 +355,7 @@ return [
 | Parameter | Example |
 |-----------|---------|
 | `search` / `q` | `?search=logo` |
-| `type` | `?type=image` |
+| `type` | `?type=image` (also accepts plurals: `images`, `videos`, `documents`) |
 | `tags` | `?tags=1,2,3` |
 | `per_page` | `?per_page=24` (max 100) |
 | `page` | `?page=2` |

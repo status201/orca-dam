@@ -14,7 +14,7 @@
 6. [Werken met tags](#werken-met-tags)
 7. [Assetgegevens bewerken](#assetgegevens-bewerken)
 8. [Assets vervangen](#assets-vervangen)
-9. [De Prullenbak (alleen admin)](#de-prullenbak-alleen-admin)
+9. [De Prullenbak](#de-prullenbak)
 10. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
 11. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
 12. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
@@ -49,7 +49,7 @@ Je kunt de **weergavenaam** van een asset altijd wijzigen via de Bewerk-pagina. 
 Verplaatsen zou de URL veranderen en alle bestaande links breken. Zie "Bestanden verplaatsen (de omweg)" hieronder voor de workaround.
 
 **3. Soft delete is je vangnet**
-Verwijderde bestanden gaan eerst naar de Prullenbak ("soft delete"). Alleen admins kunnen bestanden permanent verwijderen of herstellen. Per ongeluk iets verwijderd? Geen paniek — vraag een admin!
+Verwijderde bestanden gaan eerst naar de Prullenbak ("soft delete"). Zowel editors als admins kunnen bestanden herstellen uit de Prullenbak. Alleen admins kunnen permanent verwijderen. Per ongeluk iets verwijderd? Geen paniek — herstel het gewoon uit de Prullenbak!
 
 ---
 
@@ -66,10 +66,9 @@ Na het inloggen zie je op je dashboard: **Totaal assets**, **Mijn assets**, **To
 | Assetgegevens bewerken (bestandsnaam, alt-tekst, bijschrift, tags) | ✓ | ✓ |
 | Assets vervangen | ✓ | ✓ |
 | Bestanden verwijderen (naar Prullenbak) | ✓ | ✓ |
+| Prullenbak bekijken & herstellen | ✓ | ✓ |
 | Persoonlijke voorkeuren instellen | ✓ | ✓ |
 | Mappen aanmaken | ✗ | ✓ |
-| Prullenbak bekijken | ✗ | ✓ |
-| Herstellen uit Prullenbak | ✗ | ✓ |
 | Bestanden permanent verwijderen | ✗ | ✓ |
 | Niet-gekoppelde S3-bestanden ontdekken | ✗ | ✓ |
 | Assets exporteren naar CSV | ✗ | ✓ |
@@ -88,10 +87,13 @@ Onthoud: je kunt bestanden later niet verplaatsen, dus **kies de juiste map vó�
 1. Klik op **Upload** in het navigatiemenu
 2. Selecteer de doelmap
 3. Sleep bestanden naar het uploadgebied, of klik om te bladeren
-4. Bekijk de voortgangsbalken — grotere bestanden kunnen even duren
-5. Klaar! Thumbnails en AI-tags worden op de achtergrond gegenereerd; ververs de pagina even
+4. Vink eventueel **Originele bestandsnaam behouden** aan om de oorspronkelijke naam te gebruiken in plaats van een gegenereerde UUID
+5. Bekijk de voortgangsbalken — grotere bestanden kunnen even duren
+6. Klaar! Thumbnails en AI-tags worden op de achtergrond gegenereerd; ververs de pagina even
 
 **Bestandslimiet:** Maximaal 500MB per bestand. Grotere bestanden worden automatisch in chunks geüpload, dus verbindingsproblemen kosten je geen voortgang.
+
+**Duplicaatdetectie:** Als je een bestand uploadt dat al in ORCA staat (dezelfde inhoud), wordt de upload geweigerd met een link naar het bestaande asset.
 
 Na het uploaden wordt je bestand opgeslagen in S3, een thumbnail gegenereerd (voor afbeeldingen), AI-tags toegevoegd indien ingeschakeld, en het asset verschijnt in je bibliotheek.
 
@@ -141,6 +143,8 @@ Tags zijn labels waarmee je assets organiseert en vindt. Er zijn drie typen:
 **Tags verwijderen:** Klik op de **×** naast een tag. Dit verwijdert alleen de koppeling — de tag zelf blijft bestaan.
 
 **Bulksgewijs taggen:** Selecteer meerdere assets (gebruik Shift+klik voor reeksen) en gebruik de bulktag-werkbalk om tags toe te voegen aan of te verwijderen van alle geselecteerde assets tegelijk.
+
+**Tag-toekenning:** Elke tag op een asset toont wie deze het laatst heeft toegekend — "Gebruiker" (handmatig toegevoegd) of "AI" (automatisch gegenereerd). Dit is zichtbaar op de asset-detail- en bewerkpagina's.
 
 > **Tags met "0 assets" zijn misschien niet echt leeg!** Ze kunnen nog gekoppeld zijn aan assets in de Prullenbak. Bij herstellen uit de Prullenbak blijven nog gekoppelde tags behouden, maar tags die je vóór het herstellen hebt verwijderd zijn voorgoed verdwenen.
 
@@ -203,12 +207,12 @@ Bij het vervangen van een afbeelding worden de thumbnail, afmetingen en bestands
 
 ---
 
-## De Prullenbak (alleen admin)
+## De Prullenbak
 
-Verwijderde bestanden gaan naar de Prullenbak — een wachtruimte vóór definitieve verwijdering. Admins hebben toegang via het navigatiemenu.
+Verwijderde bestanden gaan naar de Prullenbak — een wachtruimte vóór definitieve verwijdering. Zowel editors als admins hebben toegang via het navigatiemenu.
 
-- **Herstellen** — Breng het asset weer tot leven
-- **Permanent verwijderen** — Voorgoed verwijderen (verwijdert ook het bestand uit S3)
+- **Herstellen** (editors en admins) — Breng het asset weer tot leven
+- **Permanent verwijderen** (alleen admin) — Voorgoed verwijderen (verwijdert ook het bestand uit S3)
 
 Dit is je vangnet: per ongeluk iets verwijderd? Herstel het! Wil je controleren wat er is verwijderd? Check de Prullenbak. Voorkomt het "oh nee"-moment van onherroepelijke verwijdering.
 

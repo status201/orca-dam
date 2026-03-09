@@ -28,6 +28,8 @@ php artisan cache:clear / config:clear / route:clear / view:clear
 # Maintenance
 php artisan uploads:cleanup [--hours=48]
 php artisan assets:verify-integrity      # Queue S3 integrity checks for all assets
+php artisan assets:backfill-etags        # Fetch etags from S3 for dedup
+php artisan assets:deduplicate [--force] # Find/soft-delete duplicates by etag
 
 # API Tokens
 php artisan token:list [--user=email] [--role=api]
@@ -47,11 +49,11 @@ php artisan queue:work --tries=3
 
 ### Core Services (`app/Services/`)
 
-**S3Service** - All S3 operations (upload/delete/list/move). Streams files to avoid memory issues. Generates JPEG thumbnails (skips GIFs). Thumbnails mirror folder structure (`assets/folder/img.jpg` -> `thumbnails/folder/img_thumb.jpg`). `generateResizedImages()` creates S/M/L presets at configurable dimensions (stored in `thumbnails/S|M|L/`), keeping original format (GIFs→JPEG). `deleteResizedImages()` removes all resize variants. `moveObject()` copies then deletes (non-destructive on delete failure). Discovery finds unmapped S3 objects. Supports custom domain for CDN URLs via `getPublicBaseUrl()`.
+**S3Service** - All S3 operations (upload/delete/list/move). Streams files to avoid memory issues. `uploadFile()` supports `keepOriginalFilename` flag (sanitizes via `sanitizeFilename()`). Generates JPEG thumbnails (skips GIFs). Thumbnails mirror folder structure (`assets/folder/img.jpg` -> `thumbnails/folder/img_thumb.jpg`). `generateResizedImages()` creates S/M/L presets at configurable dimensions (stored in `thumbnails/S|M|L/`), keeping original format (GIFs→JPEG). `deleteResizedImages()` removes all resize variants. `deleteAssetFiles()` removes all S3 files for an asset (original + thumbnail + resizes). `moveObject()` copies then deletes (non-destructive on delete failure). Discovery finds unmapped S3 objects. Supports custom domain for CDN URLs via `getPublicBaseUrl()`.
 
 **AssetProcessingService** - Extracted shared asset processing logic used by multiple controllers. Handles thumbnail generation, resized image creation, dimension extraction, and AI tag dispatching. Called from `AssetController`, `AssetApiController`, `ChunkedUploadController`, and `ProcessDiscoveredAsset` job.
 
-**ChunkedUploadService** - Large file uploads (>=10MB, up to 500MB) via S3 Multipart Upload API. Splits into 10MB chunks, streams directly to S3. Manages sessions via `upload_sessions` table. Idempotent chunk uploads with retry support.
+**ChunkedUploadService** - Large file uploads (>=10MB, up to 500MB) via S3 Multipart Upload API. Splits into 10MB chunks, streams directly to S3. Manages sessions via `upload_sessions` table. Idempotent chunk uploads with retry support. Supports `keepOriginalFilename`. Duplicate detection via etag on complete (throws `DuplicateAssetException`).
 
 **RekognitionService** - AI tagging via AWS Rekognition. Configurable max labels, min confidence, language. Multilingual via AWS Translate (when language != 'en'). Background processing via `GenerateAiTags` job. Settings read dynamically from database.
 
@@ -87,11 +89,12 @@ php artisan queue:work --tries=3
 #### Authorization Rules
 
 **Roles** (`users.role`):
-- `editor`: View, upload, edit, soft delete all assets
-- `admin`: Full access + trash management, discovery, export, user management, system settings
+- `editor`: View, upload, edit, soft delete all assets, access trash, restore from trash
+- `admin`: Full access + permanent delete, discovery, export, user management, system settings
 - `api`: API-only (view, create, update; no delete, no admin features)
 
-Admin-only: restore, force delete, discover, export CSV, bulk move (requires `maintenance_mode`), bulk force delete (requires `maintenance_mode`), system page, API docs page
+Editor+Admin: restore from trash
+Admin-only: force delete, discover, export CSV, bulk move (requires `maintenance_mode`), bulk force delete (requires `maintenance_mode`), system page, API docs page
 
 ### Locale System
 
@@ -99,7 +102,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 ### Models
 
-**Asset** (`app/Models/Asset.php`): Belongs to User, many-to-many Tags. Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` is editable display name; `s3_key` is immutable. Scopes: search, filterByTags, type, user, `inFolder`, `missing`. Search supports operators: `+term` (required), `-term` (excluded). License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
+**Asset** (`app/Models/Asset.php`): Belongs to User, many-to-many Tags (pivot includes `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` is editable display name; `s3_key` is immutable. `syncTagsWithAttribution()` attaches tags with "last attacher wins" semantics. Scopes: search, filterByTags, type (accepts plural forms like `images`/`videos`), user, `inFolder`, `missing`. Search supports operators: `+term` (required), `-term` (excluded). License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
 
 **Tag** (`app/Models/Tag.php`): Type `user`, `ai`, or `reference`, many-to-many Assets. Reference tags track external system usage (e.g., RTE integrations). Created via API only, editable/deletable in web UI.
 
@@ -149,7 +152,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 **tags**: `name` (unique), `type` (user/ai/reference)
 
-**asset_tag**: `asset_id`, `tag_id`, timestamps
+**asset_tag**: `asset_id`, `tag_id`, `attached_by` (nullable: User/AI), timestamps
 
 **settings**: `key` (unique), `value`, `type` (string/integer/boolean/json), `group` (general/display/aws), `description`
 
@@ -186,7 +189,7 @@ PHP_CLI_PATH=/usr/bin/php
 
 ## Key Conventions
 
-**File organization**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware in `app/Http/Middleware/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console Commands in `app/Console/Commands/`
+**File organization**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware in `app/Http/Middleware/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console Commands in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g., `DuplicateAssetException`)
 
 **Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (14 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `trash`). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives.
 
@@ -200,13 +203,14 @@ PHP_CLI_PATH=/usr/bin/php
 
 ## Testing
 
-**Pest PHP** with in-memory SQLite. ~509 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
+**Pest PHP** with in-memory SQLite. ~534 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
 
 **Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
 
 ```
-tests/Feature/  - AssetTest, TagTest, ExportTest, ImportTest, ApiTest, SystemTest, IntegrityTest,
-                  BulkMoveTest, BulkForceDeleteTest, BulkTrashTest,
+tests/Feature/  - AssetTest, TagTest, TagAttributionTest, ExportTest, ImportTest, ApiTest, SystemTest,
+                  IntegrityTest, BulkMoveTest, BulkForceDeleteTest, BulkTrashTest,
+                  DuplicatePreventionTest,
                   JwtAuthTest, JwtSecretManagementTest, LocaleTest, ProfileTest, TwoFactorAuthTest,
                   Auth/ (Authentication, Registration, PasswordReset, PasswordUpdate, PasswordConfirmation, EmailVerification)
 tests/Unit/     - AssetTest, TagTest, SettingTest, UserPreferencesTest, TwoFactorServiceTest, JwtGuardTest,
@@ -219,13 +223,13 @@ Web-based test runner at `/system` -> Tests tab (admin only).
 
 ## Key Workflows
 
-**Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> S3Service streams to S3 -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled. API upload endpoints can be disabled at runtime via `api_upload_enabled` setting (API Docs → Dashboard); returns 403 when disabled.
+**Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> duplicate check via etag (rejects with link to existing asset) -> S3Service streams to S3 (optional `keepOriginalFilename`) -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled. API upload endpoints can be disabled at runtime via `api_upload_enabled` setting (API Docs → Dashboard); returns 403 when disabled. Web chunked uploads use session auth and are not affected by the API upload toggle.
 
 **Discovery** (admin): S3Service finds unmapped objects -> admin selects to import -> Asset records created -> thumbnails + resized images + AI tags applied. Soft-deleted assets shown with "Deleted" badge to prevent re-import.
 
 **Import Metadata** (admin): Paste/upload CSV -> preview matched assets with change diffs -> import. Matches by `s3_key` or `filename`. Updates metadata fields (alt_text, caption, license, copyright). Tags are lowercased, added via `syncWithoutDetaching` (never removed). Empty CSV fields are skipped. Invalid license types and date formats are rejected.
 
-**Trash** (admin): Soft delete keeps S3 files. Restore returns to active. Force delete removes S3 objects (original + thumbnail + resized variants) + DB permanently.
+**Trash** (editors + admins): Soft delete keeps S3 files. Restore returns to active (editors and admins). Force delete (admin only) removes S3 objects (original + thumbnail + resized variants) + DB permanently.
 
 **Bulk Move** (admin, maintenance mode): Select assets on index → pick destination folder → S3 objects moved (copy+delete) for original, thumbnail, and resize variants → DB keys updated. Destination must be within configured S3 folders. Shows copyable summary of old→new keys. Enable via `maintenance_mode` setting in System → Settings.
 
@@ -240,7 +244,7 @@ app/
 ├── Auth/
 │   └── JwtGuard.php
 ├── Console/Commands/
-│   ├── CleanupStaleUploads.php
+│   ├── BackfillEtags.php, CleanupStaleUploads.php, DeduplicateAssets.php
 │   ├── JwtGenerateCommand.php, JwtListCommand.php, JwtRevokeCommand.php
 │   ├── TokenCreateCommand.php, TokenListCommand.php, TokenRevokeCommand.php
 │   ├── TwoFactorDisableCommand.php, TwoFactorStatusCommand.php
@@ -301,7 +305,7 @@ tests/
            QueueService, TestRunnerService)
 
 config/ (app, auth, cache, database, filesystems, jwt, logging, mail, queue, services, session, two-factor)
-database/migrations/ (25 migrations)
+database/migrations/ (33 migrations)
 database/factories/ (Asset, Tag, User, Setting)
 database/seeders/ (Database, AdminUser)
 routes/ (web, api, auth, console)

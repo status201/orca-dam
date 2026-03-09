@@ -14,7 +14,7 @@
 6. [Working with Tags](#working-with-tags)
 7. [Editing Asset Details](#editing-asset-details)
 8. [Replacing Assets](#replacing-assets)
-9. [The Trash (Admin Only)](#the-trash-admin-only)
+9. [The Trash](#the-trash)
 10. [Bulk Move (Admin Only)](#bulk-move-admin-only)
 11. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
 12. [Moving Files (The Long Way)](#moving-files-the-long-way)
@@ -49,7 +49,7 @@ You can change an asset's **display filename** anytime via the Edit page. The ac
 Moving would change the URL, breaking all existing links. See "Moving Files (The Long Way)" below for the workaround.
 
 **3. Soft Delete is Your Safety Net**
-Deleted files go to Trash first ("soft delete"). Only admins can permanently delete or restore files. Accidentally deleted something? Don't panic — ask an admin!
+Deleted files go to Trash first ("soft delete"). Both editors and admins can restore files from Trash. Only admins can permanently delete files. Accidentally deleted something? Don't panic — just restore it from Trash!
 
 ---
 
@@ -66,10 +66,9 @@ When you log in, your dashboard shows **Total Assets**, **My Assets**, **Total S
 | Edit asset details (filename, alt text, caption, tags) | ✓ | ✓ |
 | Replace asset files | ✓ | ✓ |
 | Delete files (to Trash) | ✓ | ✓ |
+| View Trash & restore files | ✓ | ✓ |
 | Set personal preferences | ✓ | ✓ |
 | Create folders | ✗ | ✓ |
-| View Trash | ✗ | ✓ |
-| Restore from Trash | ✗ | ✓ |
 | Permanently delete files | ✗ | ✓ |
 | Discover unmapped S3 files | ✗ | ✓ |
 | Export assets to CSV | ✗ | ✓ |
@@ -88,10 +87,13 @@ Remember: you can't move files later, so **choose the correct folder before uplo
 1. Click **Upload** in the navigation menu
 2. Select your target folder
 3. Drag and drop files onto the upload area, or click to browse
-4. Watch the progress bars — larger files may take a moment
-5. Done! Thumbnails and AI tags generate in the background; just refresh the page
+4. Optionally check **Keep original filename** to use the file's original name instead of a generated UUID
+5. Watch the progress bars — larger files may take a moment
+6. Done! Thumbnails and AI tags generate in the background; just refresh the page
 
 **File size limit:** Up to 500MB per file. Larger files upload in chunks automatically, so connection hiccups won't lose your progress.
+
+**Duplicate detection:** If you upload a file that already exists in ORCA (same content), the upload will be rejected with a link to the existing asset.
 
 After upload, your file is stored in S3, a thumbnail is generated (for images), AI tags are added if enabled, and the asset appears in your library.
 
@@ -141,6 +143,8 @@ Tags are labels that help you organize and find assets. They come in three types
 **Removing tags:** Click the **×** next to any tag. This only removes the connection — the tag itself still exists.
 
 **Bulk tagging:** Select multiple assets (use Shift+click for ranges), then use the bulk tag toolbar to add or remove tags across all selected assets at once.
+
+**Tag attribution:** Each tag on an asset shows who last assigned it — "User" (manually added) or "AI" (auto-generated). This is visible on the asset detail and edit pages.
 
 > **Tags showing "0 assets" might not be empty!** They could still be attached to trashed assets. When restoring from Trash, tags still attached are preserved, but tags you removed before restoring are gone forever.
 
@@ -203,12 +207,12 @@ When you replace an image, the thumbnail, dimensions, and file size all update a
 
 ---
 
-## The Trash (Admin Only)
+## The Trash
 
-Deleted files go to Trash — a holding area before permanent deletion. Admins can access it from the navigation menu.
+Deleted files go to Trash — a holding area before permanent deletion. Both editors and admins can access it from the navigation menu.
 
-- **Restore** — Bring the asset back to life
-- **Delete Permanently** — Remove forever (also deletes the file from S3)
+- **Restore** (editors and admins) — Bring the asset back to life
+- **Delete Permanently** (admin only) — Remove forever (also deletes the file from S3)
 
 It's your safety net: accidentally deleted something? Restore it! Need to audit what was removed? Check the Trash. Prevents the "oh no" moment of irreversible deletion.
 
@@ -248,7 +252,7 @@ If maintenance mode is not available, or you need to move a single file without 
 
 1. **Download** the file to your computer
 2. **Soft delete** the original in ORCA
-3. Ask an **admin to permanently delete** the trashed file
+3. Ask an **admin to permanently delete** the trashed file (only admins can permanently delete)
 4. **Upload** the file to the correct folder
 5. **Update all links** in Studyflow to point to the new URL
 

@@ -76,7 +76,9 @@ orca-dam/
 │   ├── Auth/
 │   │   └── JwtGuard.php              # JWT authentication guard
 │   ├── Console/Commands/
+│   │   ├── BackfillEtags.php         # Backfill etags from S3 for dedup
 │   │   ├── CleanupStaleUploads.php   # Cleanup stale chunked uploads
+│   │   ├── DeduplicateAssets.php     # Find & soft-delete duplicate assets
 │   │   ├── JwtGenerateCommand.php    # Generate JWT secret
 │   │   ├── JwtListCommand.php        # List JWT secrets
 │   │   ├── JwtRevokeCommand.php      # Revoke JWT secret
@@ -138,7 +140,7 @@ orca-dam/
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
 │   └── two-factor.php                 # 2FA configuration
-├── database/migrations/               # 25 migrations
+├── database/migrations/               # 33 migrations
 ├── resources/
 │   ├── js/
 │   │   ├── app.js                     # App init & Alpine registration
@@ -167,18 +169,20 @@ orca-dam/
 │   ├── Feature/
 │   │   ├── ApiTest.php                # API endpoints, sorting, meta
 │   │   ├── AssetTest.php              # Asset CRUD, sorting, permissions
+│   │   ├── BulkForceDeleteTest.php    # Bulk permanent delete
+│   │   ├── BulkMoveTest.php           # Bulk asset move
+│   │   ├── BulkTrashTest.php          # Bulk soft delete & restore
+│   │   ├── DuplicatePreventionTest.php# Duplicate asset detection
 │   │   ├── ExportTest.php             # CSV export
 │   │   ├── ImportTest.php             # CSV metadata import
 │   │   ├── IntegrityTest.php          # S3 integrity verification
-│   │   ├── BulkMoveTest.php           # Bulk asset move
-│   │   ├── BulkForceDeleteTest.php    # Bulk permanent delete
-│   │   ├── BulkTrashTest.php          # Bulk soft delete
 │   │   ├── JwtAuthTest.php            # JWT authentication
 │   │   ├── JwtSecretManagementTest.php# JWT secret management
 │   │   ├── LocaleTest.php             # Language/locale
 │   │   ├── ProfileTest.php            # User profile & preferences
 │   │   ├── SystemTest.php             # System settings
 │   │   ├── TagTest.php                # Tag management
+│   │   ├── TagAttributionTest.php     # Tag attribution (User/AI)
 │   │   ├── TwoFactorAuthTest.php      # 2FA functionality
 │   │   └── Auth/                      # Authentication tests (6 files)
 │   └── Unit/
@@ -309,7 +313,7 @@ POST   /api/chunked-upload/abort     # Cancel upload
 - id, name, type (user|ai|reference), created_at, updated_at
 
 ### asset_tag
-- asset_id, tag_id, created_at, updated_at
+- asset_id, tag_id, attached_by (nullable: User/AI), created_at, updated_at
 
 ### upload_sessions
 - id, upload_id, session_token, filename, mime_type, file_size
@@ -385,11 +389,12 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 ✅ Edit/delete any asset
 ✅ Add tags to any asset
 ✅ Search and filter
+✅ Access Trash & restore deleted assets
 ✅ Set personal preferences (home folder, items per page, language)
 
 ### Admin
 ✅ All editor permissions
-✅ Access Trash, restore & permanently delete
+✅ Permanently delete assets
 ✅ Access Discover feature
 ✅ Manage users
 ✅ Export to CSV
@@ -514,6 +519,9 @@ php artisan two-factor:disable user@email.com  # Disable 2FA for a user
 # Maintenance
 php artisan uploads:cleanup              # Clean up stale chunked uploads (>24h)
 php artisan assets:verify-integrity      # Queue S3 integrity checks for all assets
+php artisan assets:backfill-etags        # Fetch & store etags from S3 for dedup
+php artisan assets:deduplicate           # Dry-run: find duplicate assets by etag
+php artisan assets:deduplicate --force   # Soft-delete duplicates (keeps oldest)
 
 # Clear all caches
 php artisan optimize:clear
