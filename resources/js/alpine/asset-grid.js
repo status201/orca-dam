@@ -65,9 +65,10 @@ export function assetGrid() {
                         if (tag) this.pinnedTags.push(tag);
                     }
                 }
-                // Remove unchecked tags from pinnedTags
+                // Remove unchecked tags from pinnedTags (but keep initialTags for active filter bar display)
                 const idSet = new Set(ids.map(id => String(id)));
-                this.pinnedTags = this.pinnedTags.filter(t => idSet.has(String(t.id)));
+                const initialSet = new Set(this.initialTags.map(id => String(id)));
+                this.pinnedTags = this.pinnedTags.filter(t => idSet.has(String(t.id)) || initialSet.has(String(t.id)));
             });
 
             // When tag filter opens, load first page of tags
