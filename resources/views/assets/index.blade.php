@@ -67,7 +67,7 @@
 
                     <!-- Tag filter -->
                     <button @click="showTagFilter = !showTagFilter"
-                            :class="selectedTags.length > 0 ? 'ring-2 ring-orca-black border-orca-black' : ''"
+                            :class="selectedTags.length > 0 ? 'ring-2 ring-orca-black border-orca-black' : (showTagFilter ? 'ring-1 ring-orca-black border-orca-black' : '')"
                             class="px-4 py-2 bg-white text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center">
                         <i class="fas fa-filter mr-2"></i>
                         <span x-text="selectedTags.length > 0 ? @js(__('Tags')) + ` (${selectedTags.length})` : @js(__('Filter Tags'))"></span>
