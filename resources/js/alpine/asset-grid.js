@@ -2,6 +2,7 @@ export function assetGrid() {
     const config = window.assetGridConfig || {};
     return {
         search: config.search || '',
+        appliedSearch: config.search || '',
         type: config.type || '',
         folder: config.folder || '',
         rootFolder: config.rootFolder || '',

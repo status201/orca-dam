@@ -24,6 +24,7 @@
                            x-model="search"
                            @keyup.enter="applyFilters"
                            placeholder="{{ __('Search... (+require -exclude)') }}"
+                           :class="appliedSearch ? 'ring-2 ring-orca-black border-orca-black' : ''"
                            class="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     <button @click="applyFilters"
@@ -40,6 +41,7 @@
                                x-model="search"
                                @keyup.enter="applyFilters"
                                placeholder="{{ __('Search... (+require -exclude)') }}"
+                               :class="appliedSearch ? 'ring-2 ring-orca-black border-orca-black' : ''"
                                class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     </div>
@@ -50,22 +52,6 @@
                             :class="folder && folder !== rootFolder && folderCount > 1 ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono">
                         <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
-                    </select>
-
-                    <!-- Sort -->
-                    <select x-model="sort"
-                            @change="applyFilters"
-                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
-                        <option value="date_desc">{{ __('Newest First') }}</option>
-                        <option value="date_asc">{{ __('Oldest First') }}</option>
-                        <option value="upload_desc">{{ __('Newest Uploads') }}</option>
-                        <option value="upload_asc">{{ __('Oldest Uploads') }}</option>
-                        <option value="size_desc">{{ __('Largest First') }}</option>
-                        <option value="size_asc">{{ __('Smallest First') }}</option>
-                        <option value="name_asc">{{ __('Name A-Z') }}</option>
-                        <option value="name_desc">{{ __('Name Z-A') }}</option>
-                        <option value="s3key_asc">{{ __('S3 Key A-Z') }}</option>
-                        <option value="s3key_desc">{{ __('S3 Key Z-A') }}</option>
                     </select>
 
                     <!-- Type filter -->
@@ -86,6 +72,23 @@
                         <i class="fas fa-filter mr-2"></i>
                         <span x-text="selectedTags.length > 0 ? @js(__('Tags')) + ` (${selectedTags.length})` : @js(__('Filter Tags'))"></span>
                     </button>
+
+                    <!-- Sort -->
+                    <select x-model="sort"
+                            @change="applyFilters"
+                            :class="sort !== 'date_desc' ? 'ring-2 ring-orca-black border-orca-black' : ''"
+                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <option value="date_desc">{{ __('Newest First') }}</option>
+                        <option value="date_asc">{{ __('Oldest First') }}</option>
+                        <option value="upload_desc">{{ __('Newest Uploads') }}</option>
+                        <option value="upload_asc">{{ __('Oldest Uploads') }}</option>
+                        <option value="size_desc">{{ __('Largest First') }}</option>
+                        <option value="size_asc">{{ __('Smallest First') }}</option>
+                        <option value="name_asc">{{ __('Name A-Z') }}</option>
+                        <option value="name_desc">{{ __('Name Z-A') }}</option>
+                        <option value="s3key_asc">{{ __('S3 Key A-Z') }}</option>
+                        <option value="s3key_desc">{{ __('S3 Key Z-A') }}</option>
+                    </select>
 
                     <!-- Upload button -->
                     <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`"
@@ -213,8 +216,17 @@
     </div>
 
     <!-- Active Filters Bar -->
-    <div x-show="!navigating && ((folder && folder !== rootFolder && folderCount > 1) || type || selectedTags.length > 0)" x-cloak class="mb-4 flex flex-wrap items-center gap-2">
+    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || initialTags.length > 0)" x-cloak class="mb-4 flex flex-wrap items-center gap-2">
         <span class="text-sm text-gray-500 font-medium">{{ __('Active filters') }}:</span>
+
+        <!-- Search pill -->
+        <template x-if="appliedSearch">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-search text-xs"></i>
+                <span class="max-w-[200px] truncate" x-text="appliedSearch"></span>
+                <button @click="search = ''; applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
 
         <!-- Folder pill -->
         <template x-if="folder && folder !== rootFolder && folderCount > 1">
@@ -235,7 +247,7 @@
         </template>
 
         <!-- Tag pills -->
-        <template x-for="tagId in selectedTags" :key="tagId">
+        <template x-for="tagId in initialTags" :key="tagId">
             <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
                 <i class="fas fa-tag text-xs"></i>
                 <span x-text="pinnedTags.find(t => t.id == tagId)?.name || tagId"></span>
@@ -244,7 +256,7 @@
         </template>
 
         <!-- Clear all -->
-        <button @click="folder = ''; type = ''; selectedTags = []; applyFilters()"
+        <button @click="search = ''; folder = ''; type = ''; selectedTags = []; applyFilters()"
                 class="text-sm text-gray-500 hover:text-gray-700 underline ml-2">
             {{ __('Clear all filters') }}
         </button>
