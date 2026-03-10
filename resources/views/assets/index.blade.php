@@ -546,13 +546,16 @@
                             <div class="flex flex-wrap gap-2">
                                 <!-- Existing Tags -->
                                 <template x-for="(tag, index) in tags" :key="tag.id">
-                                    <span :class="[
+                                    <span x-data="{ expanded: false }"
+                                          :class="[
                                             tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'),
                                             tag.attached_by && tag.attached_by !== tag.type ? (tag.attached_by === 'ai' ? 'ring-2 ring-purple-400' : (tag.attached_by === 'reference' ? 'ring-2 ring-orange-400' : 'ring-2 ring-blue-400')) : ''
                                           ]"
-                                          :title="tag.attached_by && tag.attached_by !== tag.type ? tag.name + ' — {{ __('Created as') }}: ' + tag.type + ', {{ __('Attached by') }}: ' + tag.attached_by : ''"
+                                          :title="(tag.type === 'reference' && tag.name.length > 12 ? tag.name : '') + (tag.attached_by && tag.attached_by !== tag.type ? (tag.type === 'reference' && tag.name.length > 12 ? ' — ' : '') + '{{ __('Created as') }}: ' + tag.type + ', {{ __('Attached by') }}: ' + tag.attached_by : '')"
                                           class="tag attention inline-flex items-center px-2 py-1 rounded text-xs font-medium">
-                                        <span x-text="tag.name"></span>
+                                        <span x-text="tag.type === 'reference' && tag.name.length > 12 && !expanded ? tag.name.substring(0, 12) + '…' : tag.name"
+                                              :style="tag.type === 'reference' && tag.name.length > 12 ? 'cursor:pointer' : ''"
+                                              @click.stop="if (tag.type === 'reference' && tag.name.length > 12) expanded = !expanded"></span>
                                         <button @click="removeTag(tag)"
                                                 :disabled="loading"
                                                 class="ml-1 hover:text-red-600 disabled:opacity-50"

@@ -37,13 +37,17 @@
     $tooltip = $crossOrigin
         ? $tag->name . ' — ' . __('Created as') . ': ' . __($type) . ', ' . __('Attached by') . ': ' . __($attachedBy)
         : null;
+
+    $isLongRef = $type === 'reference' && mb_strlen($tag->name) > 12;
+    $displayName = $isLongRef ? mb_substr($tag->name, 0, 12) . '…' : $tag->name;
+    $fullTooltip = $isLongRef ? $tag->name . ($tooltip ? ' — ' . __('Created as') . ': ' . __($type) . ', ' . __('Attached by') . ': ' . __($attachedBy) : '') : $tooltip;
 @endphp
 
 @if($linkable)
 <a href="{{ route('assets.index', ['tags[]' => $tag->id]) }}"
    class="tag attention inline-flex items-center {{ $sizeClasses }} rounded-full {{ $bgClasses }} {{ $hoverClasses }} {{ $ringClasses }} transition-colors no-underline"
-   @if($tooltip) title="{{ $tooltip }}" @endif>
-    {{ $tag->name }}@if($showCount && isset($tag->assets_count)) ({{ $tag->assets_count }})@endif
+   title="{{ $fullTooltip ?? $tag->name }}">
+    {{ $displayName }}@if($showCount && isset($tag->assets_count)) ({{ $tag->assets_count }})@endif
     @if($showIcon)
         @if($tag->type === 'ai')
         <i class="fas fa-robot ml-2 text-xs"></i>
@@ -52,6 +56,22 @@
         @endif
     @endif
 </a>
+@elseif($isLongRef)
+<span x-data="{ expanded: false }"
+      class="tag attention inline-flex items-center {{ $sizeClasses }} rounded-full {{ $bgClasses }} {{ $ringClasses }} cursor-pointer select-none"
+      title="{{ $fullTooltip ?? $tag->name }}"
+      @click.stop="expanded = !expanded">
+    <span x-text="expanded ? '{{ $tag->name }}' : '{{ $displayName }}'"></span>
+    @if($showCount && isset($tag->assets_count)) ({{ $tag->assets_count }})@endif
+    @if($showIcon)
+        @if($tag->type === 'ai')
+        <i class="fas fa-robot ml-2 text-xs"></i>
+        @elseif($tag->type === 'reference')
+        <i class="fas fa-link ml-2 text-xs"></i>
+        @endif
+    @endif
+    {{ $slot }}
+</span>
 @else
 <span class="tag attention inline-flex items-center {{ $sizeClasses }} rounded-full {{ $bgClasses }} {{ $ringClasses }}"
       @if($tooltip) title="{{ $tooltip }}" @endif>
