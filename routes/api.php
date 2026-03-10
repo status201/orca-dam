@@ -30,6 +30,7 @@ Route::middleware('auth.multi')->group(function () {
 // Reference Tags API (rate-limited)
 Route::middleware(['auth.multi', 'throttle:100,1'])->group(function () {
     Route::post('reference-tags', [AssetApiController::class, 'addReferenceTags']);
+    Route::delete('reference-tags', [AssetApiController::class, 'removeReferenceTagsByName']);
     Route::delete('reference-tags/{tag}', [AssetApiController::class, 'removeReferenceTag']);
 });
 

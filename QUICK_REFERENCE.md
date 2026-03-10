@@ -274,7 +274,8 @@ DELETE /api/assets/{id}        # Delete asset
 GET    /api/tags               # List tags
 GET    /api/folders            # List S3 folders
 POST   /api/reference-tags         # Add reference tags to asset(s) (batch: asset_ids/s3_keys)
-DELETE /api/reference-tags/{tag}   # Remove reference tag from asset(s) (batch: asset_ids/s3_keys)
+DELETE /api/reference-tags         # Remove reference tag(s) by name (tag_name/tag_names + asset identifiers)
+DELETE /api/reference-tags/{tag}   # Remove reference tag by ID from asset(s) (batch: asset_ids/s3_keys)
 
 # Chunked uploads (for large files ≥10MB)
 POST   /api/chunked-upload/init      # Initialize upload

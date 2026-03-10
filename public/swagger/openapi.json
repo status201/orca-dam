@@ -866,6 +866,123 @@
             "$ref": "#/components/responses/ValidationError"
           }
         }
+      },
+      "delete": {
+        "tags": ["Reference Tags"],
+        "summary": "Remove reference tag(s) from asset(s) by name",
+        "description": "Detach one or more reference tags from one or more assets, identified by tag **name** rather than ID. Only tags of type `reference` are matched — names that match user or AI tags are treated as not found. Supports batch operations. At least one of `tag_name`/`tag_names` and at least one asset identifier are required.",
+        "operationId": "removeReferenceTagsByName",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tag_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "description": "Single reference tag name"
+                  },
+                  "tag_names": {
+                    "type": "array",
+                    "items": { "type": "string", "maxLength": 100 },
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "description": "Array of reference tag names (batch)"
+                  },
+                  "asset_id": {
+                    "type": "integer",
+                    "description": "Single asset ID"
+                  },
+                  "asset_ids": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "maxItems": 500,
+                    "description": "Array of asset IDs (batch)"
+                  },
+                  "s3_key": {
+                    "type": "string",
+                    "description": "Single S3 key"
+                  },
+                  "s3_keys": {
+                    "type": "array",
+                    "items": { "type": "string", "maxLength": 1024 },
+                    "maxItems": 500,
+                    "description": "Array of S3 keys (batch)"
+                  }
+                }
+              },
+              "examples": {
+                "single": {
+                  "summary": "Single tag name, single asset",
+                  "value": {
+                    "tag_name": "ext-123",
+                    "s3_key": "assets/folder/img.jpg"
+                  }
+                },
+                "batch": {
+                  "summary": "Multiple tag names, multiple assets",
+                  "value": {
+                    "tag_names": ["ext-123", "ext-456"],
+                    "asset_ids": [1, 2, 3]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reference tag(s) removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Reference tag(s) removed from 2 asset(s)"
+                    },
+                    "not_found_tags": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "Tag names that did not match any reference tag (only present when there were misses)"
+                    },
+                    "not_found_s3_keys": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "S3 keys that did not match any asset (only present when s3_key/s3_keys had misses)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "No matching reference tags found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string", "example": "No matching reference tags found" },
+                    "not_found_tags": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
       }
     },
     "/api/reference-tags/{tag}": {

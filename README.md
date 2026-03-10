@@ -235,7 +235,8 @@ GET    /api/health              - Health check (PUBLIC, no auth, 200/503)
 GET    /api/tags                - List tags for autocomplete
 GET    /api/folders             - List available S3 folders
 POST   /api/reference-tags      - Add reference tags to asset(s) (batch: asset_ids/s3_keys)
-DELETE /api/reference-tags/{tag} - Remove reference tag from asset(s) (batch: asset_ids/s3_keys)
+DELETE /api/reference-tags      - Remove reference tag(s) by name (tag_name/tag_names + asset identifiers)
+DELETE /api/reference-tags/{tag} - Remove reference tag by ID from asset(s) (batch: asset_ids/s3_keys)
 ```
 
 **Chunked Upload Endpoints** (for large files ≥10MB):

@@ -366,6 +366,80 @@ class AssetApiController extends Controller
     }
 
     /**
+     * Remove reference tags by name from one or more assets.
+     *
+     * Accepts singular (tag_name) or batch (tag_names) tag names plus asset identifiers.
+     */
+    public function removeReferenceTagsByName(Request $request)
+    {
+        $validator = validator($request->all(), array_merge($this->assetIdentifierRules(), [
+            'tag_name' => 'string|max:100',
+            'tag_names' => 'array|min:1|max:100',
+            'tag_names.*' => 'string|max:100',
+        ]));
+
+        $validator->after(function ($validator) use ($request) {
+            if (! $request->hasAny(['tag_name', 'tag_names'])) {
+                $validator->errors()->add('tags', 'At least one of tag_name or tag_names is required.');
+            }
+            if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
+                $validator->errors()->add('identifiers', 'At least one of asset_id, asset_ids, s3_key, or s3_keys is required.');
+            }
+        });
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
+
+        $names = [];
+        if ($request->has('tag_name')) {
+            $names[] = $request->input('tag_name');
+        }
+        if ($request->has('tag_names')) {
+            $names = array_merge($names, $request->input('tag_names'));
+        }
+
+        $requestedNames = array_values(array_unique(
+            array_map(fn ($n) => strtolower(trim($n)), $names)
+        ));
+
+        $foundTags = Tag::referenceTags()->whereIn('name', $requestedNames)->get();
+        $notFoundNames = array_values(array_diff($requestedNames, $foundTags->pluck('name')->toArray()));
+
+        if ($foundTags->isEmpty()) {
+            return response()->json([
+                'message' => 'No matching reference tags found',
+                'not_found_tags' => $notFoundNames,
+            ], 404);
+        }
+
+        [$assets, $notFoundS3Keys] = $this->collectAssetsFromRequest($request);
+
+        if ($assets->isEmpty()) {
+            return response()->json(['message' => 'No assets found'], 404);
+        }
+
+        $tagIds = $foundTags->pluck('id')->toArray();
+        foreach ($assets as $asset) {
+            $asset->tags()->detach($tagIds);
+        }
+
+        $response = [
+            'message' => 'Reference tag(s) removed from '.$assets->count().' asset(s)',
+        ];
+
+        if (! empty($notFoundNames)) {
+            $response['not_found_tags'] = $notFoundNames;
+        }
+
+        if (! empty($notFoundS3Keys)) {
+            $response['not_found_s3_keys'] = array_values($notFoundS3Keys);
+        }
+
+        return response()->json($response);
+    }
+
+    /**
      * Validation rules for asset identifier fields (asset_id, asset_ids, s3_key, s3_keys).
      */
     private function assetIdentifierRules(): array

@@ -349,7 +349,8 @@ return [
 | `GET` | `/api/tags` | List all tags |
 | `GET` | `/api/folders` | List S3 folders |
 | `POST` | `/api/reference-tags` | Add reference tags to asset(s) (supports batch via `asset_ids`/`s3_keys`) |
-| `DELETE` | `/api/reference-tags/{tag}` | Remove reference tag from asset(s) (supports batch via `asset_ids`/`s3_keys`) |
+| `DELETE` | `/api/reference-tags` | Remove reference tag(s) by **name** from asset(s) — use `tag_name` or `tag_names` |
+| `DELETE` | `/api/reference-tags/{tag}` | Remove reference tag by **ID** from asset(s) (supports batch via `asset_ids`/`s3_keys`) |
 
 ### Query Parameters
 | Parameter | Example |

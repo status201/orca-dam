@@ -777,6 +777,178 @@ test('api can remove reference tag from multiple assets via s3_keys', function (
     }
 });
 
+// Remove Reference Tags by Name API tests
+
+test('api can remove reference tag by tag_name and asset_id', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+    $tag = Tag::factory()->reference()->create(['name' => 'ext-remove-1']);
+    $asset->tags()->attach($tag->id);
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_name' => 'ext-remove-1',
+        'asset_id' => $asset->id,
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tag(s) removed from 1 asset(s)']);
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(0);
+});
+
+test('api can remove reference tags by tag_names array and asset_ids', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $assets = Asset::factory()->count(2)->create();
+    $tag1 = Tag::factory()->reference()->create(['name' => 'ext-batch-1']);
+    $tag2 = Tag::factory()->reference()->create(['name' => 'ext-batch-2']);
+    foreach ($assets as $asset) {
+        $asset->tags()->attach([$tag1->id, $tag2->id]);
+    }
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_names' => ['ext-batch-1', 'ext-batch-2'],
+        'asset_ids' => $assets->pluck('id')->toArray(),
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['message' => 'Reference tag(s) removed from 2 asset(s)']);
+    foreach ($assets as $asset) {
+        $asset->refresh();
+        expect($asset->tags)->toHaveCount(0);
+    }
+});
+
+test('api can remove reference tag by tag_name and s3_key', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['s3_key' => 'assets/test/byname.jpg']);
+    $tag = Tag::factory()->reference()->create(['name' => 'ext-s3key-1']);
+    $asset->tags()->attach($tag->id);
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_name' => 'ext-s3key-1',
+        's3_key' => 'assets/test/byname.jpg',
+    ]);
+
+    $response->assertOk();
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(0);
+});
+
+test('api remove by name with some names not found returns not_found_tags and still removes found tags', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+    $tag = Tag::factory()->reference()->create(['name' => 'ext-exists-1']);
+    $asset->tags()->attach($tag->id);
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_names' => ['ext-exists-1', 'ext-does-not-exist'],
+        'asset_id' => $asset->id,
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['not_found_tags' => ['ext-does-not-exist']]);
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(0);
+});
+
+test('api remove by name treats user-type tag name as not found', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+    $userTag = Tag::factory()->user()->create(['name' => 'user-only-tag']);
+    $asset->tags()->attach($userTag->id);
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_name' => 'user-only-tag',
+        'asset_id' => $asset->id,
+    ]);
+
+    $response->assertNotFound();
+    $response->assertJsonFragment(['not_found_tags' => ['user-only-tag']]);
+    // User tag should still be attached
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(1);
+});
+
+test('api remove by name returns 404 when all names missing', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_names' => ['ghost-tag-1', 'ghost-tag-2'],
+        'asset_id' => $asset->id,
+    ]);
+
+    $response->assertNotFound();
+    $response->assertJsonFragment(['not_found_tags' => ['ghost-tag-1', 'ghost-tag-2']]);
+});
+
+test('api remove by name returns 422 when no tag_name or tag_names provided', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create();
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'asset_id' => $asset->id,
+    ]);
+
+    $response->assertUnprocessable();
+    $response->assertJsonPath('errors.tags', fn ($v) => ! empty($v));
+});
+
+test('api remove by name returns 422 when no asset identifiers provided', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    Tag::factory()->reference()->create(['name' => 'ext-noasset']);
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_name' => 'ext-noasset',
+    ]);
+
+    $response->assertUnprocessable();
+    $response->assertJsonPath('errors.identifiers', fn ($v) => ! empty($v));
+});
+
+test('api remove by name requires authentication', function () {
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_name' => 'ext-unauth',
+        'asset_id' => 1,
+    ]);
+
+    $response->assertUnauthorized();
+});
+
+test('api remove by name with missing s3_keys and missing tags returns both not_found keys', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['s3_key' => 'assets/test/present.jpg']);
+    $tag = Tag::factory()->reference()->create(['name' => 'ext-present-1']);
+    $asset->tags()->attach($tag->id);
+
+    $response = $this->deleteJson('/api/reference-tags', [
+        'tag_names' => ['ext-present-1', 'ext-missing-tag'],
+        's3_keys' => ['assets/test/present.jpg', 'assets/test/missing.jpg'],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['not_found_tags' => ['ext-missing-tag']]);
+    $response->assertJsonFragment(['not_found_s3_keys' => ['assets/test/missing.jpg']]);
+});
+
 test('api update preserves reference tags when updating user tags', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);
