@@ -353,10 +353,13 @@ Files can sometimes go missing in S3 without going through ORCA (accidental dele
 
 ## Tips & Tricks
 
-**Keyboard Shortcuts:** Enter to confirm, Escape to cancel.
-**Navigating:** With your browser's backbutton you can easily return to previous chosen filters and sorting. (Navigation links like in the Main menu link to the Assets start page without filters)
-**Tooltips:** Many elements have "tooltips" on mouse hover with extra (detailed) information, like timestamps and users.
-**Footer:** Never click the ORCA logo in the footer a second time before it has landed again ;-)
+**Keyboard Shortcuts:** Enter to confirm, Escape to cancel.  
+ 
+**Navigating:** With your browser's back-button, you can easily return to previous chosen filters and sorting. (Navigation links like in the Main menu link to the Assets start page without filters)  
+ 
+**Tooltips:** Many elements have "tooltips" on mouse hover with extra (detailed) information, like timestamps and users.  
+ 
+**Footer:** Never click the ORCA logo in the footer a second time before it has landed again ;-)  
 
 **Best Practices:**
 1. **Name files clearly before uploading** — you can rename later, but clear originals help

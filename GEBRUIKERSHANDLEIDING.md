@@ -353,11 +353,14 @@ Bestanden kunnen soms verdwijnen uit S3 zonder via ORCA te gaan (per ongeluk ver
 
 ## Tips & trucs
 
-**Sneltoetsen:** Enter om te bevestigen, Escape om te annuleren.
-**Navigeren:** Met de back-button kun je gemakkelijk terug naar je eerder gekozen filters en sortering. (Navigatie links zoals in het menu linken naar de Assets startpagina zonder filters)
-**Tooltips:** Veel elementen zijn voorzien van tooltips met extra (gedetailleerde) informatie, zoals tijdstempels en gebruikers.
-**Footer:** Klik nooit een tweede keer op het ORCA logo in de footer voordat deze weer geland is ;-)
-
+**Sneltoetsen:** Enter om te bevestigen, Escape om te annuleren.  
+ 
+**Navigeren:** Met je browser's back-button kun je gemakkelijk terug naar je eerder gekozen filters en sortering. (Navigatie links zoals in het menu linken naar de Assets startpagina zonder filters)  
+ 
+**Tooltips:** Veel elementen zijn voorzien van tooltips met extra (gedetailleerde) informatie, zoals tijdstempels en gebruikers.  
+ 
+**Footer:** Klik nooit een tweede keer op het ORCA logo in de footer voordat deze weer geland is ;-)  
+ 
 **Best practices:**
 1. **Geef bestanden een duidelijke naam vóór het uploaden** — je kunt later hernoemen, maar duidelijke originelen helpen
 2. **Gebruik tags royaal** — ze maken zoeken veel makkelijker
