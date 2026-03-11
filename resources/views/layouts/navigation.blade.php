@@ -1,8 +1,32 @@
 @php $maintenanceMode = \App\Models\Setting::get('maintenance_mode', false); @endphp
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100 {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
+<nav x-data="{
+        open: false,
+        compact: false,
+        hidden: false,
+        lastY: 0,
+        init() { this.lastY = window.scrollY; },
+        onScroll() {
+            const y = window.scrollY;
+            if (y < 10) {
+                this.compact = false;
+                this.hidden = false;
+            } else if (y > this.lastY) {
+                this.compact = true;
+                if (y > 100) this.hidden = true;
+            } else if (y < this.lastY) {
+                this.compact = true;
+                this.hidden = false;
+            }
+            this.lastY = y;
+        }
+    }"
+    @scroll.window.throttle.16ms="onScroll()"
+    :class="{ '-translate-y-full': hidden }"
+    class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm transition-transform duration-300 ease-in-out {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
+        <div class="flex justify-between h-16 transition-[height] duration-300 ease-in-out"
+             :class="compact ? '!h-10' : ''">
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center nav-logo">
