@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AboutController;
 use App\Http\Controllers\ApiDocsController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\ChunkedUploadController;
@@ -39,6 +40,8 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/preferences', [ProfileController::class, 'updatePreferences'])->name('profile.preferences.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('about', [AboutController::class, 'index'])->name('about.index');
 
     // Bulk asset tag management (must be before resource route)
     Route::post('assets/bulk/tags', [AssetController::class, 'bulkAddTags'])->name('assets.bulk.tags.add');

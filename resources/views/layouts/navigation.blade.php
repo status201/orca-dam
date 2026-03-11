@@ -65,6 +65,11 @@
                                     <i class="fas fa-trash fa-fw mr-2 {{ request()->routeIs('assets.trash') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Trash') }}
                                 </a>
                             @endcan
+                            @can('export', App\Models\Asset::class)
+                                <a href="{{ route('export.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('export.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                    <i class="fas fa-file-export fa-fw mr-2 {{ request()->routeIs('export.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Export') }}
+                                </a>
+                            @endcan
                         </div>
                     </div>
                     <x-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
@@ -75,16 +80,14 @@
                             {{ __('Discover') }}
                         </x-nav-link>
                     @endcan
-                    @can('export', App\Models\Asset::class)
-                        <x-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')">
-                            {{ __('Export') }}
-                        </x-nav-link>
-                    @endcan
                     @can('viewAny', App\Models\User::class)
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                             {{ __('Users') }}
                         </x-nav-link>
                     @endcan
+                    <x-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
+                        {{ __('About ORCA') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -161,6 +164,11 @@
                     <i class="fas fa-trash fa-fw mr-2 text-gray-400"></i>{{ __('Trash') }}
                 </x-responsive-nav-link>
             @endcan
+            @can('export', App\Models\Asset::class)
+                <x-responsive-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')" class="pl-8">
+                    <i class="fas fa-file-export fa-fw mr-2 text-gray-400"></i>{{ __('Export') }}
+                </x-responsive-nav-link>
+            @endcan
             <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
                 {{ __('Tags') }}
             </x-responsive-nav-link>
@@ -169,16 +177,14 @@
                     {{ __('Discover') }}
                 </x-responsive-nav-link>
             @endcan
-            @can('export', App\Models\Asset::class)
-                <x-responsive-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')">
-                    {{ __('Export') }}
-                </x-responsive-nav-link>
-            @endcan
             @can('viewAny', App\Models\User::class)
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                     {{ __('Users') }}
                 </x-responsive-nav-link>
             @endcan
+            <x-responsive-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
+                {{ __('About ORCA') }}
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->
