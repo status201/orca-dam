@@ -284,22 +284,37 @@ function handleAboutDocClick(event) {
     const toc = document.getElementById('about-toc');
     if (!toc) return;
 
-    const headings = document.querySelectorAll('#about-doc-content h1, #about-doc-content h2, #about-doc-content h3');
+    const headings = Array.from(document.querySelectorAll(
+        '#about-doc-content h1, #about-doc-content h2, #about-doc-content h3'
+    ));
     const links = document.querySelectorAll('#about-toc .toc-link');
-    let activeId = null;
+    if (!headings.length || !links.length) return;
 
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) activeId = entry.target.id;
-        });
+    const OFFSET = 120; // px — clears sticky nav (80px) + breathing room
+
+    function setActive(id) {
         links.forEach(link => {
-            link.classList.toggle('toc-active', link.getAttribute('href') === '#' + activeId);
+            link.classList.toggle('toc-active', link.getAttribute('href') === '#' + id);
         });
-    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    }
 
-    headings.forEach(h => observer.observe(h));
+    function updateActive() {
+        let active = headings[0];
+        for (const h of headings) {
+            if (h.getBoundingClientRect().top <= OFFSET) active = h;
+            else break;
+        }
+        setActive(active.id);
+    }
 
-    // Also handle TOC link clicks for smooth scroll
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            requestAnimationFrame(() => { updateActive(); ticking = false; });
+            ticking = true;
+        }
+    }, { passive: true });
+
     links.forEach(link => {
         link.addEventListener('click', function (e) {
             const href = this.getAttribute('href');
@@ -307,11 +322,14 @@ function handleAboutDocClick(event) {
                 e.preventDefault();
                 const target = document.getElementById(href.slice(1));
                 if (target) {
+                    setActive(target.id);
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
             }
         });
     });
+
+    updateActive();
 })();
 </script>
 @endpush
