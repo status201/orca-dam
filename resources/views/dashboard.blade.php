@@ -7,7 +7,7 @@
                     <div class="dashboard-logo bg-white rounded-full p-2 shadow-lg cursor-pointer"
                          onclick="const footerOrca = document.querySelector('.footer-logo-container svg'); if(footerOrca) { footerOrca.classList.add('orca-jump'); setTimeout(() => footerOrca.classList.remove('orca-jump'), 1100); }">
 
-                        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="h-48 w-48 fill-current text-gray-800 orca-floating">
+                        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="h-32 w-32 fill-current text-gray-800 orca-floating">
                             <!-- Body -->
                             <ellipse cx="50" cy="55" rx="35" ry="25" fill="#1a1a1a"/>
                             <!-- Tail -->
