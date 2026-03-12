@@ -36,6 +36,16 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
 
 Route::middleware(['auth'])->group(function () {
+    Route::post('/locale', function (\Illuminate\Http\Request $request) {
+        $locale = $request->input('locale');
+        if (in_array($locale, ['en', 'nl'])) {
+            $preferences = $request->user()->preferences ?? [];
+            $preferences['locale'] = $locale;
+            $request->user()->update(['preferences' => $preferences]);
+        }
+        return redirect()->back();
+    })->name('locale.set');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/preferences', [ProfileController::class, 'updatePreferences'])->name('profile.preferences.update');
