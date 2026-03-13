@@ -1,8 +1,32 @@
 @php $maintenanceMode = \App\Models\Setting::get('maintenance_mode', false); @endphp
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100 {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
+<nav x-data="{
+        open: false,
+        compact: false,
+        hidden: false,
+        lastY: 0,
+        init() { this.lastY = window.scrollY; },
+        onScroll() {
+            const y = window.scrollY;
+            if (y < 10) {
+                this.compact = false;
+                this.hidden = false;
+            } else if (y > this.lastY) {
+                this.compact = true;
+                if (y > 100) this.hidden = true;
+            } else if (y < this.lastY) {
+                this.compact = true;
+                this.hidden = false;
+            }
+            this.lastY = y;
+        }
+    }"
+    @scroll.window.throttle.16ms="onScroll()"
+    :class="{ '-translate-y-full': hidden }"
+    class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm transition-transform duration-300 ease-in-out {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
+        <div class="flex justify-between h-16 transition-[height] duration-300 ease-in-out"
+             :class="compact ? '!h-10' : ''">
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center nav-logo">
@@ -17,7 +41,7 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <div class="relative inline-flex items-stretch" x-data="{ submenu: false }" @mouseenter="submenu = true" @mouseleave="submenu = false">
-                        <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                        <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*')">
                             {{ __('Assets') }}
                             <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -33,6 +57,10 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50"
                              style="display: none;">
+                            <a href="{{ route('assets.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.index') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <i class="fas fa-images fa-fw mr-2 {{ request()->routeIs('assets.index') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Browse') }}
+                            </a>
+                            <div class="border-t border-gray-100 my-1"></div>
                             <a href="{{ route('assets.create') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.create') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                 <i class="fas fa-cloud-arrow-up fa-fw mr-2 {{ request()->routeIs('assets.create') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Upload') }}
                             </a>
@@ -41,26 +69,29 @@
                                     <i class="fas fa-trash fa-fw mr-2 {{ request()->routeIs('assets.trash') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Trash') }}
                                 </a>
                             @endcan
+                            @can('discover', App\Models\Asset::class)
+                                <a href="{{ route('discover.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('discover.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                    <i class="fas fa-satellite-dish fa-fw mr-2 {{ request()->routeIs('discover.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Discover') }}
+                                </a>
+                            @endcan
+                            @can('export', App\Models\Asset::class)
+                                <a href="{{ route('export.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('export.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                    <i class="fas fa-file-export fa-fw mr-2 {{ request()->routeIs('export.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Export') }}
+                                </a>
+                            @endcan
                         </div>
                     </div>
                     <x-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
                         {{ __('Tags') }}
                     </x-nav-link>
-                    @can('discover', App\Models\Asset::class)
-                        <x-nav-link :href="route('discover.index')" :active="request()->routeIs('discover.*')">
-                            {{ __('Discover') }}
-                        </x-nav-link>
-                    @endcan
-                    @can('export', App\Models\Asset::class)
-                        <x-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')">
-                            {{ __('Export') }}
-                        </x-nav-link>
-                    @endcan
                     @can('viewAny', App\Models\User::class)
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                             {{ __('Users') }}
                         </x-nav-link>
                     @endcan
+                    <x-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
+                        {{ __('About ORCA') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -126,45 +157,65 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
-                {{ __('Assets') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('assets.create')" :active="request()->routeIs('assets.create')" class="pl-8">
-                <i class="fas fa-cloud-arrow-up fa-fw mr-2 text-gray-400"></i>{{ __('Upload') }}
-            </x-responsive-nav-link>
-            @can('restore', App\Models\Asset::class)
-                <x-responsive-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')" class="pl-8">
-                    <i class="fas fa-trash fa-fw mr-2 text-gray-400"></i>{{ __('Trash') }}
-                </x-responsive-nav-link>
-            @endcan
+            <div x-data="{ open: {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-none
+                               {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'border-orca-teal text-orca-teal-hover bg-teal-50 focus:text-orca-teal-hover focus:bg-teal-100 focus:border-orca-teal' : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 focus:text-gray-800 focus:bg-gray-50 focus:border-gray-300' }}">
+                    <span>{{ __('Assets') }}</span>
+                    <svg :class="{ 'rotate-180': open }" class="h-4 w-4 transition-transform duration-200 {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'text-orca-teal' : 'text-gray-400' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div x-show="open">
+                    <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.index')" class="ps-8">
+                        <i class="fas fa-images fa-fw mr-2 text-gray-400"></i>{{ __('Browse') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('assets.create')" :active="request()->routeIs('assets.create')" class="ps-8">
+                        <i class="fas fa-cloud-arrow-up fa-fw mr-2 text-gray-400"></i>{{ __('Upload') }}
+                    </x-responsive-nav-link>
+                    @can('restore', App\Models\Asset::class)
+                        <x-responsive-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')" class="ps-8">
+                            <i class="fas fa-trash fa-fw mr-2 text-gray-400"></i>{{ __('Trash') }}
+                        </x-responsive-nav-link>
+                    @endcan
+                    @can('discover', App\Models\Asset::class)
+                        <x-responsive-nav-link :href="route('discover.index')" :active="request()->routeIs('discover.*')" class="ps-8">
+                            <i class="fas fa-satellite-dish fa-fw mr-2 text-gray-400"></i>{{ __('Discover') }}
+                        </x-responsive-nav-link>
+                    @endcan
+                    @can('export', App\Models\Asset::class)
+                        <x-responsive-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')" class="ps-8">
+                            <i class="fas fa-file-export fa-fw mr-2 text-gray-400"></i>{{ __('Export') }}
+                        </x-responsive-nav-link>
+                    @endcan
+                </div>
+            </div>
             <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
                 {{ __('Tags') }}
             </x-responsive-nav-link>
-            @can('discover', App\Models\Asset::class)
-                <x-responsive-nav-link :href="route('discover.index')" :active="request()->routeIs('discover.*')">
-                    {{ __('Discover') }}
-                </x-responsive-nav-link>
-            @endcan
-            @can('export', App\Models\Asset::class)
-                <x-responsive-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')">
-                    {{ __('Export') }}
-                </x-responsive-nav-link>
-            @endcan
             @can('viewAny', App\Models\User::class)
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                     {{ __('Users') }}
                 </x-responsive-nav-link>
             @endcan
+            <x-responsive-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
+                {{ __('About ORCA') }}
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-            </div>
+        <div class="pt-4 pb-1 border-t border-gray-200" x-data="{ open: false }">
+            <button @click="open = !open" class="w-full flex justify-between items-center px-4 py-2 text-start focus:outline-none hover:bg-gray-50">
+                <div>
+                    <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
+                    <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+                </div>
+                <svg :class="{ 'rotate-180': open }" class="h-4 w-4 text-gray-400 transition-transform duration-200 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
 
-            <div class="mt-3 space-y-1">
+            <div x-show="open" class="mt-1 space-y-1">
                 <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
                     <i class="fas fa-user fa-fw mr-2"></i>{{ __('Profile') }}
                 </x-responsive-nav-link>

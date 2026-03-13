@@ -41,6 +41,7 @@
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100 flex flex-col">
             @include('layouts.navigation')
+            <div class="h-16 shrink-0"></div>
 
             <!-- Page Heading -->
             @isset($header)

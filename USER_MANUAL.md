@@ -15,15 +15,15 @@
 7. [Editing Asset Details](#editing-asset-details)
 8. [Replacing Assets](#replacing-assets)
 9. [The Trash](#the-trash)
-10. [Bulk Move (Admin Only)](#bulk-move-admin-only)
-11. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
-12. [Moving Files (The Long Way)](#moving-files-the-long-way)
-13. [Discover Feature (Admin Only)](#discover-feature-admin-only)
-14. [Import Metadata (Admin Only)](#import-metadata-admin-only)
-15. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
-16. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
-17. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
-18. [User Preferences](#user-preferences)
+10. [User Preferences](#user-preferences)
+11. [Moving Files (The Long Way)](#moving-files-the-long-way)
+12. [Bulk Move (Admin Only)](#bulk-move-admin-only)
+13. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
+14. [Discover Feature (Admin Only)](#discover-feature-admin-only)
+15. [Import Metadata (Admin Only)](#import-metadata-admin-only)
+16. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
+17. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
+18. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
 19. [Tips & Tricks](#tips--tricks)
 20. [Glossary](#glossary)
 21. [Getting Help](#getting-help)
@@ -193,7 +193,7 @@ If you need to change the file format entirely, you'll have to delete and re-upl
 This is where Asset Replace really shines:
 
 1. **Upload placeholders** with clear names like `hero-image-DRAFT.jpg` — tag them `draft`!
-2. **Link them in Studyflow** using the ORCA URLs
+2. **Link them in the content** using the ORCA URLs
 3. **Replace when ready** — swap in the final versions
 4. **No broken links** — Studyflow automatically shows the new images
 
@@ -215,6 +215,34 @@ Deleted files go to Trash — a holding area before permanent deletion. Both edi
 - **Delete Permanently** (admin only) — Remove forever (also deletes the file from S3)
 
 It's your safety net: accidentally deleted something? Restore it! Need to audit what was removed? Check the Trash. Prevents the "oh no" moment of irreversible deletion.
+
+---
+
+## User Preferences
+
+Customize ORCA via the **Profile** page (click your name → Profile → Preferences section → Save).
+
+### Available Preferences
+
+- **Home Folder** — Default starting folder when browsing assets. Useful if you mostly work in one folder (e.g., `assets/marketing`). Leave empty for root. Use the refresh icon (↻) to reload the folder list if new folders were added.
+- **Items Per Page** — Choose from 12, 24, 36, 48, 60, 72, or 96. Select "Use default" to follow the global setting. The per-page dropdown on the Assets page still works as a session override.
+- **Language** — English or Nederlands. Select "Use default" to follow the admin's global setting. Changes take effect on the next page load.
+
+Preferences follow a priority: URL parameters > your user preference > global system setting. Your preferences are respected, but navigating freely (clicking folders, changing dropdowns) won't reset until you load a fresh page.
+
+---
+
+## Moving Files (The Long Way)
+
+If maintenance mode is not available, or you need to move a single file without admin access, here's the manual workaround:
+
+1. **Download** the file to your computer
+2. **Soft delete** the original in ORCA
+3. Ask an **admin to permanently delete** the trashed file (only admins can permanently delete)
+4. **Upload** the file to the correct folder
+5. **Update all links** in the content to point to the new URL
+
+Yes, it's tedious. That's intentional — it makes you think twice and reminds you to update those links.
 
 ---
 
@@ -243,20 +271,6 @@ All associated files (thumbnail, resize variants S/M/L) are moved automatically.
 3. Confirm the warning — this action **cannot be undone**
 4. All selected assets are permanently removed: S3 objects (original, thumbnail, resize variants S/M/L) and database records
 5. Disable maintenance mode when done
-
----
-
-## Moving Files (The Long Way)
-
-If maintenance mode is not available, or you need to move a single file without admin access, here's the manual workaround:
-
-1. **Download** the file to your computer
-2. **Soft delete** the original in ORCA
-3. Ask an **admin to permanently delete** the trashed file (only admins can permanently delete)
-4. **Upload** the file to the correct folder
-5. **Update all links** in Studyflow to point to the new URL
-
-Yes, it's tedious. That's intentional — it makes you think twice and reminds you to update those links.
 
 ---
 
@@ -337,23 +351,15 @@ Files can sometimes go missing in S3 without going through ORCA (accidental dele
 
 ---
 
-## User Preferences
-
-Customize ORCA via the **Profile** page (click your name → Profile → Preferences section → Save).
-
-### Available Preferences
-
-- **Home Folder** — Default starting folder when browsing assets. Useful if you mostly work in one folder (e.g., `assets/marketing`). Leave empty for root. Use the refresh icon (↻) to reload the folder list if new folders were added.
-- **Items Per Page** — Choose from 12, 24, 36, 48, 60, 72, or 96. Select "Use default" to follow the global setting. The per-page dropdown on the Assets page still works as a session override.
-- **Language** — English or Nederlands. Select "Use default" to follow the admin's global setting. Changes take effect on the next page load.
-
-Preferences follow a priority: URL parameters > your user preference > global system setting. Your preferences are respected, but navigating freely (clicking folders, changing dropdowns) won't reset until you load a fresh page.
-
----
-
 ## Tips & Tricks
 
-**Keyboard Shortcuts:** Enter to confirm, Escape to cancel.
+**Keyboard Shortcuts:** Enter to confirm, Escape to cancel.  
+ 
+**Navigating:** With your browser's back-button, you can easily return to previous chosen filters and sorting. (Navigation links like in the Main menu link to the Assets start page without filters)  
+ 
+**Tooltips:** Many elements have "tooltips" on mouse hover with extra (detailed) information, like timestamps and users.  
+ 
+**Footer:** Never click the ORCA logo in the footer a second time before it has landed again ;-)  
 
 **Best Practices:**
 1. **Name files clearly before uploading** — you can rename later, but clear originals help
