@@ -74,7 +74,7 @@ class SystemController extends Controller
         $this->authorize('access', SystemController::class);
 
         $lines = $request->input('lines', 50);
-        $lines = min(max($lines, 10), 200); // Clamp between 10-200
+        $lines = min(max($lines, 10), 500); // Clamp between 10-500
 
         $logData = $this->systemService->getLogTail($lines);
 

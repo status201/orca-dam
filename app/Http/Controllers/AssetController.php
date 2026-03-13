@@ -127,6 +127,12 @@ class AssetController extends Controller
                         if ($existing) {
                             // Clean up the just-uploaded S3 object
                             $this->s3Service->deleteFile($fileData['s3_key']);
+                            Log::warning('Duplicate upload detected', [
+                                'filename' => $fileData['filename'],
+                                'existing_asset_id' => $existing->id,
+                                'etag' => $fileData['etag'],
+                            ]);
+
                             $duplicates[] = [
                                 'filename' => $fileData['filename'],
                                 'existing_asset_id' => $existing->id,

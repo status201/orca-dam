@@ -811,6 +811,7 @@
                         <option value="50">{{ __('50 lines') }}</option>
                         <option value="100">{{ __('100 lines') }}</option>
                         <option value="200">{{ __('200 lines') }}</option>
+                        <option value="500">{{ __('500 lines') }}</option>
                     </select>
                     <button @click="refreshLogs()"
                             class="px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700">

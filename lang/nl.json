@@ -11,6 +11,7 @@
     "20 lines": "20 regels",
     "200 lines": "200 regels",
     "2FA": "2FA",
+    "500 lines": "500 regels",
     "50 lines": "50 regels",
     ":count asset has a missing S3 object|:count assets have missing S3 objects": ":count asset heeft een ontbrekend S3-object|:count assets hebben ontbrekende S3-objecten",
     ":count asset(s) updated": ":count asset(s) bijgewerkt",

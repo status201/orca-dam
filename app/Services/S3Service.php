@@ -475,12 +475,8 @@ class S3Service
             ]);
 
             $imageData = (string) $result['Body'];
-            $image = $this->imageManager->read($imageData);
 
-            return [
-                'width' => $image->width(),
-                'height' => $image->height(),
-            ];
+            return $this->imageProcessingService->getImageDimensionsFromData($imageData);
 
         } catch (\Exception $e) {
             \Log::warning("Failed to extract image dimensions for {$s3Key}: ".$e->getMessage());

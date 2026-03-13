@@ -119,6 +119,16 @@ class ImageProcessingService
     }
 
     /**
+     * Extract image dimensions from raw image data.
+     */
+    public function getImageDimensionsFromData(string $imageData): array
+    {
+        $image = $this->imageManager->read($imageData);
+
+        return ['width' => $image->width(), 'height' => $image->height()];
+    }
+
+    /**
      * Check whether raw GIF data contains multiple frames (i.e. is animated).
      * Walks the GIF block structure to count actual image descriptor blocks.
      */

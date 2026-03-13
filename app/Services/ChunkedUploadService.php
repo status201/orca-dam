@@ -202,6 +202,12 @@ class ChunkedUploadService
                     $this->s3Service->deleteFile($session->s3_key);
                     $session->update(['status' => 'failed']);
 
+                    Log::warning('Duplicate chunked upload detected', [
+                        'filename' => $session->filename,
+                        'existing_asset_id' => $existing->id,
+                        'etag' => $etag,
+                    ]);
+
                     throw new DuplicateAssetException($existing);
                 }
             }
