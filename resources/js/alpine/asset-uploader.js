@@ -7,6 +7,7 @@ export function assetUploader() {
         uploading: false,
         uploadProgress: {},
         fileWarnings: {},
+        filePreviews: {},
         CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
         CHUNKED_THRESHOLD: 10 * 1024 * 1024, // Use chunked upload for files >= 10MB
         selectedFolder: pageData.selectedFolder,
@@ -50,7 +51,18 @@ export function assetUploader() {
             this.selectedFiles.push(...files);
             files.forEach((file, i) => {
                 this.checkImageDimensions(file, startIndex + i);
+                this.generatePreview(file, startIndex + i);
             });
+        },
+
+        generatePreview(file, index) {
+            if (!file.type.startsWith('image/')) return;
+            this.filePreviews[index] = URL.createObjectURL(file);
+        },
+
+        revokeAllPreviews() {
+            Object.values(this.filePreviews).forEach(url => URL.revokeObjectURL(url));
+            this.filePreviews = {};
         },
 
         checkImageDimensions(file, index) {
@@ -71,6 +83,13 @@ export function assetUploader() {
 
         removeFile(index) {
             this.selectedFiles.splice(index, 1);
+
+            // Revoke removed preview
+            if (this.filePreviews[index]) {
+                URL.revokeObjectURL(this.filePreviews[index]);
+            }
+
+            // Shift fileWarnings
             const newWarnings = {};
             Object.keys(this.fileWarnings).forEach(key => {
                 const k = parseInt(key);
@@ -78,6 +97,15 @@ export function assetUploader() {
                 else if (k > index) newWarnings[k - 1] = this.fileWarnings[k];
             });
             this.fileWarnings = newWarnings;
+
+            // Shift filePreviews
+            const newPreviews = {};
+            Object.keys(this.filePreviews).forEach(key => {
+                const k = parseInt(key);
+                if (k < index) newPreviews[k] = this.filePreviews[k];
+                else if (k > index) newPreviews[k - 1] = this.filePreviews[k];
+            });
+            this.filePreviews = newPreviews;
         },
 
         formatFileSize(bytes) {
@@ -164,24 +192,57 @@ export function assetUploader() {
             if (this.selectedFiles.length === 0) return;
 
             this.uploading = true;
+            const duplicates = [];
 
             try {
                 for (let i = 0; i < this.selectedFiles.length; i++) {
                     const file = this.selectedFiles[i];
                     this.uploadProgress[i] = 0;
 
+                    let result;
                     // Use chunked upload for large files
                     if (file.size >= this.CHUNKED_THRESHOLD) {
-                        await this.uploadFileChunked(file, i);
+                        result = await this.uploadFileChunked(file, i);
                     } else {
-                        await this.uploadFileDirect(file, i);
+                        result = await this.uploadFileDirect(file, i);
+                    }
+
+                    if (result && result.duplicate) {
+                        duplicates.push(result.duplicate.filename);
                     }
                 }
 
-                window.showToast(pageData.translations.allFilesUploaded);
-                setTimeout(() => {
-                    window.location.href = pageData.routes.assetsIndex + '?folder=' + encodeURIComponent(this.selectedFolder);
-                }, 1000);
+                const successCount = this.selectedFiles.length - duplicates.length;
+                const duplicateNames = duplicates.join(', ');
+
+                if (duplicates.length === this.selectedFiles.length) {
+                    // All duplicates
+                    window.showToast(
+                        pageData.translations.skippedDuplicates
+                            .replace(':count', duplicates.length)
+                            .replace(':names', duplicateNames),
+                        'warning'
+                    );
+                    this.uploading = false;
+                } else if (duplicates.length > 0) {
+                    // Mixed: some succeeded, some duplicates
+                    window.showToast(
+                        pageData.translations.uploadedWithDuplicates
+                            .replace(':success', successCount)
+                            .replace(':count', duplicates.length)
+                            .replace(':names', duplicateNames),
+                        'warning'
+                    );
+                    setTimeout(() => {
+                        window.location.href = pageData.routes.assetsIndex + '?folder=' + encodeURIComponent(this.selectedFolder);
+                    }, 3000);
+                } else {
+                    // All success
+                    window.showToast(pageData.translations.allFilesUploaded);
+                    setTimeout(() => {
+                        window.location.href = pageData.routes.assetsIndex + '?folder=' + encodeURIComponent(this.selectedFolder);
+                    }, 1000);
+                }
 
             } catch (error) {
                 console.error('Upload error:', error);
@@ -210,6 +271,8 @@ export function assetUploader() {
                 xhr.addEventListener('load', () => {
                     if (xhr.status >= 200 && xhr.status < 300) {
                         resolve();
+                    } else if (xhr.status === 409) {
+                        resolve({ duplicate: { filename: file.name } });
                     } else {
                         reject(new Error(this.parseErrorMessage(xhr)));
                     }
@@ -221,6 +284,7 @@ export function assetUploader() {
 
                 xhr.open('POST', pageData.routes.assetsStore);
                 xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').content);
+                xhr.setRequestHeader('Accept', 'application/json');
                 xhr.send(formData);
             });
         },
@@ -246,8 +310,9 @@ export function assetUploader() {
                 }
 
                 // Step 3: Complete upload
-                await this.completeChunkedUpload(session.session_token);
+                const result = await this.completeChunkedUpload(session.session_token, file.name);
                 this.uploadProgress[index] = 100;
+                return result;
 
             } catch (error) {
                 // Abort upload on failure
@@ -318,7 +383,7 @@ export function assetUploader() {
             return await response.json();
         },
 
-        async completeChunkedUpload(sessionToken) {
+        async completeChunkedUpload(sessionToken, filename) {
             const response = await fetch('/api/chunked-upload/complete', {
                 method: 'POST',
                 headers: {
@@ -328,6 +393,10 @@ export function assetUploader() {
                 },
                 body: JSON.stringify({ session_token: sessionToken }),
             });
+
+            if (response.status === 409) {
+                return { duplicate: { filename } };
+            }
 
             if (!response.ok) {
                 const error = await response.json();

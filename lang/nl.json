@@ -17,6 +17,7 @@
     ":deleted asset(s) permanently deleted": ":deleted asset(s) permanent verwijderd",
     ":moved asset(s) moved successfully": ":moved asset(s) succesvol verplaatst",
     ":restored asset(s) restored": ":restored asset(s) hersteld",
+    ":success file(s) uploaded. Skipped :count duplicate(s): :names": ":success bestand(en) geüpload. :count duplica(a)t(en) overgeslagen: :names",
     "A descriptive name for this token": "Een beschrijvende naam voor dit token",
     "A new verification link has been sent to the email address you provided during registration.": "Er is een nieuwe verificatielink verzonden naar het e-mailadres dat je bij registratie hebt opgegeven.",
     "A new verification link has been sent to your email address.": "Er is een nieuwe verificatielink naar je e-mailadres verzonden.",

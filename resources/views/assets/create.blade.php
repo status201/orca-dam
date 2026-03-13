@@ -120,11 +120,16 @@
         <div x-show="selectedFiles.length > 0" class="mt-6" x-cloak>
             <h3 class="text-lg font-semibold mb-3">{{ __('Selected Files') }} (<span x-text="selectedFiles.length"></span>)</h3>
 
-            <div class="space-y-2 max-h-96 overflow-y-auto">
+            <div class="invert-scrollbar-colors space-y-2 max-h-96 overflow-y-auto">
                 <template x-for="(file, index) in selectedFiles" :key="index">
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
-                            <i class="fas fa-file text-gray-400"></i>
+                            <template x-if="filePreviews[index]">
+                                <img :src="filePreviews[index]" class="w-10 h-10 object-cover rounded flex-shrink-0" alt="">
+                            </template>
+                            <template x-if="!filePreviews[index]">
+                                <i class="fas fa-file text-gray-400"></i>
+                            </template>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-900 truncate" x-text="file.name"></p>
                                 <p class="text-xs text-gray-500" x-text="formatFileSize(file.size)"></p>
@@ -159,7 +164,7 @@
 
             <!-- Upload button -->
             <div class="mt-6 flex justify-end space-x-3">
-                <button @click="selectedFiles = []; uploadProgress = {}; fileWarnings = {}"
+                <button @click="revokeAllPreviews(); selectedFiles = []; uploadProgress = {}; fileWarnings = {}"
                         :disabled="uploading"
                         class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                     {{ __('Clear All') }}
@@ -206,6 +211,8 @@
             fileTooLarge: @js(__('File is too large. Maximum size is 500MB per file.')),
             invalidFormat: @js(__('Invalid file format or validation error.')),
             imageDimensionWarning: @js(__('Large image (:widthx:height) — may fail during processing')),
+            skippedDuplicates: @js(__('Skipped :count duplicate(s): :names')),
+            uploadedWithDuplicates: @js(__(':success file(s) uploaded. Skipped :count duplicate(s): :names')),
         },
     };
 </script>

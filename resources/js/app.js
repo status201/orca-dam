@@ -141,17 +141,17 @@ document.addEventListener('DOMContentLoaded', () => {
 // Toast notification system
 window.showToast = function(message, type = 'success') {
     const toast = document.createElement('div');
-    toast.className = `toast fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg text-white z-50 transition-opacity duration-300 ${
-        type === 'error' ? 'bg-red-600' : 'bg-green-600'
-    }`;
+    const colorClass = type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-green-600';
+    toast.className = `toast fixed top-4 right-4 px-6 py-4 rounded-lg shadow-lg text-white z-50 transition-opacity duration-300 ${colorClass}`;
     toast.textContent = message;
 
     document.body.appendChild(toast);
 
+    const duration = type === 'warning' ? 5000 : 3000;
     setTimeout(() => {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, duration);
 };
 
 // Copy to clipboard utility
