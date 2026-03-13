@@ -6,6 +6,7 @@ export function assetUploader() {
         selectedFiles: [],
         uploading: false,
         uploadProgress: {},
+        fileWarnings: {},
         CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
         CHUNKED_THRESHOLD: 10 * 1024 * 1024, // Use chunked upload for files >= 10MB
         selectedFolder: pageData.selectedFolder,
@@ -45,11 +46,38 @@ export function assetUploader() {
         },
 
         addFiles(files) {
+            const startIndex = this.selectedFiles.length;
             this.selectedFiles.push(...files);
+            files.forEach((file, i) => {
+                this.checkImageDimensions(file, startIndex + i);
+            });
+        },
+
+        checkImageDimensions(file, index) {
+            if (!file.type.startsWith('image/')) return;
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                if (img.width > 4000 || img.height > 4000) {
+                    this.fileWarnings[index] = pageData.translations.imageDimensionWarning
+                        .replace(':width', img.width)
+                        .replace(':height', img.height);
+                }
+                URL.revokeObjectURL(url);
+            };
+            img.onerror = () => URL.revokeObjectURL(url);
+            img.src = url;
         },
 
         removeFile(index) {
             this.selectedFiles.splice(index, 1);
+            const newWarnings = {};
+            Object.keys(this.fileWarnings).forEach(key => {
+                const k = parseInt(key);
+                if (k < index) newWarnings[k] = this.fileWarnings[k];
+                else if (k > index) newWarnings[k - 1] = this.fileWarnings[k];
+            });
+            this.fileWarnings = newWarnings;
         },
 
         formatFileSize(bytes) {

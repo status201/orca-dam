@@ -128,6 +128,12 @@
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-900 truncate" x-text="file.name"></p>
                                 <p class="text-xs text-gray-500" x-text="formatFileSize(file.size)"></p>
+                                <template x-if="fileWarnings[index]">
+                                    <p class="attention text-xs text-amber-600 font-medium">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        <span x-text="fileWarnings[index]"></span>
+                                    </p>
+                                </template>
                             </div>
                         </div>
 
@@ -153,7 +159,7 @@
 
             <!-- Upload button -->
             <div class="mt-6 flex justify-end space-x-3">
-                <button @click="selectedFiles = []; uploadProgress = {}"
+                <button @click="selectedFiles = []; uploadProgress = {}; fileWarnings = {}"
                         :disabled="uploading"
                         class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                     {{ __('Clear All') }}
@@ -199,6 +205,7 @@
             serverError: @js(__('Server error occurred. Please try a smaller file.')),
             fileTooLarge: @js(__('File is too large. Maximum size is 500MB per file.')),
             invalidFormat: @js(__('Invalid file format or validation error.')),
+            imageDimensionWarning: @js(__('Large image (:widthx:height) — may fail during processing')),
         },
     };
 </script>
