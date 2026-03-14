@@ -70,7 +70,7 @@ export function assetUploader() {
             const url = URL.createObjectURL(file);
             const img = new Image();
             img.onload = () => {
-                if (img.width > 4000 || img.height > 4000) {
+                if (img.width > 6000 || img.height > 6000) {
                     this.fileWarnings[index] = pageData.translations.imageDimensionWarning
                         .replace(':width', img.width)
                         .replace(':height', img.height);
