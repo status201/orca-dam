@@ -146,6 +146,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('tools', [ToolsController::class, 'index'])->name('tools.index');
         Route::get('tools/latex-mathml', [ToolsController::class, 'latexMathml'])->name('tools.latex-mathml');
         Route::post('tools/latex-mathml/upload', [ToolsController::class, 'uploadMathml'])->name('tools.latex-mathml.upload');
+        Route::get('tools/tikz-svg', [ToolsController::class, 'tikzSvg'])->name('tools.tikz-svg');
+        Route::post('tools/tikz-svg/upload', [ToolsController::class, 'uploadTikzSvg'])->name('tools.tikz-svg.upload');
 
         // Import metadata
         Route::get('import', [ImportController::class, 'index'])->name('import.index');

@@ -24,6 +24,9 @@ function latexMathml() {
             { label: 'Limit', tex: '\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1' },
             { label: 'Binomial', tex: '\\binom{n}{k} = \\frac{n!}{k!(n-k)!}' },
             { label: 'Maxwell', tex: '\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}' },
+            { label: 'Einstein', tex: 'G_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}' },
+            { label: 'Fourier', tex: '\\hat{f}(\\xi) = \\int_{-\\infty}^{\\infty} f(x)\\, e^{-2\\pi i x \\xi}\\,dx' },
+            { label: 'Schrödinger', tex: 'i\\hbar\\frac{\\partial}{\\partial t}\\Psi(\\mathbf{r},t) = \\left[-\\frac{\\hbar^2}{2m}\\nabla^2 + V(\\mathbf{r},t)\\right]\\Psi(\\mathbf{r},t)' },
         ],
 
         init() {

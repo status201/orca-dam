@@ -7,7 +7,7 @@
 @endpush
 
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="latexMathml()">
+<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="latexMathml()">
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">

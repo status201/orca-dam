@@ -18,6 +18,7 @@ import './alpine/api-docs';
 import './alpine/preferences';
 import './alpine/dashboard';
 import './alpine/tools-latex-mathml';
+import './alpine/tools-tikz-svg';
 
 window.Alpine = Alpine;
 
