@@ -163,6 +163,10 @@ class S3Service
             if (str_ends_with(strtolower($s3Key), '.eps')) {
                 return null;
             }
+            // Skip thumbnail generation for SVG (browsers render them natively)
+            if (str_ends_with(strtolower($s3Key), '.svg')) {
+                return null;
+            }
 
             // Download original from S3
             $result = $this->s3Client->getObject([

@@ -213,6 +213,19 @@ test('getImageDimensions returns empty array for EPS file', function () {
     @unlink($tmpPath);
 });
 
+test('getImageDimensions returns empty array for SVG file', function () {
+    $service = new ImageProcessingService;
+    $tmpPath = tempnam(sys_get_temp_dir(), 'svg_');
+    file_put_contents($tmpPath, '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"></svg>');
+    $file = new UploadedFile($tmpPath, 'icon.svg', 'image/svg+xml', null, true);
+
+    $result = $service->getImageDimensions($file);
+
+    expect($result)->toBe([]);
+
+    @unlink($tmpPath);
+});
+
 test('getImageDimensions returns width and height for valid JPEG', function () {
     $service = new ImageProcessingService;
     $jpegContent = makeJpegContent(20, 15);

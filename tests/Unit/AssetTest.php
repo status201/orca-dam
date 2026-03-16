@@ -383,6 +383,48 @@ test('thumbnail_url returns null for non-GIF without thumbnail_s3_key', function
     expect($asset->thumbnail_url)->toBeNull();
 });
 
+// ─── SVG handling ─────────────────────────────────────────────────────────────
+
+test('isSvg returns true for image/svg+xml mime type', function () {
+    $asset = Asset::factory()->create(['mime_type' => 'image/svg+xml', 's3_key' => 'assets/icon.svg']);
+
+    expect($asset->isSvg())->toBeTrue();
+});
+
+test('isSvg returns true for svg extension with non-standard mime type', function () {
+    $asset = Asset::factory()->create(['mime_type' => 'text/plain', 's3_key' => 'assets/icon.svg']);
+
+    expect($asset->isSvg())->toBeTrue();
+});
+
+test('isSvg returns false for regular image', function () {
+    $asset = Asset::factory()->create(['mime_type' => 'image/png', 's3_key' => 'assets/photo.png']);
+
+    expect($asset->isSvg())->toBeFalse();
+});
+
+test('isImage returns false for SVG mime type', function () {
+    $asset = Asset::factory()->create(['mime_type' => 'image/svg+xml', 's3_key' => 'assets/icon.svg']);
+
+    expect($asset->isImage())->toBeFalse();
+});
+
+test('isImage returns false for SVG extension with non-standard mime type', function () {
+    $asset = Asset::factory()->create(['mime_type' => 'text/plain', 's3_key' => 'assets/icon.svg']);
+
+    expect($asset->isImage())->toBeFalse();
+});
+
+test('thumbnail_url returns url for SVG without thumbnail_s3_key', function () {
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/icon.svg',
+        'thumbnail_s3_key' => null,
+        'mime_type' => 'image/svg+xml',
+    ]);
+
+    expect($asset->thumbnail_url)->toBe($asset->url);
+});
+
 test('asset scope withTags filters by tag ids', function () {
     $tag1 = Tag::factory()->create();
     $tag2 = Tag::factory()->create();

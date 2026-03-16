@@ -349,6 +349,11 @@
                          alt="{{ $asset->filename }}"
                          :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
                          loading="lazy">
+                @elseif($asset->isSvg())
+                    <img src="{{ $asset->url }}"
+                         alt="{{ $asset->filename }}"
+                         :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                         loading="lazy">
                 @elseif($asset->isVideo() && $asset->thumbnail_url)
                     <img src="{{ $asset->thumbnail_url }}"
                          alt="{{ $asset->filename }}"
@@ -481,6 +486,11 @@
                                     @endif
                                     @if($asset->isImage() && $asset->thumbnail_url)
                                         <img src="{{ $asset->thumbnail_url }}"
+                                             alt="{{ $asset->filename }}"
+                                             :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                                             loading="lazy">
+                                    @elseif($asset->isSvg())
+                                        <img src="{{ $asset->url }}"
                                              alt="{{ $asset->filename }}"
                                              :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
                                              loading="lazy">

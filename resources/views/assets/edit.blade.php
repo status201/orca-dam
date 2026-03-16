@@ -61,6 +61,10 @@
                         <img src="{{ ($asset->thumbnail_url ?? $asset->url) . '?v=' . $asset->updated_at->timestamp }}"
                              alt="{{ $asset->filename }}"
                              class="max-w-sm rounded-lg">
+                    @elseif($asset->isSvg())
+                        <img src="{{ $asset->url }}"
+                             alt="{{ $asset->filename }}"
+                             class="max-w-sm rounded-lg">
                     @elseif($asset->isVideo() && $asset->thumbnail_url)
                         <img src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
                              alt="{{ $asset->filename }}"

@@ -86,6 +86,10 @@ class ImageProcessingService
         if (str_ends_with(strtolower($file->getClientOriginalName()), '.eps')) {
             return [];
         }
+        // SVG: vector graphics don't have meaningful pixel dimensions
+        if (str_ends_with(strtolower($file->getClientOriginalName()), '.svg')) {
+            return [];
+        }
 
         // Skip dimension detection for GIFs to avoid memory issues
         if ($file->getMimeType() === 'image/gif') {

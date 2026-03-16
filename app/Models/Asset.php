@@ -141,6 +141,9 @@ class Asset extends Model
             if ($this->mime_type === 'image/gif') {
                 return $this->url;
             }
+            if ($this->isSvg()) {
+                return $this->url;
+            }
 
             return null;
         }
@@ -233,11 +236,24 @@ class Asset extends Model
     }
 
     /**
+     * Check if asset is an SVG file
+     */
+    public function isSvg(): bool
+    {
+        if ($this->mime_type === 'image/svg+xml') {
+            return true;
+        }
+        $extension = strtolower(pathinfo($this->s3_key, PATHINFO_EXTENSION));
+
+        return $extension === 'svg';
+    }
+
+    /**
      * Check if asset is an image
      */
     public function isImage(): bool
     {
-        return str_starts_with($this->mime_type, 'image/') && ! $this->isEps();
+        return str_starts_with($this->mime_type, 'image/') && ! $this->isEps() && ! $this->isSvg();
     }
 
     /**

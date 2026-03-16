@@ -51,6 +51,10 @@
                          x-ref="mainImage">
 
 
+                @elseif($asset->isSvg())
+                    <img src="{{ $asset->url }}"
+                         alt="{{ $asset->filename }}"
+                         class="h-auto my-0 mx-auto">
                 @elseif($asset->isVideo())
                     <video controls class="w-full" preload="metadata">
                         <source src="{{ $asset->url }}" type="{{ $asset->mime_type }}">
