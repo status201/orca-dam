@@ -264,6 +264,14 @@ class Asset extends Model
         return str_starts_with($this->mime_type, 'video/');
     }
 
+    public function isMathMl(): bool
+    {
+        if ($this->mime_type === 'application/mathml+xml') {
+            return true;
+        }
+        return strtolower(pathinfo($this->s3_key, PATHINFO_EXTENSION)) === 'mml';
+    }
+
     private static array $mimeIcons = [
         'application/pdf' => 'fa-file-pdf',
         'application/msword' => 'fa-file-word',

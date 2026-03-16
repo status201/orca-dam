@@ -44,6 +44,8 @@
                             <img src="{{ $asset->thumbnail_url ?? $asset->url }}"
                                  alt="{{ $asset->filename }}"
                                  class="max-w-full max-h-64 rounded-lg shadow">
+                        @elseif($asset->isMathMl())
+                            <x-mml-preview :asset="$asset" size="full" />
                         @else
                             <div class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
                                 <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60" style="font-size: 4rem;"></i>

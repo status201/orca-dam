@@ -26,7 +26,7 @@
         <!-- Preview column -->
         <div class="lg:col-span-2">
             <div class="image-container bg-white rounded-lg shadow-lg overflow-hidden relative"
-                 @if($asset->isImage())
+                 @if($asset->isImage() || $asset->isSvg())
                      x-data="imageRefresher(@js($asset->url), @js($asset->filename))"
                     @endif
             >
@@ -52,14 +52,26 @@
 
 
                 @elseif($asset->isSvg())
-                    <img src="{{ $asset->url }}"
-                         alt="{{ $asset->filename }}"
-                         class="h-auto my-0 mx-auto">
+                    <!-- Refresh Icon Button -->
+                    <button @click="refreshImage()" title="{{ __('Force a refresh') }}"
+                            class="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10"
+                            :disabled="isRefreshing">
+                        <svg class="w-5 h-5 text-gray-700" :class="{ 'animate-spin [animation-direction:reverse]': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                    <img :src="imageSrc"
+                         :alt="imageAlt"
+                         class="h-auto my-0 mx-auto"
+                         x-ref="mainImage">
                 @elseif($asset->isVideo())
                     <video controls class="w-full" preload="metadata">
                         <source src="{{ $asset->url }}" type="{{ $asset->mime_type }}">
                         {{ __('Your browser does not support the video tag.') }}
                     </video>
+                @elseif($asset->isMathMl())
+                    <x-mml-preview :asset="$asset" size="full" :refreshable="true" />
                 @else
                     <div class="aspect-video bg-gray-100 flex items-center justify-center">
                         <div class="text-center">

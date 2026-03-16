@@ -65,6 +65,10 @@
                         <img src="{{ $asset->url }}"
                              alt="{{ $asset->filename }}"
                              class="max-w-sm rounded-lg">
+                    @elseif($asset->isMathMl())
+                        <div class="max-w-sm rounded-lg overflow-hidden border border-gray-200">
+                            <x-mml-preview :asset="$asset" size="full" />
+                        </div>
                     @elseif($asset->isVideo() && $asset->thumbnail_url)
                         <img src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
                              alt="{{ $asset->filename }}"

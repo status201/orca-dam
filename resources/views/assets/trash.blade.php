@@ -120,6 +120,8 @@
                             <i class="fas fa-play text-white text-sm ml-0.5"></i>
                         </div>
                     </div>
+                @elseif($asset->isMathMl())
+                    <x-mml-preview :asset="$asset" size="thumb" />
                 @else
                     <div class="w-full h-full flex items-center justify-center">
                         <i class="fas {{ $asset->getFileIcon() }} text-9xl {{ $asset->getIconColorClass() }} opacity-60"></i>
@@ -249,6 +251,8 @@
                                                 <i class="fas fa-play text-white text-[0.5rem] ml-px"></i>
                                             </div>
                                         </div>
+                                    @elseif($asset->isMathMl())
+                                        <x-mml-preview :asset="$asset" size="thumb" />
                                     @else
                                         <i class="fas {{ $asset->getFileIcon() }} text-3xl {{ $asset->getIconColorClass() }} opacity-60"></i>
                                     @endif

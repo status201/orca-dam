@@ -14,6 +14,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\TokenController;
+use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -140,6 +141,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('system/integrity-status', [SystemController::class, 'integrityStatus'])->name('system.integrity-status');
         Route::post('system/verify-integrity', [SystemController::class, 'verifyIntegrity'])->name('system.verify-integrity');
         Route::post('system/run-tests', [SystemController::class, 'runTests'])->name('system.run-tests');
+
+        // Tools
+        Route::get('tools', [ToolsController::class, 'index'])->name('tools.index');
+        Route::get('tools/latex-mathml', [ToolsController::class, 'latexMathml'])->name('tools.latex-mathml');
+        Route::post('tools/latex-mathml/upload', [ToolsController::class, 'uploadMathml'])->name('tools.latex-mathml.upload');
 
         // Import metadata
         Route::get('import', [ImportController::class, 'index'])->name('import.index');

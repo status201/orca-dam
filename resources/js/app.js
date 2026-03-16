@@ -17,6 +17,7 @@ import './alpine/system-admin';
 import './alpine/api-docs';
 import './alpine/preferences';
 import './alpine/dashboard';
+import './alpine/tools-latex-mathml';
 
 window.Alpine = Alpine;
 
