@@ -14,10 +14,12 @@
                 this.hidden = false;
             }
             this.compact = y >= 10;
+            if (y < 10) this.hidden = false;
             this.lastY = y;
         }
     }"
     @scroll.window.throttle.16ms="onScroll()"
+    @scrollend.window="onScroll()"
     :class="{ '-translate-y-full': hidden }"
     class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm transition-transform duration-300 ease-in-out {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
     <!-- Primary Navigation Menu -->
