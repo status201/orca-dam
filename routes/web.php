@@ -61,6 +61,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('assets/bulk/move', [AssetController::class, 'bulkMoveAssets'])->name('assets.bulk.move');
     Route::delete('assets/bulk/force-delete', [AssetController::class, 'bulkForceDelete'])->name('assets.bulk.force-delete');
 
+    // Asset embed (iframe-friendly, no header/footer)
+    Route::get('assets/embed', [AssetController::class, 'embed'])->name('assets.embed');
+
     // Asset routes
     Route::resource('assets', AssetController::class);
 

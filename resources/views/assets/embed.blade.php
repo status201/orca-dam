@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.embed')
 
 @section('title', __('Assets'))
 

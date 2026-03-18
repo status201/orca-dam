@@ -1,0 +1,1032 @@
+<div x-data="assetGrid()">
+    <!-- Header with search and filters -->
+    <div class="mb-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">
+                    {{ __('Assets') }}
+                    <span class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
+                        {{ number_format($assets->total()) }}
+                    </span>
+                </h1>
+                <p class="text-gray-600 mt-2">{{ __('Browse and manage your digital assets') }}</p>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <!-- Row 1: Search (full width on sm-lg, auto on lg+) -->
+                <div class="relative lg:hidden">
+                    <input type="text"
+                           x-model="search"
+                           @keyup.enter="applyFilters"
+                           placeholder="{{ __('Search... (+require -exclude)') }}"
+                           :class="appliedSearch ? 'ring-2 ring-orca-black border-orca-black' : ''"
+                           class="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    <button @click="applyFilters"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-arrow-right text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Row 2: Filters and Upload -->
+                <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-end gap-3">
+                    <!-- Search (hidden on mobile, visible inline on lg+) -->
+                    <div class="relative hidden lg:block">
+                        <input type="text"
+                               x-model="search"
+                               @keyup.enter="applyFilters"
+                               placeholder="{{ __('Search... (+require -exclude)') }}"
+                               :class="appliedSearch ? 'ring-2 ring-orca-black border-orca-black' : ''"
+                               class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+
+                    <!-- Folder filter -->
+                    <select x-model="folder"
+                            @change="applyFilters"
+                            :class="folder && folder !== rootFolder && folderCount > 1 ? 'ring-2 ring-orca-black border-orca-black' : ''"
+                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono">
+                        <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
+                    </select>
+
+                    <!-- Type filter -->
+                    <select x-model="type"
+                            @change="applyFilters"
+                            :class="type ? 'ring-2 ring-orca-black border-orca-black' : ''"
+                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <option value="">{{ __('All Types') }}</option>
+                        <option value="image">{{ __('Images') }}</option>
+                        <option value="video">{{ __('Videos') }}</option>
+                        <option value="application">{{ __('Documents') }}</option>
+                    </select>
+
+                    <!-- Tag filter -->
+                    <button @click="showTagFilter = !showTagFilter"
+                            :class="selectedTags.length > 0 ? 'ring-2 ring-orca-black border-orca-black' : (showTagFilter ? 'ring-1 ring-orca-black border-orca-black' : '')"
+                            class="px-4 py-2 bg-white text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center">
+                        <i class="fas fa-filter mr-2"></i>
+                        <span x-text="selectedTags.length > 0 ? @js(__('Tags')) + ` (${selectedTags.length})` : @js(__('Filter Tags'))"></span>
+                    </button>
+
+                    <!-- Sort -->
+                    <select x-model="sort"
+                            @change="applyFilters"
+                            :class="sort !== 'date_desc' ? 'ring-2 ring-orca-black border-orca-black' : ''"
+                            class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <option value="date_desc">{{ __('Newest First') }}</option>
+                        <option value="date_asc">{{ __('Oldest First') }}</option>
+                        <option value="upload_desc">{{ __('Newest Uploads') }}</option>
+                        <option value="upload_asc">{{ __('Oldest Uploads') }}</option>
+                        <option value="size_desc">{{ __('Largest First') }}</option>
+                        <option value="size_asc">{{ __('Smallest First') }}</option>
+                        <option value="name_asc">{{ __('Name A-Z') }}</option>
+                        <option value="name_desc">{{ __('Name Z-A') }}</option>
+                        <option value="s3key_asc">{{ __('S3 Key A-Z') }}</option>
+                        <option value="s3key_desc">{{ __('S3 Key Z-A') }}</option>
+                    </select>
+
+                    <!-- Upload button -->
+                    <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`"
+                       class="px-4 py-2 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover flex items-center justify-center whitespace-nowrap">
+                        <i class="fas fa-upload mr-2"></i> {{ __('Upload') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag filter dropdown -->
+        <div x-show="showTagFilter"
+             x-cloak
+             @click.away="if (selectedTags.length === 0) showTagFilter = false"
+             class="mt-4 bg-white border text-sm border-gray-200 rounded-lg shadow-lg p-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <h3 class="font-semibold">{{ __('Filter by Tags') }}</h3>
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Tag search input -->
+                    <div class="relative">
+                        <input type="text"
+                               x-model="tagSearch"
+                               @input="onFilterTagSearch()"
+                               placeholder="{{ __('Search tags...') }}"
+                               class="text-sm pl-8 pr-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent w-40">
+                        <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    </div>
+                    <!-- Tag type filter -->
+                    <select x-model="tagType" @change="onFilterTagTypeChange()"
+                            class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <option value="">{{ __('All Tags') }}</option>
+                        <option value="user">{{ __('User Tags') }}</option>
+                        <option value="ai">{{ __('AI Tags') }}</option>
+                        <option value="reference">{{ __('Reference Tags') }}</option>
+                    </select>
+                    <!-- Tag sort dropdown -->
+                    <select x-model="tagSort" @change="onFilterTagSortChange()"
+                            class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <option value="name_asc">{{ __('Name (A-Z)') }}</option>
+                        <option value="name_desc">{{ __('Name (Z-A)') }}</option>
+                        <option value="most_used">{{ __('Most used') }}</option>
+                        <option value="least_used">{{ __('Least used') }}</option>
+                        <option value="newest">{{ __('Newest') }}</option>
+                        <option value="oldest">{{ __('Oldest') }}</option>
+                    </select>
+                    <div class="flex gap-2">
+                        <button @click="applyFilters()"
+                                x-show="tagsChanged()"
+                                class="text-sm px-4 py-1 bg-orca-black text-white hover:bg-orca-black-hover rounded-lg transition">
+                            <i class="fas fa-check mr-1"></i> {{ __('Apply') }}
+                        </button>
+                        <button @click="selectedTags = []; tagSearch = ''"
+                                x-show="selectedTags.length > 0"
+                                class="text-sm px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition">
+                            <i class="fas fa-times mr-1"></i> {{ __('Clear All') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pinned selected tags -->
+            <template x-if="pinnedTags.length > 0">
+                <div class="mb-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+                        <template x-for="tag in pinnedTags" :key="'pinned-' + tag.id">
+                            <label class="flex items-start space-x-2 p-2 bg-blue-50 hover:bg-blue-100 rounded cursor-pointer border border-blue-200">
+                                <input type="checkbox"
+                                       :value="tag.id"
+                                       x-model="selectedTags"
+                                       class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                <div class="flex flex-col gap-1 min-w-0 flex-1">
+                                    <span class="text-sm font-medium truncate" x-text="tag.name"></span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
+                                              class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
+                                              x-text="tag.type === 'reference' ? 'ref' : tag.type"></span>
+                                        <span class="text-xs text-gray-400" x-text="tag.assets_count"></span>
+                                    </div>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <div class="max-h-96 overflow-y-auto invert-scrollbar-colors" @scroll="onFilterScroll($event)">
+                <!-- Loading state -->
+                <div x-show="filterTagsLoading" class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
+                    <span class="text-gray-500 text-sm">{{ __('Loading tags...') }}</span>
+                </div>
+
+                <div x-show="!filterTagsLoading">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+                        <template x-for="tag in displayTags" :key="tag.id">
+                            <label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
+                                <input type="checkbox"
+                                       :value="tag.id"
+                                       x-model="selectedTags"
+                                       class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                <div class="flex flex-col gap-1 min-w-0 flex-1">
+                                    <span class="text-sm font-medium truncate" x-text="tag.name"></span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')"
+                                              class="tag attention text-xs px-2 py-0.5 rounded-full inline-block w-fit"
+                                              x-text="tag.type === 'reference' ? 'ref' : tag.type"></span>
+                                        <span class="text-xs text-gray-400" x-text="tag.assets_count"></span>
+                                    </div>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+
+                    <!-- Loading more spinner -->
+                    <div x-show="filterTagsLoadingMore" class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
+                        <span class="text-gray-500 text-sm">{{ __('Loading more tags...') }}</span>
+                    </div>
+
+                    <!-- No tags message -->
+                    <p x-show="!filterTagsLoading && filterTags.length === 0" class="text-gray-500 text-sm py-4 text-center">{{ __('No tags available yet.') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Filters Bar -->
+    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || initialTags.length > 0)" x-cloak class="mb-4 flex flex-wrap items-center gap-2">
+        <span class="text-sm text-gray-500 font-medium">{{ __('Active filters') }}:</span>
+
+        <!-- Search pill -->
+        <template x-if="appliedSearch">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-search text-xs"></i>
+                <span class="max-w-[200px] truncate" x-text="appliedSearch"></span>
+                <button @click="search = ''; applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
+        <!-- Folder pill -->
+        <template x-if="folder && folder !== rootFolder && folderCount > 1">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-folder text-xs"></i>
+                <span x-text="folder"></span>
+                <button @click="folder = ''; applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
+        <!-- Type pill -->
+        <template x-if="type">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-file text-xs"></i>
+                <span x-text="type.charAt(0).toUpperCase() + type.slice(1)"></span>
+                <button @click="type = ''; applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
+        <!-- Tag pills -->
+        <template x-for="tagId in initialTags" :key="tagId">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-tag text-xs"></i>
+                <span x-text="pinnedTags.find(t => t.id == tagId)?.name || tagId"></span>
+                <button @click="selectedTags = selectedTags.filter(id => id != tagId); applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
+        <!-- Clear all -->
+        <button @click="search = ''; folder = ''; type = ''; selectedTags = []; applyFilters()"
+                class="text-sm text-gray-500 hover:text-gray-700 underline ml-2">
+            {{ __('Clear all filters') }}
+        </button>
+    </div>
+
+    <!-- View Toggle -->
+    <div class="mb-4 flex justify-end gap-2">
+        <!-- Select All (grid mode) -->
+        <button x-show="viewMode === 'grid'"
+                @click="$store.bulkSelection.toggleSelectAll()"
+                :class="$store.bulkSelection.allOnPageSelected ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg transition-colors"
+                :title="$store.bulkSelection.allOnPageSelected ? @js(__('Deselect all')) : @js(__('Select all'))">
+            <i class="fas fa-check-double mr-1"></i>
+            <span x-text="$store.bulkSelection.allOnPageSelected ? @js(__('Deselect all')) : @js(__('Select all'))"></span>
+        </button>
+
+        <!-- Fit Mode Toggle -->
+        <div class="inline-flex rounded-md shadow-sm" role="group">
+            <button @click="fitMode = 'cover'; saveFitMode()"
+                    :class="fitMode === 'cover' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                    class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors"
+                    title="{{ __('Zoom and crop') }}">
+                <i class="fas fa-crop-alt"></i>
+            </button>
+            <button @click="fitMode = 'contain'; saveFitMode()"
+                    :class="fitMode === 'contain' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                    class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-r-lg transition-colors"
+                    title="{{ __('Fit to keep proportions') }}">
+                <i class="fas fa-expand"></i>
+            </button>
+        </div>
+
+        <div class="inline-flex rounded-md shadow-sm" role="group">
+            <button @click="viewMode = 'grid'; saveViewMode()"
+                    :class="viewMode === 'grid' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                    class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors">
+                <i class="fas fa-th mr-2"></i> {{ __('Grid') }}
+            </button>
+            <button @click="viewMode = 'list'; saveViewMode()"
+                    :class="viewMode === 'list' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                    class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-r-lg transition-colors">
+                <i class="fas fa-list mr-2"></i> {{ __('List') }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Missing assets warning bar -->
+    @if($missingCount > 0)
+    <div class="attention mb-4 p-3 border border-red-800 rounded-lg flex items-center justify-between">
+        <span class="text-sm text-red-800">
+            <i class="fas fa-triangle-exclamation mr-2"></i>
+            {{ trans_choice(':count asset has a missing S3 object|:count assets have missing S3 objects', $missingCount) }}
+        </span>
+        <a href="?missing=1" class="text-sm text-red-800 font-medium hover:text-red-700">
+            {{ __('View') }} <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+    @endif
+
+    <!-- Asset grid -->
+    @if($assets->count() > 0)
+    <!-- Grid View -->
+    <div x-show="viewMode === 'grid'" x-cloak class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 xxl:grid-cols-12 gap-4">
+        @foreach($assets as $asset)
+        <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
+             x-data="assetCard({{ $asset->id }})"
+             @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.toggle({{ $asset->id }}); } else { window.location.href = '{{ route('assets.show', $asset) }}'; }">
+            <!-- Selection checkbox -->
+            <div class="absolute top-2 left-2 z-20"
+                 :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                 @click.stop="$store.bulkSelection.toggle({{ $asset->id }})">
+                <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
+                     class="w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
+                    <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
+                </div>
+            </div>
+
+            <!-- Thumbnail -->
+            <div class="aspect-square bg-gray-100 relative">
+                @if($asset->is_missing)
+                <div class="absolute top-1 right-1 z-10">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-600 text-white">
+                        <i class="fas fa-triangle-exclamation mr-1"></i>{{ __('Missing') }}
+                    </span>
+                </div>
+                @endif
+                @if($asset->isImage() && $asset->thumbnail_url)
+                    <img src="{{ $asset->thumbnail_url }}"
+                         alt="{{ $asset->filename }}"
+                         :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                         loading="lazy">
+                @elseif($asset->isSvg())
+                    <img src="{{ $asset->url }}"
+                         alt="{{ $asset->filename }}"
+                         :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                         loading="lazy">
+                @elseif($asset->isVideo() && $asset->thumbnail_url)
+                    <img src="{{ $asset->thumbnail_url }}"
+                         alt="{{ $asset->filename }}"
+                         :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                         loading="lazy">
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center">
+                            <i class="fas fa-play text-white text-sm ml-0.5"></i>
+                        </div>
+                    </div>
+                @elseif($asset->isMathMl())
+                    <x-mml-preview :asset="$asset" size="thumb" />
+                @else
+                    <div class="w-full h-full flex items-center justify-center">
+                        <i class="fas {{ $asset->getFileIcon() }} text-9xl {{ $asset->getIconColorClass() }} opacity-60"></i>
+                    </div>
+                @endif
+
+                <!-- Overlay with actions -->
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <button @click.stop="downloadAsset('{{ route('assets.download', $asset) }}')"
+                            :disabled="downloading"
+                            :class="downloading ? 'bg-green-600' : 'bg-white hover:bg-gray-100'"
+                            :title="downloading ? @js(__('Downloading...')) : @js(__('Download'))"
+                            class="text-gray-900 px-3 py-2 rounded-lg transition-all duration-300 mr-2">
+                        <i :class="downloading ? 'fas fa-spinner fa-spin text-white' : 'fas fa-download'"></i>
+                    </button>
+                    <button @click.stop="copyAssetUrl('{{ $asset->url }}')"
+                            :class="copied ? 'attention bg-green-600' : 'bg-white hover:bg-gray-100'"
+                            :title="copied ? @js(__('Copied!')) : @js(__('Copy URL'))"
+                            class="text-gray-900 px-3 py-2 rounded-lg transition-all duration-300 mr-2">
+                        <i :class="copied ? 'fas fa-check text-white' : 'fas fa-copy'"></i>
+                    </button>
+                    <a href="{{ route('assets.edit', $asset) }}"
+                       @click.stop
+                       class="bg-white text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                       title="{{ __('Edit') }}">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="p-3">
+                <p class="text-sm font-medium text-gray-900 truncate" title="{{ $asset->filename }}">
+                    {{ $asset->filename }}
+                </p>
+                <div class="text-xs text-gray-500 mt-1 space-y-0.5">
+                    <p><i class="fas fa-hdd mr-1"></i>{{ $asset->formatted_size }}</p>
+                    <p title="{{ __('Last modified') }} {{ $asset->updated_at }}"><i class="fas fa-clock mr-1"></i>{{ $asset->updated_at->diffForHumans() }}</p>
+                    <p class="truncate" title="{{ __('Uploaded by') }} {{ $asset->user->name  }}"><i class="fas fa-user mr-1"></i>{{ $asset->user->name }}</p>
+                </div>
+
+                @if($asset->tags->count() > 0)
+                <div class="flex flex-wrap gap-1 mt-2">
+                    @foreach($asset->tags->take(2) as $tag)
+                    <x-tag-badge :tag="$tag" size="xs" />
+                    @endforeach
+
+                    @if($asset->tags->count() > 2)
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        +{{ $asset->tags->count() - 2 }}
+                    </span>
+                    @endif
+                </div>
+                @endif
+            </div>
+        </div>
+        @endforeach
+    </div>
+
+    <!-- List/Table View -->
+    <div x-show="viewMode === 'list'" x-cloak class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto invert-scrollbar-colors">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-center w-10">
+                            <div @click="$store.bulkSelection.toggleSelectAll()"
+                                 :class="$store.bulkSelection.allOnPageSelected ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
+                                 class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
+                                <i x-show="$store.bulkSelection.allOnPageSelected" class="fas fa-check text-white text-xs"></i>
+                            </div>
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                            {{ __('Thumbnail') }}
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                            {{ __('Filename') }}
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                            {{ __('Actions') }}
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
+                            {{ __('S3 Key') }}
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                            {{ __('Size') }}
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[300px]">
+                            {{ __('Tags') }}
+                        </th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                            {{ __('License') }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($assets as $asset)
+                    <tr x-data="assetRow({{ $asset->id }}, @js($asset->tags->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'attached_by' => $t->pivot->attached_by ?? $t->type])->toArray()), '{{ $asset->license_type }}', '{{ $asset->url }}')"
+                        class="hover:bg-gray-50 transition-colors">
+
+                        <!-- Selection checkbox -->
+                        <td class="px-4 py-3 text-center">
+                            <div @click="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)"
+                                 :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
+                                 class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
+                                <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
+                            </div>
+                        </td>
+
+                        <!-- Thumbnail -->
+                        <td class="px-4 py-3">
+                            <a href="{{ route('assets.show', $asset) }}" class="block">
+                                <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orca-500 transition-all relative">
+                                    @if($asset->is_missing)
+                                    <div class="absolute top-0 right-0 z-10">
+                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[0.6rem] font-medium bg-red-600 text-white">
+                                            <i class="fas fa-triangle-exclamation"></i>
+                                        </span>
+                                    </div>
+                                    @endif
+                                    @if($asset->isImage() && $asset->thumbnail_url)
+                                        <img src="{{ $asset->thumbnail_url }}"
+                                             alt="{{ $asset->filename }}"
+                                             :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                                             loading="lazy">
+                                    @elseif($asset->isSvg())
+                                        <img src="{{ $asset->url }}"
+                                             alt="{{ $asset->filename }}"
+                                             :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                                             loading="lazy">
+                                    @elseif($asset->isVideo() && $asset->thumbnail_url)
+                                        <img src="{{ $asset->thumbnail_url }}"
+                                             alt="{{ $asset->filename }}"
+                                             :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                                             loading="lazy">
+                                        <div class="absolute inset-0 flex items-center justify-center">
+                                            <div class="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
+                                                <i class="fas fa-play text-white text-[0.5rem] ml-px"></i>
+                                            </div>
+                                        </div>
+                                    @elseif($asset->isMathMl())
+                                        <x-mml-preview :asset="$asset" size="thumb" />
+                                    @else
+                                        <i class="fas {{ $asset->getFileIcon() }} text-3xl {{ $asset->getIconColorClass() }} opacity-60"></i>
+                                    @endif
+                                </div>
+                            </a>
+                        </td>
+
+                        <!-- Filename -->
+                        <td class="px-4 py-3">
+                            <div class="text-sm font-medium text-gray-900">{{ $asset->filename }}</div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                <span title="{{ __('Last modified') }} {{ $asset->updated_at }}">{{ $asset->updated_at->diffForHumans() }}</span>
+                                <span class="mx-1">•</span>
+                                <span title="{{ __('Uploaded by') }} {{ $asset->user->email }}">{{ $asset->user->name }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="actions-icons px-4 py-3">
+                            <div class="flex gap-3">
+                                <a href="{{ route('assets.show', $asset) }}"
+                                   class="text-blue-600 hover:text-blue-800"
+                                   title="{{ __('View asset') }}">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button @click="copyUrl()"
+                                        :class="copied ? 'attention text-green-600' : 'text-gray-600 hover:text-gray-800'"
+                                        :title="copied ? @js(__('Copied!')) : @js(__('Copy URL'))">
+                                    <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
+                                </button>
+                                <a href="{{ route('assets.edit', $asset) }}"
+                                   class="attention text-yellow-600 hover:text-yellow-800"
+                                   title="{{ __('Edit asset') }}">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{{ route('assets.replace', $asset) }}"
+                                   class="attention text-amber-600 hover:text-amber-800"
+                                   title="{{ __('Replace asset') }}">
+                                    <i class="fas fa-shuffle"></i>
+                                </a>
+                                <button @click="deleteAsset()"
+                                        :disabled="loading"
+                                        class="text-red-800 hover:text-red-900 disabled:opacity-50"
+                                        title="{{ __('Delete asset') }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+
+                        <!-- S3 Key -->
+                        <td class="px-4 py-3">
+                            <div class="text-xs text-gray-600 font-mono break-all">{{ $asset->s3_key }}</div>
+                        </td>
+
+                        <!-- File Size -->
+                        <td class="px-4 py-3">
+                            <span class="text-sm text-gray-700">{{ $asset->formatted_size }}</span>
+                        </td>
+
+                        <!-- Tags with Inline Editing -->
+                        <td class="px-4 py-3">
+                            <div class="flex flex-wrap gap-2">
+                                <!-- Existing Tags -->
+                                <template x-for="(tag, index) in tags" :key="tag.id">
+                                    <span x-data="{ expanded: false }"
+                                          :class="[
+                                            tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'),
+                                            tag.attached_by && tag.attached_by !== tag.type ? (tag.attached_by === 'ai' ? 'ring-2 ring-purple-400' : (tag.attached_by === 'reference' ? 'ring-2 ring-orange-400' : 'ring-2 ring-blue-400')) : ''
+                                          ]"
+                                          :title="(tag.type === 'reference' && tag.name.length > 12 ? tag.name : '') + (tag.attached_by && tag.attached_by !== tag.type ? (tag.type === 'reference' && tag.name.length > 12 ? ' — ' : '') + '{{ __('Created as') }}: ' + tag.type + ', {{ __('Attached by') }}: ' + tag.attached_by : '')"
+                                          class="tag attention inline-flex items-center px-2 py-1 rounded text-xs font-medium">
+                                        <span x-text="tag.type === 'reference' && tag.name.length > 12 && !expanded ? tag.name.substring(0, 12) + '…' : tag.name"
+                                              :style="tag.type === 'reference' && tag.name.length > 12 ? 'cursor:pointer' : ''"
+                                              @click.stop="if (tag.type === 'reference' && tag.name.length > 12) expanded = !expanded"></span>
+                                        <button @click="removeTag(tag)"
+                                                :disabled="loading"
+                                                class="ml-1 hover:text-red-600 disabled:opacity-50"
+                                                title="{{ __('Remove tag') }}">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </span>
+                                </template>
+
+                                <!-- Add Tag Button/Input -->
+                                <div x-show="!addingTag">
+                                    <button @click="showAddTagInput()"
+                                            :disabled="loading"
+                                            class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">
+                                        <i class="fas fa-plus mr-1"></i> {{ __('Add') }}
+                                    </button>
+                                </div>
+
+                                <div x-show="addingTag" x-cloak class="relative inline-flex items-center gap-1">
+                                    <div class="relative">
+                                        <input type="text"
+                                               x-ref="tagInput"
+                                               x-model="newTagName"
+                                               @input="filterTagSuggestions()"
+                                               @keydown.enter="if(newTagName.trim()) { addTag(); }"
+                                               @keydown.escape="cancelAddTag()"
+                                               @keydown.arrow-down.prevent="selectNextSuggestion()"
+                                               @keydown.arrow-up.prevent="selectPrevSuggestion()"
+                                               @blur="setTimeout(() => showSuggestions = false, 200)"
+                                               @focus="filterTagSuggestions()"
+                                               class="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                               placeholder="{{ __('Tag name') }}"
+                                               style="width: 120px;">
+
+                                        <!-- Autocomplete dropdown -->
+                                        <div x-show="showSuggestions && filteredSuggestions.length > 0"
+                                             x-cloak
+                                             class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto">
+                                            <template x-for="(suggestion, index) in filteredSuggestions" :key="suggestion">
+                                                <button type="button"
+                                                        @mousedown.prevent="selectSuggestion(suggestion)"
+                                                        :class="selectedSuggestionIndex === index ? 'bg-blue-100' : 'hover:bg-gray-100'"
+                                                        class="w-full text-left px-3 py-1.5 text-xs text-gray-700 border-b border-gray-100 last:border-b-0"
+                                                        x-text="suggestion">
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <button @click="addTag()"
+                                            :disabled="!newTagName.trim() || loading"
+                                            class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50">
+                                        {{ __('Add') }}
+                                    </button>
+                                    <button @click="cancelAddTag()"
+                                            class="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- License with Inline Editing -->
+                        <td class="px-4 py-3">
+                            <select x-model="license"
+                                    @change="updateLicense()"
+                                    :disabled="loading"
+                                    class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50">
+                                <option value="">{{ __('Not specified') }}</option>
+                                <option value="public_domain">{{ __('Public Domain') }}</option>
+                                <option value="cc0">{{ __('CC0') }}</option>
+                                <option value="cc_by">{{ __('CC BY') }}</option>
+                                <option value="cc_by_sa">{{ __('CC BY-SA') }}</option>
+                                <option value="cc_by_nd">{{ __('CC BY-ND') }}</option>
+                                <option value="cc_by_nc">{{ __('CC BY-NC') }}</option>
+                                <option value="cc_by_nc_sa">{{ __('CC BY-NC-SA') }}</option>
+                                <option value="cc_by_nc_nd">{{ __('CC BY-NC-ND') }}</option>
+                                <option value="fair_use">{{ __('Fair Use') }}</option>
+                                <option value="all_rights_reserved">{{ __('All Rights Reserved') }}</option>
+                                <option value="other">{{ __('Other') }}</option>
+                            </select>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-2">
+            <label for="perPageSelect" class="hidden lg:block text-sm text-gray-600">{{ __('Results per page:') }}</label>
+            <select id="perPageSelect"
+                    x-model="perPage"
+                    @change="applyFilters()"
+                    class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                <option value="12">12</option>
+                <option value="24">24</option>
+                <option value="36">36</option>
+                <option value="48">48</option>
+                <option value="60">60</option>
+                <option value="72">72</option>
+                <option value="96">96</option>
+            </select>
+        </div>
+        <div>
+            {{ $assets->links() }}
+        </div>
+    </div>
+
+    <!-- Floating Bulk Action Bar -->
+    <div x-show="$store.bulkSelection.hasSelection"
+         x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="translate-y-full opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-full opacity-0"
+         class="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 text-white shadow-2xl border-t border-gray-700">
+        <div class="mx-auto px-6 py-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Selected count -->
+                <span class="text-sm font-medium whitespace-nowrap">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    <span x-text="$store.bulkSelection.selected.length"></span> {{ __('selected') }}
+                </span>
+
+                <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
+
+                <!-- Add tag input with autocomplete -->
+                <div class="relative flex items-center gap-2">
+                    <div class="relative">
+                        <input type="text"
+                               x-model="bulkTagInput"
+                               @input="bulkFilterTagSuggestions()"
+                               @keydown.enter="if(bulkTagInput.trim()) { bulkAddTag(); }"
+                               @keydown.escape="bulkShowSuggestions = false"
+                               @keydown.arrow-down.prevent="bulkSelectNextSuggestion()"
+                               @keydown.arrow-up.prevent="bulkSelectPrevSuggestion()"
+                               @blur="setTimeout(() => bulkShowSuggestions = false, 200)"
+                               @focus="bulkFilterTagSuggestions()"
+                               :disabled="bulkLoading"
+                               placeholder="{{ __('Add tag') }}..."
+                               class="px-3 py-1.5 text-sm text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-white focus:border-transparent w-40 disabled:opacity-50">
+
+                        <!-- Autocomplete dropdown (opens upward) -->
+                        <div x-show="bulkShowSuggestions && bulkFilteredSuggestions.length > 0"
+                             x-cloak
+                             class="absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                            <template x-for="(suggestion, index) in bulkFilteredSuggestions" :key="suggestion">
+                                <button type="button"
+                                        @mousedown.prevent="bulkSelectSuggestion(suggestion)"
+                                        :class="bulkSelectedSuggestionIndex === index ? 'bg-blue-100' : 'hover:bg-gray-100'"
+                                        class="w-full text-left px-3 py-1.5 text-xs text-gray-700 border-b border-gray-100 last:border-b-0"
+                                        x-text="suggestion">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    <button @click="bulkAddTag()"
+                            :disabled="!bulkTagInput.trim() || bulkLoading"
+                            class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
+                        <i class="fas fa-plus mr-1"></i> {{ __('Add tag') }}
+                    </button>
+                </div>
+
+                <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
+
+                <!-- Remove tags button -->
+                <div class="relative">
+                    <button @click="bulkShowRemovePanel ? (bulkShowRemovePanel = false) : bulkLoadRemoveTags()"
+                            :disabled="bulkLoading"
+                            class="attention px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 disabled:opacity-50 whitespace-nowrap">
+                        <i class="fas fa-tags mr-1"></i> {{ __('Remove tags') }}
+                        <i :class="bulkLoading ? 'fas fa-spinner fa-spin ml-1' : ''"></i>
+                    </button>
+
+                    <!-- Remove tags panel (opens upward) -->
+                    <div x-show="bulkShowRemovePanel"
+                         x-cloak
+                         @click.away="bulkShowRemovePanel = false"
+                         class="absolute bottom-full mb-2 left-0 w-72 bg-white border border-gray-300 rounded-lg shadow-xl p-3 invert-scrollbar-colors">
+                        <p class="text-xs text-gray-500 mb-2">{{ __('Click a tag to remove it from all selected assets') }}</p>
+                        <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto">
+                            <template x-if="bulkRemoveTags.length === 0">
+                                <p class="text-xs text-gray-400">{{ __('No tags found on selected assets') }}</p>
+                            </template>
+                            <template x-for="tag in bulkRemoveTags" :key="tag.id">
+                                <button @click="bulkRemoveTag(tag.id)"
+                                        :disabled="bulkLoading"
+                                        :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200')"
+                                        class="attention inline-flex items-center px-2 py-1 rounded text-xs font-medium disabled:opacity-50 transition-colors">
+                                    <span x-text="tag.name"></span>
+                                    <span class="ml-1 text-[0.65rem] opacity-70" x-text="'(' + tag.count + ')'"></span>
+                                    <i class="fas fa-times ml-1.5 text-xs"></i>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                @if(auth()->user()->isAdmin() && \App\Models\Setting::get('maintenance_mode', false))
+                <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
+
+                <!-- Bulk move -->
+                <div class="relative">
+                    <button @click="bulkMoveOpen = !bulkMoveOpen"
+                            :disabled="bulkMoving"
+                            class="attention px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap">
+                        <i class="fas fa-folder-open mr-1"></i> {{ __('Move asset(s)') }}
+                        <i :class="bulkMoving ? 'fas fa-spinner fa-spin ml-1' : ''"></i>
+                    </button>
+
+                    <!-- Folder picker panel (opens upward) -->
+                    <div x-show="bulkMoveOpen"
+                         x-cloak
+                         @click.away="bulkMoveOpen = false"
+                         class="absolute bottom-full mb-2 left-0 w-72 bg-white border border-gray-300 rounded-lg shadow-xl p-3">
+                        <p class="text-xs text-gray-500 mb-2">{{ __('Select destination folder') }}</p>
+                        <select x-model="bulkMoveFolder" class="w-full text-black px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent mb-2">
+                            <option value="">{{ __('Select folder') }}...</option>
+                            <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
+                        </select>
+                        <button @click="bulkMoveApply()"
+                                :disabled="!bulkMoveFolder || bulkMoving"
+                                class="attention w-full px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50">
+                            <i class="fas fa-arrows-alt mr-1"></i> {{ __('Apply') }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
+
+                <!-- Bulk permanent delete -->
+                <button @click="bulkForceDelete()"
+                        :disabled="bulkDeleting"
+                        class="attention px-3 py-1.5 bg-red-700 text-white text-sm rounded-lg hover:bg-red-800 disabled:opacity-50 whitespace-nowrap">
+                    <i class="fas fa-skull-crossbones mr-1"></i> {{ __('Permanent delete') }}
+                    <i :class="bulkDeleting ? 'fas fa-spinner fa-spin ml-1' : ''"></i>
+                </button>
+                @endif
+
+                <!-- Spacer -->
+                <div class="flex-1"></div>
+
+                <!-- Clear selection -->
+                <button @click="$store.bulkSelection.clear(); bulkShowRemovePanel = false; bulkMoveOpen = false"
+                        class="px-3 py-1.5 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600 whitespace-nowrap">
+                    <i class="fas fa-times mr-1"></i> {{ __('Clear selection') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk move loading modal -->
+    <div x-show="bulkMoving"
+         x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-8 text-center">
+            <!-- Animated orca logo -->
+            <div class="mb-6 flex justify-center">
+                <div class="relative w-24 h-24">
+                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 animate-orca-swim">
+                        <ellipse cx="50" cy="55" rx="35" ry="25" fill="#1a1a1a"/>
+                        <path d="M 15 60 Q 5 50, 8 42 Q 16 48, 16 50 Z" fill="#1a1a1a"/>
+                        <path d="M 15 50 Q 5 60, 8 68 Q 16 62, 16 60 Z" fill="#1a1a1a"/>
+                        <path d="M 44 40 L 42 15 L 48 30 Z" fill="#1a1a1a"/>
+                        <ellipse cx="60" cy="58" rx="15" ry="10" fill="white"/>
+                        <ellipse cx="68" cy="48" rx="8" ry="10" fill="white" transform="rotate(-20 68 48)"/>
+                        <circle cx="68" cy="48" r="3" fill="#1a1a1a"/>
+                        <circle cx="69" cy="47" r="1" fill="white"/>
+                        <path d="M 72 55 Q 78 58, 82 55" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="48" cy="70" rx="7" ry="15" fill="#1a1a1a" transform="rotate(30 48 70)"/>
+                    </svg>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('Moving assets') }}...</h3>
+            <p class="text-sm text-gray-500 mb-5">{{ __('This may take a while depending on the number of selected assets.') }}</p>
+
+            <!-- Animated progress bar -->
+            <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div class="h-full bg-amber-500 rounded-full animate-orca-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk move summary modal -->
+    <div x-show="bulkMoveShowSummary"
+         x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+         @keydown.escape.window="bulkMoveDismissSummary()">
+        <div class="bg-white rounded-lg shadow-xl max-w-xl w-full mx-4" @click.away="bulkMoveDismissSummary()">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="attention fas fa-check-circle text-green-500 mr-2"></i>{{ __('Assets moved') }}
+                </h3>
+                <button @click="bulkMoveDismissSummary()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-3">
+                    <span x-text="bulkMoveResults?.moved || 0"></span> {{ __('asset(s) moved. Old → new S3 keys:') }}
+                </p>
+                <textarea readonly
+                          x-ref="moveSummaryText"
+                          :value="bulkMoveSummaryText"
+                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
+                          @focus="$event.target.select()"></textarea>
+                <div class="mt-4 flex justify-end gap-3">
+                    <button @click="bulkMoveCopySummary()"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-copy mr-1"></i> {{ __('Copy') }}
+                    </button>
+                    <button @click="bulkMoveDismissSummary()"
+                            class="px-4 py-2 bg-orca-black text-white text-sm rounded-lg hover:bg-orca-black-hover">
+                        {{ __('Done') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk delete loading modal -->
+    <div x-show="bulkDeleting"
+         x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-8 text-center">
+            <!-- Animated orca logo -->
+            <div class="mb-6 flex justify-center">
+                <div class="relative w-24 h-24">
+                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 animate-orca-swim">
+                        <ellipse cx="50" cy="55" rx="35" ry="25" fill="#1a1a1a"/>
+                        <path d="M 15 60 Q 5 50, 8 42 Q 16 48, 16 50 Z" fill="#1a1a1a"/>
+                        <path d="M 15 50 Q 5 60, 8 68 Q 16 62, 16 60 Z" fill="#1a1a1a"/>
+                        <path d="M 44 40 L 42 15 L 48 30 Z" fill="#1a1a1a"/>
+                        <ellipse cx="60" cy="58" rx="15" ry="10" fill="white"/>
+                        <ellipse cx="68" cy="48" rx="8" ry="10" fill="white" transform="rotate(-20 68 48)"/>
+                        <circle cx="68" cy="48" r="3" fill="#1a1a1a"/>
+                        <circle cx="69" cy="47" r="1" fill="white"/>
+                        <path d="M 72 55 Q 78 58, 82 55" stroke="#1a1a1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        <ellipse cx="48" cy="70" rx="7" ry="15" fill="#1a1a1a" transform="rotate(30 48 70)"/>
+                    </svg>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('Permanently deleting assets') }}...</h3>
+            <p class="text-sm text-gray-500 mb-5">{{ __('This may take a while depending on the number of selected assets.') }}</p>
+
+            <!-- Animated progress bar -->
+            <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div class="h-full bg-red-500 rounded-full animate-orca-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk delete summary modal -->
+    <div x-show="bulkDeleteShowSummary"
+         x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+         @keydown.escape.window="bulkDeleteDismissSummary()">
+        <div class="bg-white rounded-lg shadow-xl max-w-xl w-full mx-4" @click.away="bulkDeleteDismissSummary()">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="attention fas fa-check-circle text-green-500 mr-2"></i>{{ __('Assets permanently deleted') }}
+                </h3>
+                <button @click="bulkDeleteDismissSummary()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-3">
+                    <span x-text="bulkDeleteResults?.deleted || 0"></span> {{ __('asset(s) permanently deleted. Deleted S3 keys:') }}
+                </p>
+                <textarea readonly
+                          :value="bulkDeleteSummaryText"
+                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
+                          @focus="$event.target.select()"></textarea>
+                <div class="mt-4 flex justify-end gap-3">
+                    <button @click="bulkDeleteCopySummary()"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-copy mr-1"></i> {{ __('Copy') }}
+                    </button>
+                    <button @click="bulkDeleteDismissSummary()"
+                            class="px-4 py-2 bg-orca-black text-white text-sm rounded-lg hover:bg-orca-black-hover">
+                        {{ __('Done') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @else
+    <div class="text-center py-12">
+        <i class="fas fa-images text-6xl text-gray-300 mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ __('No assets found') }}</h3>
+        <p class="text-gray-500 mb-6">
+            @if(request()->has('search') || request()->has('tags') || request()->has('type'))
+                {{ __('Try adjusting your filters or') }}
+                <a href="{{ route($indexRoute) }}" class="text-blue-600 hover:underline">{{ __('clear all filters') }}</a>
+            @else
+                {{ __('Get started by uploading your first asset') }}
+            @endif
+        </p>
+        <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`" class="inline-flex items-center px-6 py-3 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
+            <i class="fas fa-upload mr-2"></i> {{ __('Upload Assets') }}
+        </a>
+    </div>
+    @endif
+</div>
+
+@push('scripts')
+<script>
+// Page data for Alpine.js components
+window.currentPageAssetIds = @json($assets->pluck('id')->toArray());
+
+window.assetGridConfig = {
+    search: @json(request('search', '')),
+    type: @json(request('type', '')),
+    folder: @json($folder),
+    rootFolder: @json($rootFolder),
+    folderCount: {{ count($folders) }},
+    sort: @json(request('sort', 'date_desc')),
+    selectedTags: @json(request('tags', [])),
+    initialTags: @json(request('tags', [])),
+    perPage: '{{ $perPage }}',
+    indexRoute: '{{ route($indexRoute) }}'
+};
+
+window.assetTranslations = {
+    downloadFailed: @js(__('Download failed')),
+    tagRemoved: @js(__('Tag removed successfully')),
+    tagRemoveFailed: @js(__('Failed to remove tag')),
+    tagAdded: @js(__('Tag added successfully')),
+    tagAddFailed: @js(__('Failed to add tag')),
+    licenseUpdated: @js(__('License updated successfully')),
+    licenseUpdateFailed: @js(__('Failed to update license')),
+    deleteConfirm: @js(__('Are you sure you want to delete this asset? It will be moved to trash.')),
+    assetDeleted: @js(__('Asset deleted successfully')),
+    assetDeleteFailed: @js(__('Failed to delete asset')),
+    moveConfirm: @js(__('This will change the S3 keys of the selected assets. External links to the old URLs will break. Are you sure?')),
+    moveFailed: @js(__('Failed to move assets')),
+    forceDeleteConfirm: @js(__('This will PERMANENTLY delete the selected assets, their thumbnails, and all resized formats from S3. External links will no longer work. This action cannot be undone. Are you sure?')),
+    forceDeleteFailed: @js(__('Failed to permanently delete assets')),
+    urlCopied: @js(__('URL copied to clipboard!')),
+    copied: @js(__('Copied!')),
+    failedToCopy: @js(__('Failed to copy URL'))
+};
+</script>
+@endpush

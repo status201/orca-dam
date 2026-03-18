@@ -36,6 +36,32 @@ class AssetController extends Controller
      */
     public function index(Request $request)
     {
+        $data = $this->buildIndexData($request);
+        $data['indexRoute'] = 'assets.index';
+
+        session(['assets_return_url' => $request->fullUrl()]);
+
+        return view('assets.index', $data);
+    }
+
+    /**
+     * Display assets in an embeddable layout (no header/footer)
+     */
+    public function embed(Request $request)
+    {
+        $data = $this->buildIndexData($request);
+        $data['indexRoute'] = 'assets.embed';
+
+        session(['assets_return_url' => $request->fullUrl()]);
+
+        return view('assets.embed', $data);
+    }
+
+    /**
+     * Build shared data for the asset index/embed views
+     */
+    private function buildIndexData(Request $request): array
+    {
         $query = Asset::with(['tags', 'user']);
 
         // Apply search
@@ -86,7 +112,7 @@ class AssetController extends Controller
 
         $missingCount = Asset::missing()->count();
 
-        return view('assets.index', compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount'));
+        return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount');
     }
 
     /**

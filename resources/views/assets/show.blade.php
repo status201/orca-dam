@@ -6,7 +6,7 @@
 <div class="max-w-7xl mx-auto" x-data="assetDetail()">
     <!-- Back button and breadcrumb -->
     <div class="mb-6 flex items-center justify-between">
-        <a href="{{ route('assets.index') }}" class="inline-flex items-center text-orca-black hover:text-orca-black-hover">
+        <a href="{{ session('assets_return_url', route('assets.index')) }}" class="inline-flex items-center text-orca-black hover:text-orca-black-hover">
             <i class="fas fa-arrow-left mr-2"></i> {{ __('Back to Assets') }}
         </a>
 

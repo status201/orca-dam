@@ -131,6 +131,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 `POST .../init` | `POST .../chunk` | `POST .../complete` | `POST .../abort`
 
 ### Web Routes (`routes/web.php`, session auth)
+- `GET /assets/embed` - Embeddable asset browser (no nav/footer, for iframes). Supports all index query params
 - `POST/DELETE /assets/{asset}/tags[/{tag}]` - Manage tags
 - `POST /assets/bulk/tags` - Bulk add tags to multiple assets
 - `POST /assets/bulk/tags/remove` - Bulk remove tags from multiple assets
@@ -191,7 +192,7 @@ PHP_CLI_PATH=/usr/bin/php
 
 **File organization**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware in `app/Http/Middleware/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console Commands in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g., `DuplicateAssetException`)
 
-**Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (14 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `trash`). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives.
+**Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (14 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `trash`). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives. The asset grid markup lives in `resources/views/assets/partials/grid.blade.php` and is shared between the index and embed views.
 
 **Naming**: S3 keys `assets/{folder}/{uuid}.{ext}`, thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG). RESTful routes, snake_case columns.
 
@@ -208,7 +209,7 @@ PHP_CLI_PATH=/usr/bin/php
 **Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
 
 ```
-tests/Feature/  - AssetTest, TagTest, TagAttributionTest, ExportTest, ImportTest, ApiTest, SystemTest,
+tests/Feature/  - AssetTest, TagTest, TagAttributionTest, EmbedTest, ExportTest, ImportTest, ApiTest, SystemTest,
                   IntegrityTest, BulkMoveTest, BulkForceDeleteTest, BulkTrashTest,
                   DuplicatePreventionTest,
                   JwtAuthTest, JwtSecretManagementTest, LocaleTest, ProfileTest, TwoFactorAuthTest,
@@ -283,13 +284,13 @@ resources/
 │       ├── export.js, import.js, preferences.js, system-admin.js
 │       ├── tags.js, trash.js
 └── views/
-    ├── assets/ (index, create, show, edit, replace, trash)
+    ├── assets/ (index, create, show, edit, replace, trash, embed, partials/grid)
     ├── auth/ (login, register, forgot-password, reset-password, confirm-password,
     │          verify-email, two-factor-setup, two-factor-challenge, two-factor-recovery-codes)
     ├── profile/ (edit, partials/*)
     ├── discover/, import/, export/, tags/, users/ (index, create, edit)
     ├── system/index, api/index, dashboard
-    ├── layouts/ (app, guest, navigation)
+    ├── layouts/ (app, guest, embed, navigation)
     ├── components/ (app-layout, modal, dropdown, buttons, inputs, footer, etc.)
     ├── errors/ (404, 419, 500, 503)
     └── vendor/pagination/ (tailwind, bootstrap, etc.)

@@ -319,6 +319,40 @@ onMounted(fetchAssets);
 
 ---
 
+## Embed Mode (iframe)
+
+For a quick integration without building a custom picker, ORCA provides an embeddable asset browser at `/assets/embed`. It renders the full asset index without navigation or footer, suitable for iframes and popups.
+
+```
+/assets/embed?type=image&folder=assets&sort=date_desc
+```
+
+All standard query parameters are supported: `search`, `tags`, `type`, `folder`, `sort`, `per_page`.
+
+**Requires session auth** — the user must be logged in to ORCA. If not, they'll be redirected to the login page and back to the embed view after authentication.
+
+### Example: Open in a popup
+```javascript
+function openOrcaPicker(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    const url = `https://your-orca-dam.com/assets/embed${params ? '?' + params : ''}`;
+    window.open(url, 'orca-picker', 'width=1200,height=800');
+}
+
+// Open with video filter
+openOrcaPicker({ type: 'video' });
+```
+
+### Example: Embed in an iframe
+```html
+<iframe src="https://your-orca-dam.com/assets/embed?type=image"
+        width="100%" height="600" frameborder="0"></iframe>
+```
+
+> **Note:** For cross-origin iframes, ensure your ORCA instance allows embedding via `X-Frame-Options` or `Content-Security-Policy` headers. Same-origin iframes work out of the box.
+
+---
+
 ## CORS Configuration
 
 If your RTE is on a different domain:

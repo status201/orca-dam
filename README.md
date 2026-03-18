@@ -35,6 +35,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🗑️ Bulk permanent delete from index page (maintenance mode)
 - ✔️ S3 integrity verification (detect missing assets in cloud storage)
 - 📱 Responsive design
+- 🖼️ **Embeddable asset browser** (`/assets/embed`) for iframe integration
 - 🌐 OpenAPI 3 for Rich Text Editor or System integration
 - 🔓 Public metadata API endpoint (no auth required)
 - 🔒 Long-lived token support (Laravel Sanctum Token) for back-ends

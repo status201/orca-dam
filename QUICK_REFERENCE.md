@@ -151,12 +151,12 @@ orca-dam/
 │   │       └── tags.js, trash.js
 │   └── views/
 │       ├── api/                       # OpenAPI documentation view
-│       ├── assets/                    # Asset views (index, show, edit, create, replace, trash)
+│       ├── assets/                    # Asset views (index, show, edit, create, replace, trash, embed)
 │       ├── auth/                      # Authentication & 2FA views
 │       ├── components/                # Blade components
 │       ├── discover/, export/, import/, tags/, users/
 │       ├── errors/                    # 404, 419, 500, 503 error pages
-│       ├── layouts/                   # App & guest layouts
+│       ├── layouts/                   # App, guest & embed layouts
 │       ├── profile/                   # Profile & preferences
 │       ├── system/                    # System admin view
 │       └── vendor/pagination/         # Custom pagination templates
@@ -169,6 +169,7 @@ orca-dam/
 │   ├── Feature/
 │   │   ├── ApiTest.php                # API endpoints, sorting, meta
 │   │   ├── AssetTest.php              # Asset CRUD, sorting, permissions
+│   │   ├── EmbedTest.php             # Embeddable asset browser
 │   │   ├── BulkForceDeleteTest.php    # Bulk permanent delete
 │   │   ├── BulkMoveTest.php           # Bulk asset move
 │   │   ├── BulkTrashTest.php          # Bulk soft delete & restore
@@ -211,6 +212,7 @@ orca-dam/
 ### Web Routes
 ```
 GET  /assets                   # List assets
+GET  /assets/embed              # Embeddable asset browser (no nav/footer, for iframes)
 GET  /assets/create            # Upload form
 POST /assets                   # Store assets
 GET  /assets/{id}              # View asset
