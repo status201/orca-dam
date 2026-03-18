@@ -7,16 +7,13 @@
         init() { this.lastY = window.scrollY; },
         onScroll() {
             const y = window.scrollY;
-            if (y < 10) {
-                this.compact = false;
-                this.hidden = false;
-            } else if (y > this.lastY) {
+            if (y > this.lastY) {
                 this.compact = true;
                 if (y > 100) this.hidden = true;
             } else if (y < this.lastY) {
-                this.compact = true;
                 this.hidden = false;
             }
+            this.compact = y >= 10;
             this.lastY = y;
         }
     }"
