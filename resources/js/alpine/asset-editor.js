@@ -223,6 +223,112 @@ export function videoThumbnailGenerator() {
 }
 window.videoThumbnailGenerator = videoThumbnailGenerator;
 
+export function pdfThumbnailGenerator() {
+    const pageData = window.__pageData || {};
+    return {
+        showModal: false,
+        generating: false,
+        uploading: false,
+        pages: [],
+        pageLabels: [],
+        selectedIndex: null,
+        error: null,
+
+        openModal() {
+            this.showModal = true;
+            this.pages = [];
+            this.pageLabels = [];
+            this.selectedIndex = null;
+            this.error = null;
+            this.renderPages();
+        },
+
+        async renderPages() {
+            this.generating = true;
+            this.error = null;
+
+            try {
+                const pdfjsLib = await import('pdfjs-dist');
+                const PdfWorker = (await import('pdfjs-dist/build/pdf.worker.mjs?worker')).default;
+                pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
+
+                const pdf = await pdfjsLib.getDocument(pageData.assetUrl).promise;
+                const maxSize = 300;
+                const numPages = Math.min(pdf.numPages, 3);
+                const renderedPages = [];
+                const labels = [];
+
+                for (let i = 1; i <= numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 1 });
+
+                    const scale = Math.min(maxSize / viewport.width, maxSize / viewport.height, 1);
+                    const scaledViewport = page.getViewport({ scale });
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.round(scaledViewport.width);
+                    canvas.height = Math.round(scaledViewport.height);
+                    const ctx = canvas.getContext('2d');
+
+                    await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+
+                    renderedPages.push(canvas.toDataURL('image/jpeg', 0.85));
+                    labels.push(i);
+                }
+
+                this.pages = renderedPages;
+                this.pageLabels = labels;
+                this.selectedIndex = 0;
+            } catch (e) {
+                if (e.name === 'PasswordException') {
+                    this.error = pageData.translations.pdfPasswordProtected;
+                } else {
+                    this.error = pageData.translations.failedToLoadPdf;
+                    console.error('PDF render error:', e);
+                }
+            } finally {
+                this.generating = false;
+            }
+        },
+
+        async confirm() {
+            if (this.selectedIndex === null || !this.pages[this.selectedIndex]) return;
+
+            this.uploading = true;
+            this.error = null;
+
+            const base64 = this.pages[this.selectedIndex].replace(/^data:image\/jpeg;base64,/, '');
+
+            try {
+                const response = await fetch(pageData.thumbnailStoreUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ thumbnail: base64 }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.showToast(data.message || pageData.translations.pdfPreviewSuccess);
+                    window.location.reload();
+                } else {
+                    this.error = data.message || pageData.translations.failedToUploadThumbnail;
+                }
+            } catch (e) {
+                this.error = pageData.translations.networkError;
+                console.error('Thumbnail upload error:', e);
+            } finally {
+                this.uploading = false;
+            }
+        }
+    };
+}
+window.pdfThumbnailGenerator = pdfThumbnailGenerator;
+
 export function aiTagManager() {
     const pageData = window.__pageData || {};
     return {

@@ -425,6 +425,22 @@ test('thumbnail_url returns url for SVG without thumbnail_s3_key', function () {
     expect($asset->thumbnail_url)->toBe($asset->url);
 });
 
+// ─── PDF handling ─────────────────────────────────────────────────────────────
+
+test('isPdf returns true for application/pdf mime type', function () {
+    $asset = Asset::factory()->create(['mime_type' => 'application/pdf', 's3_key' => 'assets/document.pdf']);
+
+    expect($asset->isPdf())->toBeTrue();
+});
+
+test('isPdf returns false for non-pdf mime types', function () {
+    $image = Asset::factory()->create(['mime_type' => 'image/jpeg', 's3_key' => 'assets/photo.jpg']);
+    $video = Asset::factory()->create(['mime_type' => 'video/mp4', 's3_key' => 'assets/video.mp4']);
+
+    expect($image->isPdf())->toBeFalse();
+    expect($video->isPdf())->toBeFalse();
+});
+
 test('asset scope withTags filters by tag ids', function () {
     $tag1 = Tag::factory()->create();
     $tag2 = Tag::factory()->create();

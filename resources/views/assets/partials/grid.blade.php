@@ -359,6 +359,14 @@
                             <i class="fas fa-play text-white text-sm ml-0.5"></i>
                         </div>
                     </div>
+                @elseif($asset->isPdf() && $asset->thumbnail_url)
+                    <img src="{{ $asset->thumbnail_url }}"
+                         alt="{{ $asset->filename }}"
+                         :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                         loading="lazy">
+                    <div class="absolute top-1 right-1 pointer-events-none">
+                        <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
+                    </div>
                 @elseif($asset->isMathMl())
                     <x-mml-preview :asset="$asset" size="thumb" />
                 @else
@@ -500,6 +508,14 @@
                                             <div class="w-6 h-6 bg-black/50 rounded-full flex items-center justify-center">
                                                 <i class="fas fa-play text-white text-[0.5rem] ml-px"></i>
                                             </div>
+                                        </div>
+                                    @elseif($asset->isPdf() && $asset->thumbnail_url)
+                                        <img src="{{ $asset->thumbnail_url }}"
+                                             alt="{{ $asset->filename }}"
+                                             :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
+                                             loading="lazy">
+                                        <div class="absolute top-0.5 right-0.5 pointer-events-none">
+                                            <i class="fas fa-file-pdf text-red-600 text-xs drop-shadow"></i>
                                         </div>
                                     @elseif($asset->isMathMl())
                                         <x-mml-preview :asset="$asset" size="thumb" />

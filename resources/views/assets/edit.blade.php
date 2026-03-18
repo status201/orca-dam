@@ -73,6 +73,15 @@
                         <img src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
                              alt="{{ $asset->filename }}"
                              class="max-w-sm rounded-lg">
+                    @elseif($asset->isPdf() && $asset->thumbnail_url)
+                        <div class="relative inline-block">
+                            <img src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
+                                 alt="{{ $asset->filename }}"
+                                 class="max-w-sm rounded-lg">
+                            <div class="absolute top-1 right-1 pointer-events-none">
+                                <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
+                            </div>
+                        </div>
                     @else
                         <div class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
                             <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60" style="font-size: 8rem;"></i>
@@ -131,6 +140,67 @@
                                         <button type="button" @click="confirm()"
                                                 :disabled="uploading || selectedIndex === null"
                                                 :class="uploading ? 'bg-pink-400 cursor-not-allowed' : 'bg-pink-600 hover:bg-pink-700'"
+                                                class="px-4 py-2 text-white rounded-lg transition-colors">
+                                            <i :class="uploading ? 'fas fa-spinner fa-spin' : 'fas fa-check'" class="mr-1"></i>
+                                            <span x-text="uploading ? @js(__('Uploading...')) : @js(__('Confirm'))"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                        @if($asset->isPdf())
+                        <div x-data="pdfThumbnailGenerator()">
+                            <button type="button"
+                                    @click="openModal()"
+                                    class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
+                                <i class="fas fa-camera mr-2"></i> {{ __('Generate Preview') }}
+                            </button>
+
+                            <!-- PDF Thumbnail Modal -->
+                            <div x-show="showModal" x-cloak
+                                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                                 @keydown.escape.window="showModal = false">
+                                <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 p-6" @click.outside="showModal = false">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h3 class="text-lg font-semibold">{{ __('Choose a preview thumbnail') }}</h3>
+                                        <button type="button" @click="showModal = false" class="text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+
+                                    <p class="text-sm text-gray-600 mb-4">{{ __('Select a page to use as the PDF thumbnail.') }}</p>
+
+                                    <!-- Generating state -->
+                                    <div x-show="generating" class="text-center py-8">
+                                        <i class="fas fa-spinner fa-spin text-3xl text-red-600 mb-3"></i>
+                                        <p class="text-gray-600">{{ __('Rendering pages...') }}</p>
+                                    </div>
+
+                                    <!-- Error state -->
+                                    <div x-show="error" x-cloak class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm" x-text="error"></div>
+
+                                    <!-- Page selection -->
+                                    <div x-show="pages.length > 0 && !generating" x-cloak class="grid grid-cols-3 gap-3 mb-4">
+                                        <template x-for="(page, index) in pages" :key="index">
+                                            <div @click="selectedIndex = index"
+                                                 :class="selectedIndex === index ? 'ring-2 ring-red-600 ring-offset-2' : 'ring-1 ring-gray-200'"
+                                                 class="cursor-pointer rounded-lg overflow-hidden transition-all hover:ring-2 hover:ring-red-400">
+                                                <img :src="page" class="w-full aspect-[3/4] object-contain bg-white" :alt="'Page ' + pageLabels[index]">
+                                                <div class="text-center text-xs py-1 bg-gray-50">{{ __('Page') }} <span x-text="pageLabels[index]"></span></div>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Actions -->
+                                    <div x-show="pages.length > 0 && !generating" x-cloak class="flex justify-end space-x-3">
+                                        <button type="button" @click="showModal = false"
+                                                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                            {{ __('Cancel') }}
+                                        </button>
+                                        <button type="button" @click="confirm()"
+                                                :disabled="uploading || selectedIndex === null"
+                                                :class="uploading ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'"
                                                 class="px-4 py-2 text-white rounded-lg transition-colors">
                                             <i :class="uploading ? 'fas fa-spinner fa-spin' : 'fas fa-check'" class="mr-1"></i>
                                             <span x-text="uploading ? @js(__('Uploading...')) : @js(__('Confirm'))"></span>
@@ -391,6 +461,9 @@
             fromThisAsset: @js(__('from this asset?')),
             aiTagRemovedSuccess: @js(__('AI tag removed successfully')),
             failedToRemoveAiTag: @js(__('Failed to remove AI tag')),
+            failedToLoadPdf: @js(__('Failed to render PDF. The file may be corrupted or unsupported.')),
+            pdfPasswordProtected: @js(__('This PDF is password-protected and cannot be previewed.')),
+            pdfPreviewSuccess: @js(__('PDF preview generated successfully.')),
         }
     };
 </script>

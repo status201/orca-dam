@@ -72,6 +72,13 @@
                     </video>
                 @elseif($asset->isMathMl())
                     <x-mml-preview :asset="$asset" size="full" :refreshable="true" />
+                @elseif($asset->isPdf() && $asset->thumbnail_url)
+                    <img src="{{ $asset->thumbnail_url }}"
+                         alt="{{ $asset->filename }}"
+                         class="h-auto my-0 mx-auto">
+                    <div class="absolute top-1 right-1 pointer-events-none">
+                        <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
+                    </div>
                 @else
                     <div class="aspect-video bg-gray-100 flex items-center justify-center">
                         <div class="text-center">

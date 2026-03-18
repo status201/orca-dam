@@ -8,6 +8,7 @@ export function assetUploader() {
         uploadProgress: {},
         fileWarnings: {},
         filePreviews: {},
+        fileThumbnails: {},
         CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
         CHUNKED_THRESHOLD: 10 * 1024 * 1024, // Use chunked upload for files >= 10MB
         selectedFolder: pageData.selectedFolder,
@@ -56,13 +57,101 @@ export function assetUploader() {
         },
 
         generatePreview(file, index) {
-            if (!file.type.startsWith('image/')) return;
-            this.filePreviews[index] = URL.createObjectURL(file);
+            if (file.type.startsWith('image/')) {
+                this.filePreviews[index] = URL.createObjectURL(file);
+                return;
+            }
+
+            if (file.type === 'application/pdf') {
+                this.generatePdfPreview(file, index);
+                return;
+            }
+
+            if (file.type.startsWith('video/')) {
+                this.generateVideoPreview(file, index);
+            }
+        },
+
+        async generatePdfPreview(file, index) {
+            try {
+                const pdfjsLib = await import('pdfjs-dist');
+                const PdfWorker = (await import('pdfjs-dist/build/pdf.worker.mjs?worker')).default;
+                pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
+
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 1 });
+
+                const maxSize = 300;
+                const scale = Math.min(maxSize / viewport.width, maxSize / viewport.height, 1);
+                const scaledViewport = page.getViewport({ scale });
+
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(scaledViewport.width);
+                canvas.height = Math.round(scaledViewport.height);
+                const ctx = canvas.getContext('2d');
+
+                await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                this.filePreviews[index] = dataUrl;
+                this.fileThumbnails[index] = dataUrl.replace(/^data:image\/jpeg;base64,/, '');
+            } catch (e) {
+                console.warn('PDF preview generation failed:', e);
+            }
+        },
+
+        generateVideoPreview(file, index) {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.muted = true;
+            video.preload = 'auto';
+
+            const maxSize = 300;
+
+            video.addEventListener('loadeddata', () => {
+                video.currentTime = Math.min(1, Math.max(0, video.duration - 0.1));
+            });
+
+            video.addEventListener('seeked', () => {
+                const canvas = document.createElement('canvas');
+                const vw = video.videoWidth;
+                const vh = video.videoHeight;
+                const scale = Math.min(maxSize / vw, maxSize / vh, 1);
+                canvas.width = Math.round(vw * scale);
+                canvas.height = Math.round(vh * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                try {
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                    this.filePreviews[index] = dataUrl;
+                    this.fileThumbnails[index] = dataUrl.replace(/^data:image\/jpeg;base64,/, '');
+                } catch (e) {
+                    console.warn('Video preview generation failed:', e);
+                }
+
+                URL.revokeObjectURL(url);
+                video.src = '';
+                video.load();
+            });
+
+            video.addEventListener('error', () => {
+                URL.revokeObjectURL(url);
+            });
+
+            video.src = url;
         },
 
         revokeAllPreviews() {
-            Object.values(this.filePreviews).forEach(url => URL.revokeObjectURL(url));
+            Object.values(this.filePreviews).forEach(url => {
+                if (typeof url === 'string' && url.startsWith('blob:')) {
+                    URL.revokeObjectURL(url);
+                }
+            });
             this.filePreviews = {};
+            this.fileThumbnails = {};
         },
 
         checkImageDimensions(file, index) {
@@ -86,7 +175,10 @@ export function assetUploader() {
 
             // Revoke removed preview
             if (this.filePreviews[index]) {
-                URL.revokeObjectURL(this.filePreviews[index]);
+                const preview = this.filePreviews[index];
+                if (typeof preview === 'string' && preview.startsWith('blob:')) {
+                    URL.revokeObjectURL(preview);
+                }
             }
 
             // Shift fileWarnings
@@ -106,6 +198,15 @@ export function assetUploader() {
                 else if (k > index) newPreviews[k - 1] = this.filePreviews[k];
             });
             this.filePreviews = newPreviews;
+
+            // Shift fileThumbnails
+            const newThumbnails = {};
+            Object.keys(this.fileThumbnails).forEach(key => {
+                const k = parseInt(key);
+                if (k < index) newThumbnails[k] = this.fileThumbnails[k];
+                else if (k > index) newThumbnails[k - 1] = this.fileThumbnails[k];
+            });
+            this.fileThumbnails = newThumbnails;
         },
 
         formatFileSize(bytes) {
@@ -209,6 +310,12 @@ export function assetUploader() {
 
                     if (result && result.duplicate) {
                         duplicates.push(result.duplicate.filename);
+                    } else if (this.fileThumbnails[i]) {
+                        // Upload client-generated thumbnail (fire-and-forget)
+                        const assetId = result?.assets?.[0]?.id || result?.asset?.id;
+                        if (assetId) {
+                            this.uploadThumbnailForAsset(assetId, this.fileThumbnails[i]);
+                        }
                     }
                 }
 
@@ -270,7 +377,12 @@ export function assetUploader() {
 
                 xhr.addEventListener('load', () => {
                     if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve();
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            resolve(data);
+                        } catch (e) {
+                            resolve();
+                        }
                     } else if (xhr.status === 409) {
                         resolve({ duplicate: { filename: file.name } });
                     } else {
@@ -419,6 +531,22 @@ export function assetUploader() {
                 });
             } catch (error) {
                 console.error('Failed to abort upload:', error);
+            }
+        },
+
+        async uploadThumbnailForAsset(assetId, thumbnailBase64) {
+            try {
+                await fetch(`/assets/${assetId}/thumbnail`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ thumbnail: thumbnailBase64 }),
+                });
+            } catch (e) {
+                console.warn('Failed to upload thumbnail for asset', assetId, e);
             }
         },
 
