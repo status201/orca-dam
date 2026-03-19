@@ -364,8 +364,8 @@
                          alt="{{ $asset->filename }}"
                          :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
                          loading="lazy">
-                    <div class="absolute top-1 right-1 pointer-events-none">
-                        <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
+                    <div class="absolute attention top-0 right-0 w-6 h-6 bg-white/60 rounded-bl-lg flex items-center justify-center pointer-events-none">
+                        <i class="fas fa-file-pdf text-red-600 text-sm"></i>
                     </div>
                 @elseif($asset->isMathMl())
                     <x-mml-preview :asset="$asset" size="thumb" />
@@ -514,8 +514,8 @@
                                              alt="{{ $asset->filename }}"
                                              :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
                                              loading="lazy">
-                                        <div class="absolute top-0.5 right-0.5 pointer-events-none">
-                                            <i class="fas fa-file-pdf text-red-600 text-xs drop-shadow"></i>
+                                        <div class="absolute attention top-0 right-0 w-6 h-6 bg-white/60 rounded-bl flex items-center justify-center pointer-events-none">
+                                            <i class="fas fa-file-pdf text-red-600 text-xs"></i>
                                         </div>
                                     @elseif($asset->isMathMl())
                                         <x-mml-preview :asset="$asset" size="thumb" />
