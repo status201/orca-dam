@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Asset;
+use App\Models\Setting;
 use App\Models\User;
 
 test('guests cannot access embed view', function () {
@@ -71,4 +72,42 @@ test('embed view uses embed route for filter navigation', function () {
 
     $response->assertStatus(200);
     $response->assertSee(route('assets.embed'));
+});
+
+test('response includes CSP frame-ancestors header when embed domains are configured', function () {
+    Setting::set('embed_allowed_domains', json_encode(['https://example.com', 'https://other.com']));
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get(route('assets.index'));
+
+    $response->assertHeader('Content-Security-Policy', "frame-ancestors 'self' https://example.com https://other.com");
+});
+
+test('X-Frame-Options is removed when embed domains are configured', function () {
+    Setting::set('embed_allowed_domains', json_encode(['https://example.com']));
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get(route('assets.index'));
+
+    $response->assertHeaderMissing('X-Frame-Options');
+});
+
+test('no CSP frame-ancestors header when embed domains list is empty', function () {
+    Setting::set('embed_allowed_domains', json_encode([]));
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get(route('assets.index'));
+
+    $response->assertHeaderMissing('Content-Security-Policy');
+});
+
+test('CSP frame-ancestors always includes self', function () {
+    Setting::set('embed_allowed_domains', json_encode(['https://example.com']));
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get(route('assets.embed'));
+
+    $csp = $response->headers->get('Content-Security-Policy');
+    expect($csp)->toContain("'self'");
+    expect($csp)->toContain('https://example.com');
 });

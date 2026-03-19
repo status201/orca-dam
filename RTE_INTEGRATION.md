@@ -349,7 +349,7 @@ openOrcaPicker({ type: 'video' });
         width="100%" height="600" frameborder="0"></iframe>
 ```
 
-> **Note:** For cross-origin iframes, ensure your ORCA instance allows embedding via `X-Frame-Options` or `Content-Security-Policy` headers. Same-origin iframes work out of the box.
+> **Note:** For cross-origin iframes, add the embedding domain to **System → Settings → Allowed Embed Domains**. This sets a `Content-Security-Policy: frame-ancestors` header that overrides any server-level `X-Frame-Options`. Same-origin iframes work out of the box.
 
 ---
 

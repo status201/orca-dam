@@ -108,6 +108,7 @@ orca-dam/
 │   │   ├── TokenController.php        # API token management
 │   │   └── UserController.php         # User management (admin)
 │   ├── Http/Middleware/
+│   │   ├── AllowEmbedding.php        # CSP frame-ancestors for iframe embedding
 │   │   ├── AuthenticateMultiple.php   # Sanctum + JWT dual auth
 │   │   └── SetLocale.php              # Locale resolution middleware
 │   ├── Jobs/
@@ -326,8 +327,8 @@ POST   /api/chunked-upload/abort     # Cancel upload
 ### settings
 - id, key (unique), value, type, group, description
 - Default settings: items_per_page, timezone, locale, s3_root_folder, custom_domain,
-  rekognition_max_labels, rekognition_min_confidence, rekognition_language,
-  jwt_enabled_override, api_meta_endpoint_enabled, api_upload_enabled
+  embed_allowed_domains, rekognition_max_labels, rekognition_min_confidence,
+  rekognition_language, jwt_enabled_override, api_meta_endpoint_enabled, api_upload_enabled
 
 ---
 
@@ -375,6 +376,7 @@ PHP_CLI_PATH=/usr/bin/php      # Find via: which php
 - `timezone` — Application timezone
 - `locale` — Global UI language (`en` or `nl`)
 - `items_per_page` — Default pagination
+- `embed_allowed_domains` — Domains allowed to embed ORCA in an iframe (sets CSP `frame-ancestors`)
 
 **API settings** (configured via API Docs → Dashboard):
 - `jwt_enabled_override` — Enable/disable JWT authentication at runtime

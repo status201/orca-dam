@@ -269,56 +269,6 @@
             <i class="fas fa-exclamation-circle mr-2"></i><span x-text="settingsError"></span>
         </div>
 
-        <!-- S3 Storage Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
-                <h4 class="text-base font-semibold text-gray-900">
-                    <i class="attention fab fa-aws mr-2 text-orange-500"></i>{{ __('S3 Storage') }}
-                </h4>
-                <p class="text-sm text-gray-500 mt-1">{{ __('Configure your S3 bucket connection and CDN settings') }}</p>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- S3 Root Folder -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            {{ __('Root folder prefix') }}
-                        </label>
-                        <div class="relative">
-                            <input type="text"
-                                   x-model="settings.s3_root_folder"
-                                   @change="updateSetting('s3_root_folder', settings.s3_root_folder)"
-                                   :readonly="rootFolderLocked"
-                                   placeholder=""
-                                   class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent"
-                                   :class="rootFolderLocked ? 'bg-gray-100 cursor-not-allowed' : ''">
-                            <button type="button"
-                                    @click="rootFolderLocked ? unlockRootFolder() : (rootFolderLocked = true)"
-                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-                                    :title="rootFolderLocked ? '{{ __('Unlock to edit') }}' : '{{ __('Lock field') }}'">
-                                <i class="fas" :class="rootFolderLocked ? 'fa-lock' : 'fa-lock-open'"></i>
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">{{ __('S3 prefix for root folder view & uploads. Leave empty for bucket root.') }}</p>
-                        <p class="attention text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Changing this does not move existing assets, but does change new thumb and resize paths!') }}</p>
-                    </div>
-
-                    <!-- Custom Domain -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            {{ __('Custom domain') }}
-                        </label>
-                        <input type="text"
-                               x-model="settings.custom_domain"
-                               @change="updateSetting('custom_domain', settings.custom_domain)"
-                               placeholder="https://cdn.example.com"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
-                        <p class="text-xs text-gray-500 mt-1">{{ __('Replaces the S3 bucket domain in asset URLs. Leave empty to use the default S3 URL.') }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Display Settings -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
@@ -497,6 +447,56 @@
             </div>
         </div>
 
+        <!-- S3 Storage Settings -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
+                <h4 class="text-base font-semibold text-gray-900">
+                    <i class="attention fab fa-aws mr-2 text-orange-500"></i>{{ __('S3 Storage') }}
+                </h4>
+                <p class="text-sm text-gray-500 mt-1">{{ __('Configure your S3 bucket connection and CDN settings') }}</p>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- S3 Root Folder -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ __('Root folder prefix') }}
+                        </label>
+                        <div class="relative">
+                            <input type="text"
+                                   x-model="settings.s3_root_folder"
+                                   @change="updateSetting('s3_root_folder', settings.s3_root_folder)"
+                                   :readonly="rootFolderLocked"
+                                   placeholder=""
+                                   class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent"
+                                   :class="rootFolderLocked ? 'bg-gray-100 cursor-not-allowed' : ''">
+                            <button type="button"
+                                    @click="rootFolderLocked ? unlockRootFolder() : (rootFolderLocked = true)"
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                                    :title="rootFolderLocked ? '{{ __('Unlock to edit') }}' : '{{ __('Lock field') }}'">
+                                <i class="fas" :class="rootFolderLocked ? 'fa-lock' : 'fa-lock-open'"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">{{ __('S3 prefix for root folder view & uploads. Leave empty for bucket root.') }}</p>
+                        <p class="attention text-xs text-amber-600 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Changing this does not move existing assets, but does change new thumb and resize paths!') }}</p>
+                    </div>
+
+                    <!-- Custom Domain -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ __('Custom domain') }}
+                        </label>
+                        <input type="text"
+                               x-model="settings.custom_domain"
+                               @change="updateSetting('custom_domain', settings.custom_domain)"
+                               placeholder="https://cdn.example.com"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                        <p class="text-xs text-gray-500 mt-1">{{ __('Replaces the S3 bucket domain in asset URLs. Leave empty to use the default S3 URL.') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- AWS Rekognition Settings -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
@@ -581,6 +581,30 @@
                 </div>
                 <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                     <p class="attention text-xs text-amber-700"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Moving assets changes their S3 keys and permanent deletion removes files from S3 entirely. Both will break external links. Only use these during initial setup or planned reorganization.') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Embedding Settings -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
+                <h4 class="text-base font-semibold text-gray-900">
+                    <i class="attention fas fa-code mr-2 text-cyan-500"></i>{{ __('Embedding') }}
+                </h4>
+                <p class="text-sm text-gray-500 mt-1">{{ __('Allow other websites to embed this application in an iframe') }}</p>
+            </div>
+            <div class="p-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        {{ __('Allowed embed domains') }}
+                    </label>
+                    <textarea
+                           x-model="settings.embed_allowed_domains_text"
+                           @change="updateSetting('embed_allowed_domains', JSON.stringify(settings.embed_allowed_domains_text.split('\n').map(d => d.trim()).filter(d => d.length > 0)))"
+                           rows="3"
+                           placeholder="https://example.com&#10;https://other.com"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Domains allowed to embed this application in an iframe. One domain per line (e.g. https://example.com). When set, overrides X-Frame-Options with a CSP frame-ancestors header.') }}</p>
                 </div>
             </div>
         </div>
@@ -1337,6 +1361,7 @@ window.__systemPageData = {
         locale: '{{ collect($settings)->firstWhere('key', 'locale')['value'] ?? 'en' }}',
         s3_root_folder: '{{ collect($settings)->firstWhere('key', 's3_root_folder')['value'] ?? 'assets' }}',
         custom_domain: '{{ collect($settings)->firstWhere('key', 'custom_domain')['value'] ?? '' }}',
+        embed_allowed_domains_text: {!! json_encode(implode("\n", json_decode(collect($settings)->firstWhere('key', 'embed_allowed_domains')['value'] ?? '[]', true) ?? [])) !!},
         rekognition_max_labels: '{{ collect($settings)->firstWhere('key', 'rekognition_max_labels')['value'] ?? '5' }}',
         rekognition_language: '{{ collect($settings)->firstWhere('key', 'rekognition_language')['value'] ?? 'en' }}',
         rekognition_min_confidence: '{{ collect($settings)->firstWhere('key', 'rekognition_min_confidence')['value'] ?? '80' }}',

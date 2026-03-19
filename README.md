@@ -35,7 +35,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🗑️ Bulk permanent delete from index page (maintenance mode)
 - ✔️ S3 integrity verification (detect missing assets in cloud storage)
 - 📱 Responsive design
-- 🖼️ **Embeddable asset browser** (`/assets/embed`) for iframe integration
+- 🖼️ **Embeddable asset browser** (`/assets/embed`) for iframe integration, with configurable allowed domains
 - 🌐 OpenAPI 3 for Rich Text Editor or System integration
 - 🔓 Public metadata API endpoint (no auth required)
 - 🔒 Long-lived token support (Laravel Sanctum Token) for back-ends
@@ -341,6 +341,7 @@ orca-dam/
 │   │   ├── TokenController.php        # API token management (admin)
 │   │   └── UserController.php         # User management (admin)
 │   ├── Http/Middleware/
+│   │   ├── AllowEmbedding.php        # CSP frame-ancestors for iframe embedding
 │   │   ├── AuthenticateMultiple.php   # Sanctum + JWT dual auth
 │   │   └── SetLocale.php              # Locale resolution middleware
 │   ├── Jobs/

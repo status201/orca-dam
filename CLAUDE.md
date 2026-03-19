@@ -100,6 +100,10 @@ Admin-only: force delete, discover, export CSV, bulk move (requires `maintenance
 
 Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) -> `config('app.locale')`. Languages: `en`, `nl`. User preferences in encrypted JSON `users.preferences` column.
 
+### Iframe Embedding
+
+Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domains, sets `Content-Security-Policy: frame-ancestors 'self' <domains>` and removes `X-Frame-Options` on all web routes. Empty list preserves server defaults. Configured via System → Settings.
+
 ### Models
 
 **Asset** (`app/Models/Asset.php`): Belongs to User, many-to-many Tags (pivot includes `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` is editable display name; `s3_key` is immutable. `syncTagsWithAttribution()` attaches tags with "last attacher wins" semantics. Scopes: search, filterByTags, type (accepts plural forms like `images`/`videos`), user, `inFolder`, `missing`. Search supports operators: `+term` (required), `-term` (excluded). License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
@@ -159,7 +163,7 @@ Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) ->
 
 **users** (extra columns): `jwt_secret` (encrypted), `jwt_secret_generated_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`)
 
-**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `api_upload_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false
+**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `embed_allowed_domains`=[], `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `api_upload_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false
 
 ## Environment Configuration
 
@@ -260,7 +264,7 @@ app/
 │   │   ├── UserController, ApiDocsController, TokenController
 │   │   ├── JwtSecretController, ChunkedUploadController
 │   │   └── Controller (base)
-│   ├── Middleware/ (AuthenticateMultiple, SetLocale)
+│   ├── Middleware/ (AllowEmbedding, AuthenticateMultiple, SetLocale)
 │   └── Requests/ (StoreAssetRequest, UpdateAssetRequest, ProfileUpdateRequest, Auth/LoginRequest)
 ├── Jobs/
 │   ├── GenerateAiTags, ProcessDiscoveredAsset

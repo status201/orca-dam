@@ -239,6 +239,14 @@ class SystemController extends Controller
             'resize_m_height' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
             'resize_l_width' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
             'resize_l_height' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
+            'embed_allowed_domains' => function ($v) {
+                if ($v === '' || $v === '[]') {
+                    return true;
+                }
+                $decoded = json_decode($v, true);
+
+                return is_array($decoded) && collect($decoded)->every(fn ($d) => preg_match('/^https?:\/\/[a-zA-Z0-9\-\.\*]+\.[a-zA-Z]{2,}(\/.*)?$/', $d));
+            },
         ];
 
         if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {

@@ -272,6 +272,8 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
 
     # Security headers
+    # Note: X-Frame-Options is overridden by Laravel's AllowEmbedding middleware
+    # when embed domains are configured in System → Settings.
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
@@ -340,6 +342,8 @@ Create `/etc/apache2/sites-available/orca-dam.conf`:
     </Directory>
 
     # Security headers
+    # Note: X-Frame-Options is overridden by Laravel's AllowEmbedding middleware
+    # when embed domains are configured in System → Settings.
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-XSS-Protection "1; mode=block"
