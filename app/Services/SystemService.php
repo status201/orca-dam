@@ -103,10 +103,16 @@ class SystemService
             $exitCode = Artisan::call($baseCommand, array_merge($commandArgs, $parameters));
             $output = Artisan::output();
 
+            $success = $exitCode === 0;
+
+            if ($success && empty(trim($output))) {
+                $output = __('Command executed successfully');
+            }
+
             return [
-                'success' => $exitCode === 0,
+                'success' => $success,
                 'output' => $output,
-                'error' => $exitCode !== 0 ? "Command exited with code {$exitCode}" : null,
+                'error' => !$success ? "Command exited with code {$exitCode}" : null,
                 'exit_code' => $exitCode,
             ];
 
