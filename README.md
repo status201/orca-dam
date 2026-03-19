@@ -15,7 +15,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - ⚙️ Admin Settings panel (pagination, AI tag settings, language, custom domain)
 - 🔍 Advanced search with operators (`+require`, `-exclude`)
 - 🖼️ Thumbnail generation, grid view & list view
-- 🏷️ Bulk tag management (add/remove tags on multiple assets)
+- 🏷️ Bulk tag management (add/remove tags on multiple assets, bulk delete tags)
 - 📤 Multi-file upload with drag & drop
 - 🚀 **Chunked upload for large files (up to 500MB)**
 - ⚡ Automatic upload method selection (direct <10MB, chunked ≥10MB)

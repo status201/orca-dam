@@ -144,6 +144,8 @@ Tags zijn labels waarmee je assets organiseert en vindt. Er zijn drie typen:
 
 **Bulksgewijs taggen:** Selecteer meerdere assets (gebruik Shift+klik voor reeksen) en gebruik de bulktag-werkbalk om tags toe te voegen aan of te verwijderen van alle geselecteerde assets tegelijk.
 
+**Bulksgewijs tags verwijderen:** Op de Tags-pagina selecteer je tags met checkboxes (Shift+klik voor reeksen) en klik je op **Selectie verwijderen** in de werkbalk om ze allemaal tegelijk te verwijderen. Dit verwijdert de tags van alle assets waaraan ze gekoppeld waren.
+
 **Tag-toekenning:** Elke tag op een asset toont wie deze het laatst heeft toegekend — "Gebruiker" (handmatig toegevoegd) of "AI" (automatisch gegenereerd). Dit is zichtbaar op de asset-detail- en bewerkpagina's.
 
 > **Tags met "0 assets" zijn misschien niet echt leeg!** Ze kunnen nog gekoppeld zijn aan assets in de Prullenbak. Bij herstellen uit de Prullenbak blijven nog gekoppelde tags behouden, maar tags die je vóór het herstellen hebt verwijderd zijn voorgoed verdwenen.

@@ -78,7 +78,7 @@ test('parseTestOutput marks x mark lines as failed', function () {
 });
 
 test('parseTestOutput parses FAILED suite > test name line', function () {
-    $output = "  FAILED Tests\\Feature\\FooSuite > bar test name";
+    $output = '  FAILED Tests\\Feature\\FooSuite > bar test name';
     $stats = parseOutput($output);
 
     expect($stats['tests'])->toHaveCount(1);

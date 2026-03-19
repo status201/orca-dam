@@ -1,3 +1,5 @@
+import { applyShiftSelect } from '../shift-select';
+
 export function tagManager() {
     const t = window.__pageData?.translations || {};
     const config = window.__pageData?.tagConfig || {};
@@ -22,6 +24,11 @@ export function tagManager() {
         _searchDebounce: null,
 
         _observer: null,
+
+        // Bulk selection state
+        selected: [],
+        lastClickedIndex: null,
+        bulkDeleting: false,
 
         init() {
             this.loadPage(1);
@@ -102,6 +109,7 @@ export function tagManager() {
 
         changeType(newType) {
             this.type = newType;
+            this.clearSelection();
             this.loadPage(1);
             this.updateUrl();
         },
@@ -118,6 +126,82 @@ export function tagManager() {
             if (this.sort && this.sort !== 'name_asc') params.set('sort', this.sort);
             const qs = params.toString();
             history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+        },
+
+        // Selection methods
+        toggleSelect(id, event) {
+            const ids = this.tags.map(tag => tag.id);
+            this.lastClickedIndex = applyShiftSelect(ids, this.selected, id, this.lastClickedIndex, event);
+        },
+
+        isSelected(id) {
+            return this.selected.includes(id);
+        },
+
+        clearSelection() {
+            this.selected = [];
+            this.lastClickedIndex = null;
+        },
+
+        get hasSelection() {
+            return this.selected.length > 0;
+        },
+
+        get allSelected() {
+            return this.tags.length > 0 && this.tags.every(tag => this.selected.includes(tag.id));
+        },
+
+        toggleSelectAll() {
+            if (this.allSelected) {
+                this.selected = [];
+            } else {
+                this.selected = this.tags.map(tag => tag.id);
+            }
+            this.lastClickedIndex = null;
+        },
+
+        async bulkDeleteSelected() {
+            const count = this.selected.length;
+            const msg = (t.confirmBulkDelete || 'Are you sure you want to delete :count tags? This will remove them from all assets.').replace(':count', count);
+            if (!confirm(msg)) return;
+
+            this.bulkDeleting = true;
+            try {
+                const response = await fetch('/tags/bulk', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ ids: this.selected })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const deletedIds = new Set(this.selected);
+                    // Update type counts
+                    this.tags.forEach(tag => {
+                        if (deletedIds.has(tag.id) && this.typeCounts[tag.type] !== undefined) {
+                            this.typeCounts[tag.type]--;
+                        }
+                    });
+                    this.typeCounts.all -= deletedIds.size;
+                    // Remove from local array
+                    this.tags = this.tags.filter(tag => !deletedIds.has(tag.id));
+                    this.total -= data.count;
+                    this.clearSelection();
+                    window.showToast(data.message || (t.bulkDeleteSuccess || 'Tags deleted successfully'));
+                } else {
+                    window.showToast(data.message || (t.bulkDeleteFailed || 'Failed to delete tags'), 'error');
+                }
+            } catch (error) {
+                console.error('Bulk delete error:', error);
+                window.showToast(t.bulkDeleteFailed || 'Failed to delete tags', 'error');
+            } finally {
+                this.bulkDeleting = false;
+            }
         },
 
         editTag(id, name) {
@@ -185,6 +269,9 @@ export function tagManager() {
                         this.typeCounts[type]--;
                     }
                     this.typeCounts.all--;
+                    // Remove from selection if selected
+                    const selIdx = this.selected.indexOf(id);
+                    if (selIdx !== -1) this.selected.splice(selIdx, 1);
                     window.showToast(t.tagDeleted || 'Tag deleted successfully');
                 } else {
                     window.showToast(data.message || t.tagDeleteFailed || 'Failed to delete tag', 'error');

@@ -44,6 +44,7 @@ Route::middleware(['auth'])->group(function () {
             $preferences['locale'] = $locale;
             $request->user()->update(['preferences' => $preferences]);
         }
+
         return redirect()->back();
     })->name('locale.set');
 
@@ -102,6 +103,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('tags/search', [TagController::class, 'search'])->name('tags.search');
     Route::post('tags/by-ids', [TagController::class, 'byIds'])->name('tags.byIds');
     Route::patch('tags/{tag}', [TagController::class, 'update'])->name('tags.update');
+    Route::delete('tags/bulk', [TagController::class, 'bulkDestroy'])->name('tags.bulk.destroy');
     Route::delete('tags/{tag}', [TagController::class, 'destroy'])->name('tags.destroy');
 
     // Folder management (admin only)

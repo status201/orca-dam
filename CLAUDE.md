@@ -142,6 +142,7 @@ Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domai
 - `POST /assets/bulk/tags/list` - Get tags for selected assets
 - `POST /assets/bulk/move` - Bulk move assets between folders (admin, maintenance mode)
 - `DELETE /assets/bulk/force-delete` - Bulk permanent delete (admin, maintenance mode)
+- `DELETE /tags/bulk` - Bulk delete tags
 - `PATCH/DELETE /assets/{asset}` - Update/delete asset
 - `POST /assets/{asset}/ai-tag` - Trigger AI tagging
 - `GET /api/folders` | `POST /folders/scan` (admin) | `POST /folders` (admin)
@@ -208,7 +209,7 @@ PHP_CLI_PATH=/usr/bin/php
 
 ## Testing
 
-**Pest PHP** with in-memory SQLite. ~534 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
+**Pest PHP** with in-memory SQLite. ~569 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
 
 **Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
 

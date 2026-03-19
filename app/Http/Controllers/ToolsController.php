@@ -38,11 +38,11 @@ class ToolsController extends Controller
         $this->authorize('create', Asset::class);
 
         $request->validate([
-            'content'  => ['required', 'string', 'max:1000000'],
+            'content' => ['required', 'string', 'max:1000000'],
             'filename' => ['required', 'string', 'max:255'],
-            'folder'   => ['nullable', 'string', 'max:255'],
-            'latex'    => ['nullable', 'string', 'max:10000'],
-            'caption'  => ['nullable', 'string', 'max:1000'],
+            'folder' => ['nullable', 'string', 'max:255'],
+            'latex' => ['nullable', 'string', 'max:10000'],
+            'caption' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $folder = $request->input('folder', S3Service::getRootFolder());
@@ -64,16 +64,16 @@ class ToolsController extends Controller
             $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
 
             $asset = Asset::create([
-                's3_key'    => $fileData['s3_key'],
-                'filename'  => $filename,
+                's3_key' => $fileData['s3_key'],
+                'filename' => $filename,
                 'mime_type' => 'application/mathml+xml',
-                'size'      => $fileData['size'],
-                'etag'      => $fileData['etag'] ?? null,
-                'width'     => null,
-                'height'    => null,
-                'user_id'   => Auth::id(),
-                'alt_text'  => $request->input('latex') ?: null,
-                'caption'   => $request->input('caption') ?: null,
+                'size' => $fileData['size'],
+                'etag' => $fileData['etag'] ?? null,
+                'width' => null,
+                'height' => null,
+                'user_id' => Auth::id(),
+                'alt_text' => $request->input('latex') ?: null,
+                'caption' => $request->input('caption') ?: null,
             ]);
 
             $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
@@ -86,9 +86,9 @@ class ToolsController extends Controller
         }
 
         return response()->json([
-            'asset_id'  => $asset->id,
+            'asset_id' => $asset->id,
             'asset_url' => route('assets.show', $asset),
-            'filename'  => $asset->filename,
+            'filename' => $asset->filename,
         ]);
     }
 
@@ -105,10 +105,10 @@ class ToolsController extends Controller
         $this->authorize('create', Asset::class);
 
         $request->validate([
-            'content'  => ['required', 'string', 'max:5242880'],
+            'content' => ['required', 'string', 'max:5242880'],
             'filename' => ['required', 'string', 'max:255'],
-            'folder'   => ['nullable', 'string', 'max:255'],
-            'caption'  => ['nullable', 'string', 'max:1000'],
+            'folder' => ['nullable', 'string', 'max:255'],
+            'caption' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $folder = $request->input('folder', S3Service::getRootFolder());
@@ -130,16 +130,16 @@ class ToolsController extends Controller
             $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
 
             $asset = Asset::create([
-                's3_key'    => $fileData['s3_key'],
-                'filename'  => $filename,
+                's3_key' => $fileData['s3_key'],
+                'filename' => $filename,
                 'mime_type' => 'image/svg+xml',
-                'size'      => $fileData['size'],
-                'etag'      => $fileData['etag'] ?? null,
-                'width'     => null,
-                'height'    => null,
-                'user_id'   => Auth::id(),
-                'alt_text'  => null,
-                'caption'   => $request->input('caption') ?: null,
+                'size' => $fileData['size'],
+                'etag' => $fileData['etag'] ?? null,
+                'width' => null,
+                'height' => null,
+                'user_id' => Auth::id(),
+                'alt_text' => null,
+                'caption' => $request->input('caption') ?: null,
             ]);
 
             $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
@@ -152,9 +152,9 @@ class ToolsController extends Controller
         }
 
         return response()->json([
-            'asset_id'  => $asset->id,
+            'asset_id' => $asset->id,
             'asset_url' => route('assets.show', $asset),
-            'filename'  => $asset->filename,
+            'filename' => $asset->filename,
         ]);
     }
 }

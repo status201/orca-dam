@@ -469,6 +469,73 @@ test('bulk get tags requires authentication', function () {
     $response->assertUnauthorized();
 });
 
+// Bulk delete tag tests
+
+test('can bulk delete tags', function () {
+    $user = User::factory()->create();
+    $tags = Tag::factory()->count(3)->create();
+    $tagIds = $tags->pluck('id')->toArray();
+
+    $response = $this->actingAs($user)
+        ->deleteJson(route('tags.bulk.destroy'), [
+            'ids' => $tagIds,
+        ]);
+
+    $response->assertOk();
+    $response->assertJsonFragment(['count' => 3]);
+
+    foreach ($tagIds as $id) {
+        expect(Tag::find($id))->toBeNull();
+    }
+});
+
+test('bulk delete tags removes them from all assets', function () {
+    $user = User::factory()->create();
+    $tags = Tag::factory()->count(2)->create();
+    $asset = Asset::factory()->create();
+    $asset->tags()->attach($tags->pluck('id'));
+
+    expect($asset->tags)->toHaveCount(2);
+
+    $this->actingAs($user)
+        ->deleteJson(route('tags.bulk.destroy'), [
+            'ids' => $tags->pluck('id')->toArray(),
+        ]);
+
+    $asset->refresh();
+    expect($asset->tags)->toHaveCount(0);
+});
+
+test('bulk delete tags validates required fields', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->deleteJson(route('tags.bulk.destroy'), []);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['ids']);
+});
+
+test('bulk delete tags requires authentication', function () {
+    $response = $this->deleteJson(route('tags.bulk.destroy'), [
+        'ids' => [1],
+    ]);
+
+    $response->assertUnauthorized();
+});
+
+test('bulk delete tags validates max 500 ids', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->deleteJson(route('tags.bulk.destroy'), [
+            'ids' => range(1, 501),
+        ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['ids']);
+});
+
 // Reference tag tests
 
 test('reference tags can be renamed', function () {

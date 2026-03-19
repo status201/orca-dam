@@ -39,9 +39,21 @@
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <p x-show="total > 0" x-cloak class="md:order-1 text-sm text-gray-600 whitespace-nowrap">
-                    <span x-text="tags.length"></span> {{ __('of') }} <span x-text="total"></span>
-                </p>
+                <div class="md:order-1 flex items-center gap-3">
+                    <!-- Select all checkbox -->
+                    <template x-if="!loading && tags.length > 0">
+                        <label class="flex items-center gap-1.5 cursor-pointer select-none" :title="allSelected ? '{{ __('Deselect all') }}' : '{{ __('Select all') }}'">
+                            <input type="checkbox"
+                                   :checked="allSelected"
+                                   @click="toggleSelectAll()"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                            <span class="text-sm text-gray-600 whitespace-nowrap hidden sm:inline" x-text="allSelected ? '{{ __('Deselect all') }}' : '{{ __('Select all') }}'"></span>
+                        </label>
+                    </template>
+                    <p x-show="total > 0" x-cloak class="text-sm text-gray-600 whitespace-nowrap">
+                        <span x-text="tags.length"></span> {{ __('of') }} <span x-text="total"></span>
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -96,10 +108,21 @@
         <div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xxl:grid-cols-6 gap-4">
                 <template x-for="tag in tags" :key="tag.id">
-                    <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
+                    <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4 cursor-pointer relative"
+                         :class="isSelected(tag.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''"
+                         @click="toggleSelect(tag.id, $event)">
+                        <!-- Checkbox -->
+                        <div class="absolute top-3 right-3" @click.stop>
+                            <input type="checkbox"
+                                   :checked="isSelected(tag.id)"
+                                   @click="toggleSelect(tag.id, $event)"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                        </div>
+
                         <a :href="`{{ route('assets.index') }}?tags[]=${tag.id}`"
                            :title="tag.name"
-                           class="block mb-2">
+                           class="block mb-2 pr-6"
+                           @click.stop>
                             <h3 class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate" x-text="tag.name"></h3>
                         </a>
                         <div class="flex items-center justify-between gap-2">
@@ -107,7 +130,7 @@
                                 <i class="fas fa-images mr-1"></i>
                                 <span x-text="tag.assets_count"></span> <span x-text="tag.assets_count === 1 ? 'asset' : 'assets'"></span>
                             </p>
-                            <div class="flex items-center gap-2 flex-shrink-0">
+                            <div class="flex items-center gap-2 flex-shrink-0" @click.stop>
                                 <span class="tag attention px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap"
                                       :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')">
                                     <span x-text="tag.type === 'reference' ? 'ref' : tag.type"></span>
@@ -207,6 +230,46 @@
             </form>
         </div>
     </div>
+
+    <!-- Floating Bulk Action Bar -->
+    <div x-show="hasSelection"
+         x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="translate-y-full opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-full opacity-0"
+         class="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 text-white shadow-2xl border-t border-gray-700">
+        <div class="mx-auto px-6 py-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Selected count -->
+                <span class="text-sm font-medium whitespace-nowrap">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    <span x-text="selected.length"></span> {{ __('selected') }}
+                </span>
+
+                <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
+
+                <!-- Bulk delete -->
+                <button @click="bulkDeleteSelected()"
+                        :disabled="bulkDeleting"
+                        class="attention px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 whitespace-nowrap">
+                    <i class="fas fa-trash mr-1"></i> {{ __('Delete selected') }}
+                    <i x-show="bulkDeleting" class="fas fa-spinner fa-spin ml-1"></i>
+                </button>
+
+                <!-- Spacer -->
+                <div class="flex-1"></div>
+
+                <!-- Clear selection -->
+                <button @click="clearSelection()"
+                        class="px-3 py-1.5 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600 whitespace-nowrap">
+                    <i class="fas fa-times mr-1"></i> {{ __('Clear selection') }}
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
@@ -226,7 +289,10 @@ window.__pageData.translations = {
     referenceTag: @js(__('Reference tag')),
     tag: @js(__('tag')),
     confirmDeleteThe: @js(__('Are you sure you want to delete the')),
-    removeFromAllAssets: @js(__('This will remove it from all assets.'))
+    removeFromAllAssets: @js(__('This will remove it from all assets.')),
+    confirmBulkDelete: @js(__('Are you sure you want to delete :count tags? This will remove them from all assets.')),
+    bulkDeleteSuccess: @js(__('Tags deleted successfully')),
+    bulkDeleteFailed: @js(__('Failed to delete tags'))
 };
 </script>
 @endpush

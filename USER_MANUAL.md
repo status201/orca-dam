@@ -144,6 +144,8 @@ Tags are labels that help you organize and find assets. They come in three types
 
 **Bulk tagging:** Select multiple assets (use Shift+click for ranges), then use the bulk tag toolbar to add or remove tags across all selected assets at once.
 
+**Bulk delete tags:** On the Tags page, select tags with checkboxes (Shift+click for ranges), then click **Delete selected** in the toolbar to remove them all at once. This removes the tags from all assets they were attached to.
+
 **Tag attribution:** Each tag on an asset shows who last assigned it — "User" (manually added) or "AI" (auto-generated). This is visible on the asset detail and edit pages.
 
 > **Tags showing "0 assets" might not be empty!** They could still be attached to trashed assets. When restoring from Trash, tags still attached are preserved, but tags you removed before restoring are gone forever.

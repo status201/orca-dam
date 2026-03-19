@@ -151,6 +151,24 @@ class TagController extends Controller
     }
 
     /**
+     * Bulk delete tags
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|max:500',
+            'ids.*' => 'integer|exists:tags,id',
+        ]);
+
+        $count = Tag::whereIn('id', $request->ids)->delete();
+
+        return response()->json([
+            'message' => __(':count tags deleted successfully', ['count' => $count]),
+            'count' => $count,
+        ]);
+    }
+
+    /**
      * Delete a tag (user and AI tags)
      */
     public function destroy(Tag $tag)
