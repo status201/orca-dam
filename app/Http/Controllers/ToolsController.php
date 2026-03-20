@@ -157,4 +157,82 @@ class ToolsController extends Controller
             'filename' => $asset->filename,
         ]);
     }
+
+    public function tikzPng()
+    {
+        $folders = S3Service::getConfiguredFolders();
+        $rootFolder = S3Service::getRootFolder();
+
+        return view('tools.tikz-png', compact('folders', 'rootFolder'));
+    }
+
+    public function uploadTikzPng(Request $request)
+    {
+        $this->authorize('create', Asset::class);
+
+        $request->validate([
+            'content' => ['required', 'string', 'max:10485760'],
+            'filename' => ['required', 'string', 'max:255'],
+            'folder' => ['nullable', 'string', 'max:255'],
+            'width' => ['nullable', 'integer', 'min:1'],
+            'height' => ['nullable', 'integer', 'min:1'],
+            'caption' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $folder = $request->input('folder', S3Service::getRootFolder());
+
+        // Sanitize filename and ensure .png extension
+        $filename = S3Service::sanitizeFilename($request->input('filename'));
+        if (! str_ends_with(strtolower($filename), '.png')) {
+            $filename = pathinfo($filename, PATHINFO_FILENAME).'.png';
+            if ($filename === '.png') {
+                $filename = 'diagram.png';
+            }
+        }
+
+        // Decode base64 PNG data (strip data URL prefix if present)
+        $content = $request->input('content');
+        if (str_starts_with($content, 'data:')) {
+            $content = preg_replace('/^data:[^;]+;base64,/', '', $content);
+        }
+        $binaryData = base64_decode($content, true);
+        if ($binaryData === false) {
+            return response()->json(['error' => 'Invalid base64 data'], 422);
+        }
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_png_');
+        file_put_contents($tmpPath, $binaryData);
+
+        try {
+            $uploadedFile = new UploadedFile($tmpPath, $filename, 'image/png', null, true);
+            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
+
+            $asset = Asset::create([
+                's3_key' => $fileData['s3_key'],
+                'filename' => $filename,
+                'mime_type' => 'image/png',
+                'size' => $fileData['size'],
+                'etag' => $fileData['etag'] ?? null,
+                'width' => $request->input('width'),
+                'height' => $request->input('height'),
+                'user_id' => Auth::id(),
+                'alt_text' => null,
+                'caption' => $request->input('caption') ?: null,
+            ]);
+
+            $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
+        } catch (\Exception $e) {
+            Log::error('TikZ PNG upload failed: '.$e->getMessage());
+
+            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+        } finally {
+            @unlink($tmpPath);
+        }
+
+        return response()->json([
+            'asset_id' => $asset->id,
+            'asset_url' => route('assets.show', $asset),
+            'filename' => $asset->filename,
+        ]);
+    }
 }

@@ -1,9 +1,11 @@
-function tikzSvg() {
+function tikzPng() {
     const pageData = window.__pageData || {};
 
     return {
         tikzCode: '',
         viewBoxPadding: 5,
+        pngWidth: 1200,
+        pixelDensity: 1,
         rendering: false,
         renderError: '',
         snippetCount: 0,
@@ -11,6 +13,7 @@ function tikzSvg() {
         uploadFolder: pageData.rootFolder || '',
         uploading: false,
         _timeoutHandle: null,
+        _fontCSSCache: null,
 
         examples: [
             {
@@ -104,48 +107,185 @@ function tikzSvg() {
                     this.rendering = false;
                     this.renderError = 'Timeout — TikZJax took too long.';
                 }
-            }, 90000);
+            }, 120000);
+
+            const targetWidth = Number(this.pngWidth) || 1200;
+            const density = Number(this.pixelDensity) || 2;
+            const pad = Number(this.viewBoxPadding) || 0;
 
             const tikzScriptTags = snippets.map(function (snippet) {
                 const escaped = snippet.replace(/<\/script>/gi, '<\\/script>');
-                return '<script type="text/tikz">' + escaped + '<\/script>';
+                return '<script type="text/tikz" data-tex-packages=\'{"amssymb":"","amsmath":""}\'>' + escaped + '<\/script>';
             }).join('\n');
 
-            const srcdoc = '<!DOCTYPE html><html><head>' +
-                '<link rel="stylesheet" type="text/css" href="https://tikzjax.com/v1/fonts.css">' +
-                '<script>' +
-                'window.addEventListener(\'load\', function() {' +
-                '  var expected = ' + snippets.length + ';' +
-                '  var deadline = Date.now() + 90000;' +
-                '  var obs = new MutationObserver(function() {' +
-                '    var svgs = document.body.querySelectorAll(\'svg\');' +
-                '    if (svgs.length >= expected) {' +
-                '      obs.disconnect();' +
-                '      var data = Array.from(svgs).map(function(s) {' +
-                '        return new XMLSerializer().serializeToString(s);' +
-                '      });' +
-                '      window.parent.postMessage({ type: \'tikz-svgs\', svgs: data }, \'*\');' +
-                '    } else if (Date.now() > deadline) {' +
-                '      obs.disconnect();' +
-                '      window.parent.postMessage({ type: \'tikz-error\', message: \'Timeout\' }, \'*\');' +
-                '    }' +
-                '  });' +
-                '  obs.observe(document.body, { childList: true, subtree: true });' +
-                '});' +
-                '<\/script>' +
-                '<script src="https://tikzjax.com/v1/tikzjax.js"><\/script>' +
-                '</head><body>' +
-                tikzScriptTags +
-                '</body></html>';
+            const FONT_CSS_URL = 'https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/fonts.css';
+            const FONT_BASE_URL = 'https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/';
 
-            const iframe = document.getElementById('tikz-iframe');
+            const srcdoc = `<!DOCTYPE html><html><head>
+<link rel="stylesheet" type="text/css" href="${FONT_CSS_URL}">
+<script>
+var TARGET_WIDTH = ${targetWidth};
+var PIXEL_DENSITY = ${density};
+var VIEWBOX_PAD = ${pad};
+var FONT_BASE = "${FONT_BASE_URL}";
+
+function svgToPng(svg, fontCSS) {
+  return new Promise(function(resolve, reject) {
+    var vb = svg.getAttribute("viewBox");
+    var parts = vb ? vb.split(/[\\s,]+/).map(Number) : null;
+    var svgW, svgH;
+    if (parts && parts.length === 4 && parts.every(isFinite)) {
+      // Apply edge padding to viewBox
+      parts = [parts[0] - VIEWBOX_PAD, parts[1] - VIEWBOX_PAD, parts[2] + VIEWBOX_PAD * 2, parts[3] + VIEWBOX_PAD * 2];
+      svgW = parts[2];
+      svgH = parts[3];
+    } else {
+      var rect = svg.getBoundingClientRect();
+      svgW = rect.width || 300;
+      svgH = rect.height || 150;
+    }
+
+    var scale = TARGET_WIDTH / svgW;
+    var canvasW = Math.round(TARGET_WIDTH * PIXEL_DENSITY);
+    var canvasH = Math.round(svgH * scale * PIXEL_DENSITY);
+    var logicalW = Math.round(TARGET_WIDTH);
+    var logicalH = Math.round(svgH * scale);
+
+    var clone = svg.cloneNode(true);
+    clone.setAttribute("width", canvasW);
+    clone.setAttribute("height", canvasH);
+    if (parts && parts.length === 4) clone.setAttribute("viewBox", parts.join(" "));
+    if (!clone.getAttribute("xmlns")) clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    if (!clone.getAttribute("xmlns:xlink")) clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+
+    // Embed font CSS into SVG for canvas rendering
+    if (fontCSS) {
+      var defs = clone.querySelector("defs") || clone.insertBefore(
+        document.createElementNS("http://www.w3.org/2000/svg", "defs"), clone.firstChild);
+      var style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+      style.textContent = fontCSS;
+      defs.appendChild(style);
+    }
+
+    // Add white background
+    var bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    if (parts && parts.length === 4) {
+      bg.setAttribute("x", parts[0]);
+      bg.setAttribute("y", parts[1]);
+      bg.setAttribute("width", parts[2]);
+      bg.setAttribute("height", parts[3]);
+    } else {
+      bg.setAttribute("x", "0");
+      bg.setAttribute("y", "0");
+      bg.setAttribute("width", "100%");
+      bg.setAttribute("height", "100%");
+    }
+    bg.setAttribute("fill", "white");
+    var firstChild = clone.querySelector("defs") ? clone.querySelector("defs").nextSibling : clone.firstChild;
+    clone.insertBefore(bg, firstChild);
+
+    var svgData = new XMLSerializer().serializeToString(clone);
+    var blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement("canvas");
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvasW, canvasH);
+      URL.revokeObjectURL(url);
+      resolve({ dataUrl: canvas.toDataURL("image/png"), width: canvasW, height: canvasH, logicalW: logicalW, logicalH: logicalH });
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load SVG as image"));
+    };
+    img.src = url;
+  });
+}
+
+window.addEventListener("load", function() {
+  var expected = ${snippets.length};
+  var deadline = Date.now() + 120000;
+
+  // Fetch a font file and return as base64 data URI
+  function fetchFontAsDataUri(name) {
+    return fetch(FONT_BASE + "fonts/" + name + ".woff2")
+      .then(function(r) { return r.blob(); })
+      .then(function(blob) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader();
+          reader.onloadend = function() { resolve(reader.result); };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      });
+  }
+
+  // Build self-contained @font-face CSS with base64-embedded font data
+  function buildEmbeddedFontCSS(svgs) {
+    var used = new Set();
+    svgs.forEach(function(svg) {
+      svg.querySelectorAll("[font-family]").forEach(function(el) {
+        var f = el.getAttribute("font-family");
+        if (f) used.add(f);
+      });
+      svg.querySelectorAll("[style]").forEach(function(el) {
+        var m = el.getAttribute("style").match(/font-family:\\s*([^;'"]+)/);
+        if (m) used.add(m[1].trim());
+      });
+    });
+    if (!used.size) return Promise.resolve("");
+    return Promise.all(Array.from(used).map(function(name) {
+      return fetchFontAsDataUri(name)
+        .then(function(dataUri) {
+          return "@font-face { font-family: '" + name + "'; src: url('" + dataUri + "') format('woff2'); }";
+        })
+        .catch(function() { return null; });
+    })).then(function(rules) {
+      return rules.filter(Boolean).join("\\n");
+    });
+  }
+
+  var obs = new MutationObserver(function() {
+    var svgs = document.body.querySelectorAll("svg");
+    if (svgs.length >= expected) {
+      obs.disconnect();
+      // Wait for fonts to load, then embed as base64 and convert to PNG
+      document.fonts.ready.then(function() {
+        return buildEmbeddedFontCSS(Array.from(svgs));
+      }).then(function(fontCSS) {
+        return Promise.all(Array.from(svgs).map(function(s) {
+          return svgToPng(s, fontCSS);
+        }));
+      }).then(function(pngs) {
+        window.parent.postMessage({ type: "tikz-pngs", pngs: pngs }, "*");
+      }).catch(function(err) {
+        window.parent.postMessage({ type: "tikz-error", message: err.message || "PNG conversion failed" }, "*");
+      });
+    } else if (Date.now() > deadline) {
+      obs.disconnect();
+      window.parent.postMessage({ type: "tikz-error", message: "Timeout" }, "*");
+    }
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+});
+<\/script>
+<script src="https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/tikzjax.js"><\/script>
+</head><body>
+${tikzScriptTags}
+</body></html>`;
+
+            const iframe = document.getElementById('tikz-png-iframe');
             if (iframe) {
                 iframe.srcdoc = srcdoc;
             }
         },
 
         _onMessage(event) {
-            if (event.data?.type !== 'tikz-svgs' && event.data?.type !== 'tikz-error') return;
+            if (event.data?.type !== 'tikz-pngs' && event.data?.type !== 'tikz-error') return;
 
             if (this._timeoutHandle) {
                 clearTimeout(this._timeoutHandle);
@@ -159,29 +299,14 @@ function tikzSvg() {
                 return;
             }
 
-            const PAD = Number(this.viewBoxPadding) || 0;
-            this.results = event.data.svgs.map(function (svg, i) {
-                // Strip fixed width/height and existing style so SVG scales via CSS (viewBox is preserved).
-                // Also expand viewBox by a small padding so strokes/nodes at the edges are not clipped.
-                const scalable = svg.replace(/<svg\b([^>]*)>/, function (match, attrs) {
-                    let cleaned = attrs
-                        .replace(/\s+width="[^"]*"/, '')
-                        .replace(/\s+height="[^"]*"/, '')
-                        .replace(/\s+style="[^"]*"/, '');
-                    // Expand viewBox if present
-                    cleaned = cleaned.replace(/viewBox="([^"]*)"/, function (vbMatch, vb) {
-                        const parts = vb.trim().split(/[\s,]+/).map(Number);
-                        if (parts.length === 4 && parts.every(isFinite)) {
-                            const [x, y, w, h] = parts;
-                            return 'viewBox="' + (x - PAD) + ' ' + (y - PAD) + ' ' + (w + PAD * 2) + ' ' + (h + PAD * 2) + '"';
-                        }
-                        return vbMatch;
-                    });
-                    return '<svg' + cleaned + ' style="width:100%;height:auto;display:block;">';
-                });
+            this.results = event.data.pngs.map(function (png, i) {
                 return {
-                    svg: scalable,
-                    name: 'diagram-' + (i + 1) + '.svg',
+                    png: png.dataUrl,
+                    width: png.width,
+                    height: png.height,
+                    logicalW: png.logicalW,
+                    logicalH: png.logicalH,
+                    name: 'diagram-' + (i + 1) + '.png',
                     selected: true,
                     uploading: false,
                     uploaded: null,
@@ -228,9 +353,11 @@ function tikzSvg() {
                             'Accept': 'application/json',
                         },
                         body: JSON.stringify({
-                            content: result.svg,
+                            content: result.png,
                             filename: result.name,
                             folder: this.uploadFolder,
+                            width: result.width,
+                            height: result.height,
                             caption: '',
                         }),
                     });
@@ -262,6 +389,6 @@ function tikzSvg() {
     };
 }
 
-window.tikzSvg = tikzSvg;
+window.tikzPng = tikzPng;
 
-export default tikzSvg;
+export default tikzPng;
