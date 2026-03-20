@@ -76,7 +76,7 @@
                     <img src="{{ $asset->thumbnail_url }}"
                          alt="{{ $asset->filename }}"
                          class="h-auto my-0 mx-auto">
-                    <div class="absolute top-1 right-1 pointer-events-none">
+                    <div class="attention absolute top-1 right-1 pointer-events-none">
                         <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
                     </div>
                 @else

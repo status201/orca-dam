@@ -7,22 +7,22 @@
     <!-- Header -->
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">{{ __('System Administration') }}</h1>
-        <p class="text-gray-600 mt-2">{{ __('Monitor and manage system resources') }}</p>
+        <p class="text-gray-600 mt-2">{{ __('Monitor and manage system resources and settings') }}</p>
     </div>
 
     <!-- Tab Navigation -->
     <div class="tab-navigation-container mb-6 border-b border-gray-200 w-full overflow-y-hidden overflow-x-auto">
         <nav class="-mb-px flex space-x-8">
-            <button @click="activeTab = 'overview'"
-                    :class="activeTab === 'overview' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                <i class="fas fa-dashboard mr-2"></i>{{ __('Overview') }}
-            </button>
-
             <button @click="activeTab = 'settings'"
                     :class="activeTab === 'settings' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 <i class="fas fa-cog mr-2"></i>{{ __('Settings') }}
+            </button>
+
+            <button @click="activeTab = 'overview'"
+                    :class="activeTab === 'overview' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                <i class="fas fa-dashboard mr-2"></i>{{ __('Overview') }}
             </button>
 
             <button @click="activeTab = 'queue'"
@@ -447,6 +447,37 @@
             </div>
         </div>
 
+        <!-- Maintenance Settings -->
+        <div class="bg-white rounded-lg shadow overflow-hidden border border-amber-200">
+            <div class="bg-amber-50 border-b border-amber-200 px-6 py-4">
+                <h4 class="text-base font-semibold text-gray-900">
+                    <i class="attention fas fa-tools mr-2 text-amber-500"></i>{{ __('Maintenance') }}
+                </h4>
+                <p class="text-sm text-gray-500 mt-1">{{ __('Maintenance tools for reorganizing assets') }}</p>
+            </div>
+            <div class="p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">
+                            {{ __('Maintenance mode') }}
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1">{{ __('Enables the bulk Move and Permanent delete buttons on the assets page for admins') }}</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox"
+                               x-model="settings.maintenance_mode"
+                               @change="updateSetting('maintenance_mode', settings.maintenance_mode ? '1' : '0')"
+                               :checked="settings.maintenance_mode === '1' || settings.maintenance_mode === true"
+                               class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                </div>
+                <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p class="attention text-xs text-amber-700"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Moving assets changes their S3 keys and permanent deletion removes files from S3 entirely. Both will break external links. Only use these during initial setup or planned reorganization.') }}</p>
+                </div>
+            </div>
+        </div>
+
         <!-- S3 Storage Settings -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
@@ -550,37 +581,6 @@
                         </select>
                         <p class="text-xs text-gray-500 mt-1">{{ __('Minimum confidence level for AI-detected labels (65-99%)') }}</p>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Maintenance Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden border border-amber-200">
-            <div class="bg-amber-50 border-b border-amber-200 px-6 py-4">
-                <h4 class="text-base font-semibold text-gray-900">
-                    <i class="attention fas fa-tools mr-2 text-amber-500"></i>{{ __('Maintenance') }}
-                </h4>
-                <p class="text-sm text-gray-500 mt-1">{{ __('Maintenance tools for reorganizing assets') }}</p>
-            </div>
-            <div class="p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">
-                            {{ __('Maintenance mode') }}
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1">{{ __('Enables the bulk Move and Permanent delete buttons on the assets page for admins') }}</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox"
-                               x-model="settings.maintenance_mode"
-                               @change="updateSetting('maintenance_mode', settings.maintenance_mode ? '1' : '0')"
-                               :checked="settings.maintenance_mode === '1' || settings.maintenance_mode === true"
-                               class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                    </label>
-                </div>
-                <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p class="attention text-xs text-amber-700"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Moving assets changes their S3 keys and permanent deletion removes files from S3 entirely. Both will break external links. Only use these during initial setup or planned reorganization.') }}</p>
                 </div>
             </div>
         </div>

@@ -78,7 +78,7 @@
                             <img src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
                                  alt="{{ $asset->filename }}"
                                  class="max-w-sm rounded-lg">
-                            <div class="absolute top-1 right-1 pointer-events-none">
+                            <div class="attention absolute top-1 right-1 pointer-events-none">
                                 <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
                             </div>
                         </div>

@@ -2,7 +2,7 @@ export function systemAdmin() {
     const pageData = window.__systemPageData;
 
     return {
-        activeTab: 'overview',
+        activeTab: 'settings',
 
         // Queue data
         queueStats: pageData.queueStats,
@@ -101,7 +101,7 @@ export function systemAdmin() {
                 if (hash && this.validTabs.includes(hash)) {
                     this.activeTab = hash;
                 } else {
-                    this.activeTab = 'overview';
+                    this.activeTab = 'settings';
                 }
             });
 

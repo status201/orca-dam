@@ -100,6 +100,7 @@ function tikzSvg() {
             }).join('\n');
 
             const srcdoc = '<!DOCTYPE html><html><head>' +
+                '<link rel="stylesheet" type="text/css" href="https://tikzjax.com/v1/fonts.css">' +
                 '<script>' +
                 'window.addEventListener(\'load\', function() {' +
                 '  var expected = ' + snippets.length + ';' +

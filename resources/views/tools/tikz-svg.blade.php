@@ -59,7 +59,7 @@
         <textarea
             x-model="tikzCode"
             rows="12"
-            class="w-full font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
+            class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
             placeholder="{{ __('Paste TikZ code or a full LaTeX document here…') }}">
         </textarea>
 
@@ -198,6 +198,65 @@
                     </template>
                     <span x-text="anyUploading ? '{{ __('Uploading…') }}' : ('{{ __('Upload selected') }} (' + selectedCount + ')')"></span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- TikZJax Technical Notes --}}
+    <div class="mt-8 bg-amber-50 border border-amber-200 rounded-lg overflow-hidden">
+        <button
+            onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.fa-chevron-right').classList.toggle('rotate-90')"
+            class="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-amber-100/50 transition-colors">
+            <i class="fas fa-flask text-amber-600"></i>
+            <span class="font-semibold text-amber-900 text-sm">{{ __('TikZJax Technical Notes & Known Limitations') }}</span>
+            <i class="fas fa-chevron-right text-amber-400 text-xs ml-auto transition-transform duration-200"></i>
+        </button>
+        <div class="hidden border-t border-amber-200 px-5 py-4 text-sm text-amber-900 space-y-4">
+            <p>
+                {{ __('This tool uses') }}
+                <a href="https://github.com/kisonecat/tikzjax" target="_blank" rel="noopener" class="font-medium text-amber-700 underline decoration-amber-300 hover:text-amber-900">TikZJax</a>
+                {{ __('to compile TikZ/LaTeX to SVG directly in the browser via a WebAssembly TeX engine.') }}
+            </p>
+
+            <div>
+                <h4 class="font-semibold text-amber-800 mb-1"><i class="attention fas fa-triangle-exclamation mr-1.5 text-amber-500"></i>{{ __('AMS Font Warnings') }}</h4>
+                <p class="text-amber-800">
+                    {{ __('You may see console warnings like') }}
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">U/msa/m/n</code> {{ __('or') }}
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">U/msb/m/n</code>.
+                    {{ __('These are harmless — the original TikZJax virtual filesystem only ships 4 files') }}
+                    (<code class="text-xs font-mono">article.cls</code>, <code class="text-xs font-mono">sample.tex</code>, <code class="text-xs font-mono">size10.clo</code>, <code class="text-xs font-mono">tex.pool</code>)
+                    {{ __('and does not include AMS font definitions. The original build lacks Asyncify WASM instrumentation, so these files cannot be injected at runtime. Standard TikZ diagrams render correctly despite these warnings.') }}
+                </p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-amber-800 mb-1"><i class="attention fas fa-code-fork mr-1.5 text-amber-500"></i>{{ __('Why not use the maintained fork?') }}</h4>
+                <p class="text-amber-800">
+                    <a href="https://github.com/drgrice1/tikzjax" target="_blank" rel="noopener" class="font-medium text-amber-700 underline decoration-amber-300 hover:text-amber-900">@drgrice1/tikzjax</a>
+                    {{ __('is a maintained fork that adds AMS font support, Web Worker compilation (faster), and IndexedDB caching. However, its') }}
+                    <a href="https://github.com/drgrice1/dvi2html" target="_blank" rel="noopener" class="font-medium text-amber-700 underline decoration-amber-300 hover:text-amber-900">dvi2html</a>
+                    {{ __('library outputs non-standard character codes in SVG text elements (likely Private Use Area), whereas the original outputs standard Unicode (e.g. "A", "B", "∩"). This means the fork\'s SVGs only render correctly with the exact matching font loaded — they show squares (□) everywhere else, including when served as') }}
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">&lt;img&gt;</code>
+                    {{ __('tags, which browsers prohibit from loading external resources.') }}
+                </p>
+            </div>
+
+            <div>
+                <h4 class="font-semibold text-amber-800 mb-1"><i class="attention fas fa-list-check mr-1.5 text-amber-500"></i>{{ __('Other fork issues encountered') }}</h4>
+                <ul class="list-disc list-inside text-amber-800 space-y-1 ml-1">
+                    <li>{{ __('All npm versions are pre-release betas — semver ranges like') }} <code class="bg-amber-100 px-1 py-0.5 rounded text-xs font-mono">@1</code> {{ __('don\'t resolve') }}</li>
+                    <li>{{ __('Requires Web Workers + IndexedDB, which break iframe') }} <code class="bg-amber-100 px-1 py-0.5 rounded text-xs font-mono">sandbox</code> {{ __('restrictions') }}</li>
+                    <li>{{ __('Triggers') }} <code class="bg-amber-100 px-1 py-0.5 rounded text-xs font-mono">Permissions policy violation: unload</code> {{ __('warnings in Chromium browsers') }}</li>
+                    <li>{{ __('Embedding fonts as base64 data URIs in the SVG did not resolve the character encoding mismatch') }}</li>
+                </ul>
+            </div>
+
+            <div class="pt-2 border-t border-amber-200 text-xs text-amber-700 flex flex-wrap gap-x-4 gap-y-1">
+                <a href="https://github.com/kisonecat/tikzjax" target="_blank" rel="noopener" class="inline-flex items-center gap-1 hover:text-amber-900"><i class="fab fa-github"></i> kisonecat/tikzjax <span class="text-amber-500">({{ __('current') }})</span></a>
+                <a href="https://github.com/drgrice1/tikzjax" target="_blank" rel="noopener" class="inline-flex items-center gap-1 hover:text-amber-900"><i class="fab fa-github"></i> drgrice1/tikzjax <span class="text-amber-500">({{ __('fork') }})</span></a>
+                <a href="https://github.com/drgrice1/dvi2html" target="_blank" rel="noopener" class="inline-flex items-center gap-1 hover:text-amber-900"><i class="fab fa-github"></i> dvi2html</a>
+                <a href="https://tikzjax.com" target="_blank" rel="noopener" class="inline-flex items-center gap-1 hover:text-amber-900"><i class="fas fa-globe"></i> tikzjax.com</a>
             </div>
         </div>
     </div>
