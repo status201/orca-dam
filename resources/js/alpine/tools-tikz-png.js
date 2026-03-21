@@ -249,28 +249,45 @@ window.addEventListener("load", function() {
     });
   }
 
-  var obs = new MutationObserver(function() {
-    var svgs = document.body.querySelectorAll("svg");
-    if (svgs.length >= expected) {
-      obs.disconnect();
-      // Wait for fonts to load, then embed as base64 and convert to PNG
-      document.fonts.ready.then(function() {
-        return buildEmbeddedFontCSS(Array.from(svgs));
-      }).then(function(fontCSS) {
-        return Promise.all(Array.from(svgs).map(function(s) {
-          return svgToPng(s, fontCSS);
-        }));
-      }).then(function(pngs) {
-        window.parent.postMessage({ type: "tikz-pngs", pngs: pngs }, "*");
-      }).catch(function(err) {
-        window.parent.postMessage({ type: "tikz-error", message: err.message || "PNG conversion failed" }, "*");
-      });
-    } else if (Date.now() > deadline) {
-      obs.disconnect();
+  // The fork emits "tikzjax-load-finished" on each rendered SVG.
+  // Count these events instead of using MutationObserver (which catches loading spinners).
+  var finishedSvgs = [];
+  var timeoutId = setTimeout(function() {
+    if (finishedSvgs.length > 0) {
+      processFinished(finishedSvgs);
+    } else {
       window.parent.postMessage({ type: "tikz-error", message: "Timeout" }, "*");
     }
+  }, deadline - Date.now());
+
+  function processFinished(svgs) {
+    clearTimeout(timeoutId);
+    document.fonts.ready.then(function() {
+      return buildEmbeddedFontCSS(svgs);
+    }).then(function(fontCSS) {
+      return Promise.all(svgs.map(function(s) {
+        return svgToPng(s, fontCSS);
+      }));
+    }).then(function(pngs) {
+      window.parent.postMessage({ type: "tikz-pngs", pngs: pngs }, "*");
+    }).catch(function(err) {
+      window.parent.postMessage({ type: "tikz-error", message: err.message || "PNG conversion failed" }, "*");
+    });
+  }
+
+  document.addEventListener("tikzjax-load-finished", function(e) {
+    var svg = e.target;
+    if (svg && svg.tagName === "svg") {
+      finishedSvgs.push(svg);
+    } else {
+      // The event target might be the container; find the SVG near it
+      var nearby = svg ? svg.querySelector("svg") || svg.previousElementSibling : null;
+      if (nearby && nearby.tagName === "svg") finishedSvgs.push(nearby);
+    }
+    if (finishedSvgs.length >= expected) {
+      processFinished(finishedSvgs);
+    }
   });
-  obs.observe(document.body, { childList: true, subtree: true });
 });
 <\/script>
 <script src="https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/tikzjax.js"><\/script>
