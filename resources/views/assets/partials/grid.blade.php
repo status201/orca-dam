@@ -2,7 +2,7 @@
     <!-- Header with search and filters -->
     <div class="mb-6">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
+            <div class="page-header">
                 <h1 class="text-3xl font-bold text-gray-900">
                     {{ __('Assets') }}
                     <span class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
@@ -211,7 +211,7 @@
     </div>
 
     <!-- Active Filters Bar -->
-    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || initialTags.length > 0)" x-cloak class="mb-4 flex flex-wrap items-center gap-2">
+    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || initialTags.length > 0)" x-cloak class="active-filters mb-4 flex flex-wrap items-center gap-2">
         <span class="text-sm text-gray-500 font-medium">{{ __('Active filters') }}:</span>
 
         <!-- Search pill -->

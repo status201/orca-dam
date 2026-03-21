@@ -87,6 +87,12 @@
 }
 
 
+/* Embed styles */
+body.embed .page-header p,
+body.embed .active-filters {
+    display: none;
+}
+
 /* Logo Dashboard Orca */
 
 .dashboard-logo .orca-floating {

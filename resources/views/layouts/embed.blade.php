@@ -38,7 +38,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @stack('styles')
     </head>
-    <body class="font-sans antialiased">
+    <body class="font-sans antialiased embed">
         <div class="min-h-screen bg-gray-100 flex flex-col">
             <!-- Page Content -->
             <main class="flex-grow py-4 px-4 sm:px-6">
