@@ -115,7 +115,7 @@ function tikzPng() {
 
             const tikzScriptTags = snippets.map(function (snippet) {
                 const escaped = snippet.replace(/<\/script>/gi, '<\\/script>');
-                return '<script type="text/tikz" data-tex-packages=\'{"amssymb":"","amsmath":""}\'>' + escaped + '<\/script>';
+                return '<script type="text/tikz" data-tex-packages=\'{"amssymb":"","amsmath":""}\' data-tikz-libraries="calc,arrows.meta,positioning,decorations.pathreplacing,decorations.markings,patterns,shapes.geometric,angles,quotes,intersections,fit,backgrounds">' + escaped + '<\/script>';
             }).join('\n');
 
             const FONT_CSS_URL = 'https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/fonts.css';
