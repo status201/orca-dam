@@ -70,12 +70,14 @@
                             <x-mml-preview :asset="$asset" size="full" />
                         </div>
                     @elseif($asset->isVideo() && $asset->thumbnail_url)
-                        <img src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
+                        <img id="asset-preview"
+                             src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
                              alt="{{ $asset->filename }}"
                              class="max-w-sm rounded-lg">
                     @elseif($asset->isPdf() && $asset->thumbnail_url)
                         <div class="relative inline-block">
-                            <img src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
+                            <img id="asset-preview"
+                                 src="{{ $asset->thumbnail_url . '?v=' . $asset->updated_at->timestamp }}"
                                  alt="{{ $asset->filename }}"
                                  class="max-w-sm rounded-lg">
                             <div class="attention absolute top-1 right-1 pointer-events-none">
@@ -83,7 +85,7 @@
                             </div>
                         </div>
                     @else
-                        <div class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <div id="asset-preview-placeholder" class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
                             <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60" style="font-size: 8rem;"></i>
                         </div>
                     @endif

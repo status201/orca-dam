@@ -1,3 +1,45 @@
+async function refreshPreviewThumbnail(thumbnailUrl) {
+    const previewImg = document.getElementById('asset-preview');
+    const placeholder = document.getElementById('asset-preview-placeholder');
+
+    try {
+        const response = await fetch(thumbnailUrl, {
+            cache: 'reload',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
+
+        if (!response.ok) return;
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+
+        const updateImg = (img) => {
+            img.src = objectUrl;
+            img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                img.src = thumbnailUrl;
+                img.onload = null;
+            };
+        };
+
+        if (previewImg) {
+            updateImg(previewImg);
+        } else if (placeholder) {
+            const img = document.createElement('img');
+            img.id = 'asset-preview';
+            img.className = 'max-w-sm rounded-lg';
+            placeholder.replaceWith(img);
+            updateImg(img);
+        }
+    } catch (error) {
+        console.error('Failed to refresh thumbnail:', error);
+    }
+}
+
 export function assetEditor() {
     const pageData = window.__pageData || {};
     return {
@@ -208,7 +250,8 @@ export function videoThumbnailGenerator() {
 
                 if (response.ok) {
                     window.showToast(data.message || pageData.translations.videoPreviewSuccess);
-                    window.location.reload();
+                    await refreshPreviewThumbnail(data.thumbnail_url);
+                    this.showModal = false;
                 } else {
                     this.error = data.message || pageData.translations.failedToUploadThumbnail;
                 }
@@ -314,7 +357,8 @@ export function pdfThumbnailGenerator() {
 
                 if (response.ok) {
                     window.showToast(data.message || pageData.translations.pdfPreviewSuccess);
-                    window.location.reload();
+                    await refreshPreviewThumbnail(data.thumbnail_url);
+                    this.showModal = false;
                 } else {
                     this.error = data.message || pageData.translations.failedToUploadThumbnail;
                 }
