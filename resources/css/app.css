@@ -88,7 +88,7 @@
 
 
 /* Embed styles */
-body.embed .page-header p,
+body.embed .page-header,
 body.embed .active-filters {
     display: none;
 }
