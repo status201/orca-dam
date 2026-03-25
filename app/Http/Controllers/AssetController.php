@@ -515,7 +515,7 @@ class AssetController extends Controller
     }
 
     /**
-     * Store a browser-generated thumbnail for a video asset
+     * Store a browser-generated thumbnail for a video/pdf asset
      */
     public function storeThumbnail(Request $request, Asset $asset)
     {
@@ -543,7 +543,7 @@ class AssetController extends Controller
         $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
 
         return response()->json([
-            'message' => __('Video preview generated successfully.'),
+            'message' => __('Preview generated successfully.'),
             'thumbnail_url' => $asset->thumbnail_url,
         ]);
     }
