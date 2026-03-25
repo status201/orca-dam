@@ -71,6 +71,15 @@
             </button>
 
             <div class="flex items-center gap-2 ml-auto">
+                <label class="text-xs text-gray-500">{{ __('Font') }}:</label>
+                <select x-model="fontFamily"
+                    class="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal">
+                    <option value="default">{{ __('Default (Serif)') }}</option>
+                    <option value="sans">{{ __('Sans Serif') }}</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500">{{ __('Edge padding (pt)') }}</label>
                 <input type="number" x-model.number="viewBoxPadding" min="0" max="50" step="1"
                     class="w-16 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal">

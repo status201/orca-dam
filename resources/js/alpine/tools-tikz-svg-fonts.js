@@ -1,12 +1,9 @@
-function tikzPng() {
+function tikzSvgFonts() {
     const pageData = window.__pageData || {};
 
     return {
         tikzCode: '',
         viewBoxPadding: 5,
-        pngWidth: 1200,
-        pixelDensity: 1,
-        fontFamily: 'default',
         rendering: false,
         renderError: '',
         snippetCount: 0,
@@ -14,7 +11,6 @@ function tikzPng() {
         uploadFolder: pageData.rootFolder || '',
         uploading: false,
         _timeoutHandle: null,
-        _fontCSSCache: null,
 
         examples: [
             {
@@ -110,203 +106,117 @@ function tikzPng() {
                 }
             }, 120000);
 
-            const targetWidth = Number(this.pngWidth) || 1200;
-            const density = Number(this.pixelDensity) || 2;
-            const pad = Number(this.viewBoxPadding) || 0;
-
-            const SANS_PREFIX = '\\sffamily\n';
-            const fontPrefix = this.fontFamily === 'sans' ? SANS_PREFIX : '';
-
             const tikzScriptTags = snippets.map(function (snippet) {
                 const escaped = snippet.replace(/<\/script>/gi, '<\\/script>');
-                return '<script type="text/tikz" data-tex-packages=\'{"amssymb":"","amsmath":""}\' data-tikz-libraries="calc,arrows.meta,positioning,decorations.pathreplacing,decorations.markings,patterns,shapes.geometric,angles,quotes,intersections,fit,backgrounds">' + fontPrefix + escaped + '<\/script>';
+                return '<script type="text/tikz">' + escaped + '<\/script>';
             }).join('\n');
 
-            const FONT_CSS_URL = 'https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/fonts.css';
-            const FONT_BASE_URL = 'https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/';
+            const srcdoc = '<!DOCTYPE html><html><head>' +
+                '<link rel="stylesheet" type="text/css" href="https://tikzjax.com/v1/fonts.css">' +
+                '<script>' +
+                'var FONT_PROXY_BASE = "' + pageData.fontProxyBase + '";' +
 
-            const srcdoc = `<!DOCTYPE html><html><head>
-<link rel="stylesheet" type="text/css" href="${FONT_CSS_URL}">
-<script>
-var TARGET_WIDTH = ${targetWidth};
-var PIXEL_DENSITY = ${density};
-var VIEWBOX_PAD = ${pad};
-var FONT_BASE = "${FONT_BASE_URL}";
+                // fetchFontAsDataUri — fetch from same-origin proxy to avoid CORS/ORB
+                'function fetchFontAsDataUri(name) {' +
+                '  return fetch(FONT_PROXY_BASE + name)' +
+                '    .then(function(r) {' +
+                '      if (!r.ok) throw new Error("HTTP " + r.status);' +
+                '      return r.blob();' +
+                '    })' +
+                '    .then(function(blob) {' +
+                '      return new Promise(function(resolve, reject) {' +
+                '        var reader = new FileReader();' +
+                '        reader.onloadend = function() { resolve(reader.result); };' +
+                '        reader.onerror = reject;' +
+                '        reader.readAsDataURL(blob);' +
+                '      });' +
+                '    });' +
+                '}' +
 
-function svgToPng(svg, fontCSS) {
-  return new Promise(function(resolve, reject) {
-    var vb = svg.getAttribute("viewBox");
-    var parts = vb ? vb.split(/[\\s,]+/).map(Number) : null;
-    var svgW, svgH;
-    if (parts && parts.length === 4 && parts.every(isFinite)) {
-      // Apply edge padding to viewBox
-      parts = [parts[0] - VIEWBOX_PAD, parts[1] - VIEWBOX_PAD, parts[2] + VIEWBOX_PAD * 2, parts[3] + VIEWBOX_PAD * 2];
-      svgW = parts[2];
-      svgH = parts[3];
-    } else {
-      var rect = svg.getBoundingClientRect();
-      svgW = rect.width || 300;
-      svgH = rect.height || 150;
-    }
+                // collectUsedFonts — scan SVG elements for font-family references
+                'function collectUsedFonts(svgs) {' +
+                '  var used = new Set();' +
+                '  svgs.forEach(function(svg) {' +
+                '    svg.querySelectorAll("[font-family]").forEach(function(el) {' +
+                '      var f = el.getAttribute("font-family");' +
+                '      if (f) used.add(f);' +
+                '    });' +
+                '    svg.querySelectorAll("[style]").forEach(function(el) {' +
+                '      var m = el.getAttribute("style").match(/font-family:\\s*([^;\'\"]+)/);' +
+                '      if (m) used.add(m[1].trim());' +
+                '    });' +
+                '  });' +
+                '  return used;' +
+                '}' +
 
-    var scale = TARGET_WIDTH / svgW;
-    var canvasW = Math.round(TARGET_WIDTH * PIXEL_DENSITY);
-    var canvasH = Math.round(svgH * scale * PIXEL_DENSITY);
-    var logicalW = Math.round(TARGET_WIDTH);
-    var logicalH = Math.round(svgH * scale);
+                // buildEmbeddedFontCSS — fetch all used fonts and build @font-face rules
+                'function buildEmbeddedFontCSS(svgs) {' +
+                '  var used = collectUsedFonts(svgs);' +
+                '  if (!used.size) return Promise.resolve("");' +
+                '  return Promise.all(Array.from(used).map(function(name) {' +
+                '    return fetchFontAsDataUri(name)' +
+                '      .then(function(dataUri) {' +
+                '        return "@font-face { font-family: \'" + name + "\'; src: url(\'" + dataUri + "\') format(\'truetype\'); }";' +
+                '      })' +
+                '      .catch(function() { return null; });' +
+                '  })).then(function(rules) {' +
+                '    return rules.filter(Boolean).join("\\n");' +
+                '  });' +
+                '}' +
 
-    var clone = svg.cloneNode(true);
-    clone.setAttribute("width", canvasW);
-    clone.setAttribute("height", canvasH);
-    if (parts && parts.length === 4) clone.setAttribute("viewBox", parts.join(" "));
-    if (!clone.getAttribute("xmlns")) clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    if (!clone.getAttribute("xmlns:xlink")) clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+                // injectFontCSS — add <defs><style> with font CSS into an SVG element
+                'function injectFontCSS(svg, fontCSS) {' +
+                '  if (!fontCSS) return;' +
+                '  var defs = svg.querySelector("defs");' +
+                '  if (!defs) {' +
+                '    defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");' +
+                '    svg.insertBefore(defs, svg.firstChild);' +
+                '  }' +
+                '  var style = document.createElementNS("http://www.w3.org/2000/svg", "style");' +
+                '  style.textContent = fontCSS;' +
+                '  defs.insertBefore(style, defs.firstChild);' +
+                '}' +
 
-    // Embed font CSS into SVG for canvas rendering
-    if (fontCSS) {
-      var defs = clone.querySelector("defs") || clone.insertBefore(
-        document.createElementNS("http://www.w3.org/2000/svg", "defs"), clone.firstChild);
-      var style = document.createElementNS("http://www.w3.org/2000/svg", "style");
-      style.textContent = fontCSS;
-      defs.appendChild(style);
-    }
+                'window.addEventListener(\'load\', function() {' +
+                '  var expected = ' + snippets.length + ';' +
+                '  var deadline = Date.now() + 120000;' +
+                '  var obs = new MutationObserver(function() {' +
+                '    var svgs = document.body.querySelectorAll(\'svg\');' +
+                '    if (svgs.length >= expected) {' +
+                '      obs.disconnect();' +
+                '      var svgArray = Array.from(svgs);' +
+                '      buildEmbeddedFontCSS(svgArray).then(function(fontCSS) {' +
+                '        svgArray.forEach(function(svg) {' +
+                '          injectFontCSS(svg, fontCSS);' +
+                '        });' +
+                '        var data = svgArray.map(function(s) {' +
+                '          return new XMLSerializer().serializeToString(s);' +
+                '        });' +
+                '        window.parent.postMessage({ type: \'tikz-svgs-fonts\', svgs: data }, \'*\');' +
+                '      }).catch(function(err) {' +
+                '        window.parent.postMessage({ type: \'tikz-error-fonts\', message: \'Font embedding failed: \' + err.message }, \'*\');' +
+                '      });' +
+                '    } else if (Date.now() > deadline) {' +
+                '      obs.disconnect();' +
+                '      window.parent.postMessage({ type: \'tikz-error-fonts\', message: \'Timeout\' }, \'*\');' +
+                '    }' +
+                '  });' +
+                '  obs.observe(document.body, { childList: true, subtree: true });' +
+                '});' +
+                '<\/script>' +
+                '<script src="https://tikzjax.com/v1/tikzjax.js"><\/script>' +
+                '</head><body>' +
+                tikzScriptTags +
+                '</body></html>';
 
-    // Add white background
-    var bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    if (parts && parts.length === 4) {
-      bg.setAttribute("x", parts[0]);
-      bg.setAttribute("y", parts[1]);
-      bg.setAttribute("width", parts[2]);
-      bg.setAttribute("height", parts[3]);
-    } else {
-      bg.setAttribute("x", "0");
-      bg.setAttribute("y", "0");
-      bg.setAttribute("width", "100%");
-      bg.setAttribute("height", "100%");
-    }
-    bg.setAttribute("fill", "white");
-    var firstChild = clone.querySelector("defs") ? clone.querySelector("defs").nextSibling : clone.firstChild;
-    clone.insertBefore(bg, firstChild);
-
-    var svgData = new XMLSerializer().serializeToString(clone);
-    var blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    var url = URL.createObjectURL(blob);
-
-    var img = new Image();
-    img.onload = function() {
-      var canvas = document.createElement("canvas");
-      canvas.width = canvasW;
-      canvas.height = canvasH;
-      var ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, canvasW, canvasH);
-      URL.revokeObjectURL(url);
-      resolve({ dataUrl: canvas.toDataURL("image/png"), width: canvasW, height: canvasH, logicalW: logicalW, logicalH: logicalH });
-    };
-    img.onerror = function() {
-      URL.revokeObjectURL(url);
-      reject(new Error("Failed to load SVG as image"));
-    };
-    img.src = url;
-  });
-}
-
-window.addEventListener("load", function() {
-  var expected = ${snippets.length};
-  var deadline = Date.now() + 120000;
-
-  // Fetch a font file and return as base64 data URI
-  function fetchFontAsDataUri(name) {
-    return fetch(FONT_BASE + "fonts/" + name + ".woff2")
-      .then(function(r) { return r.blob(); })
-      .then(function(blob) {
-        return new Promise(function(resolve, reject) {
-          var reader = new FileReader();
-          reader.onloadend = function() { resolve(reader.result); };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      });
-  }
-
-  // Build self-contained @font-face CSS with base64-embedded font data
-  function buildEmbeddedFontCSS(svgs) {
-    var used = new Set();
-    svgs.forEach(function(svg) {
-      svg.querySelectorAll("[font-family]").forEach(function(el) {
-        var f = el.getAttribute("font-family");
-        if (f) used.add(f);
-      });
-      svg.querySelectorAll("[style]").forEach(function(el) {
-        var m = el.getAttribute("style").match(/font-family:\\s*([^;'"]+)/);
-        if (m) used.add(m[1].trim());
-      });
-    });
-    if (!used.size) return Promise.resolve("");
-    return Promise.all(Array.from(used).map(function(name) {
-      return fetchFontAsDataUri(name)
-        .then(function(dataUri) {
-          return "@font-face { font-family: '" + name + "'; src: url('" + dataUri + "') format('woff2'); }";
-        })
-        .catch(function() { return null; });
-    })).then(function(rules) {
-      return rules.filter(Boolean).join("\\n");
-    });
-  }
-
-  // The fork emits "tikzjax-load-finished" on each rendered SVG.
-  // Count these events instead of using MutationObserver (which catches loading spinners).
-  var finishedSvgs = [];
-  var timeoutId = setTimeout(function() {
-    if (finishedSvgs.length > 0) {
-      processFinished(finishedSvgs);
-    } else {
-      window.parent.postMessage({ type: "tikz-error", message: "Timeout" }, "*");
-    }
-  }, deadline - Date.now());
-
-  function processFinished(svgs) {
-    clearTimeout(timeoutId);
-    document.fonts.ready.then(function() {
-      return buildEmbeddedFontCSS(svgs);
-    }).then(function(fontCSS) {
-      return Promise.all(svgs.map(function(s) {
-        return svgToPng(s, fontCSS);
-      }));
-    }).then(function(pngs) {
-      window.parent.postMessage({ type: "tikz-pngs", pngs: pngs }, "*");
-    }).catch(function(err) {
-      window.parent.postMessage({ type: "tikz-error", message: err.message || "PNG conversion failed" }, "*");
-    });
-  }
-
-  document.addEventListener("tikzjax-load-finished", function(e) {
-    var svg = e.target;
-    if (svg && svg.tagName === "svg") {
-      finishedSvgs.push(svg);
-    } else {
-      // The event target might be the container; find the SVG near it
-      var nearby = svg ? svg.querySelector("svg") || svg.previousElementSibling : null;
-      if (nearby && nearby.tagName === "svg") finishedSvgs.push(nearby);
-    }
-    if (finishedSvgs.length >= expected) {
-      processFinished(finishedSvgs);
-    }
-  });
-});
-<\/script>
-<script src="https://cdn.jsdelivr.net/npm/@drgrice1/tikzjax@latest/dist/tikzjax.js"><\/script>
-</head><body>
-${tikzScriptTags}
-</body></html>`;
-
-            const iframe = document.getElementById('tikz-png-iframe');
+            const iframe = document.getElementById('tikz-fonts-iframe');
             if (iframe) {
                 iframe.srcdoc = srcdoc;
             }
         },
 
         _onMessage(event) {
-            if (event.data?.type !== 'tikz-pngs' && event.data?.type !== 'tikz-error') return;
+            if (event.data?.type !== 'tikz-svgs-fonts' && event.data?.type !== 'tikz-error-fonts') return;
 
             if (this._timeoutHandle) {
                 clearTimeout(this._timeoutHandle);
@@ -315,19 +225,31 @@ ${tikzScriptTags}
 
             this.rendering = false;
 
-            if (event.data.type === 'tikz-error') {
+            if (event.data.type === 'tikz-error-fonts') {
                 this.renderError = event.data.message || 'TikZJax render error.';
                 return;
             }
 
-            this.results = event.data.pngs.map(function (png, i) {
+            const PAD = Number(this.viewBoxPadding) || 0;
+            this.results = event.data.svgs.map(function (svg, i) {
+                const scalable = svg.replace(/<svg\b([^>]*)>/, function (match, attrs) {
+                    let cleaned = attrs
+                        .replace(/\s+width="[^"]*"/, '')
+                        .replace(/\s+height="[^"]*"/, '')
+                        .replace(/\s+style="[^"]*"/, '');
+                    cleaned = cleaned.replace(/viewBox="([^"]*)"/, function (vbMatch, vb) {
+                        const parts = vb.trim().split(/[\s,]+/).map(Number);
+                        if (parts.length === 4 && parts.every(isFinite)) {
+                            const [x, y, w, h] = parts;
+                            return 'viewBox="' + (x - PAD) + ' ' + (y - PAD) + ' ' + (w + PAD * 2) + ' ' + (h + PAD * 2) + '"';
+                        }
+                        return vbMatch;
+                    });
+                    return '<svg' + cleaned + ' style="width:100%;height:auto;display:block;">';
+                });
                 return {
-                    png: png.dataUrl,
-                    width: png.width,
-                    height: png.height,
-                    logicalW: png.logicalW,
-                    logicalH: png.logicalH,
-                    name: 'diagram-' + (i + 1) + '.png',
+                    svg: scalable,
+                    name: 'diagram-' + (i + 1) + '.svg',
                     selected: true,
                     uploading: false,
                     uploaded: null,
@@ -374,11 +296,9 @@ ${tikzScriptTags}
                             'Accept': 'application/json',
                         },
                         body: JSON.stringify({
-                            content: result.png,
+                            content: result.svg,
                             filename: result.name,
                             folder: this.uploadFolder,
-                            width: result.width,
-                            height: result.height,
                             caption: '',
                         }),
                     });
@@ -410,6 +330,6 @@ ${tikzScriptTags}
     };
 }
 
-window.tikzPng = tikzPng;
+window.tikzSvgFonts = tikzSvgFonts;
 
-export default tikzPng;
+export default tikzSvgFonts;

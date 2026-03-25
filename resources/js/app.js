@@ -20,6 +20,7 @@ import './alpine/dashboard';
 import './alpine/tools-latex-mathml';
 import './alpine/tools-tikz-svg';
 import './alpine/tools-tikz-png';
+import './alpine/tools-tikz-svg-fonts';
 
 window.Alpine = Alpine;
 

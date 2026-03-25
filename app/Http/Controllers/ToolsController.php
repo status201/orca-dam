@@ -9,6 +9,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ToolsController extends Controller
@@ -156,6 +158,101 @@ class ToolsController extends Controller
             'asset_url' => route('assets.show', $asset),
             'filename' => $asset->filename,
         ]);
+    }
+
+    public function tikzSvgFonts()
+    {
+        $folders = S3Service::getConfiguredFolders();
+        $rootFolder = S3Service::getRootFolder();
+
+        return view('tools.tikz-svg-fonts', compact('folders', 'rootFolder'));
+    }
+
+    public function uploadTikzSvgFonts(Request $request)
+    {
+        $this->authorize('create', Asset::class);
+
+        $request->validate([
+            'content' => ['required', 'string', 'max:5242880'],
+            'filename' => ['required', 'string', 'max:255'],
+            'folder' => ['nullable', 'string', 'max:255'],
+            'caption' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $folder = $request->input('folder', S3Service::getRootFolder());
+
+        // Sanitize filename and ensure .svg extension
+        $filename = S3Service::sanitizeFilename($request->input('filename'));
+        if (! str_ends_with(strtolower($filename), '.svg')) {
+            $filename = pathinfo($filename, PATHINFO_FILENAME).'.svg';
+            if ($filename === '.svg') {
+                $filename = 'diagram.svg';
+            }
+        }
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_svg_');
+        file_put_contents($tmpPath, $request->input('content'));
+
+        try {
+            $uploadedFile = new UploadedFile($tmpPath, $filename, 'image/svg+xml', null, true);
+            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
+
+            $asset = Asset::create([
+                's3_key' => $fileData['s3_key'],
+                'filename' => $filename,
+                'mime_type' => 'image/svg+xml',
+                'size' => $fileData['size'],
+                'etag' => $fileData['etag'] ?? null,
+                'width' => null,
+                'height' => null,
+                'user_id' => Auth::id(),
+                'alt_text' => null,
+                'caption' => $request->input('caption') ?: null,
+            ]);
+
+            $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
+        } catch (\Exception $e) {
+            Log::error('TikZ SVG (embedded fonts) upload failed: '.$e->getMessage());
+
+            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+        } finally {
+            @unlink($tmpPath);
+        }
+
+        return response()->json([
+            'asset_id' => $asset->id,
+            'asset_url' => route('assets.show', $asset),
+            'filename' => $asset->filename,
+        ]);
+    }
+
+    public function bakomaFont(string $name)
+    {
+        // Whitelist: only lowercase alphanumeric font names
+        if (! preg_match('/^[a-z0-9]+$/', $name)) {
+            abort(404);
+        }
+
+        $cacheKey = 'bakoma_font_'.$name;
+
+        $fontData = Cache::remember($cacheKey, 86400, function () use ($name) {
+            $response = Http::timeout(10)->get("https://tikzjax.com/bakoma/ttf/{$name}.ttf");
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            return $response->body();
+        });
+
+        if ($fontData === null) {
+            Cache::forget($cacheKey);
+            abort(404);
+        }
+
+        return response($fontData)
+            ->header('Content-Type', 'font/ttf')
+            ->header('Cache-Control', 'public, max-age=31536000, immutable');
     }
 
     public function tikzPng()
