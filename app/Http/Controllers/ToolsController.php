@@ -235,19 +235,25 @@ class ToolsController extends Controller
 
         $cacheKey = 'bakoma_font_'.$name;
 
-        $fontData = Cache::remember($cacheKey, 86400, function () use ($name) {
-            $response = Http::timeout(10)->get("https://tikzjax.com/bakoma/ttf/{$name}.ttf");
-
-            if (! $response->successful()) {
-                return null;
-            }
-
-            return $response->body();
-        });
+        $fontData = Cache::get($cacheKey);
 
         if ($fontData === null) {
-            Cache::forget($cacheKey);
-            abort(404);
+            try {
+                $response = Http::timeout(10)->get("https://tikzjax.com/bakoma/ttf/{$name}.ttf");
+
+                if (! $response->successful()) {
+                    Log::warning("BaKoMa font not found: {$name} (HTTP {$response->status()})");
+                    abort(404);
+                }
+
+                $fontData = $response->body();
+                Cache::put($cacheKey, base64_encode($fontData), 86400);
+            } catch (\Exception $e) {
+                Log::error("BaKoMa font proxy failed for {$name}: {$e->getMessage()}");
+                abort(502, 'Font fetch failed');
+            }
+        } else {
+            $fontData = base64_decode($fontData);
         }
 
         return response($fontData)

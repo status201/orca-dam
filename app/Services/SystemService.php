@@ -669,7 +669,7 @@ class SystemService
         while (! $file->eof()) {
             $line = $file->current();
             if ($line !== false && trim($line) !== '') {
-                $result[] = rtrim($line);
+                $result[] = mb_convert_encoding(rtrim($line), 'UTF-8', 'UTF-8');
             }
             $file->next();
         }
