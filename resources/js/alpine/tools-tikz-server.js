@@ -1,0 +1,312 @@
+function tikzServer() {
+    const pageData = window.__pageData || {};
+
+    return {
+        tikzCode: '',
+        pngDpi: 300,
+        rendering: false,
+        renderError: '',
+        renderLog: '',
+        showLog: false,
+        compilerAvailable: pageData.compilerAvailable || false,
+        results: [],
+        uploadFolder: pageData.rootFolder || '',
+
+        examples: [
+            {
+                label: 'Circle & axes',
+                code: '\\begin{tikzpicture}\n  \\draw[->] (-2,0) -- (2,0) node[right] {$x$};\n  \\draw[->] (0,-2) -- (0,2) node[above] {$y$};\n  \\draw[thick,blue] (0,0) circle (1.5);\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Triangle',
+                code: '\\begin{tikzpicture}\n  \\draw[thick] (0,0) -- (4,0) -- (2,3) -- cycle;\n  \\node[below left] at (0,0) {$A$};\n  \\node[below right] at (4,0) {$B$};\n  \\node[above] at (2,3) {$C$};\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Simple graph',
+                code: '\\begin{tikzpicture}\n  \\node[circle,draw] (A) at (0,0) {A};\n  \\node[circle,draw] (B) at (2,1) {B};\n  \\node[circle,draw] (C) at (2,-1) {C};\n  \\draw (A) -- (B);\n  \\draw (A) -- (C);\n  \\draw (B) -- (C);\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Binary tree',
+                code: '\\begin{tikzpicture}[level distance=1.2cm,\n  level 1/.style={sibling distance=3cm},\n  level 2/.style={sibling distance=1.5cm}]\n  \\node[circle,draw] {1}\n    child { node[circle,draw] {2}\n      child { node[circle,draw] {4} }\n      child { node[circle,draw] {5} }\n    }\n    child { node[circle,draw] {3}\n      child { node[circle,draw] {6} }\n      child { node[circle,draw] {7} }\n    };\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Sine curve',
+                code: '\\begin{tikzpicture}\n  \\draw[->] (-0.2,0) -- (6.5,0) node[right] {$x$};\n  \\draw[->] (0,-1.3) -- (0,1.3) node[above] {$y$};\n  \\draw[thick,red,domain=0:6.28,samples=100]\n    plot (\\x, {sin(\\x r)});\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Force diagram',
+                code: '\\begin{tikzpicture}\n  \\draw[fill=gray!30] (0,0) rectangle (2,1);\n  \\draw[->,very thick,red] (2,0.5) -- (3.5,0.5) node[right] {$F$};\n  \\draw[->,very thick,blue] (1,0) -- (1,-1) node[below] {$mg$};\n  \\draw[->,very thick,green!60!black] (1,1) -- (1,2) node[above] {$N$};\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Venn',
+                code: '\\begin{tikzpicture}\n  \\fill[blue!40,opacity=0.6] (0,0) circle (1.2);\n  \\fill[red!40,opacity=0.6] (1.4,0) circle (1.2);\n  \\draw (0,0) circle (1.2);\n  \\draw (1.4,0) circle (1.2);\n  \\node at (-0.55,0) {$A$};\n  \\node at (1.95,0) {$B$};\n  \\node[font=\\tiny] at (0.7,0) {$A\\cap B$};\n\\end{tikzpicture}',
+            },
+            {
+                label: 'AMS symbols',
+                code: '\\begin{tikzpicture}\n  \\node[draw,rounded corners,fill=blue!10,inner sep=8pt] at (0,0)\n    {$\\mathbb{R}^n \\subseteq \\mathbb{C}^n$};\n  \\node[draw,rounded corners,fill=red!10,inner sep=8pt] at (4,0)\n    {$\\sum_{i=1}^{\\infty} \\frac{1}{i^2} = \\frac{\\pi^2}{6}$};\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Neural network',
+                code: '\\begin{tikzpicture}[x=1.8cm,y=1.2cm]\n  \\foreach \\i in {1,...,4}\n    \\node[circle,draw,fill=blue!20,minimum size=20pt] (I\\i) at (0,-\\i) {};\n  \\foreach \\j in {1,...,5}\n    \\node[circle,draw,fill=orange!30,minimum size=20pt] (H\\j) at (2,-\\j+0.5) {};\n  \\foreach \\k in {1,...,3}\n    \\node[circle,draw,fill=green!25,minimum size=20pt] (O\\k) at (4,-\\k-0.5) {};\n  \\foreach \\i in {1,...,4}\n    \\foreach \\j in {1,...,5}\n      \\draw[->,gray!60] (I\\i) -- (H\\j);\n  \\foreach \\j in {1,...,5}\n    \\foreach \\k in {1,...,3}\n      \\draw[->,gray!60] (H\\j) -- (O\\k);\n  \\node[above] at (0,-0.5) {\\footnotesize Input};\n  \\node[above] at (2,0) {\\footnotesize Hidden};\n  \\node[above] at (4,-1) {\\footnotesize Output};\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Clock face',
+                code: '\\begin{tikzpicture}\n  \\draw[thick] (0,0) circle (2.2);\n  \\draw[fill=white] (0,0) circle (2.1);\n  \\foreach \\a/\\l in {90/12,60/1,30/2,0/3,-30/4,-60/5,-90/6,-120/7,-150/8,180/9,150/10,120/11}\n    \\node[font=\\small] at (\\a:1.75) {\\l};\n  \\foreach \\a in {0,30,...,330}\n    \\draw (\\a:1.95) -- (\\a:2.05);\n  \\foreach \\a in {0,90,180,270}\n    \\draw[thick] (\\a:1.85) -- (\\a:2.05);\n  \\draw[very thick,cap=round] (0,0) -- (120:1.2);\n  \\draw[thick,cap=round] (0,0) -- (60:1.6);\n  \\draw[red,thin,cap=round] (0,0) -- (-30:1.7);\n  \\fill (0,0) circle (0.06);\n\\end{tikzpicture}',
+            },
+        ],
+
+        parseSnippets() {
+            const re = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g;
+            return this.tikzCode.match(re) || [];
+        },
+
+        loadExample(code) {
+            this.tikzCode = this.tikzCode.trim()
+                ? this.tikzCode + '\n\n' + code
+                : code;
+        },
+
+        clearCode() {
+            this.tikzCode = '';
+            this.results = [];
+            this.renderError = '';
+            this.renderLog = '';
+        },
+
+        variantLabel(type) {
+            var labels = {
+                svg_standard: 'SVG',
+                svg_embedded: 'SVG (embedded fonts)',
+                svg_paths: 'SVG (text as paths)',
+                png: 'PNG',
+            };
+            return labels[type] || type;
+        },
+
+        variantExtension(type) {
+            return type === 'png' ? '.png' : '.svg';
+        },
+
+        variantNameSuffix(type) {
+            var suffixes = {
+                svg_standard: '',
+                svg_embedded: '-embedded',
+                svg_paths: '-paths',
+                png: '',
+            };
+            return suffixes[type] || '';
+        },
+
+        formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        },
+
+        async render() {
+            var snippets = this.parseSnippets();
+            if (snippets.length === 0) {
+                window.showToast('No \\begin{tikzpicture} blocks found', 'warning');
+                return;
+            }
+
+            this.rendering = true;
+            this.results = [];
+            this.renderError = '';
+            this.renderLog = '';
+
+            for (var i = 0; i < snippets.length; i++) {
+                try {
+                    var res = await fetch(pageData.renderUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': pageData.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            tikz_code: snippets[i],
+                            png_dpi: this.pngDpi,
+                        }),
+                    });
+
+                    var data = await res.json();
+
+                    if (!res.ok) {
+                        this.renderError = data.error || 'Compilation failed';
+                        if (data.log) this.renderLog = data.log;
+                        break;
+                    }
+
+                    // Build variants object keyed by type
+                    var variants = {};
+                    var firstType = null;
+                    data.variants.forEach(function (v) {
+                        if (!firstType) firstType = v.type;
+                        variants[v.type] = {
+                            content: v.content,
+                            size: v.size,
+                            mime: v.mime,
+                            width: v.width || null,
+                            height: v.height || null,
+                            selected: v.type === 'svg_paths',
+                            uploading: false,
+                            uploaded: null,
+                            name: 'diagram-' + (i + 1) + this.variantNameSuffix(v.type) + this.variantExtension(v.type),
+                        };
+                    }.bind(this));
+
+                    this.results.push({
+                        snippetIndex: i,
+                        activeTab: variants.svg_paths ? 'svg_paths' : (firstType || 'svg_standard'),
+                        variants: variants,
+                    });
+
+                    if (data.log) this.renderLog = data.log;
+                } catch (e) {
+                    this.renderError = 'Request failed: ' + e.message;
+                    break;
+                }
+            }
+
+            this.rendering = false;
+        },
+
+        variantTypes(result) {
+            return Object.keys(result.variants);
+        },
+
+        activeVariant(result) {
+            return result.variants[result.activeTab] || null;
+        },
+
+        previewHtml(result) {
+            var variant = this.activeVariant(result);
+            if (!variant) return '';
+            if (result.activeTab === 'png') {
+                return '<img src="data:image/png;base64,' + variant.content + '" alt="PNG preview" style="max-width:100%;height:auto;">';
+            }
+            return variant.content;
+        },
+
+        get anyUploading() {
+            return this.results.some(function (r) {
+                return Object.values(r.variants).some(function (v) { return v.uploading; });
+            });
+        },
+
+        get selectedCount() {
+            var count = 0;
+            this.results.forEach(function (r) {
+                Object.values(r.variants).forEach(function (v) {
+                    if (v.selected && !v.uploaded) count++;
+                });
+            });
+            return count;
+        },
+
+        selectAll() {
+            this.results.forEach(function (r) {
+                Object.values(r.variants).forEach(function (v) {
+                    v.selected = true;
+                });
+            });
+        },
+
+        deselectAll() {
+            this.results.forEach(function (r) {
+                Object.values(r.variants).forEach(function (v) {
+                    v.selected = false;
+                });
+            });
+        },
+
+        async uploadSelected() {
+            if (this.anyUploading) return;
+
+            var toUpload = [];
+            this.results.forEach(function (r) {
+                Object.keys(r.variants).forEach(function (type) {
+                    var v = r.variants[type];
+                    if (v.selected && !v.uploaded) {
+                        toUpload.push({ type: type, variant: v });
+                    }
+                });
+            });
+
+            if (toUpload.length === 0) {
+                window.showToast('No variants selected', 'warning');
+                return;
+            }
+
+            var successCount = 0;
+            var failCount = 0;
+
+            for (var i = 0; i < toUpload.length; i++) {
+                var item = toUpload[i];
+                var v = item.variant;
+                v.uploading = true;
+
+                try {
+                    var isSvg = item.type !== 'png';
+                    var uploadUrl = isSvg ? pageData.svgUploadUrl : pageData.pngUploadUrl;
+                    var body = {};
+
+                    if (isSvg) {
+                        body = {
+                            content: v.content,
+                            filename: v.name,
+                            folder: this.uploadFolder,
+                            caption: '',
+                        };
+                    } else {
+                        body = {
+                            content: v.content,
+                            filename: v.name,
+                            folder: this.uploadFolder,
+                            width: v.width,
+                            height: v.height,
+                            caption: '',
+                        };
+                    }
+
+                    var res = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': pageData.csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(body),
+                    });
+
+                    var data = await res.json();
+
+                    if (!res.ok) {
+                        window.showToast((data.error || 'Upload failed') + ': ' + v.name, 'error');
+                        failCount++;
+                    } else {
+                        v.uploaded = data;
+                        successCount++;
+                    }
+                } catch (e) {
+                    window.showToast('Upload failed: ' + e.message, 'error');
+                    failCount++;
+                } finally {
+                    v.uploading = false;
+                }
+            }
+
+            if (successCount > 0) {
+                var msg = successCount === 1
+                    ? '1 variant uploaded successfully!'
+                    : successCount + ' variants uploaded successfully!';
+                window.showToast(msg);
+            }
+        },
+    };
+}
+
+window.tikzServer = tikzServer;
+
+export default tikzServer;

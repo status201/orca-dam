@@ -706,7 +706,7 @@ test('storeThumbnail uploads base64 thumbnail for video asset', function () {
         ]);
 
     $response->assertStatus(200);
-    $response->assertJsonFragment(['message' => 'Video preview generated successfully.']);
+    $response->assertJsonFragment(['message' => 'Preview generated successfully.']);
 
     $asset->refresh();
     expect($asset->thumbnail_s3_key)->toBe('thumbnails/video_thumb.jpg');

@@ -82,6 +82,24 @@
                 </span>
             </div>
         </a>
+        <!-- TikZ Server Render -->
+        <a href="{{ route('tools.tikz-server') }}" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
+            <div class="flex flex-col items-start">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="text-orca-teal group-hover:text-orca-teal-hover transition-colors">
+                        <i class="fas fa-server fa-3x"></i>
+                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {{ __('Server') }}
+                    </span>
+                </div>
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ __('TikZ Server Render') }}</h2>
+                <p class="text-sm text-gray-600 mb-4">{{ __('Compile TikZ diagrams on the server with full TeX Live support. Compare SVG and PNG output variants.') }}</p>
+                <span class="inline-flex items-center text-sm font-medium text-orca-teal group-hover:text-orca-teal-hover">
+                    {{ __('Open') }} <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                </span>
+            </div>
+        </a>
     </div>
 </div>
 @endsection

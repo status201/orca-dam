@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
+use App\Services\TikzCompilerService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -19,7 +20,8 @@ class ToolsController extends Controller
 
     public function __construct(
         protected S3Service $s3Service,
-        protected AssetProcessingService $assetProcessingService
+        protected AssetProcessingService $assetProcessingService,
+        protected TikzCompilerService $tikzCompilerService
     ) {}
 
     public function index()
@@ -336,6 +338,44 @@ class ToolsController extends Controller
             'asset_id' => $asset->id,
             'asset_url' => route('assets.show', $asset),
             'filename' => $asset->filename,
+        ]);
+    }
+
+    public function tikzServer()
+    {
+        $folders = S3Service::getConfiguredFolders();
+        $rootFolder = S3Service::getRootFolder();
+        $compilerAvailable = $this->tikzCompilerService->isAvailable();
+
+        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable'));
+    }
+
+    public function renderTikzServer(Request $request)
+    {
+        $request->validate([
+            'tikz_code' => ['required', 'string', 'max:50000'],
+            'png_dpi' => ['nullable', 'integer', 'min:72', 'max:600'],
+        ]);
+
+        if (! $this->tikzCompilerService->isAvailable()) {
+            return response()->json(['error' => 'TeX Live is not installed on this server.'], 503);
+        }
+
+        $result = $this->tikzCompilerService->compile(
+            $request->input('tikz_code'),
+            $request->input('png_dpi', config('tikz.png_dpi', 300))
+        );
+
+        if (! $result['success']) {
+            return response()->json([
+                'error' => $result['error'] ?? 'Compilation failed',
+                'log' => $result['log'] ?? null,
+            ], 422);
+        }
+
+        return response()->json([
+            'variants' => $result['variants'],
+            'log' => $result['log'] ?? null,
         ]);
     }
 }

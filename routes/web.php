@@ -16,6 +16,7 @@ use App\Http\Controllers\TagController;
 use App\Http\Controllers\TokenController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\UserController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -37,7 +38,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
 
 Route::middleware(['auth'])->group(function () {
-    Route::post('/locale', function (\Illuminate\Http\Request $request) {
+    Route::post('/locale', function (Request $request) {
         $locale = $request->input('locale');
         if (in_array($locale, ['en', 'nl'])) {
             $preferences = $request->user()->preferences ?? [];
@@ -158,6 +159,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('tools/bakoma-font/{name}', [ToolsController::class, 'bakomaFont'])->name('tools.bakoma-font');
         Route::get('tools/tikz-png', [ToolsController::class, 'tikzPng'])->name('tools.tikz-png');
         Route::post('tools/tikz-png/upload', [ToolsController::class, 'uploadTikzPng'])->name('tools.tikz-png.upload');
+        Route::get('tools/tikz-server', [ToolsController::class, 'tikzServer'])->name('tools.tikz-server');
+        Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])->name('tools.tikz-server.render');
 
         // Import metadata
         Route::get('import', [ImportController::class, 'index'])->name('import.index');
