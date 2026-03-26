@@ -89,6 +89,10 @@ function tikzServer() {
                 // Skip documentclass, standalone-specific, and empty lines
                 if (!line) continue;
                 if (/^\\documentclass/.test(line)) continue;
+                // Skip preview-package lines (incompatible with standalone)
+                if (/^\\usepackage.*\{preview\}/.test(line)) continue;
+                if (/^\\PreviewEnvironment/.test(line)) continue;
+                if (/^\\setlength\{\\PreviewBorder\}/.test(line)) continue;
                 if (/^%/.test(line)) {
                     preambleLines.push(lines[i]);
                     continue;

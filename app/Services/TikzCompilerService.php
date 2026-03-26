@@ -301,6 +301,7 @@ LATEX;
 
         $args = array_map('escapeshellarg', $extraArgs);
         $command = $dvisvgmPath
+            .' --bbox=dvi'
             .' '.implode(' ', $args)
             .' '.escapeshellarg($dviFile)
             .' -o '.escapeshellarg($outputFile);
