@@ -82,7 +82,7 @@ function tikzServer() {
             var beforeBeginDoc = code.substring(0, beginDocMatch.index);
 
             // Split into lines and filter out lines we handle ourselves
-            var lines = beforeBeginDoc.split('\n');
+            var lines = beforeBeginDoc.split(/\r?\n/);
             var preambleLines = [];
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i].trim();
@@ -90,9 +90,9 @@ function tikzServer() {
                 if (!line) continue;
                 if (/^\\documentclass/.test(line)) continue;
                 // Skip preview-package lines (incompatible with standalone)
-                if (/^\\usepackage.*\{preview\}/.test(line)) continue;
-                if (/^\\PreviewEnvironment/.test(line)) continue;
-                if (/^\\setlength\{\\PreviewBorder\}/.test(line)) continue;
+                if (/\\usepackage.*\{preview\}/.test(line)) continue;
+                if (/\\PreviewEnvironment/.test(line)) continue;
+                if (/\\setlength\s*\{\\PreviewBorder\}/.test(line)) continue;
                 if (/^%/.test(line)) {
                     preambleLines.push(lines[i]);
                     continue;
