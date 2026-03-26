@@ -131,10 +131,13 @@ class TikzCompilerService
                 ];
             }
 
-            // PNG via dvipng
-            $pngResult = $this->runDvipng($tmpDir, $dviFile, $pngDpi);
-            if ($pngResult !== null) {
-                $variants[] = $pngResult;
+            // PNG — convert from SVG (paths variant preferred, most portable)
+            $svgForPng = $svgPaths ?? $svgStandard ?? $svgEmbedded;
+            if ($svgForPng !== null) {
+                $pngResult = $this->convertSvgToPng($tmpDir, $svgForPng, $pngDpi);
+                if ($pngResult !== null) {
+                    $variants[] = $pngResult;
+                }
             }
 
             if (empty($variants)) {
@@ -245,29 +248,44 @@ LATEX;
     }
 
     /**
-     * Run dvipng to convert DVI to PNG.
+     * Convert SVG content to PNG using rsvg-convert or inkscape.
+     *
+     * dvipng cannot handle PostScript specials from TikZ (dvips backend),
+     * so we convert from the already-generated SVG instead.
      */
-    private function runDvipng(string $tmpDir, string $dviFile, int $dpi): ?array
+    private function convertSvgToPng(string $tmpDir, string $svgContent, int $dpi): ?array
     {
-        $dvipngPath = config('tikz.dvipng_path', 'dvipng');
-        if (! $this->binaryExists($dvipngPath)) {
-            return null;
-        }
-
         $timeout = config('tikz.timeout', 30);
+        $svgFile = $tmpDir.DIRECTORY_SEPARATOR.'for-png.svg';
         $outputFile = $tmpDir.DIRECTORY_SEPARATOR.'output.png';
 
-        $command = escapeshellarg($dvipngPath)
-            .' -D '.escapeshellarg((string) $dpi)
-            .' -T tight'
-            .' -bg Transparent'
-            .' '.escapeshellarg($dviFile)
-            .' -o '.escapeshellarg($outputFile);
+        file_put_contents($svgFile, $svgContent);
 
-        $this->runProcess($command, $tmpDir, $timeout);
+        // Try rsvg-convert first (fast, lightweight)
+        if ($this->binaryExists('rsvg-convert')) {
+            $command = escapeshellarg('rsvg-convert')
+                .' -d '.escapeshellarg((string) $dpi)
+                .' -p '.escapeshellarg((string) $dpi)
+                .' -b white'
+                .' -o '.escapeshellarg($outputFile)
+                .' '.escapeshellarg($svgFile);
+
+            $this->runProcess($command, $tmpDir, $timeout);
+        }
+
+        // Fallback to inkscape
+        if (! file_exists($outputFile) && $this->binaryExists('inkscape')) {
+            $command = escapeshellarg('inkscape')
+                .' '.escapeshellarg($svgFile)
+                .' --export-type=png'
+                .' --export-filename='.escapeshellarg($outputFile)
+                .' --export-dpi='.escapeshellarg((string) $dpi);
+
+            $this->runProcess($command, $tmpDir, $timeout);
+        }
 
         if (! file_exists($outputFile)) {
-            Log::warning('dvipng produced no output');
+            Log::warning('SVG to PNG conversion failed: neither rsvg-convert nor inkscape produced output');
 
             return null;
         }

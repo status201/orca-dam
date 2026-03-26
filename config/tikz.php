@@ -24,16 +24,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | dvipng Binary Path
-    |--------------------------------------------------------------------------
-    |
-    | Path to the dvipng binary for DVI to PNG conversion.
-    |
-    */
-    'dvipng_path' => env('TIKZ_DVIPNG_PATH', 'dvipng'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Compilation Timeout
     |--------------------------------------------------------------------------
     |
@@ -47,7 +37,8 @@ return [
     | PNG DPI
     |--------------------------------------------------------------------------
     |
-    | Default DPI for PNG output via dvipng.
+    | Default DPI for PNG output. PNG is generated from SVG using
+    | rsvg-convert (preferred) or inkscape (fallback).
     |
     */
     'png_dpi' => (int) env('TIKZ_PNG_DPI', 300),

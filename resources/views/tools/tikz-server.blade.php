@@ -280,7 +280,7 @@
                     <li><strong>SVG</strong> — {{ __('Default dvisvgm output with font data in SVG defs. Smallest SVG, but requires fonts on the viewing system.') }}</li>
                     <li><strong>SVG ({{ __('embedded fonts') }})</strong> — {{ __('WOFF2 font data embedded as base64 data URIs. Self-contained but larger file size.') }}</li>
                     <li><strong>SVG ({{ __('text as paths') }})</strong> — {{ __('All text converted to vector path outlines. No font dependencies, ideal for portable use.') }}</li>
-                    <li><strong>PNG</strong> — {{ __('Raster output via dvipng at configurable DPI. Universal compatibility.') }}</li>
+                    <li><strong>PNG</strong> — {{ __('Raster output converted from SVG at configurable DPI (via rsvg-convert or inkscape). Universal compatibility.') }}</li>
                 </ul>
             </div>
 
@@ -294,7 +294,7 @@
             <div>
                 <h4 class="font-semibold text-green-800 mb-1"><i class="fas fa-download mr-1.5 text-green-500"></i>{{ __('Requirements') }}</h4>
                 <p class="text-green-800">
-                    {{ __('Requires TeX Live (or similar TeX distribution) with latex, dvisvgm, and optionally dvipng installed on the server.') }}
+                    {{ __('Requires TeX Live (or similar TeX distribution) with latex and dvisvgm installed on the server. For PNG output, rsvg-convert (librsvg2-bin) or inkscape is needed.') }}
                 </p>
             </div>
         </div>
