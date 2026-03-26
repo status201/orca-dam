@@ -101,7 +101,55 @@ function tikzServer() {
                 preambleLines.push(lines[i]);
             }
 
-            return preambleLines.join('\n').trim();
+            var preamble = preambleLines.join('\n').trim();
+
+            // Also extract command definitions from the document body
+            var bodyDefs = this.parseBodyDefinitions();
+            if (bodyDefs) {
+                preamble = preamble ? preamble + '\n' + bodyDefs : bodyDefs;
+            }
+            return preamble;
+        },
+
+        parseBodyDefinitions() {
+            if (!this.isFullDocument()) return '';
+
+            var code = this.tikzCode;
+            var beginDocMatch = code.match(/\\begin\{document\}/);
+            var endDocMatch = code.match(/\\end\{document\}/);
+            if (!beginDocMatch || !endDocMatch) return '';
+
+            var body = code.substring(
+                beginDocMatch.index + beginDocMatch[0].length,
+                endDocMatch.index
+            );
+
+            // Strip comment lines and tikzpicture blocks
+            body = body.replace(/^[ \t]*%.*$/gm, '');
+            body = body.replace(/\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g, '');
+
+            // Find command definitions with brace matching
+            var defPattern = /\\(?:newcommand|renewcommand|def|newlength|tikzset|pgfmathsetmacro)\b/g;
+            var definitions = [];
+            var match;
+
+            while ((match = defPattern.exec(body)) !== null) {
+                // Find start of this line
+                var lineStart = body.lastIndexOf('\n', match.index) + 1;
+                // Brace-match to find the end of the definition
+                var depth = 0;
+                var started = false;
+                var pos = match.index;
+                while (pos < body.length) {
+                    if (body[pos] === '{') { depth++; started = true; }
+                    else if (body[pos] === '}') { depth--; }
+                    if (started && depth === 0) { pos++; break; }
+                    pos++;
+                }
+                definitions.push(body.substring(lineStart, pos).trim());
+            }
+
+            return definitions.join('\n');
         },
 
         parseSnippets() {
