@@ -22,6 +22,21 @@ class TikzCompilerService
     ];
 
     /**
+     * Available font packages for the document preamble.
+     */
+    private const FONT_PACKAGES = [
+        'arev' => 'Arev Sans',
+        'lmodern' => 'Latin Modern',
+        'helvet' => 'Helvetica',
+        'avant' => 'Avant Garde',
+        'courier' => 'Courier',
+        'palatino' => 'Palatino',
+        'bookman' => 'Bookman',
+        'charter' => 'Charter',
+        'default' => 'Default (Computer Modern)',
+    ];
+
+    /**
      * TikZ libraries to include in the document preamble.
      */
     private const TIKZ_LIBRARIES = [
@@ -53,15 +68,32 @@ class TikzCompilerService
     }
 
     /**
+     * Get the available font packages for the UI dropdown.
+     */
+    public static function fontPackages(): array
+    {
+        return self::FONT_PACKAGES;
+    }
+
+    /**
      * Compile TikZ code into four output variants.
      *
      * @return array{success: bool, variants?: array, log?: string, error?: string}
      */
-    public function compile(string $tikzCode, int $pngDpi = 300): array
+    public function compile(string $tikzCode, int $pngDpi = 300, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = ''): array
     {
         $sanitized = $this->sanitizeInput($tikzCode);
         if ($sanitized === null) {
             return ['success' => false, 'error' => 'Input contains potentially dangerous LaTeX commands.'];
+        }
+
+        // Sanitize preamble too if provided
+        if ($preamble !== '') {
+            $sanitizedPreamble = $this->sanitizeInput($preamble);
+            if ($sanitizedPreamble === null) {
+                return ['success' => false, 'error' => 'Preamble contains potentially dangerous LaTeX commands.'];
+            }
+            $preamble = $sanitizedPreamble;
         }
 
         $tmpDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'orca_tikz_'.uniqid();
@@ -70,7 +102,7 @@ class TikzCompilerService
         }
 
         try {
-            $texContent = $this->buildTexDocument($sanitized);
+            $texContent = $this->buildTexDocument($sanitized, $borderPt, $fontPackage, $preamble);
             $texFile = $tmpDir.DIRECTORY_SEPARATOR.'input.tex';
             file_put_contents($texFile, $texContent);
 
@@ -177,7 +209,7 @@ class TikzCompilerService
     /**
      * Build a complete LaTeX document wrapping the TikZ snippet.
      */
-    public function buildTexDocument(string $tikzSnippet): string
+    public function buildTexDocument(string $tikzSnippet, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = ''): string
     {
         $libraries = implode(',', self::TIKZ_LIBRARIES);
 
@@ -186,10 +218,28 @@ class TikzCompilerService
             return $tikzSnippet;
         }
 
+        // When a user preamble is provided, use it (it already contains usepackage lines, colors, etc.)
+        if ($preamble !== '') {
+            return <<<LATEX
+\\documentclass[tikz,border={$borderPt}pt]{standalone}
+{$preamble}
+\\begin{document}
+{$tikzSnippet}
+\\end{document}
+LATEX;
+        }
+
+        // Build font package line (whitelist to prevent injection)
+        $fontLine = '';
+        if ($fontPackage !== 'default' && $fontPackage !== '' && isset(self::FONT_PACKAGES[$fontPackage])) {
+            $safeName = preg_replace('/[^a-zA-Z0-9\-]/', '', $fontPackage);
+            $fontLine = "\\usepackage{{$safeName}}\n";
+        }
+
         return <<<LATEX
-\\documentclass[tikz,border=2pt]{standalone}
+\\documentclass[tikz,border={$borderPt}pt]{standalone}
 \\usepackage{amsmath,amssymb,amsfonts}
-\\usepackage{tikz}
+{$fontLine}\\usepackage{tikz}
 \\usetikzlibrary{{$libraries}}
 \\begin{document}
 {$tikzSnippet}

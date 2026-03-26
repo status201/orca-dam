@@ -4,6 +4,8 @@ function tikzServer() {
     return {
         tikzCode: '',
         pngDpi: 300,
+        borderPt: 5,
+        fontPackage: 'arev',
         rendering: false,
         renderError: '',
         renderLog: '',
@@ -54,6 +56,40 @@ function tikzServer() {
                 code: '\\begin{tikzpicture}\n  \\draw[thick] (0,0) circle (2.2);\n  \\draw[fill=white] (0,0) circle (2.1);\n  \\foreach \\a/\\l in {90/12,60/1,30/2,0/3,-30/4,-60/5,-90/6,-120/7,-150/8,180/9,150/10,120/11}\n    \\node[font=\\small] at (\\a:1.75) {\\l};\n  \\foreach \\a in {0,30,...,330}\n    \\draw (\\a:1.95) -- (\\a:2.05);\n  \\foreach \\a in {0,90,180,270}\n    \\draw[thick] (\\a:1.85) -- (\\a:2.05);\n  \\draw[very thick,cap=round] (0,0) -- (120:1.2);\n  \\draw[thick,cap=round] (0,0) -- (60:1.6);\n  \\draw[red,thin,cap=round] (0,0) -- (-30:1.7);\n  \\fill (0,0) circle (0.06);\n\\end{tikzpicture}',
             },
         ],
+
+        isFullDocument() {
+            return /\\documentclass[\s\[{]/.test(this.tikzCode);
+        },
+
+        parsePreamble() {
+            if (!this.isFullDocument()) return '';
+
+            var code = this.tikzCode;
+
+            // Extract everything between \documentclass line and \begin{document}
+            var beginDocMatch = code.match(/\\begin\{document\}/);
+            if (!beginDocMatch) return '';
+
+            var beforeBeginDoc = code.substring(0, beginDocMatch.index);
+
+            // Split into lines and filter out lines we handle ourselves
+            var lines = beforeBeginDoc.split('\n');
+            var preambleLines = [];
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                // Skip documentclass, standalone-specific, and empty lines
+                if (!line) continue;
+                if (/^\\documentclass/.test(line)) continue;
+                if (/^%/.test(line)) {
+                    preambleLines.push(lines[i]);
+                    continue;
+                }
+                // Keep everything else (usepackage, definecolor, newcommand, tikzset, etc.)
+                preambleLines.push(lines[i]);
+            }
+
+            return preambleLines.join('\n').trim();
+        },
 
         parseSnippets() {
             const re = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g;
@@ -115,8 +151,20 @@ function tikzServer() {
             this.renderError = '';
             this.renderLog = '';
 
+            var preamble = this.parsePreamble();
+
             for (var i = 0; i < snippets.length; i++) {
                 try {
+                    var body = {
+                        tikz_code: snippets[i],
+                        png_dpi: this.pngDpi,
+                        border_pt: this.borderPt,
+                        font_package: this.fontPackage,
+                    };
+                    if (preamble) {
+                        body.preamble = preamble;
+                    }
+
                     var res = await fetch(pageData.renderUrl, {
                         method: 'POST',
                         headers: {
@@ -124,10 +172,7 @@ function tikzServer() {
                             'X-CSRF-TOKEN': pageData.csrfToken,
                             'Accept': 'application/json',
                         },
-                        body: JSON.stringify({
-                            tikz_code: snippets[i],
-                            png_dpi: this.pngDpi,
-                        }),
+                        body: JSON.stringify(body),
                     });
 
                     var data = await res.json();

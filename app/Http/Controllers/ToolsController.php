@@ -346,8 +346,9 @@ class ToolsController extends Controller
         $folders = S3Service::getConfiguredFolders();
         $rootFolder = S3Service::getRootFolder();
         $compilerAvailable = $this->tikzCompilerService->isAvailable();
+        $fontPackages = TikzCompilerService::fontPackages();
 
-        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable'));
+        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable', 'fontPackages'));
     }
 
     public function renderTikzServer(Request $request)
@@ -355,6 +356,9 @@ class ToolsController extends Controller
         $request->validate([
             'tikz_code' => ['required', 'string', 'max:50000'],
             'png_dpi' => ['nullable', 'integer', 'min:72', 'max:600'],
+            'border_pt' => ['nullable', 'integer', 'min:0', 'max:50'],
+            'font_package' => ['nullable', 'string', 'max:30'],
+            'preamble' => ['nullable', 'string', 'max:50000'],
         ]);
 
         if (! $this->tikzCompilerService->isAvailable()) {
@@ -363,7 +367,10 @@ class ToolsController extends Controller
 
         $result = $this->tikzCompilerService->compile(
             $request->input('tikz_code'),
-            $request->input('png_dpi', config('tikz.png_dpi', 300))
+            $request->input('png_dpi', config('tikz.png_dpi', 300)),
+            $request->input('border_pt', 5),
+            $request->input('font_package', 'arev'),
+            $request->input('preamble', '')
         );
 
         if (! $result['success']) {

@@ -1091,6 +1091,7 @@
     "Yes, Replace": "Ja, vervangen",
     "You": "Jij",
     "You're logged in with": "Je bent ingelogd met",
+    "You can also paste a full LaTeX document — the preamble (colors, packages, commands) will be applied to each diagram.": "Je kunt ook een volledig LaTeX-document plakken — de preambule (kleuren, pakketten, commando's) wordt op elk diagram toegepast.",
     "You can find these API settings on the": "Je kunt deze API-instellingen vinden op de",
     "You can restore them or permanently delete them (which will also remove the S3 objects).": "Je kunt ze herstellen of permanent verwijderen (waardoor ook de S3-objecten worden verwijderd).",
     "You may see a": "Je kunt een",

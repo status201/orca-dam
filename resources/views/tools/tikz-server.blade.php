@@ -64,6 +64,7 @@
             <i class="fas fa-info-circle mr-1"></i>
             {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded">\begin{tikzpicture}...\end{tikzpicture}</code>
             {{ __('blocks will be extracted and rendered separately.') }}
+            {{ __('You can also paste a full LaTeX document — the preamble (colors, packages, commands) will be applied to each diagram.') }}
         </p>
 
         {{-- Textarea --}}
@@ -95,6 +96,26 @@
                 <i class="fas fa-times"></i>
                 {{ __('Clear') }}
             </button>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-600 whitespace-nowrap">{{ __('Edge padding (pt)') }}</label>
+                <input
+                    type="number"
+                    x-model.number="borderPt"
+                    min="0"
+                    max="50"
+                    step="1"
+                    class="w-16 text-sm border border-gray-300 rounded-md px-2 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-600 whitespace-nowrap">{{ __('Font') }}:</label>
+                <select
+                    x-model="fontPackage"
+                    class="text-sm border border-gray-300 rounded-md px-2 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                    @foreach($fontPackages as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="flex items-center gap-2">
                 <label class="text-sm text-gray-600 whitespace-nowrap">{{ __('PNG DPI') }}:</label>
                 <input
