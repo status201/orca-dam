@@ -3,6 +3,7 @@ function tikzServer() {
 
     return {
         tikzCode: '',
+        templateName: '',
         pngDpi: 300,
         borderPt: 5,
         fontPackage: 'arev',
@@ -102,8 +103,27 @@ function tikzServer() {
                 : code;
         },
 
+        loadTemplateFile(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                this.tikzCode = e.target.result;
+                this.templateName = file.name;
+                this.results = [];
+                this.renderError = '';
+                this.renderLog = '';
+            }.bind(this);
+            reader.readAsText(file);
+
+            // Reset input so the same file can be re-loaded
+            event.target.value = '';
+        },
+
         clearCode() {
             this.tikzCode = '';
+            this.templateName = '';
             this.results = [];
             this.renderError = '';
             this.renderLog = '';

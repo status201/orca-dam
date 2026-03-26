@@ -46,16 +46,30 @@
             <i class="fas fa-pen mr-2 text-gray-400"></i>{{ __('TikZ Input') }}
         </h2>
 
-        {{-- Examples --}}
-        <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{{ __('Examples') }}</p>
-            <div class="flex flex-wrap gap-2">
-                <template x-for="ex in examples" :key="ex.label">
-                    <button
-                        @click="loadExample(ex.code)"
-                        class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors"
-                        x-text="ex.label">
-                    </button>
+        {{-- Examples + Load template --}}
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{{ __('Examples') }}</p>
+                <div class="flex flex-wrap gap-2">
+                    <template x-for="ex in examples" :key="ex.label">
+                        <button
+                            @click="loadExample(ex.code)"
+                            class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors"
+                            x-text="ex.label">
+                        </button>
+                    </template>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <input type="file" accept=".tex,.txt" class="hidden" x-ref="templateInput" @change="loadTemplateFile($event)">
+                <button
+                    @click="$refs.templateInput.click()"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors">
+                    <i class="fas fa-file-import"></i>
+                    {{ __('Load .tex template') }}
+                </button>
+                <template x-if="templateName">
+                    <span class="text-xs text-gray-400 font-mono" x-text="templateName"></span>
                 </template>
             </div>
         </div>

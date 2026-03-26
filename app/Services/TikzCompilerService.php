@@ -24,16 +24,31 @@ class TikzCompilerService
     /**
      * Available font packages for the document preamble.
      */
+    /**
+     * Available font packages: key => [label, latex preamble lines].
+     * Sans-serif fonts listed first, then serif, then default.
+     */
     private const FONT_PACKAGES = [
-        'arev' => 'Arev Sans',
-        'lmodern' => 'Latin Modern',
-        'helvet' => 'Helvetica',
-        'avant' => 'Avant Garde',
-        'courier' => 'Courier',
-        'palatino' => 'Palatino',
-        'bookman' => 'Bookman',
-        'charter' => 'Charter',
-        'default' => 'Default (Computer Modern)',
+        // Sans-serif
+        'arev' => ['label' => 'Arev Sans', 'latex' => '\\usepackage{arev}'],
+        'cmbright' => ['label' => 'CM Bright', 'latex' => '\\usepackage{cmbright}'],
+        'helvet' => ['label' => 'Helvetica', 'latex' => "\\usepackage{helvet}\n\\renewcommand{\\familydefault}{\\sfdefault}"],
+        'avant' => ['label' => 'Avant Garde', 'latex' => "\\usepackage{avant}\n\\renewcommand{\\familydefault}{\\sfdefault}"],
+        'opensans' => ['label' => 'Open Sans', 'latex' => '\\usepackage[default]{opensans}'],
+        'firasans' => ['label' => 'Fira Sans', 'latex' => '\\usepackage[sfdefault]{FiraSans}'],
+        'sourcesanspro' => ['label' => 'Source Sans Pro', 'latex' => '\\usepackage[default]{sourcesanspro}'],
+        'roboto' => ['label' => 'Roboto', 'latex' => '\\usepackage[sfdefault]{roboto}'],
+        'cabin' => ['label' => 'Cabin', 'latex' => '\\usepackage[sfdefault]{cabin}'],
+        'iwona' => ['label' => 'Iwona', 'latex' => '\\usepackage[math]{iwona}'],
+        'kurier' => ['label' => 'Kurier', 'latex' => '\\usepackage[math]{kurier}'],
+        'raleway' => ['label' => 'Raleway', 'latex' => '\\usepackage[default]{raleway}'],
+        // Serif
+        'lmodern' => ['label' => 'Latin Modern (serif)', 'latex' => '\\usepackage{lmodern}'],
+        'palatino' => ['label' => 'Palatino (serif)', 'latex' => '\\usepackage{palatino}'],
+        'charter' => ['label' => 'Charter (serif)', 'latex' => '\\usepackage{charter}'],
+        'bookman' => ['label' => 'Bookman (serif)', 'latex' => '\\usepackage{bookman}'],
+        // Default
+        'default' => ['label' => 'Computer Modern (default)', 'latex' => ''],
     ];
 
     /**
@@ -68,11 +83,19 @@ class TikzCompilerService
     }
 
     /**
-     * Get the available font packages for the UI dropdown.
+     * Get the available font packages for the UI dropdown (key => label).
      */
     public static function fontPackages(): array
     {
-        return self::FONT_PACKAGES;
+        return array_map(fn ($v) => $v['label'], self::FONT_PACKAGES);
+    }
+
+    /**
+     * Get the LaTeX preamble lines for a given font package key.
+     */
+    public static function fontLatex(string $key): string
+    {
+        return self::FONT_PACKAGES[$key]['latex'] ?? '';
     }
 
     /**
@@ -229,11 +252,10 @@ class TikzCompilerService
 LATEX;
         }
 
-        // Build font package line (whitelist to prevent injection)
-        $fontLine = '';
-        if ($fontPackage !== 'default' && $fontPackage !== '' && isset(self::FONT_PACKAGES[$fontPackage])) {
-            $safeName = preg_replace('/[^a-zA-Z0-9\-]/', '', $fontPackage);
-            $fontLine = "\\usepackage{{$safeName}}\n";
+        // Get font preamble lines from whitelist
+        $fontLine = self::fontLatex($fontPackage);
+        if ($fontLine !== '') {
+            $fontLine .= "\n";
         }
 
         return <<<LATEX

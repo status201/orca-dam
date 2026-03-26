@@ -568,6 +568,7 @@
     "License Type": "Licentietype",
     "License updated successfully": "Licentie succesvol bijgewerkt",
     "List": "Lijst",
+    "Load .tex template": ".tex-sjabloon laden",
     "Loading dashboard...": "Dashboard laden...",
     "Loading documentation...": "Documentatie laden...",
     "Loading JWT secrets...": "JWT-secrets laden...",
