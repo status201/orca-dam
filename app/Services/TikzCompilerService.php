@@ -154,7 +154,7 @@ class TikzCompilerService
             $variants = [];
 
             // SVG standard (dvisvgm default: fonts as SVG path data in <defs>)
-            $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', []);
+            $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', [], $borderPt);
             if ($svgStandard !== null) {
                 $variants[] = [
                     'type' => 'svg_standard',
@@ -165,7 +165,7 @@ class TikzCompilerService
             }
 
             // SVG with embedded WOFF2 fonts
-            $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2']);
+            $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2'], $borderPt);
             if ($svgEmbedded !== null) {
                 $variants[] = [
                     'type' => 'svg_embedded',
@@ -176,7 +176,7 @@ class TikzCompilerService
             }
 
             // SVG with text as paths (no font dependencies)
-            $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts']);
+            $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $borderPt);
             if ($svgPaths !== null) {
                 $variants[] = [
                     'type' => 'svg_paths',
@@ -244,7 +244,7 @@ class TikzCompilerService
         // When a user preamble is provided, use it (it already contains usepackage lines, colors, etc.)
         if ($preamble !== '') {
             return <<<LATEX
-\\documentclass[tikz,border={$borderPt}pt]{standalone}
+\\documentclass[tikz]{standalone}
 {$preamble}
 \\begin{document}
 {$tikzSnippet}
@@ -259,7 +259,7 @@ LATEX;
         }
 
         return <<<LATEX
-\\documentclass[tikz,border={$borderPt}pt]{standalone}
+\\documentclass[tikz]{standalone}
 \\usepackage{amsmath,amssymb,amsfonts}
 {$fontLine}\\usepackage{tikz}
 \\usetikzlibrary{{$libraries}}
@@ -293,7 +293,7 @@ LATEX;
     /**
      * Run dvisvgm to convert DVI to SVG.
      */
-    private function runDvisvgm(string $tmpDir, string $dviFile, string $outputName, array $extraArgs): ?string
+    private function runDvisvgm(string $tmpDir, string $dviFile, string $outputName, array $extraArgs, int $borderPt = 5): ?string
     {
         $dvisvgmPath = escapeshellarg(config('tikz.dvisvgm_path', 'dvisvgm'));
         $timeout = config('tikz.timeout', 30);
@@ -301,7 +301,7 @@ LATEX;
 
         $args = array_map('escapeshellarg', $extraArgs);
         $command = $dvisvgmPath
-            .' --bbox=dvi'
+            .' --bbox='.escapeshellarg($borderPt.'pt')
             .' '.implode(' ', $args)
             .' '.escapeshellarg($dviFile)
             .' -o '.escapeshellarg($outputFile);
