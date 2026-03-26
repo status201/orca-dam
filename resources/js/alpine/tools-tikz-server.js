@@ -105,8 +105,10 @@ function tikzServer() {
         },
 
         parseSnippets() {
+            // Strip comment lines so commented-out tikzpicture blocks aren't matched
+            var code = this.tikzCode.replace(/^[ \t]*%.*$/gm, '');
             const re = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g;
-            return this.tikzCode.match(re) || [];
+            return code.match(re) || [];
         },
 
         loadExample(code) {
