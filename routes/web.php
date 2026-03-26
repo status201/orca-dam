@@ -161,6 +161,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('tools/tikz-png/upload', [ToolsController::class, 'uploadTikzPng'])->name('tools.tikz-png.upload');
         Route::get('tools/tikz-server', [ToolsController::class, 'tikzServer'])->name('tools.tikz-server');
         Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])->name('tools.tikz-server.render');
+        Route::get('tools/tikz-server/templates', [ToolsController::class, 'searchTexTemplates'])->name('tools.tikz-server.templates');
+        Route::get('tools/tikz-server/templates/{asset}', [ToolsController::class, 'loadTexTemplate'])->name('tools.tikz-server.templates.load');
+        Route::post('tools/tikz-server/templates/upload', [ToolsController::class, 'uploadTexTemplate'])->name('tools.tikz-server.templates.upload');
 
         // Import metadata
         Route::get('import', [ImportController::class, 'index'])->name('import.index');

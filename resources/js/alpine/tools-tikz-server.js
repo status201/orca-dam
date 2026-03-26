@@ -15,6 +15,14 @@ function tikzServer() {
         results: [],
         uploadFolder: pageData.rootFolder || '',
 
+        // Template browser
+        templateSearchQuery: '',
+        templateSearchResults: [],
+        templateSearchLoading: false,
+        templateBrowserOpen: false,
+        templateLoadingId: null,
+        savingTemplate: false,
+
         examples: [
             {
                 label: 'Circle & axes',
@@ -127,6 +135,99 @@ function tikzServer() {
             this.results = [];
             this.renderError = '';
             this.renderLog = '';
+        },
+
+        openTemplateBrowser() {
+            this.templateBrowserOpen = true;
+            this.templateSearchQuery = '';
+            this.searchTemplates();
+        },
+
+        closeTemplateBrowser() {
+            this.templateBrowserOpen = false;
+            this.templateSearchResults = [];
+            this.templateSearchQuery = '';
+        },
+
+        async searchTemplates() {
+            this.templateSearchLoading = true;
+            try {
+                var url = pageData.templateSearchUrl + '?search=' + encodeURIComponent(this.templateSearchQuery);
+                var res = await fetch(url, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (res.ok) {
+                    this.templateSearchResults = await res.json();
+                }
+            } catch (e) {
+                // Silently fail — results just stay empty
+            } finally {
+                this.templateSearchLoading = false;
+            }
+        },
+
+        async loadFromOrca(id) {
+            this.templateLoadingId = id;
+            try {
+                var res = await fetch(pageData.templateLoadUrl + '/' + id, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                var data = await res.json();
+                if (!res.ok) {
+                    window.showToast(data.error || 'Failed to load template', 'error');
+                    return;
+                }
+                this.tikzCode = data.content;
+                this.templateName = data.filename;
+                this.results = [];
+                this.renderError = '';
+                this.renderLog = '';
+                this.closeTemplateBrowser();
+                window.showToast(data.filename, 'success');
+            } catch (e) {
+                window.showToast('Failed to load template: ' + e.message, 'error');
+            } finally {
+                this.templateLoadingId = null;
+            }
+        },
+
+        async saveToOrca() {
+            if (!this.tikzCode.trim() || this.savingTemplate) return;
+
+            var defaultName = this.templateName || 'template.tex';
+            if (!defaultName.endsWith('.tex')) {
+                defaultName = defaultName.replace(/\.[^.]+$/, '') + '.tex';
+            }
+            var filename = window.prompt(pageData.saveTemplatePrompt || 'Template name:', defaultName);
+            if (!filename) return;
+
+            this.savingTemplate = true;
+            try {
+                var res = await fetch(pageData.templateUploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': pageData.csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: this.tikzCode,
+                        filename: filename,
+                        folder: this.uploadFolder,
+                    }),
+                });
+                var data = await res.json();
+                if (!res.ok) {
+                    window.showToast(data.error || 'Save failed', 'error');
+                    return;
+                }
+                this.templateName = data.filename;
+                window.showToast(data.filename, 'success');
+            } catch (e) {
+                window.showToast('Save failed: ' + e.message, 'error');
+            } finally {
+                this.savingTemplate = false;
+            }
         },
 
         variantLabel(type) {

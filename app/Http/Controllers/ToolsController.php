@@ -385,4 +385,106 @@ class ToolsController extends Controller
             'log' => $result['log'] ?? null,
         ]);
     }
+
+    public function searchTexTemplates(Request $request)
+    {
+        $query = Asset::query()
+            ->where(function ($q) {
+                $q->where('filename', 'like', '%.tex')
+                    ->orWhere('filename', 'like', '%.txt');
+            });
+
+        if ($search = $request->input('search')) {
+            $query->search($search);
+        }
+
+        $assets = $query->orderByDesc('updated_at')
+            ->limit(50)
+            ->get(['id', 'filename', 's3_key', 'size', 'updated_at']);
+
+        return response()->json($assets->map(function ($asset) {
+            return [
+                'id' => $asset->id,
+                'filename' => $asset->filename,
+                'folder' => $asset->folder,
+                'size' => $asset->size,
+                'formatted_size' => $asset->formatted_size,
+                'updated_at' => $asset->updated_at->format('Y-m-d H:i'),
+            ];
+        }));
+    }
+
+    public function loadTexTemplate(Asset $asset)
+    {
+        $ext = strtolower(pathinfo($asset->filename, PATHINFO_EXTENSION));
+        if (! in_array($ext, ['tex', 'txt'])) {
+            return response()->json(['error' => 'Not a .tex or .txt file'], 422);
+        }
+
+        $content = $this->s3Service->getObjectContent($asset->s3_key);
+        if ($content === null) {
+            return response()->json(['error' => 'Could not retrieve file content'], 500);
+        }
+
+        return response()->json([
+            'content' => $content,
+            'filename' => $asset->filename,
+            'id' => $asset->id,
+        ]);
+    }
+
+    public function uploadTexTemplate(Request $request)
+    {
+        $this->authorize('create', Asset::class);
+
+        $request->validate([
+            'content' => ['required', 'string', 'max:1048576'],
+            'filename' => ['required', 'string', 'max:255'],
+            'folder' => ['nullable', 'string', 'max:255'],
+            'caption' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $folder = $request->input('folder', S3Service::getRootFolder());
+
+        $filename = S3Service::sanitizeFilename($request->input('filename'));
+        if (! str_ends_with(strtolower($filename), '.tex')) {
+            $filename = pathinfo($filename, PATHINFO_FILENAME).'.tex';
+            if ($filename === '.tex') {
+                $filename = 'template.tex';
+            }
+        }
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_tex_');
+        file_put_contents($tmpPath, $request->input('content'));
+
+        try {
+            $uploadedFile = new UploadedFile($tmpPath, $filename, 'application/x-tex', null, true);
+            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
+
+            $asset = Asset::create([
+                's3_key' => $fileData['s3_key'],
+                'filename' => $filename,
+                'mime_type' => 'application/x-tex',
+                'size' => $fileData['size'],
+                'etag' => $fileData['etag'] ?? null,
+                'width' => null,
+                'height' => null,
+                'user_id' => Auth::id(),
+                'alt_text' => null,
+                'caption' => $request->input('caption') ?: null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('TeX template upload failed: '.$e->getMessage());
+
+            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+        } finally {
+            @unlink($tmpPath);
+        }
+
+        return response()->json([
+            'asset_id' => $asset->id,
+            'asset_url' => route('assets.show', $asset),
+            'filename' => $asset->filename,
+        ]);
+    }
 }

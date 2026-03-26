@@ -60,17 +60,76 @@
                     </template>
                 </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex items-center gap-2 shrink-0 relative">
                 <input type="file" accept=".tex,.txt" class="hidden" x-ref="templateInput" @change="loadTemplateFile($event)">
                 <button
                     @click="$refs.templateInput.click()"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors">
                     <i class="fas fa-file-import"></i>
-                    {{ __('Load .tex template') }}
+                    {{ __('Load .tex file') }}
+                </button>
+                <button
+                    @click="openTemplateBrowser()"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-gray-300 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors">
+                    <i class="fas fa-database"></i>
+                    {{ __('Load from ORCA') }}
                 </button>
                 <template x-if="templateName">
                     <span class="text-xs text-gray-400 font-mono" x-text="templateName"></span>
                 </template>
+
+                {{-- Template browser panel --}}
+                <div x-show="templateBrowserOpen" x-transition @click.outside="closeTemplateBrowser()"
+                    class="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div class="p-3 border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="text"
+                                x-model="templateSearchQuery"
+                                @input.debounce.300ms="searchTemplates()"
+                                placeholder="{{ __('Search templates…') }}"
+                                class="flex-1 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal"
+                                x-ref="templateSearchInput"
+                                @keydown.escape="closeTemplateBrowser()">
+                            <button @click="closeTemplateBrowser()" class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="max-h-64 overflow-y-auto invert-scrollbar-colors">
+                        <template x-if="templateSearchLoading">
+                            <div class="px-3 py-4 text-center text-sm text-gray-400">
+                                <i class="fas fa-spinner fa-spin mr-1"></i> {{ __('Searching…') }}
+                            </div>
+                        </template>
+                        <template x-if="!templateSearchLoading && templateSearchResults.length === 0">
+                            <div class="px-3 py-4 text-center text-sm text-gray-400">
+                                {{ __('No templates found') }}
+                            </div>
+                        </template>
+                        <template x-for="tpl in templateSearchResults" :key="tpl.id">
+                            <button
+                                @click="loadFromOrca(tpl.id)"
+                                :disabled="templateLoadingId === tpl.id"
+                                class="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-50 transition-colors disabled:opacity-50">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-medium text-gray-800 truncate" x-text="tpl.filename"></div>
+                                        <div class="text-xs text-gray-400 truncate" x-text="tpl.folder"></div>
+                                    </div>
+                                    <div class="text-xs text-gray-400 whitespace-nowrap shrink-0">
+                                        <span x-text="tpl.formatted_size"></span>
+                                        <span class="mx-1">&middot;</span>
+                                        <span x-text="tpl.updated_at"></span>
+                                    </div>
+                                </div>
+                                <template x-if="templateLoadingId === tpl.id">
+                                    <i class="fas fa-spinner fa-spin text-xs text-orca-teal mt-1"></i>
+                                </template>
+                            </button>
+                        </template>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -109,6 +168,13 @@
                 class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-md hover:border-gray-400 hover:text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                 <i class="fas fa-times"></i>
                 {{ __('Clear') }}
+            </button>
+            <button
+                @click="saveToOrca()"
+                :disabled="!tikzCode.trim() || savingTemplate"
+                class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-md hover:border-orca-teal hover:text-orca-teal disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                <i class="fas fa-floppy-disk" :class="savingTemplate && 'fa-spin'"></i>
+                {{ __('Save as .tex') }}
             </button>
             <div class="flex items-center gap-2">
                 <label class="text-sm text-gray-600 whitespace-nowrap">{{ __('Edge padding (pt)') }}</label>
@@ -344,6 +410,10 @@ window.__pageData = {
     renderUrl: '{{ route('tools.tikz-server.render') }}',
     svgUploadUrl: '{{ route('tools.tikz-svg.upload') }}',
     pngUploadUrl: '{{ route('tools.tikz-png.upload') }}',
+    templateSearchUrl: '{{ route('tools.tikz-server.templates') }}',
+    templateLoadUrl: '{{ url('tools/tikz-server/templates') }}',
+    templateUploadUrl: '{{ route('tools.tikz-server.templates.upload') }}',
+    saveTemplatePrompt: '{{ __('Template name') }}:',
     csrfToken: '{{ csrf_token() }}',
     compilerAvailable: @json($compilerAvailable),
 };
