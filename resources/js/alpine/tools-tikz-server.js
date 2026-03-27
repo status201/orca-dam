@@ -138,7 +138,19 @@ function tikzServer() {
                 var pos = match.index + match[0].length;
                 var end = pos;
 
-                // Consume all parts: name ({braced} or \bare), optional args [n], body {…}
+                // Skip optional star variant
+                while (pos < body.length && ' \t\r\n'.indexOf(body[pos]) >= 0) pos++;
+                if (pos < body.length && body[pos] === '*') pos++;
+
+                // Skip bare command name (e.g., \newcommand\foo)
+                while (pos < body.length && ' \t\r\n'.indexOf(body[pos]) >= 0) pos++;
+                if (pos < body.length && body[pos] === '\\') {
+                    pos++;
+                    while (pos < body.length && /[a-zA-Z@]/.test(body[pos])) pos++;
+                    end = pos;
+                }
+
+                // Consume brace groups {…} and bracket groups […]
                 while (pos < body.length) {
                     while (pos < body.length && ' \t\r\n'.indexOf(body[pos]) >= 0) pos++;
                     if (pos >= body.length) break;
@@ -161,18 +173,14 @@ function tikzServer() {
                             if (bd === 0) break;
                         }
                         end = pos;
-                    } else if (body[pos] === '*') {
-                        pos++;
-                    } else if (body[pos] === '\\') {
-                        pos++;
-                        while (pos < body.length && /[a-zA-Z@]/.test(body[pos])) pos++;
-                        end = pos;
                     } else {
                         break;
                     }
                 }
 
                 definitions.push(body.substring(lineStart, end).trim());
+                // Advance regex past consumed text to avoid re-matching inside bodies
+                defPattern.lastIndex = end;
             }
 
             return definitions.join('\n');
