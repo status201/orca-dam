@@ -47,7 +47,7 @@
         </h2>
 
         {{-- Examples + Load template --}}
-        <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="flex items-start justify-between gap-4 flex-wrap relative">
             <div>
                 <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{{ __('Examples') }}</p>
                 <div class="flex flex-wrap gap-2">
@@ -60,7 +60,7 @@
                     </template>
                 </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0 relative">
+            <div class="flex items-center gap-2 shrink-0">
                 <input type="file" accept=".tex,.txt" class="hidden" x-ref="templateInput" @change="loadTemplateFile($event)">
                 <button
                     @click="$refs.templateInput.click()"
