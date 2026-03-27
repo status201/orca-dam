@@ -48,7 +48,7 @@
                             <x-mml-preview :asset="$asset" size="full" />
                         @else
                             <div class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60" style="font-size: 4rem;"></i>
+                                <x-file-type-icon :asset="$asset" class="opacity-60" style="font-size: 4rem;" />
                             </div>
                         @endif
                     </div>

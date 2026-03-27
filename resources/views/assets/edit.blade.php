@@ -86,7 +86,7 @@
                         </div>
                     @else
                         <div id="asset-preview-placeholder" class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60" style="font-size: 8rem;"></i>
+                            <x-file-type-icon :asset="$asset" class="opacity-60" style="font-size: 8rem;" />
                         </div>
                     @endif
                     <div class="mt-3 text-center space-y-2">

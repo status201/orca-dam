@@ -13,6 +13,14 @@
 }
 
 
+/* Custom SVG file-type icons – size like Font Awesome (1em tall, natural width from viewBox) */
+.file-type-icon {
+    width: 0.75em; /* 384/512 aspect ratio, matches FA file-icon width */
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.125em;
+}
+
 /* Alpine.js x-cloak - hide elements until Alpine is ready */
 [x-cloak] {
     display: none !important;

@@ -124,7 +124,7 @@
                     <x-mml-preview :asset="$asset" size="thumb" />
                 @else
                     <div class="w-full h-full flex items-center justify-center">
-                        <i class="fas {{ $asset->getFileIcon() }} text-9xl {{ $asset->getIconColorClass() }} opacity-60"></i>
+                        <x-file-type-icon :asset="$asset" class="text-9xl opacity-60" />
                     </div>
                 @endif
 
@@ -254,7 +254,7 @@
                                     @elseif($asset->isMathMl())
                                         <x-mml-preview :asset="$asset" size="thumb" />
                                     @else
-                                        <i class="fas {{ $asset->getFileIcon() }} text-3xl {{ $asset->getIconColorClass() }} opacity-60"></i>
+                                        <x-file-type-icon :asset="$asset" class="text-3xl opacity-60" />
                                     @endif
                                 </div>
                             </a>

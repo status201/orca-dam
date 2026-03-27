@@ -82,7 +82,7 @@
                 @else
                     <div class="aspect-video bg-gray-100 flex items-center justify-center">
                         <div class="text-center">
-                            <i class="fas {{ $asset->getFileIcon() }} {{ $asset->getIconColorClass() }} opacity-60 mb-4" style="font-size: 12rem;"></i>
+                            <x-file-type-icon :asset="$asset" class="opacity-60 mb-4" style="font-size: 12rem;" />
                             <p class="text-gray-600 font-medium">{{ $asset->mime_type }}</p>
                             <p class="text-gray-500 text-sm mt-1">{{ strtoupper(pathinfo($asset->filename, PATHINFO_EXTENSION)) }} {{ __('File') }}</p>
                         </div>

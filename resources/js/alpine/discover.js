@@ -185,7 +185,8 @@ function discoverObjects() {
                 'video/x-msvideo': 'fa-file-video',
                 'audio/mpeg': 'fa-file-audio',
                 'audio/wav': 'fa-file-audio',
-                'audio/ogg': 'fa-file-audio'
+                'audio/ogg': 'fa-file-audio',
+                'text/x-tex': 'fa-file-code'
             };
 
             if (icons[mimeType]) {
@@ -215,7 +216,8 @@ function discoverObjects() {
                 'mov': 'fa-file-video',
                 'avi': 'fa-file-video',
                 'mp3': 'fa-file-audio',
-                'wav': 'fa-file-audio'
+                'wav': 'fa-file-audio',
+                'tex': 'fa-file-code'
             };
 
             return extIcons[ext] || 'fa-file';

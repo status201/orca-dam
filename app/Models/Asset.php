@@ -278,6 +278,15 @@ class Asset extends Model
         return strtolower(pathinfo($this->s3_key, PATHINFO_EXTENSION)) === 'mml';
     }
 
+    public function isTex(): bool
+    {
+        if ($this->mime_type === 'text/x-tex') {
+            return true;
+        }
+
+        return strtolower(pathinfo($this->s3_key, PATHINFO_EXTENSION)) === 'tex';
+    }
+
     private static array $mimeIcons = [
         'application/pdf' => 'fa-file-pdf',
         'application/msword' => 'fa-file-word',
@@ -308,6 +317,7 @@ class Asset extends Model
         'application/eps' => 'fa-file-image',
         'image/x-eps' => 'fa-file-image',
         'image/eps' => 'fa-file-image',
+        'text/x-tex' => 'fa-file-tex',
     ];
 
     private static array $extensionIcons = [
@@ -333,6 +343,7 @@ class Asset extends Model
         'mp3' => 'fa-file-audio',
         'wav' => 'fa-file-audio',
         'eps' => 'fa-file-image',
+        'tex' => 'fa-file-tex',
     ];
 
     /**
@@ -366,6 +377,7 @@ class Asset extends Model
             'fa-file-csv' => 'text-teal-600',
             'fa-file-lines' => 'text-gray-500',
             'fa-file-image' => 'text-emerald-600',
+            'fa-file-tex' => 'text-teal-700',
             default => 'text-gray-400',
         };
     }
