@@ -128,25 +128,51 @@ function tikzServer() {
             body = body.replace(/^[ \t]*%.*$/gm, '');
             body = body.replace(/\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g, '');
 
-            // Find command definitions with brace matching
+            // Find command definitions with multi-group brace matching
             var defPattern = /\\(?:newcommand|renewcommand|def|newlength|tikzset|pgfmathsetmacro)\b/g;
             var definitions = [];
             var match;
 
             while ((match = defPattern.exec(body)) !== null) {
-                // Find start of this line
                 var lineStart = body.lastIndexOf('\n', match.index) + 1;
-                // Brace-match to find the end of the definition
-                var depth = 0;
-                var started = false;
-                var pos = match.index;
+                var pos = match.index + match[0].length;
+                var end = pos;
+
+                // Consume all parts: name ({braced} or \bare), optional args [n], body {…}
                 while (pos < body.length) {
-                    if (body[pos] === '{') { depth++; started = true; }
-                    else if (body[pos] === '}') { depth--; }
-                    if (started && depth === 0) { pos++; break; }
-                    pos++;
+                    while (pos < body.length && ' \t\r\n'.indexOf(body[pos]) >= 0) pos++;
+                    if (pos >= body.length) break;
+
+                    if (body[pos] === '{') {
+                        var depth = 0;
+                        while (pos < body.length) {
+                            if (body[pos] === '{') depth++;
+                            else if (body[pos] === '}') depth--;
+                            pos++;
+                            if (depth === 0) break;
+                        }
+                        end = pos;
+                    } else if (body[pos] === '[') {
+                        var bd = 0;
+                        while (pos < body.length) {
+                            if (body[pos] === '[') bd++;
+                            else if (body[pos] === ']') bd--;
+                            pos++;
+                            if (bd === 0) break;
+                        }
+                        end = pos;
+                    } else if (body[pos] === '*') {
+                        pos++;
+                    } else if (body[pos] === '\\') {
+                        pos++;
+                        while (pos < body.length && /[a-zA-Z@]/.test(body[pos])) pos++;
+                        end = pos;
+                    } else {
+                        break;
+                    }
                 }
-                definitions.push(body.substring(lineStart, pos).trim());
+
+                definitions.push(body.substring(lineStart, end).trim());
             }
 
             return definitions.join('\n');
