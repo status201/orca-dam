@@ -11,9 +11,20 @@ function tikzServer() {
         renderError: '',
         renderLog: '',
         showLog: false,
+        showExamples: false,
         compilerAvailable: pageData.compilerAvailable || false,
         results: [],
         uploadFolder: pageData.rootFolder || '',
+
+        // Output variant toggles
+        enabledVariants: {
+            svg_standard: true,
+            svg_embedded: true,
+            svg_paths: true,
+            png: true,
+        },
+        extraLibraries: false,
+        extraLibrariesText: 'pgfplots,automata,mindmap,circuits.ee.IEC',
 
         // Template browser
         templateSearchQuery: '',
@@ -371,9 +382,13 @@ function tikzServer() {
                         png_dpi: this.pngDpi,
                         border_pt: this.borderPt,
                         font_package: this.fontPackage,
+                        variants: this.enabledVariants,
                     };
                     if (preamble) {
                         body.preamble = preamble;
+                    }
+                    if (this.extraLibraries && this.extraLibrariesText.trim() && !this.isFullDocument()) {
+                        body.extra_libraries = this.extraLibrariesText.trim();
                     }
 
                     var res = await fetch(pageData.renderUrl, {
@@ -405,7 +420,7 @@ function tikzServer() {
                             mime: v.mime,
                             width: v.width || null,
                             height: v.height || null,
-                            selected: v.type === 'svg_paths',
+                            selected: v.type === 'svg_embedded',
                             uploading: false,
                             uploaded: null,
                             name: 'diagram-' + (i + 1) + this.variantNameSuffix(v.type) + this.variantExtension(v.type),
@@ -414,7 +429,7 @@ function tikzServer() {
 
                     this.results.push({
                         snippetIndex: i,
-                        activeTab: variants.svg_paths ? 'svg_paths' : (firstType || 'svg_standard'),
+                        activeTab: variants.svg_embedded ? 'svg_embedded' : (firstType || 'svg_standard'),
                         variants: variants,
                     });
 

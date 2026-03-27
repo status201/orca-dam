@@ -359,6 +359,12 @@ class ToolsController extends Controller
             'border_pt' => ['nullable', 'integer', 'min:0', 'max:50'],
             'font_package' => ['nullable', 'string', 'max:30'],
             'preamble' => ['nullable', 'string', 'max:50000'],
+            'variants' => ['nullable', 'array'],
+            'variants.svg_standard' => ['nullable', 'boolean'],
+            'variants.svg_embedded' => ['nullable', 'boolean'],
+            'variants.svg_paths' => ['nullable', 'boolean'],
+            'variants.png' => ['nullable', 'boolean'],
+            'extra_libraries' => ['nullable', 'string', 'max:500'],
         ]);
 
         if (! $this->tikzCompilerService->isAvailable()) {
@@ -370,7 +376,9 @@ class ToolsController extends Controller
             $request->input('png_dpi', config('tikz.png_dpi', 300)),
             $request->input('border_pt', 5),
             $request->input('font_package', 'arev'),
-            $request->input('preamble', '')
+            $request->input('preamble', ''),
+            $request->input('variants', []),
+            $request->input('extra_libraries', '')
         );
 
         if (! $result['success']) {

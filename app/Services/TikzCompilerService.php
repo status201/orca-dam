@@ -103,7 +103,7 @@ class TikzCompilerService
      *
      * @return array{success: bool, variants?: array, log?: string, error?: string}
      */
-    public function compile(string $tikzCode, int $pngDpi = 300, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = ''): array
+    public function compile(string $tikzCode, int $pngDpi = 300, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = '', array $enabledVariants = [], string $extraLibraries = ''): array
     {
         $sanitized = $this->sanitizeInput($tikzCode);
         if ($sanitized === null) {
@@ -125,7 +125,7 @@ class TikzCompilerService
         }
 
         try {
-            $texContent = $this->buildTexDocument($sanitized, $borderPt, $fontPackage, $preamble);
+            $texContent = $this->buildTexDocument($sanitized, $borderPt, $fontPackage, $preamble, $extraLibraries);
             $texFile = $tmpDir.DIRECTORY_SEPARATOR.'input.tex';
             file_put_contents($texFile, $texContent);
 
@@ -146,48 +146,64 @@ class TikzCompilerService
                 ];
             }
 
-            // Step 2: Generate all four variants
+            // Step 2: Generate requested variants (empty = all)
+            $allVariants = empty($enabledVariants);
             $variants = [];
+            $svgStandard = null;
+            $svgEmbedded = null;
+            $svgPaths = null;
 
             // SVG standard (dvisvgm default: fonts as SVG path data in <defs>)
-            $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', [], $borderPt);
-            if ($svgStandard !== null) {
-                $variants[] = [
-                    'type' => 'svg_standard',
-                    'content' => $svgStandard,
-                    'size' => strlen($svgStandard),
-                    'mime' => 'image/svg+xml',
-                ];
+            if ($allVariants || ! empty($enabledVariants['svg_standard'])) {
+                $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', [], $borderPt);
+                if ($svgStandard !== null) {
+                    $variants[] = [
+                        'type' => 'svg_standard',
+                        'content' => $svgStandard,
+                        'size' => strlen($svgStandard),
+                        'mime' => 'image/svg+xml',
+                    ];
+                }
             }
 
             // SVG with embedded WOFF2 fonts
-            $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2'], $borderPt);
-            if ($svgEmbedded !== null) {
-                $variants[] = [
-                    'type' => 'svg_embedded',
-                    'content' => $svgEmbedded,
-                    'size' => strlen($svgEmbedded),
-                    'mime' => 'image/svg+xml',
-                ];
+            if ($allVariants || ! empty($enabledVariants['svg_embedded'])) {
+                $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2'], $borderPt);
+                if ($svgEmbedded !== null) {
+                    $variants[] = [
+                        'type' => 'svg_embedded',
+                        'content' => $svgEmbedded,
+                        'size' => strlen($svgEmbedded),
+                        'mime' => 'image/svg+xml',
+                    ];
+                }
             }
 
             // SVG with text as paths (no font dependencies)
-            $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $borderPt);
-            if ($svgPaths !== null) {
-                $variants[] = [
-                    'type' => 'svg_paths',
-                    'content' => $svgPaths,
-                    'size' => strlen($svgPaths),
-                    'mime' => 'image/svg+xml',
-                ];
+            if ($allVariants || ! empty($enabledVariants['svg_paths'])) {
+                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $borderPt);
+                if ($svgPaths !== null) {
+                    $variants[] = [
+                        'type' => 'svg_paths',
+                        'content' => $svgPaths,
+                        'size' => strlen($svgPaths),
+                        'mime' => 'image/svg+xml',
+                    ];
+                }
             }
 
             // PNG — convert from SVG (paths variant preferred, most portable)
-            $svgForPng = $svgPaths ?? $svgStandard ?? $svgEmbedded;
-            if ($svgForPng !== null) {
-                $pngResult = $this->convertSvgToPng($tmpDir, $svgForPng, $pngDpi);
-                if ($pngResult !== null) {
-                    $variants[] = $pngResult;
+            if ($allVariants || ! empty($enabledVariants['png'])) {
+                $svgForPng = $svgPaths ?? $svgStandard ?? $svgEmbedded;
+                // If PNG is requested but no SVG was generated, generate paths SVG just for conversion
+                if ($svgForPng === null) {
+                    $svgForPng = $this->runDvisvgm($tmpDir, $dviFile, 'paths-tmp.svg', ['--no-fonts'], $borderPt);
+                }
+                if ($svgForPng !== null) {
+                    $pngResult = $this->convertSvgToPng($tmpDir, $svgForPng, $pngDpi);
+                    if ($pngResult !== null) {
+                        $variants[] = $pngResult;
+                    }
                 }
             }
 
@@ -228,9 +244,16 @@ class TikzCompilerService
     /**
      * Build a complete LaTeX document wrapping the TikZ snippet.
      */
-    public function buildTexDocument(string $tikzSnippet, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = ''): string
+    public function buildTexDocument(string $tikzSnippet, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = '', string $extraLibraries = ''): string
     {
-        $libraries = implode(',', self::TIKZ_LIBRARIES);
+        // Merge default + extra libraries
+        $allLibraries = self::TIKZ_LIBRARIES;
+        if ($extraLibraries !== '') {
+            $extra = array_filter(array_map('trim', explode(',', $extraLibraries)));
+            $extra = array_filter($extra, fn ($l) => preg_match('/^[a-zA-Z0-9._-]+$/', $l));
+            $allLibraries = array_unique(array_merge($allLibraries, $extra));
+        }
+        $libraries = implode(',', $allLibraries);
 
         // Check if the snippet already contains a full document
         if (str_contains($tikzSnippet, '\\documentclass')) {

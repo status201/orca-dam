@@ -49,15 +49,21 @@
         {{-- Examples + Load template --}}
         <div class="flex items-start justify-between gap-4 flex-wrap relative">
             <div>
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{{ __('Examples') }}</p>
-                <div class="flex flex-wrap gap-2">
-                    <template x-for="ex in examples" :key="ex.label">
-                        <button
-                            @click="loadExample(ex.code)"
-                            class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors"
-                            x-text="ex.label">
-                        </button>
-                    </template>
+                <button @click="showExamples = !showExamples"
+                    class="flex items-center gap-2 text-xs font-medium text-gray-500 uppercase tracking-wide hover:text-orca-teal transition-colors">
+                    <i class="fas fa-chevron-right text-xs transition-transform duration-200" :class="showExamples && 'rotate-90'"></i>
+                    {{ __('Examples') }}
+                </button>
+                <div x-show="showExamples" x-collapse class="mt-2">
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="ex in examples" :key="ex.label">
+                            <button
+                                @click="loadExample(ex.code)"
+                                class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors"
+                                x-text="ex.label">
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
             <div class="flex items-center gap-2 shrink-0">
@@ -212,6 +218,48 @@
                     {{ __('Compiling on server. This may take a few seconds…') }}
                 </span>
             </template>
+        </div>
+
+        {{-- Output variants --}}
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">{{ __('Output variants') }}</p>
+            <div class="flex flex-wrap gap-4">
+                <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" x-model="enabledVariants.svg_standard" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                    SVG
+                </label>
+                <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" x-model="enabledVariants.svg_embedded" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                    SVG ({{ __('embedded fonts') }})
+                </label>
+                <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" x-model="enabledVariants.svg_paths" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                    SVG ({{ __('text as paths') }})
+                </label>
+                <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                    <input type="checkbox" x-model="enabledVariants.png" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                    PNG
+                </label>
+            </div>
+        </div>
+
+        {{-- Extra TikZ libraries --}}
+        <div>
+            <label class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide cursor-pointer">
+                <input type="checkbox" x-model="extraLibraries" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                {{ __('Additional TikZ libraries') }}
+            </label>
+            <div x-show="extraLibraries" x-collapse class="mt-2">
+                <input
+                    type="text"
+                    x-model="extraLibrariesText"
+                    class="w-full text-sm font-mono border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent"
+                    placeholder="pgfplots,automata,...">
+                <p class="text-xs text-gray-400 mt-1">
+                    {{ __('Comma-separated. Ignored when loading a full LaTeX document.') }}
+                    {{ __('Already included:') }} <span class="font-mono">calc, arrows.meta, positioning, decorations.pathreplacing, decorations.markings, patterns, shapes.geometric, angles, quotes, intersections, fit, backgrounds, matrix, trees</span>.
+                </p>
+            </div>
         </div>
 
         {{-- Render error --}}
