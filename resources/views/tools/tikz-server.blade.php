@@ -80,7 +80,7 @@
 
                 {{-- Template browser panel --}}
                 <div x-show="templateBrowserOpen" x-transition @click.outside="closeTemplateBrowser()"
-                    class="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    class="absolute right-0 top-full mt-2 w-96 lg:w-[32rem] bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div class="p-3 border-b border-gray-100">
                         <div class="flex items-center gap-2">
                             <input
@@ -114,8 +114,8 @@
                                 class="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-50 transition-colors disabled:opacity-50">
                                 <div class="flex items-center justify-between gap-2">
                                     <div class="min-w-0">
-                                        <div class="text-sm font-medium text-gray-800 truncate" x-text="tpl.filename"></div>
-                                        <div class="text-xs text-gray-400 truncate" x-text="tpl.folder"></div>
+                                        <div class="text-sm font-medium text-gray-800 truncate" x-text="tpl.filename" :title="tpl.filename"></div>
+                                        <div class="text-xs text-gray-400 truncate" x-text="tpl.folder" :title="tpl.folder"></div>
                                     </div>
                                     <div class="text-xs text-gray-400 whitespace-nowrap shrink-0">
                                         <span x-text="tpl.formatted_size"></span>
