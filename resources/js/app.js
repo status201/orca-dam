@@ -1,6 +1,7 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import collapse from '@alpinejs/collapse';
 import { applyShiftSelect } from './shift-select';
 
 import './alpine/asset-grid';
@@ -24,6 +25,8 @@ import './alpine/tools-tikz-svg-fonts';
 import './alpine/tools-tikz-server';
 
 window.Alpine = Alpine;
+
+Alpine.plugin(collapse);
 
 // Register bulk selection store
 Alpine.store('bulkSelection', {
