@@ -187,10 +187,12 @@ function tikzServer() {
         },
 
         parseSnippets() {
-            // Strip comment lines so commented-out tikzpicture blocks aren't matched
+            // Strip comment-only lines so commented-out tikzpicture blocks aren't matched
             var code = this.tikzCode.replace(/^[ \t]*%.*$/gm, '');
             const re = /\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g;
-            return code.match(re) || [];
+            var matches = code.match(re) || [];
+            // Collapse blank lines left by comment stripping — they become \par in LaTeX
+            return matches.map(function(s) { return s.replace(/\n([ \t]*\n)+/g, '\n'); });
         },
 
         loadExample(code) {
