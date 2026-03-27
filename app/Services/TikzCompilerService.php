@@ -133,19 +133,15 @@ class TikzCompilerService
             $latexResult = $this->runLatex($tmpDir);
             $log = $latexResult['output'] ?? '';
 
-            if (! $latexResult['success']) {
-                return [
-                    'success' => false,
-                    'error' => 'LaTeX compilation failed.',
-                    'log' => $log,
-                ];
-            }
-
             $dviFile = $tmpDir.DIRECTORY_SEPARATOR.'input.dvi';
+
+            // In nonstop mode LaTeX may return non-zero even when it produced
+            // usable DVI output (e.g. recoverable errors). Only fail when no
+            // DVI was written at all.
             if (! file_exists($dviFile)) {
                 return [
                     'success' => false,
-                    'error' => 'LaTeX produced no DVI output.',
+                    'error' => 'LaTeX compilation failed.',
                     'log' => $log,
                 ];
             }
