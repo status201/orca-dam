@@ -117,6 +117,58 @@ test('assets index search with mixed modifiers', function () {
     $response->assertDontSee('mountain-view.jpg');
 });
 
+test('assets index search with quoted phrase matches exact phrase only', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'Kopie van shutterstock foto.jpg']);
+    Asset::factory()->create(['filename' => 'shutterstock-logo.jpg']);
+    Asset::factory()->create(['filename' => 'Kopie van document.pdf']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', ['search' => '"Kopie van shutterstock"']));
+
+    $response->assertStatus(200);
+    $response->assertSee('Kopie van shutterstock foto.jpg');
+    $response->assertDontSee('shutterstock-logo.jpg');
+    $response->assertDontSee('Kopie van document.pdf');
+});
+
+test('assets index search with excluded quoted phrase', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'beach sunset photo.jpg']);
+    Asset::factory()->create(['filename' => 'beach morning old version.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', ['search' => 'beach -"old version"']));
+
+    $response->assertStatus(200);
+    $response->assertSee('beach sunset photo.jpg');
+    $response->assertDontSee('beach morning old version.jpg');
+});
+
+test('assets index search with required quoted phrase and unquoted term', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'summer blue sky landscape.jpg']);
+    Asset::factory()->create(['filename' => 'blue sky winter.jpg']);
+    Asset::factory()->create(['filename' => 'summer cloudy day.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', ['search' => 'summer +"blue sky"']));
+
+    $response->assertStatus(200);
+    $response->assertSee('summer blue sky landscape.jpg');
+    $response->assertDontSee('blue sky winter.jpg');
+    $response->assertDontSee('summer cloudy day.jpg');
+});
+
+test('assets index search without quotes still works as before', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'beach-sunset.jpg']);
+    Asset::factory()->create(['filename' => 'mountain-view.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', ['search' => 'beach sunset']));
+
+    $response->assertStatus(200);
+    $response->assertSee('beach-sunset.jpg');
+    $response->assertDontSee('mountain-view.jpg');
+});
+
 test('assets index can filter by type', function () {
     $user = User::factory()->create();
     Asset::factory()->image()->create(['filename' => 'image.jpg']);

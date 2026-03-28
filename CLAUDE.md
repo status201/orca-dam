@@ -108,7 +108,7 @@ Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domai
 
 ### Models
 
-**Asset** (`app/Models/Asset.php`): Belongs to User, many-to-many Tags (pivot includes `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` is editable display name; `s3_key` is immutable. `syncTagsWithAttribution()` attaches tags with "last attacher wins" semantics. Scopes: search, filterByTags, type (accepts plural forms like `images`/`videos`), user, `inFolder`, `missing`. Search supports operators: `+term` (required), `-term` (excluded). License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
+**Asset** (`app/Models/Asset.php`): Belongs to User, many-to-many Tags (pivot includes `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` is editable display name; `s3_key` is immutable. `syncTagsWithAttribution()` attaches tags with "last attacher wins" semantics. Scopes: search, filterByTags, type (accepts plural forms like `images`/`videos`), user, `inFolder`, `missing`. Search supports operators: `+term` (required), `-term` (excluded), `"exact phrase"` (quoted phrase, treated as required), `+"phrase"` (required phrase), `-"phrase"` (excluded phrase). License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
 
 **Tag** (`app/Models/Tag.php`): Type `user`, `ai`, or `reference`, many-to-many Assets. Reference tags track external system usage (e.g., RTE integrations). Created via API only, editable/deletable in web UI.
 

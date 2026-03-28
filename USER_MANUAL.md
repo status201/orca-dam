@@ -108,7 +108,9 @@ View assets in **Grid View** (visual thumbnails) or **List View** (detailed tabl
 **Search:** Type any part of a filename, tag, folder, S3 key, alt text, or caption. Use search operators for precision:
 - `+term` — **require** this term (must appear in results)
 - `-term` — **exclude** this term (must not appear in results)
+- `"exact phrase"` — **exact phrase** match (must contain the phrase as-is)
 - Example: `landscape +mountain -snow` finds "landscape" assets that must include "mountain" but not "snow"
+- Example: `"Kopie van shutterstock"` finds only assets containing that exact phrase, not each word separately
 
 **Filters:** File type (images/videos/documents), folder, tags (multi-select).
 

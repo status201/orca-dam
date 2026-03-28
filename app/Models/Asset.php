@@ -445,7 +445,26 @@ class Asset extends Model
     {
         $terms = ['regular' => [], 'required' => [], 'excluded' => []];
 
-        foreach (preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) as $token) {
+        // Extract quoted phrases first: +"...", -"...", "..."
+        $remaining = preg_replace_callback('/([+-])?"([^"]+)"/', function ($m) use (&$terms) {
+            $phrase = trim($m[2]);
+            if ($phrase === '') {
+                return '';
+            }
+
+            if ($m[1] === '+') {
+                $terms['required'][] = $phrase;
+            } elseif ($m[1] === '-') {
+                $terms['excluded'][] = $phrase;
+            } else {
+                $terms['required'][] = $phrase;
+            }
+
+            return '';
+        }, $search);
+
+        // Then split remaining unquoted tokens
+        foreach (preg_split('/\s+/', $remaining, -1, PREG_SPLIT_NO_EMPTY) as $token) {
             if (str_starts_with($token, '+') && strlen($token) > 1) {
                 $terms['required'][] = substr($token, 1);
             } elseif (str_starts_with($token, '-') && strlen($token) > 1) {

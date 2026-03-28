@@ -108,7 +108,9 @@ Bekijk assets in **Rasterweergave** (visuele thumbnails) of **Lijstweergave** (g
 **Zoeken:** Typ een deel van een bestandsnaam, tag, map, S3 key, alt-tekst of bijschrift. Gebruik zoekoperatoren voor precisie:
 - `+term` — **verplicht** deze term (moet voorkomen in resultaten)
 - `-term` — **sluit uit** deze term (mag niet voorkomen in resultaten)
+- `"exacte zin"` — **exacte zin** match (moet de volledige zin bevatten)
 - Voorbeeld: `landschap +berg -sneeuw` vindt "landschap"-assets die "berg" moeten bevatten maar niet "sneeuw"
+- Voorbeeld: `"Kopie van shutterstock"` vindt alleen assets die precies die zin bevatten, niet elk woord apart
 
 **Filters:** Bestandstype (afbeeldingen/video's/documenten), map, tags (meervoudige selectie).
 
