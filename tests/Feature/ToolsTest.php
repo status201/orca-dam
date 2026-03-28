@@ -275,9 +275,6 @@ test('upload tex template creates asset', function () {
         'size' => 42,
         'etag' => '"abc123"',
     ]);
-    S3Service::shouldReceive('getConfiguredFolders')->andReturn(['assets']);
-    S3Service::shouldReceive('getRootFolder')->andReturn('assets');
-    S3Service::shouldReceive('sanitizeFilename')->andReturn('my-template.tex');
     $this->app->instance(S3Service::class, $s3Mock);
 
     $response = $this->actingAs($user)->postJson(route('tools.tikz-server.templates.upload'), [
@@ -308,9 +305,6 @@ test('svg upload creates asset with svg mime type', function () {
         'size' => 100,
         'etag' => '"def456"',
     ]);
-    S3Service::shouldReceive('getConfiguredFolders')->andReturn(['assets']);
-    S3Service::shouldReceive('getRootFolder')->andReturn('assets');
-    S3Service::shouldReceive('sanitizeFilename')->andReturn('diagram.svg');
     $this->app->instance(S3Service::class, $s3Mock);
 
     // Mock AssetProcessingService to avoid real processing
@@ -362,9 +356,6 @@ test('png upload creates asset with dimensions', function () {
         'size' => 200,
         'etag' => '"ghi789"',
     ]);
-    S3Service::shouldReceive('getConfiguredFolders')->andReturn(['assets']);
-    S3Service::shouldReceive('getRootFolder')->andReturn('assets');
-    S3Service::shouldReceive('sanitizeFilename')->andReturn('diagram.png');
     $this->app->instance(S3Service::class, $s3Mock);
 
     $processingMock = Mockery::mock(\App\Services\AssetProcessingService::class);
