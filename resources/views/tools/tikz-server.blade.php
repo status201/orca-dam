@@ -168,12 +168,15 @@
     {{-- RENDER SETTINGS CARD                                          --}}
     {{-- ============================================================ --}}
     <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
+        <button @click="showSettings = !showSettings"
+            class="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors">
             <h2 class="text-lg font-semibold text-gray-900">
                 <i class="fas fa-sliders mr-2 text-orca-teal"></i>{{ __('Render Settings') }}
             </h2>
-        </div>
+            <i class="fas fa-chevron-right text-gray-400 text-xs transition-transform duration-200" :class="showSettings && 'rotate-90'"></i>
+        </button>
 
+        <div x-show="showSettings" x-collapse class="border-t border-gray-200">
         <div class="p-6 space-y-5">
             {{-- Settings grid --}}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -258,6 +261,7 @@
                     </p>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 

@@ -12,6 +12,7 @@ function tikzServer() {
         renderLog: '',
         showLog: false,
         showExamples: false,
+        showSettings: false,
         compilerAvailable: pageData.compilerAvailable || false,
         results: [],
         uploadFolder: pageData.rootFolder || '',
