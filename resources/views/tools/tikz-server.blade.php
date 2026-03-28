@@ -149,8 +149,11 @@
         {{-- Textarea --}}
         <textarea
             x-model="tikzCode"
+            x-ref="tikzInput"
             rows="12"
-            class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
+            spellcheck="false"
+            wrap="off"
+            class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-md pl-12 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
             placeholder="{{ __('Paste TikZ code or a full LaTeX document here…') }}">
         </textarea>
 

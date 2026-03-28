@@ -34,6 +34,46 @@ function tikzServer() {
         templateLoadingId: null,
         savingTemplate: false,
 
+        _lastLineCount: 0,
+
+        init() {
+            this.$watch('tikzCode', () => this.updateLineNumbers());
+            this.$nextTick(() => this.updateLineNumbers());
+        },
+
+        updateLineNumbers() {
+            var ta = this.$refs.tikzInput;
+            if (!ta) return;
+
+            var lines = (this.tikzCode.match(/\n/g) || []).length + 1;
+            // Skip re-render if line count hasn't changed
+            if (lines === this._lastLineCount) return;
+            this._lastLineCount = lines;
+
+            var style = window.getComputedStyle(ta);
+            var fontSize = parseFloat(style.fontSize);
+            var lineHeight = parseFloat(style.lineHeight) || fontSize * 1.5;
+            var paddingTop = parseFloat(style.paddingTop);
+            var gutterWidth = 40;
+
+            var texts = '';
+            for (var i = 1; i <= lines; i++) {
+                var y = paddingTop + (i - 0.3) * lineHeight;
+                texts += '<text x="' + (gutterWidth - 8) + '" y="' + y + '">' + i + '</text>';
+            }
+
+            var svgHeight = paddingTop + lines * lineHeight + 20;
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + gutterWidth + '" height="' + svgHeight + '">' +
+                '<style>text{font-family:monospace;font-size:' + fontSize + 'px;fill:#9ca3af;text-anchor:end}</style>' +
+                '<line x1="' + (gutterWidth - 0.5) + '" y1="0" x2="' + (gutterWidth - 0.5) + '" y2="' + svgHeight + '" stroke="#e5e7eb" stroke-width="1"/>' +
+                texts +
+                '</svg>';
+
+            ta.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+            ta.style.backgroundAttachment = 'local';
+            ta.style.backgroundRepeat = 'no-repeat';
+        },
+
         examples: [
             {
                 label: 'Circle & axes',
@@ -236,6 +276,7 @@ function tikzServer() {
             this.results = [];
             this.renderError = '';
             this.renderLog = '';
+            this._lastLineCount = 0;
         },
 
         openTemplateBrowser() {
