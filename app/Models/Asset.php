@@ -280,7 +280,7 @@ class Asset extends Model
 
     public function isTex(): bool
     {
-        if ($this->mime_type === 'text/x-tex') {
+        if (in_array($this->mime_type, ['text/x-tex', 'application/x-tex'])) {
             return true;
         }
 
@@ -318,6 +318,7 @@ class Asset extends Model
         'image/x-eps' => 'fa-file-image',
         'image/eps' => 'fa-file-image',
         'text/x-tex' => 'fa-file-tex',
+        'application/x-tex' => 'fa-file-tex',
     ];
 
     private static array $extensionIcons = [
@@ -569,6 +570,14 @@ class Asset extends Model
         ];
 
         $mimePrefix = $typeMap[strtolower($type)] ?? $type;
+
+        // text/x-tex files are TeX documents that should appear under the application/documents filter
+        if ($mimePrefix === 'application') {
+            return $query->where(function ($q) use ($mimePrefix) {
+                $q->where('mime_type', 'like', "{$mimePrefix}/%")
+                    ->orWhere('mime_type', 'text/x-tex');
+            });
+        }
 
         return $query->where('mime_type', 'like', "{$mimePrefix}/%");
     }

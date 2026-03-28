@@ -186,7 +186,8 @@ function discoverObjects() {
                 'audio/mpeg': 'fa-file-audio',
                 'audio/wav': 'fa-file-audio',
                 'audio/ogg': 'fa-file-audio',
-                'text/x-tex': 'fa-file-code'
+                'text/x-tex': 'fa-file-code',
+                'application/x-tex': 'fa-file-code'
             };
 
             if (icons[mimeType]) {
