@@ -33,7 +33,7 @@
 
 ## Welkom bij ORCA!
 
-Gefeliciteerd met je toegang tot ORCA DAM! Of je nu afbeeldingen uploadt voor lesmateriaal, documenten beheert of mediabestanden organiseert voor Studyflow — je bent op de juiste plek.
+Gefeliciteerd met je toegang tot ORCA DAM! Of je nu afbeeldingen uploadt voor lesmateriaal, documenten beheert of mediabestanden organiseert — je bent op de juiste plek.
 
 Ooit geprobeerd om bestanden rechtstreeks op Amazon S3 te beheren? Geen zoekfunctie, geen notities bij bestanden, geen idee wie wat heeft geüpload, en één verkeerde klik maakt iets openbaar dat privé hoorde te zijn. **Niet leuk.** ORCA is de vriendelijke receptie vóór dat enorme magazijn — het zit tussen jou en de ruwe cloudopslag, en maakt alles veiliger, doorzoekbaar en beheersbaar.
 
@@ -386,9 +386,9 @@ Compileer TikZ-diagrammen op de server met een volledige TeX Live-installatie. V
 
 **Sneltoetsen:** Enter om te bevestigen, Escape om te annuleren.
  
-**Navigeren:** Met je browser's back-button kun je gemakkelijk terug naar je eerder gekozen filters en sortering. (Navigatie links zoals in het menu linken naar de Assets startpagina zonder filters)  
+**Navigeren:** Met je browser's back-button kun je gemakkelijk terug naar je eerder gekozen filters, sortering en zelfs geselecteerde items.  
  
-**Tooltips:** Veel elementen zijn voorzien van tooltips met extra (gedetailleerde) informatie, zoals tijdstempels en gebruikers.  
+**Tooltips:** Veel elementen zijn voorzien van tooltips met extra (gedetailleerde) informatie, zoals complete tijdstempels en gebruikersinformatie.  
  
 **Footer:** Klik nooit een tweede keer op het ORCA logo in de footer voordat deze weer geland is ;-)  
  

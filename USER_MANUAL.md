@@ -33,7 +33,7 @@
 
 ## Welcome to ORCA!
 
-Congratulations on getting access to ORCA DAM! Whether you're uploading images for course materials, managing documents, or organizing media files for Studyflow, you've come to the right place.
+Congratulations on getting access to ORCA DAM! Whether you're uploading images for course materials, managing documents, or organizing media files, you've come to the right place.
 
 Ever tried managing files directly on Amazon S3? No search, no notes on files, no idea who uploaded what, and one wrong click makes something public that shouldn't be. **Not fun.** ORCA is the friendly reception desk in front of that massive warehouse — it sits between you and the raw cloud storage, making everything safer, searchable, and manageable.
 
@@ -386,9 +386,9 @@ Compile TikZ diagrams on the server using a full TeX Live installation. Requires
 
 **Keyboard Shortcuts:** Enter to confirm, Escape to cancel.  
  
-**Navigating:** With your browser's back-button, you can easily return to previous chosen filters and sorting. (Navigation links like in the Main menu link to the Assets start page without filters)  
+**Navigating:** With your browser's back-button, you can easily return to previous chosen filters, sorting and even selected items.  
  
-**Tooltips:** Many elements have "tooltips" on mouse hover with extra (detailed) information, like timestamps and users.  
+**Tooltips:** Many elements have "tooltips" on mouse hover with extra (detailed) information, like complete timestamps and user info.  
  
 **Footer:** Never click the ORCA logo in the footer a second time before it has landed again ;-)  
 
