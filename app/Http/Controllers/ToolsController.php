@@ -399,7 +399,7 @@ class ToolsController extends Controller
         $query = Asset::query()
             ->where(function ($q) {
                 $q->where('filename', 'like', '%.tex')
-                    ->orWhere('filename', 'like', '%.txt');
+                    ->orWhere('s3_key', 'like', '%.tex');
             });
 
         if ($search = $request->input('search')) {
