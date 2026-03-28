@@ -24,9 +24,10 @@
 16. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
 17. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
 18. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
-19. [Tips & Tricks](#tips--tricks)
-20. [Glossary](#glossary)
-21. [Getting Help](#getting-help)
+19. [Tools](#tools)
+20. [Tips & Tricks](#tips--tricks)
+21. [Glossary](#glossary)
+22. [Getting Help](#getting-help)
 
 ---
 
@@ -75,6 +76,7 @@ When you log in, your dashboard shows **Total Assets**, **My Assets**, **Total S
 | Manage users | ✗ | ✓ |
 | Access System settings | ✗ | ✓ |
 | Manage API tokens & JWT secrets | ✗ | ✓ |
+| Use Tools (TikZ Server, etc.) | ✓ | ✓ |
 
 ---
 
@@ -353,6 +355,33 @@ Files can sometimes go missing in S3 without going through ORCA (accidental dele
 
 ---
 
+## Tools
+
+ORCA includes built-in tools for editors and admins, accessible from the **Tools** menu item.
+
+### TikZ Server Render
+
+Compile TikZ diagrams on the server using a full TeX Live installation. Requires `latex` and `dvisvgm` to be installed on the server.
+
+1. Navigate to **Tools → TikZ Server Render**
+2. Paste TikZ code or a full LaTeX document, or load a `.tex` file / template from ORCA
+3. Choose output settings: font package, edge padding, PNG DPI, and which output variants to generate
+4. Click **Render** — the server compiles your code and returns up to four variants:
+   - **SVG** — standard SVG with font data in defs
+   - **SVG (embedded fonts)** — self-contained with WOFF2 fonts embedded
+   - **SVG (text as paths)** — all text converted to vector outlines, no font dependencies
+   - **PNG** — raster output at configurable DPI
+5. Compare variants using the tabs, then select which ones to upload to ORCA
+6. Choose a destination folder and click **Upload selected**
+
+**Template management:** Save your TikZ code as a `.tex` file in ORCA with **Save as .tex**, or load existing templates with **Load from ORCA**.
+
+**Full document support:** You can paste a complete LaTeX document with `\documentclass`, custom packages, and color definitions — the preamble is automatically extracted and applied to each `\begin{tikzpicture}` block.
+
+**Multiple diagrams:** If your code contains multiple `\begin{tikzpicture}` blocks, each is compiled and rendered separately.
+
+---
+
 ## Tips & Tricks
 
 **Keyboard Shortcuts:** Enter to confirm, Escape to cancel.  
@@ -386,6 +415,7 @@ Files can sometimes go missing in S3 without going through ORCA (accidental dele
 | **Custom Domain** | A friendly URL (like `cdn.example.com`) instead of the raw S3 bucket URL |
 | **Rekognition** | Amazon's AI service that analyzes images and suggests tags |
 | **Replace** | Uploading a new file to overwrite an existing asset while keeping the same URL |
+| **TikZ** | A LaTeX graphics language for creating diagrams, graphs, and illustrations programmatically |
 
 ---
 

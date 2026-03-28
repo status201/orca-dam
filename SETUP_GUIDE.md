@@ -10,6 +10,8 @@
 - MySQL or PostgreSQL
 - AWS Account with S3 bucket (public-read)
 - GD or Imagick extension for image processing
+- (Optional) TeX Live for TikZ Server Render (latex + dvisvgm)
+- (Optional) librsvg2-bin or inkscape for TikZ PNG output
 ```
 
 **Important PHP Configuration:**
@@ -91,6 +93,12 @@ AWS_REKOGNITION_LANGUAGE=nl              # Language for AI tags: en, nl, fr, de,
 JWT_ENABLED=false                        # Enable/disable JWT authentication
 JWT_MAX_TTL=36000                        # Maximum token lifetime in seconds (default: 10 hours)
 JWT_LEEWAY=60                            # Clock skew tolerance in seconds
+
+# Optional: TikZ Server Render (requires TeX Live on server)
+TIKZ_LATEX_PATH=latex                    # Path to latex binary
+TIKZ_DVISVGM_PATH=dvisvgm               # Path to dvisvgm binary
+TIKZ_TIMEOUT=30                          # Compilation timeout in seconds
+TIKZ_PNG_DPI=300                         # Default PNG DPI (72-600)
 ```
 
 **Important S3 Bucket Settings:**

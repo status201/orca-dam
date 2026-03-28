@@ -129,6 +129,23 @@ Route::middleware(['auth'])->group(function () {
     // User management routes (admin only)
     Route::resource('users', UserController::class)->except(['show']);
 
+    // Tools (editors + admins)
+    Route::get('tools', [ToolsController::class, 'index'])->name('tools.index');
+    Route::get('tools/latex-mathml', [ToolsController::class, 'latexMathml'])->name('tools.latex-mathml');
+    Route::post('tools/latex-mathml/upload', [ToolsController::class, 'uploadMathml'])->name('tools.latex-mathml.upload');
+    Route::get('tools/tikz-svg', [ToolsController::class, 'tikzSvg'])->name('tools.tikz-svg');
+    Route::post('tools/tikz-svg/upload', [ToolsController::class, 'uploadTikzSvg'])->name('tools.tikz-svg.upload');
+    Route::get('tools/tikz-svg-fonts', [ToolsController::class, 'tikzSvgFonts'])->name('tools.tikz-svg-fonts');
+    Route::post('tools/tikz-svg-fonts/upload', [ToolsController::class, 'uploadTikzSvgFonts'])->name('tools.tikz-svg-fonts.upload');
+    Route::get('tools/bakoma-font/{name}', [ToolsController::class, 'bakomaFont'])->name('tools.bakoma-font');
+    Route::get('tools/tikz-png', [ToolsController::class, 'tikzPng'])->name('tools.tikz-png');
+    Route::post('tools/tikz-png/upload', [ToolsController::class, 'uploadTikzPng'])->name('tools.tikz-png.upload');
+    Route::get('tools/tikz-server', [ToolsController::class, 'tikzServer'])->name('tools.tikz-server');
+    Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])->name('tools.tikz-server.render');
+    Route::get('tools/tikz-server/templates', [ToolsController::class, 'searchTexTemplates'])->name('tools.tikz-server.templates');
+    Route::get('tools/tikz-server/templates/{asset}', [ToolsController::class, 'loadTexTemplate'])->name('tools.tikz-server.templates.load');
+    Route::post('tools/tikz-server/templates/upload', [ToolsController::class, 'uploadTexTemplate'])->name('tools.tikz-server.templates.upload');
+
     // System administration routes (admin only)
     Route::middleware(['can:access,App\Http\Controllers\SystemController'])->group(function () {
         Route::get('system', [SystemController::class, 'index'])->name('system.index');
@@ -147,23 +164,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('system/integrity-status', [SystemController::class, 'integrityStatus'])->name('system.integrity-status');
         Route::post('system/verify-integrity', [SystemController::class, 'verifyIntegrity'])->name('system.verify-integrity');
         Route::post('system/run-tests', [SystemController::class, 'runTests'])->name('system.run-tests');
-
-        // Tools
-        Route::get('tools', [ToolsController::class, 'index'])->name('tools.index');
-        Route::get('tools/latex-mathml', [ToolsController::class, 'latexMathml'])->name('tools.latex-mathml');
-        Route::post('tools/latex-mathml/upload', [ToolsController::class, 'uploadMathml'])->name('tools.latex-mathml.upload');
-        Route::get('tools/tikz-svg', [ToolsController::class, 'tikzSvg'])->name('tools.tikz-svg');
-        Route::post('tools/tikz-svg/upload', [ToolsController::class, 'uploadTikzSvg'])->name('tools.tikz-svg.upload');
-        Route::get('tools/tikz-svg-fonts', [ToolsController::class, 'tikzSvgFonts'])->name('tools.tikz-svg-fonts');
-        Route::post('tools/tikz-svg-fonts/upload', [ToolsController::class, 'uploadTikzSvgFonts'])->name('tools.tikz-svg-fonts.upload');
-        Route::get('tools/bakoma-font/{name}', [ToolsController::class, 'bakomaFont'])->name('tools.bakoma-font');
-        Route::get('tools/tikz-png', [ToolsController::class, 'tikzPng'])->name('tools.tikz-png');
-        Route::post('tools/tikz-png/upload', [ToolsController::class, 'uploadTikzPng'])->name('tools.tikz-png.upload');
-        Route::get('tools/tikz-server', [ToolsController::class, 'tikzServer'])->name('tools.tikz-server');
-        Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])->name('tools.tikz-server.render');
-        Route::get('tools/tikz-server/templates', [ToolsController::class, 'searchTexTemplates'])->name('tools.tikz-server.templates');
-        Route::get('tools/tikz-server/templates/{asset}', [ToolsController::class, 'loadTexTemplate'])->name('tools.tikz-server.templates.load');
-        Route::post('tools/tikz-server/templates/upload', [ToolsController::class, 'uploadTexTemplate'])->name('tools.tikz-server.templates.upload');
 
         // Import metadata
         Route::get('import', [ImportController::class, 'index'])->name('import.index');

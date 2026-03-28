@@ -24,9 +24,10 @@
 16. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
 17. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
 18. [S3-integriteitscontrole (alleen admin)](#s3-integriteitscontrole-alleen-admin)
-19. [Tips & trucs](#tips--trucs)
-20. [Woordenlijst](#woordenlijst)
-21. [Hulp nodig?](#hulp-nodig)
+19. [Tools](#tools)
+20. [Tips & trucs](#tips--trucs)
+21. [Woordenlijst](#woordenlijst)
+22. [Hulp nodig?](#hulp-nodig)
 
 ---
 
@@ -75,6 +76,7 @@ Na het inloggen zie je op je dashboard: **Totaal assets**, **Mijn assets**, **To
 | Gebruikers beheren | ✗ | ✓ |
 | Systeeminstellingen openen | ✗ | ✓ |
 | API-tokens & JWT-secrets beheren | ✗ | ✓ |
+| Tools gebruiken (TikZ Server, etc.) | ✓ | ✓ |
 
 ---
 
@@ -353,9 +355,36 @@ Bestanden kunnen soms verdwijnen uit S3 zonder via ORCA te gaan (per ongeluk ver
 
 ---
 
+## Tools
+
+ORCA bevat ingebouwde tools voor editors en admins, bereikbaar via het menu-item **Tools**.
+
+### TikZ Server Render
+
+Compileer TikZ-diagrammen op de server met een volledige TeX Live-installatie. Vereist `latex` en `dvisvgm` op de server.
+
+1. Ga naar **Tools → TikZ Server Render**
+2. Plak TikZ-code of een volledig LaTeX-document, of laad een `.tex`-bestand / template uit ORCA
+3. Kies uitvoerinstellingen: lettertype, randmarge, PNG DPI en welke uitvoervarianten gegenereerd moeten worden
+4. Klik op **Render** — de server compileert je code en geeft tot vier varianten terug:
+   - **SVG** — standaard SVG met lettertypedata in defs
+   - **SVG (embedded fonts)** — zelfstandig met ingebedde WOFF2-lettertypen
+   - **SVG (text as paths)** — alle tekst omgezet naar vectorcontouren, geen lettertype-afhankelijkheden
+   - **PNG** — rasteruitvoer op instelbare DPI
+5. Vergelijk varianten via de tabbladen en selecteer welke je wilt uploaden naar ORCA
+6. Kies een doelmap en klik op **Upload selected**
+
+**Templatebeheer:** Sla je TikZ-code op als `.tex`-bestand in ORCA met **Save as .tex**, of laad bestaande templates met **Load from ORCA**.
+
+**Volledig document:** Je kunt een compleet LaTeX-document plakken met `\documentclass`, eigen packages en kleurdefinities — de preamble wordt automatisch geëxtraheerd en toegepast op elk `\begin{tikzpicture}`-blok.
+
+**Meerdere diagrammen:** Als je code meerdere `\begin{tikzpicture}`-blokken bevat, wordt elk apart gecompileerd en gerenderd.
+
+---
+
 ## Tips & trucs
 
-**Sneltoetsen:** Enter om te bevestigen, Escape om te annuleren.  
+**Sneltoetsen:** Enter om te bevestigen, Escape om te annuleren.
  
 **Navigeren:** Met je browser's back-button kun je gemakkelijk terug naar je eerder gekozen filters en sortering. (Navigatie links zoals in het menu linken naar de Assets startpagina zonder filters)  
  
@@ -386,6 +415,7 @@ Bestanden kunnen soms verdwijnen uit S3 zonder via ORCA te gaan (per ongeluk ver
 | **Custom domain** | Een vriendelijke URL (zoals `cdn.example.com`) in plaats van de ruwe S3-bucket-URL |
 | **Rekognition** | Amazons AI-dienst die afbeeldingen analyseert en tags voorstelt |
 | **Vervangen** | Een nieuw bestand uploaden dat een bestaand asset overschrijft, met behoud van dezelfde URL |
+| **TikZ** | Een LaTeX grafische taal voor het programmatisch maken van diagrammen, grafieken en illustraties |
 
 ---
 

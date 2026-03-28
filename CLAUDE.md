@@ -4,7 +4,7 @@
 
 ORCA DAM (ORCA Retrieves Cloud Assets) is a Digital Asset Management system built with Laravel 12 with AWS S3 integration, AI-powered tagging via AWS Rekognition, role-based access control, and a RESTful API for Rich Text Editor integration.
 
-**Frontend Stack**: Blade + Alpine.js (modular, 14 components in `resources/js/alpine/`), Tailwind CSS, Font Awesome 6.4.0, Vite, Intervention Image 3.x (GD driver)
+**Frontend Stack**: Blade + Alpine.js (modular, 15 components in `resources/js/alpine/`), Tailwind CSS, Font Awesome 6.4.0, Vite, Intervention Image 3.x (GD driver)
 
 ## Common Commands
 
@@ -70,6 +70,8 @@ php artisan queue:work --tries=3
 **QueueService** - Queue dashboard data for SystemController. `getQueueStats()` counts pending/failed/batches. `getFailedJobs()` and `getPendingJobs()` return formatted job lists with optional limit.
 
 **TestRunnerService** - Runs Pest suite in a subprocess for the web test runner. `run()` executes `php artisan test` with correct env variables. Parses output into per-test pass/fail results.
+
+**TikzCompilerService** - Server-side TikZ/LaTeX compilation via TeX Live. `compile()` runs the full pipeline: input sanitization → LaTeX→DVI → dvisvgm SVG conversion → optional PNG rasterization. Produces four output variants: SVG (standard), SVG (embedded WOFF2 fonts), SVG (text as paths), PNG. Supports 17 font packages, configurable border padding, PNG DPI, extra TikZ libraries, and custom preambles from full LaTeX documents. Security: blocks `\write18`, `\openin`, file I/O commands; runs with `--no-shell-escape` and paranoid file mode. Config in `config/tikz.php`.
 
 ### Authentication
 
@@ -149,6 +151,7 @@ Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domai
 - `/api-docs/*` - Admin: dashboard, settings, tokens, JWT secrets
 - `GET /system/integrity-status` | `POST /system/verify-integrity` (admin) - S3 integrity check
 - `/system` - Admin: overview, settings, queue, logs, commands, diagnostics, tests
+- `/tools` - Tools index (editor+admin). TikZ Server Render: compile, save/load templates, upload results
 
 ## Database Schema
 
@@ -187,6 +190,12 @@ JWT_ISSUER=                           # optional issuer validation
 
 # Optional: PHP CLI path for web test runner
 PHP_CLI_PATH=/usr/bin/php
+
+# Optional: TikZ Server Render (requires TeX Live)
+TIKZ_LATEX_PATH=latex                # Path to latex binary
+TIKZ_DVISVGM_PATH=dvisvgm           # Path to dvisvgm binary
+TIKZ_TIMEOUT=30                      # Compilation timeout (seconds)
+TIKZ_PNG_DPI=300                     # Default PNG DPI (72-600)
 ```
 
 **S3 Bucket**: Public read via bucket policy (not ACLs). IAM needs: s3:PutObject/GetObject/DeleteObject/ListBucket. Rekognition: rekognition:DetectLabels/DetectText. Translate: translate:TranslateText (if language != 'en').
@@ -197,7 +206,7 @@ PHP_CLI_PATH=/usr/bin/php
 
 **File organization**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware in `app/Http/Middleware/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console Commands in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g., `DuplicateAssetException`)
 
-**Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (14 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `trash`). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives. The asset grid markup lives in `resources/views/assets/partials/grid.blade.php` and is shared between the index and embed views.
+**Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (15 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `tools-tikz-server`, `trash`). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives. The asset grid markup lives in `resources/views/assets/partials/grid.blade.php` and is shared between the index and embed views.
 
 **Naming**: S3 keys `assets/{folder}/{uuid}.{ext}`, thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG). RESTful routes, snake_case columns.
 
@@ -260,7 +269,7 @@ app/
 │   │   ├── Api/ (AssetApiController, HealthController)
 │   │   ├── Auth/ (AuthenticatedSession, Registration, Password*, Email*, TwoFactorAuth)
 │   │   ├── AssetController, DashboardController, DiscoverController
-│   │   ├── ExportController, ImportController, FolderController
+│   │   ├── ExportController, ImportController, FolderController, ToolsController
 │   │   ├── ProfileController, SystemController, TagController
 │   │   ├── UserController, ApiDocsController, TokenController
 │   │   ├── JwtSecretController, ChunkedUploadController
@@ -274,7 +283,7 @@ app/
 ├── Policies/ (AssetPolicy, SystemPolicy, UserPolicy)
 ├── Services/
 │   ├── S3Service, AssetProcessingService, ChunkedUploadService
-│   ├── RekognitionService, SystemService, TwoFactorService
+│   ├── RekognitionService, SystemService, TikzCompilerService, TwoFactorService
 │   ├── CsvExportService, CsvImportService, ImageProcessingService
 │   ├── QueueService, TestRunnerService
 └── View/Components/ (AppLayout, GuestLayout)
@@ -287,13 +296,14 @@ resources/
 │       ├── api-docs.js, asset-detail.js, asset-editor.js, asset-grid.js
 │       ├── asset-uploader.js, asset-replacer.js, dashboard.js, discover.js
 │       ├── export.js, import.js, preferences.js, system-admin.js
-│       ├── tags.js, trash.js
+│       ├── tags.js, tools-tikz-server.js, trash.js
 └── views/
     ├── assets/ (index, create, show, edit, replace, trash, embed, partials/grid)
     ├── auth/ (login, register, forgot-password, reset-password, confirm-password,
     │          verify-email, two-factor-setup, two-factor-challenge, two-factor-recovery-codes)
     ├── profile/ (edit, partials/*)
     ├── discover/, import/, export/, tags/, users/ (index, create, edit)
+    ├── tools/ (index, tikz-server)
     ├── system/index, api/index, dashboard
     ├── layouts/ (app, guest, embed, navigation)
     ├── components/ (app-layout, modal, dropdown, buttons, inputs, footer, etc.)
@@ -310,7 +320,7 @@ tests/
            CsvExportService, CsvImportService, ImageProcessingService,
            QueueService, TestRunnerService)
 
-config/ (app, auth, cache, database, filesystems, jwt, logging, mail, queue, services, session, two-factor)
+config/ (app, auth, cache, database, filesystems, jwt, logging, mail, queue, services, session, tikz, two-factor)
 database/migrations/ (33 migrations)
 database/factories/ (Asset, Tag, User, Setting)
 database/seeders/ (Database, AdminUser)

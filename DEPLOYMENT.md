@@ -33,6 +33,16 @@ php -m | grep -E 'gd|pdo|mbstring|xml|curl|zip'
 
 All of these should be present.
 
+### Optional: TeX Live (for TikZ Server Render)
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install texlive texlive-pictures dvisvgm librsvg2-bin
+
+# Verify
+latex --version && dvisvgm --version && rsvg-convert --version
+```
+
 ## Deployment Steps
 
 ### 1. Clone Repository
@@ -104,6 +114,12 @@ JWT_ALGORITHM=HS256            # Signature algorithm
 JWT_MAX_TTL=36000              # Max token lifetime (10 hours)
 JWT_LEEWAY=60                  # Clock skew tolerance
 JWT_ISSUER=                    # Optional: Required issuer claim
+
+# TikZ Server Render (optional, requires TeX Live)
+TIKZ_LATEX_PATH=latex          # Path to latex binary
+TIKZ_DVISVGM_PATH=dvisvgm     # Path to dvisvgm binary
+TIKZ_TIMEOUT=30                # Compilation timeout (seconds)
+TIKZ_PNG_DPI=300               # Default PNG DPI
 ```
 
 ### 4. Set Permissions

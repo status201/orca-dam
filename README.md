@@ -42,6 +42,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔑 Short-lived token support (JWT bearer) for front-ends
 - 👤 User preferences (home folder, items per page, language, dark/light mode)
 - 🔒 Two-factor authentication (TOTP)
+- 🖊️ **TikZ Server Render** — compile TikZ/LaTeX diagrams server-side via TeX Live, with SVG and PNG output variants, 17 font packages, template management, and direct upload to ORCA
 
 ## Installation
 
@@ -87,6 +88,12 @@ AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
 AWS_REKOGNITION_MAX_LABELS=5             # Max AI tags per asset
 AWS_REKOGNITION_MIN_CONFIDENCE=75        # Min confidence threshold (65-99)
 AWS_REKOGNITION_LANGUAGE=en              # Language: en, nl, fr, de, es, etc.
+
+# Optional: TikZ Server Render (requires TeX Live on server)
+TIKZ_LATEX_PATH=latex
+TIKZ_DVISVGM_PATH=dvisvgm
+TIKZ_TIMEOUT=30
+TIKZ_PNG_DPI=300
 
 # Optional: _Also_ enable JWT auth
 JWT_ENABLED=true
@@ -292,7 +299,7 @@ Find your path via SSH: `which php`
 ## Architecture
 
 - **Backend:** Laravel 12 with AWS SDK v3
-- **Frontend:** Blade templates + Alpine.js (modular, 14 components in `resources/js/alpine/`)
+- **Frontend:** Blade templates + Alpine.js (modular, 15 components in `resources/js/alpine/`)
 - **Styling:** Tailwind CSS with custom ORCA theme
 - **Image Processing:** Intervention Image 3.x (GD driver)
 - **AI Tagging:** AWS Rekognition (with job queue for background processing)
@@ -334,6 +341,7 @@ orca-dam/
 │   │   ├── ExportController.php       # CSV export (admin)
 │   │   ├── ImportController.php       # CSV metadata import (admin)
 │   │   ├── FolderController.php       # Folder list, scan & create
+│   │   ├── ToolsController.php        # Tools (TikZ Server, LaTeX→MathML)
 │   │   ├── JwtSecretController.php    # JWT secret management (admin)
 │   │   ├── ProfileController.php      # User profile & preferences
 │   │   ├── SystemController.php       # System admin (admin)
@@ -370,9 +378,11 @@ orca-dam/
 │       ├── S3Service.php              # S3 operations, thumbnails & URLs
 │       ├── SystemService.php          # System admin utilities
 │       ├── TestRunnerService.php      # Web-based test runner
+│       ├── TikzCompilerService.php    # Server-side TikZ/LaTeX compilation
 │       └── TwoFactorService.php       # 2FA TOTP management
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
+│   ├── tikz.php                       # TikZ Server compiler config
 │   └── two-factor.php                 # 2FA configuration
 ├── database/
 │   ├── factories/                     # Test factories
@@ -381,18 +391,18 @@ orca-dam/
 │   ├── js/
 │   │   ├── app.js                     # App init & Alpine registration
 │   │   ├── bootstrap.js               # Bootstrap script
-│   │   └── alpine/                    # Alpine.js modules (14 components)
+│   │   └── alpine/                    # Alpine.js modules (15 components)
 │   │       ├── api-docs.js, asset-detail.js, asset-editor.js, asset-grid.js
 │   │       ├── asset-uploader.js, asset-replacer.js, dashboard.js, discover.js
 │   │       ├── export.js, import.js, preferences.js, system-admin.js
-│   │       └── tags.js, trash.js
+│   │       └── tags.js, tools-tikz-server.js, trash.js
 │   ├── css/app.css
 │   └── views/
 │       ├── api/                       # OpenAPI documentation view
 │       ├── assets/                    # Asset views (index, show, edit, create, replace, trash)
 │       ├── auth/                      # Authentication & 2FA views
 │       ├── components/                # Blade components
-│       ├── discover/, export/, import/, tags/, users/
+│       ├── discover/, export/, import/, tags/, tools/, users/
 │       ├── errors/                    # 404, 419, 500, 503 error pages
 │       ├── layouts/                   # App & guest layouts
 │       ├── profile/                   # Profile management & preferences

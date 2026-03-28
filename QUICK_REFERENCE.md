@@ -101,6 +101,7 @@ orca-dam/
 │   │   ├── ExportController.php       # CSV export (admin)
 │   │   ├── ImportController.php       # CSV metadata import (admin)
 │   │   ├── FolderController.php       # Folder list, scan & create
+│   │   ├── ToolsController.php        # Tools (TikZ Server, LaTeX→MathML)
 │   │   ├── JwtSecretController.php    # JWT secret management
 │   │   ├── ProfileController.php      # User profile & preferences
 │   │   ├── SystemController.php       # System admin (admin)
@@ -137,25 +138,27 @@ orca-dam/
 │       ├── CsvImportService.php       # CSV parsing, diffing & validation
 │       ├── ImageProcessingService.php # Thumbnails, resizing, dimensions
 │       ├── QueueService.php           # Queue stats & job listings
-│       └── TestRunnerService.php      # Web test runner subprocess
+│       ├── TestRunnerService.php      # Web test runner subprocess
+│       └── TikzCompilerService.php    # Server-side TikZ/LaTeX compilation
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
+│   ├── tikz.php                       # TikZ Server compiler config
 │   └── two-factor.php                 # 2FA configuration
 ├── database/migrations/               # 33 migrations
 ├── resources/
 │   ├── js/
 │   │   ├── app.js                     # App init & Alpine registration
-│   │   └── alpine/                    # Alpine.js modules (14 components)
+│   │   └── alpine/                    # Alpine.js modules (15 components)
 │   │       ├── api-docs.js, asset-detail.js, asset-editor.js, asset-grid.js
 │   │       ├── asset-uploader.js, asset-replacer.js, dashboard.js, discover.js
 │   │       ├── export.js, import.js, preferences.js, system-admin.js
-│   │       └── tags.js, trash.js
+│   │       └── tags.js, tools-tikz-server.js, trash.js
 │   └── views/
 │       ├── api/                       # OpenAPI documentation view
 │       ├── assets/                    # Asset views (index, show, edit, create, replace, trash, embed)
 │       ├── auth/                      # Authentication & 2FA views
 │       ├── components/                # Blade components
-│       ├── discover/, export/, import/, tags/, users/
+│       ├── discover/, export/, import/, tags/, tools/, users/
 │       ├── errors/                    # 404, 419, 500, 503 error pages
 │       ├── layouts/                   # App, guest & embed layouts
 │       ├── profile/                   # Profile & preferences
@@ -251,6 +254,12 @@ GET  /system/integrity-status  # S3 integrity status JSON (admin)
 POST /system/verify-integrity  # Queue S3 integrity checks (admin)
 POST /system/settings          # Update settings (admin)
 POST /system/run-tests         # Run automated tests (admin)
+GET  /tools                    # Tools index
+GET  /tools/tikz-server        # TikZ Server Render
+POST /tools/tikz-server/render # Compile TikZ code
+GET  /tools/tikz-server/templates       # Search .tex templates
+GET  /tools/tikz-server/templates/{id}  # Load template content
+POST /tools/tikz-server/templates/upload # Save .tex template
 GET  /api-docs                          # API documentation page (admin)
 GET  /api-docs/dashboard                # API stats dashboard (admin)
 POST /api-docs/settings                 # Update API settings (admin)
@@ -368,6 +377,12 @@ APP_DEBUG=true|false
 
 # PHP CLI (for web-based test runner on shared hosting)
 PHP_CLI_PATH=/usr/bin/php      # Find via: which php
+
+# TikZ Server Render (optional, requires TeX Live)
+TIKZ_LATEX_PATH=latex          # Path to latex binary
+TIKZ_DVISVGM_PATH=dvisvgm     # Path to dvisvgm binary
+TIKZ_TIMEOUT=30                # Compilation timeout (seconds)
+TIKZ_PNG_DPI=300               # Default PNG DPI (72-600)
 ```
 
 **Runtime settings** (configured via System → Settings, no .env needed):
