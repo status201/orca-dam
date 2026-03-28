@@ -87,10 +87,12 @@
     }
 }
 
-.image-container button {
+.image-container button,
+.image-container a.absolute {
     visibility: hidden;
 }
-.image-container:hover button {
+.image-container:hover button,
+.image-container:hover a.absolute {
     visibility: visible;
 }
 

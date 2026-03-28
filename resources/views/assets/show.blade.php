@@ -50,6 +50,10 @@
                          :style="isBlurred ? 'filter: blur(12px)' + (document.documentElement.classList.contains('dark-mode') ? ' invert(1)' : '') + '; transition: filter 0.5s ease' : 'transition: filter 0.5s ease'"
                          x-ref="mainImage">
 
+                    <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
+                       class="absolute bottom-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10">
+                        <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
+                    </a>
 
                 @elseif($asset->isSvg())
                     <!-- Refresh Icon Button -->
@@ -65,13 +69,25 @@
                          :alt="imageAlt"
                          class="h-auto my-0 mx-auto"
                          x-ref="mainImage">
+                    <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
+                       class="absolute bottom-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10">
+                        <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
+                    </a>
                 @elseif($asset->isVideo())
                     <video controls class="w-full" preload="metadata">
                         <source src="{{ $asset->url }}" type="{{ $asset->mime_type }}">
                         {{ __('Your browser does not support the video tag.') }}
                     </video>
+                    <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
+                       class="absolute bottom-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10">
+                        <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
+                    </a>
                 @elseif($asset->isMathMl())
                     <x-mml-preview :asset="$asset" size="full" :refreshable="true" />
+                    <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
+                       class="absolute bottom-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10">
+                        <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
+                    </a>
                 @elseif($asset->isPdf() && $asset->thumbnail_url)
                     <img src="{{ $asset->thumbnail_url }}"
                          alt="{{ $asset->filename }}"
@@ -79,6 +95,10 @@
                     <div class="attention absolute top-1 right-1 pointer-events-none">
                         <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
                     </div>
+                    <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
+                       class="absolute bottom-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10">
+                        <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
+                    </a>
                 @else
                     <div class="aspect-video bg-gray-100 flex items-center justify-center">
                         <div class="text-center">
@@ -87,6 +107,10 @@
                             <p class="text-gray-500 text-sm mt-1">{{ strtoupper(pathinfo($asset->filename, PATHINFO_EXTENSION)) }} {{ __('File') }}</p>
                         </div>
                     </div>
+                    <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
+                       class="absolute bottom-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10">
+                        <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
+                    </a>
                 @endif
             </div>
 
