@@ -412,6 +412,51 @@
         </div>
     </div>
 
+    {{-- Save template modal --}}
+    <x-modal name="save-template" maxWidth="md" focusable>
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-4">
+                <i class="fas fa-floppy-disk mr-2 text-gray-400"></i>{{ __('Save as .tex') }}
+            </h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Filename') }}</label>
+                    <input
+                        type="text"
+                        x-model="saveTemplateName"
+                        @keydown.enter.prevent="confirmSaveToOrca()"
+                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm"
+                        placeholder="template.tex">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
+                    <select
+                        x-model="saveTemplateFolder"
+                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
+                        <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button
+                    @click="$dispatch('close')"
+                    class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+                    {{ __('Cancel') }}
+                </button>
+                <button
+                    @click="confirmSaveToOrca()"
+                    :disabled="!saveTemplateName.trim() || savingTemplate"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-orca-teal text-white text-sm font-medium rounded-md hover:bg-orca-teal-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <i class="fas fa-floppy-disk" :class="savingTemplate && 'fa-spin'"></i>
+                    {{ __('Save') }}
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
     {{-- Technical notes --}}
     <div class="mt-8 bg-green-50 border border-green-200 rounded-lg overflow-hidden">
         <button

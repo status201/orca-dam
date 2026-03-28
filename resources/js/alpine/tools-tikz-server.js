@@ -33,6 +33,8 @@ function tikzServer() {
         templateBrowserOpen: false,
         templateLoadingId: null,
         savingTemplate: false,
+        saveTemplateName: '',
+        saveTemplateFolder: '',
 
         _lastLineCount: 0,
 
@@ -333,15 +335,20 @@ function tikzServer() {
             }
         },
 
-        async saveToOrca() {
+        saveToOrca() {
             if (!this.tikzCode.trim() || this.savingTemplate) return;
 
             var defaultName = this.templateName || 'template.tex';
             if (!defaultName.endsWith('.tex')) {
                 defaultName = defaultName.replace(/\.[^.]+$/, '') + '.tex';
             }
-            var filename = window.prompt(pageData.saveTemplatePrompt || 'Template name:', defaultName);
-            if (!filename) return;
+            this.saveTemplateName = defaultName;
+            this.saveTemplateFolder = this.uploadFolder;
+            this.$dispatch('open-modal', 'save-template');
+        },
+
+        async confirmSaveToOrca() {
+            if (!this.saveTemplateName.trim() || this.savingTemplate) return;
 
             this.savingTemplate = true;
             try {
@@ -354,8 +361,8 @@ function tikzServer() {
                     },
                     body: JSON.stringify({
                         content: this.tikzCode,
-                        filename: filename,
-                        folder: this.uploadFolder,
+                        filename: this.saveTemplateName,
+                        folder: this.saveTemplateFolder,
                     }),
                 });
                 var data = await res.json();
@@ -365,6 +372,7 @@ function tikzServer() {
                 }
                 this.templateName = data.filename;
                 window.showToast(data.filename, 'success');
+                this.$dispatch('close-modal', 'save-template');
             } catch (e) {
                 window.showToast('Save failed: ' + e.message, 'error');
             } finally {
