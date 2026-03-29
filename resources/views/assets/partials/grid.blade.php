@@ -576,6 +576,9 @@
                         <!-- File Size -->
                         <td class="px-4 py-3">
                             <span class="text-sm text-gray-700">{{ $asset->formatted_size }}</span>
+                            @if($asset->width && $asset->height)
+                                <div class="text-xs text-gray-500">{{ $asset->width }} x {{ $asset->height }}</div>
+                            @endif
                         </td>
 
                         <!-- Tags with Inline Editing -->
