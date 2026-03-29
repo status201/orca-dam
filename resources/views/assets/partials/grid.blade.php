@@ -57,7 +57,7 @@
                         <option value="">{{ __('All Types') }}</option>
                         <option value="image">{{ __('Images') }}</option>
                         <option value="video">{{ __('Videos') }}</option>
-                        <option value="application">{{ __('Documents') }}</option>
+                        <option value="document">{{ __('Documents') }}</option>
                     </select>
 
                     <!-- Tag filter -->

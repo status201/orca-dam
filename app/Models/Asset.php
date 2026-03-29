@@ -310,9 +310,11 @@ class Asset extends Model
         'video/mpeg' => 'fa-file-video',
         'video/quicktime' => 'fa-file-video',
         'video/x-msvideo' => 'fa-file-video',
+        'video/3gpp' => 'fa-file-video',
         'audio/mpeg' => 'fa-file-audio',
         'audio/wav' => 'fa-file-audio',
         'audio/ogg' => 'fa-file-audio',
+        'image/svg+xml' => 'fa-file-image',
         'application/postscript' => 'fa-file-image',
         'application/eps' => 'fa-file-image',
         'image/x-eps' => 'fa-file-image',
@@ -341,8 +343,10 @@ class Asset extends Model
         'mp4' => 'fa-file-video',
         'mov' => 'fa-file-video',
         'avi' => 'fa-file-video',
+        '3gp' => 'fa-file-video',
         'mp3' => 'fa-file-audio',
         'wav' => 'fa-file-audio',
+        'svg' => 'fa-file-image',
         'eps' => 'fa-file-image',
         'tex' => 'fa-file-tex',
     ];
@@ -378,7 +382,7 @@ class Asset extends Model
             'fa-file-csv' => 'text-teal-600',
             'fa-file-lines' => 'text-gray-500',
             'fa-file-image' => 'text-emerald-600',
-            'fa-file-tex' => 'text-teal-700',
+            'fa-file-tex' => 'text-cyan-600',
             default => 'text-gray-400',
         };
     }
@@ -571,6 +575,13 @@ class Asset extends Model
         });
     }
 
+    private static array $typeCategories = [
+        'document' => ['application', 'text'],
+        'image' => ['image'],
+        'video' => ['video'],
+        'audio' => ['audio'],
+    ];
+
     /**
      * Scope: Filter by mime type
      */
@@ -580,25 +591,19 @@ class Asset extends Model
             return $query;
         }
 
-        // Normalize common friendly/plural type names to MIME type prefixes
-        $typeMap = [
-            'images' => 'image',
-            'videos' => 'video',
-            'documents' => 'application',
-            'audio' => 'audio',
-        ];
+        $aliases = ['images' => 'image', 'videos' => 'video', 'documents' => 'document'];
+        $category = $aliases[strtolower($type)] ?? strtolower($type);
 
-        $mimePrefix = $typeMap[strtolower($type)] ?? $type;
-
-        // text/x-tex files are TeX documents that should appear under the application/documents filter
-        if ($mimePrefix === 'application') {
-            return $query->where(function ($q) use ($mimePrefix) {
-                $q->where('mime_type', 'like', "{$mimePrefix}/%")
-                    ->orWhere('mime_type', 'text/x-tex');
-            });
+        $prefixes = self::$typeCategories[$category] ?? null;
+        if (! $prefixes) {
+            return $query;
         }
 
-        return $query->where('mime_type', 'like', "{$mimePrefix}/%");
+        return $query->where(function ($q) use ($prefixes) {
+            foreach ($prefixes as $prefix) {
+                $q->orWhere('mime_type', 'like', "{$prefix}/%");
+            }
+        });
     }
 
     /**

@@ -333,7 +333,7 @@ html.dark-mode button.download-export,
 html.dark-mode .swagger-ui-container,
 html.dark-mode img,
 html.dark-mode video,
-html.dark-mode svg {
+html.dark-mode svg:not(.file-type-icon) {
     filter: invert(1);
 }
 html.dark-mode .swagger-ui-container {

@@ -44,7 +44,7 @@
                             <option value="{{ $type }}">{{ ucfirst($type) }}</option>
                         @endforeach
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">{{ __('Filter by file type (e.g., image, video, application)') }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Filter by file type (e.g., image, video, document)') }}</p>
                 </div>
 
                 <!-- Tags Filter -->

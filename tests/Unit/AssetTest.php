@@ -100,7 +100,7 @@ test('asset scope ofType filters by mime type prefix', function () {
     Asset::factory()->create(['mime_type' => 'application/pdf']);
 
     $images = Asset::ofType('image')->get();
-    $documents = Asset::ofType('application')->get();
+    $documents = Asset::ofType('document')->get();
 
     expect($images)->toHaveCount(2);
     expect($documents)->toHaveCount(1);
@@ -111,10 +111,11 @@ test('asset scope ofType accepts plural/friendly type names', function () {
     Asset::factory()->create(['mime_type' => 'image/png']);
     Asset::factory()->create(['mime_type' => 'video/mp4']);
     Asset::factory()->create(['mime_type' => 'application/pdf']);
+    Asset::factory()->create(['mime_type' => 'text/csv']);
 
     expect(Asset::ofType('images')->get())->toHaveCount(2);
     expect(Asset::ofType('videos')->get())->toHaveCount(1);
-    expect(Asset::ofType('documents')->get())->toHaveCount(1);
+    expect(Asset::ofType('documents')->get())->toHaveCount(2);
     expect(Asset::ofType('Images')->get())->toHaveCount(2);
 });
 
