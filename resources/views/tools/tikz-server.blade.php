@@ -3,7 +3,7 @@
 @section('title', __('TikZ Server Render'))
 
 @section('content')
-<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="tikzServer()">
+<div class="tikz-server max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="tikzServer()">
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">
