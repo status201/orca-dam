@@ -13,6 +13,16 @@ function latexMathml() {
         uploadFolder: pageData.rootFolder || '',
         uploading: false,
         uploadedAsset: null,
+        selectedFont: 'local',
+        showInstructions: false,
+
+        fonts: [
+            { key: 'local', label: 'System Default', css: 'Temml-Local.css' },
+            { key: 'latin-modern', label: 'Latin Modern', css: 'Temml-Latin-Modern.css' },
+            { key: 'stix2', label: 'STIX Two', css: 'Temml-STIX2.css' },
+            { key: 'fira-math', label: 'Fira Math', css: 'Temml-Fira-Math.css' },
+            { key: 'arev-sans', label: 'Arev Sans', css: null },
+        ],
 
         examples: [
             { label: 'Pythagoras', tex: 'a^2 + b^2 = c^2' },
@@ -33,6 +43,64 @@ function latexMathml() {
             this.$watch('latex', () => this.render());
             this.$watch('displayMode', () => this.render());
             this.$watch('addMmlSemantics', () => this.render());
+            this.$watch('selectedFont', () => {
+                this.switchFont();
+                this.render();
+            });
+        },
+
+        switchFont() {
+            const link = document.getElementById('temml-font-css');
+            if (!link) return;
+
+            const cdnBase = 'https://cdn.jsdelivr.net/npm/temml@latest/dist/';
+            const font = this.fonts.find(f => f.key === this.selectedFont);
+            let override = document.getElementById('temml-font-override');
+
+            if (font && font.css) {
+                // Standard Temml font — swap CSS href and remove any override
+                link.href = cdnBase + font.css;
+                if (override) override.remove();
+            } else if (this.selectedFont === 'arev-sans') {
+                // Arev Sans — keep base Temml CSS, inject custom @font-face override
+                link.href = cdnBase + 'Temml-Local.css';
+
+                if (!override) {
+                    override = document.createElement('style');
+                    override.id = 'temml-font-override';
+                    document.head.appendChild(override);
+                }
+
+                override.textContent = `
+                    @font-face {
+                        font-family: "Arev Sans";
+                        src: url("/fonts/arev-sans/Arev.woff") format("woff");
+                        font-weight: normal;
+                        font-style: normal;
+                    }
+                    @font-face {
+                        font-family: "Arev Sans";
+                        src: url("/fonts/arev-sans/ArevBd.woff") format("woff");
+                        font-weight: bold;
+                        font-style: normal;
+                    }
+                    @font-face {
+                        font-family: "Arev Sans";
+                        src: url("/fonts/arev-sans/ArevIt.woff") format("woff");
+                        font-weight: normal;
+                        font-style: italic;
+                    }
+                    @font-face {
+                        font-family: "Arev Sans";
+                        src: url("/fonts/arev-sans/ArevBI.woff") format("woff");
+                        font-weight: bold;
+                        font-style: italic;
+                    }
+                    #mathml-preview math {
+                        font-family: "Arev Sans", math;
+                    }
+                `;
+            }
         },
 
         render() {

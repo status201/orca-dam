@@ -3,7 +3,7 @@
 @section('title', __('LaTeX to MathML'))
 
 @push('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/temml@latest/dist/Temml-Local.css">
+<link id="temml-font-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/temml@latest/dist/Temml-Local.css">
 @endpush
 
 @section('content')
@@ -64,7 +64,7 @@
             </textarea>
 
             {{-- Toggles --}}
-            <div class="flex flex-wrap gap-4">
+            <div class="flex flex-wrap gap-4 items-center">
                 <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                     <input type="checkbox" x-model="displayMode" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
                     {{ __('Display mode') }}
@@ -73,6 +73,15 @@
                     <input type="checkbox" x-model="addMmlSemantics" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
                     {{ __('Include LaTeX annotation') }}
                 </label>
+                <div class="flex items-center gap-2 ml-auto">
+                    <label class="text-sm text-gray-700">{{ __('Font') }}:</label>
+                    <select x-model="selectedFont"
+                        class="text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                        <template x-for="f in fonts" :key="f.key">
+                            <option :value="f.key" x-text="f.label"></option>
+                        </template>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -177,6 +186,88 @@
                 </template>
                 <span x-text="uploading ? '{{ __('Uploading...') }}' : '{{ __('Upload to ORCA') }}'"></span>
             </button>
+        </div>
+    </div>
+
+    {{-- Instructions --}}
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+        <button
+            @click="showInstructions = !showInstructions"
+            class="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-blue-100/50 transition-colors">
+            <i class="fas fa-code text-blue-600"></i>
+            <span class="font-semibold text-blue-900 text-sm">{{ __('How to use this MathML on your webpage') }}</span>
+            <i class="fas fa-chevron-right text-blue-400 text-xs ml-auto transition-transform duration-200"
+               :class="showInstructions && 'rotate-90'"></i>
+        </button>
+        <div x-show="showInstructions" x-collapse class="border-t border-blue-200 px-5 py-4 text-sm text-blue-900 space-y-4">
+
+            <p>{{ __('MathML is rendered natively by modern browsers — no JavaScript library is needed on your webpage.') }}</p>
+
+            {{-- Standard Temml fonts --}}
+            <template x-if="selectedFont !== 'arev-sans'">
+                <div class="space-y-3">
+                    <p class="font-medium">{{ __('1. Add the font stylesheet to your page') }} <code class="text-xs bg-blue-100 px-1 py-0.5 rounded">&lt;head&gt;</code>:</p>
+                    <pre class="bg-white border border-blue-200 rounded-md px-4 py-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">&lt;link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/temml@latest/dist/<span x-text="fonts.find(f => f.key === selectedFont)?.css || 'Temml-Local.css'"></span>"&gt;</pre>
+
+                    <p class="font-medium">{{ __('2. Paste the MathML markup into your HTML:') }}</p>
+                    <pre class="bg-white border border-blue-200 rounded-md px-4 py-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">&lt;!-- Inline math --&gt;
+&lt;p&gt;The formula &lt;math&gt;...&lt;/math&gt; is shown inline.&lt;/p&gt;
+
+&lt;!-- Display (block) math --&gt;
+&lt;math display="block"&gt;...&lt;/math&gt;</pre>
+                </div>
+            </template>
+
+            {{-- Arev Sans --}}
+            <template x-if="selectedFont === 'arev-sans'">
+                <div class="space-y-3">
+                    <p class="font-medium">{{ __('1. Host the Arev Sans font files on your server and add CSS:') }}</p>
+                    <pre class="bg-white border border-blue-200 rounded-md px-4 py-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">&lt;!-- Base MathML rendering styles --&gt;
+&lt;link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/temml@latest/dist/Temml-Local.css"&gt;
+
+&lt;style&gt;
+@@font-face {
+    font-family: "Arev Sans";
+    src: url("/fonts/arev-sans/Arev.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+}
+@@font-face {
+    font-family: "Arev Sans";
+    src: url("/fonts/arev-sans/ArevBd.woff") format("woff");
+    font-weight: bold;
+    font-style: normal;
+}
+@@font-face {
+    font-family: "Arev Sans";
+    src: url("/fonts/arev-sans/ArevIt.woff") format("woff");
+    font-weight: normal;
+    font-style: italic;
+}
+@@font-face {
+    font-family: "Arev Sans";
+    src: url("/fonts/arev-sans/ArevBI.woff") format("woff");
+    font-weight: bold;
+    font-style: italic;
+}
+math {
+    font-family: "Arev Sans", math;
+}
+&lt;/style&gt;</pre>
+
+                    <p class="font-medium">{{ __('2. Paste the MathML markup into your HTML:') }}</p>
+                    <pre class="bg-white border border-blue-200 rounded-md px-4 py-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">&lt;!-- Inline math --&gt;
+&lt;p&gt;The formula &lt;math&gt;...&lt;/math&gt; is shown inline.&lt;/p&gt;
+
+&lt;!-- Display (block) math --&gt;
+&lt;math display="block"&gt;...&lt;/math&gt;</pre>
+
+                    <div class="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 text-xs">
+                        <i class="fas fa-info-circle mt-0.5"></i>
+                        <span>{{ __('Arev Sans does not include an OpenType MATH table. The browser may fall back to its default math font for complex layout elements like fractions, radicals, and stretchy delimiters.') }}</span>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 </div>
