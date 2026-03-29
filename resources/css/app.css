@@ -105,8 +105,6 @@ body.embed .active-filters {
 
 /* SVG's should always have a white background */
 img[src$=".svg"],
-.aspect-square svg,
-.image-container > img[src$=".svg"],
 .tikz-server svg {
     background: #fff;
 }
