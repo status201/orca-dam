@@ -263,9 +263,8 @@ class TikzCompilerService
         // When a user preamble is provided, use it (it already contains usepackage lines, colors, etc.)
         if ($preamble !== '') {
             return <<<LATEX
-\\documentclass{standalone}
+\\documentclass[tikz]{standalone}
 \\usepackage[T1]{fontenc}
-\\def\\pgfsysdriver{pgfsys-dvisvgm.def}
 {$preamble}
 \\begin{document}
 {$tikzSnippet}
@@ -279,16 +278,11 @@ LATEX;
             $fontLine .= "\n";
         }
 
-        // Use pgfsys-dvisvgm driver (set before \usepackage{tikz}) so that
-        // text goes through DVI font commands instead of dvips PS specials.
-        // This lets dvisvgm --no-fonts access proper font outlines for the
-        // "text as paths" SVG variant.
         return <<<LATEX
-\\documentclass{standalone}
+\\documentclass[tikz]{standalone}
 \\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amssymb,amsfonts}
-{$fontLine}\\def\\pgfsysdriver{pgfsys-dvisvgm.def}
-\\usepackage{tikz}
+{$fontLine}\\usepackage{tikz}
 \\usetikzlibrary{{$libraries}}
 \\begin{document}
 {$tikzSnippet}
@@ -336,11 +330,7 @@ LATEX;
         $result = $this->runProcess($command, $tmpDir, $timeout);
 
         if (file_exists($outputFile)) {
-            Log::debug("dvisvgm output for {$outputName}", [
-                'output' => substr($result['output'] ?? '', 0, 1000),
-            ]);
-
-            return file_get_contents($outputFile);
+            return $this->uniquifySvgIds(file_get_contents($outputFile));
         }
 
         Log::warning("dvisvgm failed for {$outputName}", [
@@ -349,6 +339,35 @@ LATEX;
         ]);
 
         return null;
+    }
+
+    /**
+     * Make SVG element IDs unique to prevent collisions when multiple
+     * inline SVGs are rendered on the same page. Without this, the browser
+     * reuses the first-encountered glyph definition for all SVGs sharing
+     * the same ID (e.g. "g0-48"), causing wrong character sizes.
+     */
+    private function uniquifySvgIds(string $svg): string
+    {
+        $prefix = 'z'.substr(md5(uniqid('', true)), 0, 4).'-';
+
+        preg_match_all('/\bid="([^"]+)"/', $svg, $matches);
+        $ids = array_unique($matches[1]);
+
+        if (empty($ids)) {
+            return $svg;
+        }
+
+        foreach ($ids as $id) {
+            $prefixedId = $prefix.$id;
+            $svg = str_replace(
+                ['id="'.$id.'"', '"#'.$id.'"', '(#'.$id.')'],
+                ['id="'.$prefixedId.'"', '"#'.$prefixedId.'"', '(#'.$prefixedId.')'],
+                $svg
+            );
+        }
+
+        return $svg;
     }
 
     /**

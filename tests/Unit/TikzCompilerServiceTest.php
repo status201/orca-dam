@@ -109,8 +109,7 @@ test('buildTexDocument wraps snippet in standalone document', function () {
     $snippet = '\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}';
     $doc = $service->buildTexDocument($snippet);
 
-    expect($doc)->toContain('\\documentclass{standalone}');
-    expect($doc)->toContain('\\def\\pgfsysdriver{pgfsys-dvisvgm.def}');
+    expect($doc)->toContain('\\documentclass[tikz]{standalone}');
     expect($doc)->toContain('\\begin{document}');
     expect($doc)->toContain($snippet);
     expect($doc)->toContain('\\end{document}');
@@ -148,8 +147,7 @@ test('buildTexDocument uses custom preamble when provided', function () {
     $doc = $service->buildTexDocument($snippet, preamble: $preamble);
 
     expect($doc)->toContain($preamble);
-    expect($doc)->toContain('\\documentclass{standalone}');
-    expect($doc)->toContain('\\def\\pgfsysdriver{pgfsys-dvisvgm.def}');
+    expect($doc)->toContain('\\documentclass[tikz]{standalone}');
     // When preamble is provided, the font/library block should NOT be included
     expect($doc)->not->toContain('\\usetikzlibrary');
 });
@@ -184,7 +182,73 @@ test('buildTexDocument applies border padding', function () {
     // it's passed to dvisvgm. Verify the parameter is accepted without error.
     $doc = $service->buildTexDocument('\\begin{tikzpicture}\\end{tikzpicture}', borderPt: 10);
 
-    expect($doc)->toContain('\\documentclass{standalone}');
+    expect($doc)->toContain('\\documentclass[tikz]{standalone}');
+});
+
+// ---------------------------------------------------------------------------
+// uniquifySvgIds() — prevent inline SVG ID collisions
+// ---------------------------------------------------------------------------
+
+test('uniquifySvgIds prefixes all IDs and references', function () {
+    $service = app(TikzCompilerService::class);
+
+    $svg = '<svg><defs><path id="g0-48" d="M1 2"/><path id="g0-49" d="M3 4"/></defs>'
+        .'<use xlink:href="#g0-48"/><use xlink:href="#g0-49"/></svg>';
+
+    // Use reflection to call private method
+    $method = new ReflectionMethod($service, 'uniquifySvgIds');
+    $result = $method->invoke($service, $svg);
+
+    // Original IDs should no longer exist
+    expect($result)->not->toContain('id="g0-48"');
+    expect($result)->not->toContain('id="g0-49"');
+    expect($result)->not->toContain('"#g0-48"');
+    expect($result)->not->toContain('"#g0-49"');
+
+    // Prefixed IDs should exist and be consistent
+    preg_match('/id="([^"]+)"/', $result, $match);
+    $prefix = substr($match[1], 0, -strlen('g0-48'));
+    expect($result)->toContain('id="'.$prefix.'g0-48"');
+    expect($result)->toContain('"#'.$prefix.'g0-48"');
+    expect($result)->toContain('id="'.$prefix.'g0-49"');
+    expect($result)->toContain('"#'.$prefix.'g0-49"');
+});
+
+test('uniquifySvgIds handles url() references', function () {
+    $service = app(TikzCompilerService::class);
+
+    $svg = '<svg><defs><clipPath id="clip1"><rect/></clipPath></defs>'
+        .'<g clip-path="url(#clip1)"><path d="M0 0"/></g></svg>';
+
+    $method = new ReflectionMethod($service, 'uniquifySvgIds');
+    $result = $method->invoke($service, $svg);
+
+    expect($result)->not->toContain('id="clip1"');
+    expect($result)->not->toContain('(#clip1)');
+
+    // Both the id and url() reference should use the same prefix
+    preg_match('/id="([^"]+)"/', $result, $match);
+    $prefixedId = $match[1];
+    expect($result)->toContain('(#'.$prefixedId.')');
+});
+
+test('uniquifySvgIds returns SVG unchanged when no IDs present', function () {
+    $service = app(TikzCompilerService::class);
+    $svg = '<svg><rect x="0" y="0" width="10" height="10"/></svg>';
+
+    $method = new ReflectionMethod($service, 'uniquifySvgIds');
+    expect($method->invoke($service, $svg))->toBe($svg);
+});
+
+test('uniquifySvgIds produces different prefixes on each call', function () {
+    $service = app(TikzCompilerService::class);
+    $svg = '<svg><defs><path id="g0-48" d="M1 2"/></defs></svg>';
+
+    $method = new ReflectionMethod($service, 'uniquifySvgIds');
+    $result1 = $method->invoke($service, $svg);
+    $result2 = $method->invoke($service, $svg);
+
+    expect($result1)->not->toBe($result2);
 });
 
 // ---------------------------------------------------------------------------
