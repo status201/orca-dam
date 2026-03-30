@@ -470,7 +470,7 @@ function tikzServer() {
                             mime: v.mime,
                             width: v.width || null,
                             height: v.height || null,
-                            selected: v.type === 'svg_embedded',
+                            selected: v.type === 'svg_paths',
                             uploading: false,
                             uploaded: null,
                             name: 'diagram-' + (i + 1) + this.variantNameSuffix(v.type) + this.variantExtension(v.type),
@@ -479,7 +479,7 @@ function tikzServer() {
 
                     this.results.push({
                         snippetIndex: i,
-                        activeTab: variants.svg_embedded ? 'svg_embedded' : (firstType || 'svg_standard'),
+                        activeTab: variants.svg_paths ? 'svg_paths' : (firstType || 'svg_standard'),
                         variants: variants,
                     });
 
