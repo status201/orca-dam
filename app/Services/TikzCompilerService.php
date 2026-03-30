@@ -181,7 +181,7 @@ class TikzCompilerService
 
             // SVG with text as paths (no font dependencies)
             if ($allVariants || ! empty($enabledVariants['svg_paths'])) {
-                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $borderPt);
+                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts', '--verbosity=7'], $borderPt);
                 if ($svgPaths !== null) {
                     $variants[] = [
                         'type' => 'svg_paths',
