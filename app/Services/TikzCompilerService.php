@@ -181,7 +181,7 @@ class TikzCompilerService
 
             // SVG with text as paths (no font dependencies)
             if ($allVariants || ! empty($enabledVariants['svg_paths'])) {
-                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts', '--verbosity=7'], $borderPt);
+                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $borderPt);
                 if ($svgPaths !== null) {
                     $variants[] = [
                         'type' => 'svg_paths',
@@ -265,6 +265,7 @@ class TikzCompilerService
             return <<<LATEX
 \\documentclass[tikz]{standalone}
 \\usepackage[T1]{fontenc}
+\\def\\pgfsysdriver{pgfsys-dvisvgm.def}
 {$preamble}
 \\begin{document}
 {$tikzSnippet}
@@ -282,7 +283,8 @@ LATEX;
 \\documentclass[tikz]{standalone}
 \\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amssymb,amsfonts}
-{$fontLine}\\usepackage{tikz}
+{$fontLine}\\def\\pgfsysdriver{pgfsys-dvisvgm.def}
+\\usepackage{tikz}
 \\usetikzlibrary{{$libraries}}
 \\begin{document}
 {$tikzSnippet}
