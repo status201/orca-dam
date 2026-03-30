@@ -109,7 +109,8 @@ test('buildTexDocument wraps snippet in standalone document', function () {
     $snippet = '\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}';
     $doc = $service->buildTexDocument($snippet);
 
-    expect($doc)->toContain('\\documentclass[tikz]{standalone}');
+    expect($doc)->toContain('\\documentclass{standalone}');
+    expect($doc)->toContain('\\def\\pgfsysdriver{pgfsys-dvisvgm.def}');
     expect($doc)->toContain('\\begin{document}');
     expect($doc)->toContain($snippet);
     expect($doc)->toContain('\\end{document}');
@@ -147,7 +148,8 @@ test('buildTexDocument uses custom preamble when provided', function () {
     $doc = $service->buildTexDocument($snippet, preamble: $preamble);
 
     expect($doc)->toContain($preamble);
-    expect($doc)->toContain('\\documentclass[tikz]{standalone}');
+    expect($doc)->toContain('\\documentclass{standalone}');
+    expect($doc)->toContain('\\def\\pgfsysdriver{pgfsys-dvisvgm.def}');
     // When preamble is provided, the font/library block should NOT be included
     expect($doc)->not->toContain('\\usetikzlibrary');
 });
@@ -182,7 +184,7 @@ test('buildTexDocument applies border padding', function () {
     // it's passed to dvisvgm. Verify the parameter is accepted without error.
     $doc = $service->buildTexDocument('\\begin{tikzpicture}\\end{tikzpicture}', borderPt: 10);
 
-    expect($doc)->toContain('\\documentclass[tikz]{standalone}');
+    expect($doc)->toContain('\\documentclass{standalone}');
 });
 
 // ---------------------------------------------------------------------------

@@ -263,7 +263,7 @@ class TikzCompilerService
         // When a user preamble is provided, use it (it already contains usepackage lines, colors, etc.)
         if ($preamble !== '') {
             return <<<LATEX
-\\documentclass[tikz]{standalone}
+\\documentclass{standalone}
 \\usepackage[T1]{fontenc}
 \\def\\pgfsysdriver{pgfsys-dvisvgm.def}
 {$preamble}
@@ -279,8 +279,12 @@ LATEX;
             $fontLine .= "\n";
         }
 
+        // Use pgfsys-dvisvgm driver (set before \usepackage{tikz}) so that
+        // text goes through DVI font commands instead of dvips PS specials.
+        // This lets dvisvgm --no-fonts access proper font outlines for the
+        // "text as paths" SVG variant.
         return <<<LATEX
-\\documentclass[tikz]{standalone}
+\\documentclass{standalone}
 \\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amssymb,amsfonts}
 {$fontLine}\\def\\pgfsysdriver{pgfsys-dvisvgm.def}
