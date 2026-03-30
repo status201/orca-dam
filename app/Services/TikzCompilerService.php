@@ -330,6 +330,10 @@ LATEX;
         $result = $this->runProcess($command, $tmpDir, $timeout);
 
         if (file_exists($outputFile)) {
+            Log::debug("dvisvgm output for {$outputName}", [
+                'output' => substr($result['output'] ?? '', 0, 1000),
+            ]);
+
             return file_get_contents($outputFile);
         }
 
@@ -497,7 +501,12 @@ LATEX;
      */
     private function getBaseEnv(): array
     {
-        $path = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
+        // Preserve the full system environment so that kpathsea (used by
+        // dvisvgm and latex) can locate font maps, .pfb outline files, and
+        // other TeX resources via TEXMFVAR, TEXMFCONFIG, etc.
+        $env = getenv();
+
+        $path = $env['PATH'] ?? $env['Path'] ?? '/usr/local/bin:/usr/bin:/bin';
 
         // Add common TeX Live paths
         $texPaths = [
@@ -511,11 +520,13 @@ LATEX;
         ];
 
         $allPaths = array_unique(array_merge($texPaths, explode(PATH_SEPARATOR, $path)));
+        $env['PATH'] = implode(PATH_SEPARATOR, $allPaths);
 
-        return [
-            'PATH' => implode(PATH_SEPARATOR, $allPaths),
-            'HOME' => getenv('HOME') ?: sys_get_temp_dir(),
-        ];
+        if (empty($env['HOME'])) {
+            $env['HOME'] = getenv('HOME') ?: sys_get_temp_dir();
+        }
+
+        return $env;
     }
 
     /**
