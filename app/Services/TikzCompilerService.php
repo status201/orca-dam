@@ -264,6 +264,7 @@ class TikzCompilerService
         if ($preamble !== '') {
             return <<<LATEX
 \\documentclass[tikz]{standalone}
+\\usepackage[T1]{fontenc}
 {$preamble}
 \\begin{document}
 {$tikzSnippet}
@@ -279,6 +280,7 @@ LATEX;
 
         return <<<LATEX
 \\documentclass[tikz]{standalone}
+\\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amssymb,amsfonts}
 {$fontLine}\\usepackage{tikz}
 \\usetikzlibrary{{$libraries}}
