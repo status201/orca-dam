@@ -330,7 +330,17 @@ LATEX;
         $result = $this->runProcess($command, $tmpDir, $timeout);
 
         if (file_exists($outputFile)) {
-            return $this->uniquifySvgIds(file_get_contents($outputFile));
+            $svg = file_get_contents($outputFile);
+            Log::debug('TikZ uniquifySvgIds: before prefix, first id match', [
+                'has_ids' => (bool) preg_match('/\bid="([^"]+)"/', $svg, $m),
+                'first_id' => $m[1] ?? 'none',
+            ]);
+            $svg = $this->uniquifySvgIds($svg);
+            Log::debug('TikZ uniquifySvgIds: after prefix', [
+                'first_id' => preg_match('/\bid="([^"]+)"/', $svg, $m2) ? $m2[1] : 'none',
+            ]);
+
+            return $svg;
         }
 
         Log::warning("dvisvgm failed for {$outputName}", [
