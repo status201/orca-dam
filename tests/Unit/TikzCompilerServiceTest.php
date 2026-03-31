@@ -251,6 +251,31 @@ test('uniquifySvgIds produces different prefixes on each call', function () {
     expect($result1)->not->toBe($result2);
 });
 
+test('uniquifySvgIds handles single-quoted attributes from dvisvgm', function () {
+    $service = app(TikzCompilerService::class);
+
+    // dvisvgm uses single quotes for all attributes
+    $svg = "<svg version='1.1'><defs><path id='g1-4' d='M1 2'/><path id='g1-5' d='M3 4'/></defs>"
+        ."<use xlink:href='#g1-4'/><use xlink:href='#g1-5'/></svg>";
+
+    $method = new ReflectionMethod($service, 'uniquifySvgIds');
+    $result = $method->invoke($service, $svg);
+
+    // Original IDs should no longer exist
+    expect($result)->not->toContain("id='g1-4'");
+    expect($result)->not->toContain("id='g1-5'");
+    expect($result)->not->toContain("'#g1-4'");
+    expect($result)->not->toContain("'#g1-5'");
+
+    // Prefixed IDs should exist and be consistent
+    preg_match("/id='([^']+)'/", $result, $match);
+    $prefix = substr($match[1], 0, -strlen('g1-4'));
+    expect($result)->toContain("id='".$prefix."g1-4'");
+    expect($result)->toContain("'#".$prefix."g1-4'");
+    expect($result)->toContain("id='".$prefix."g1-5'");
+    expect($result)->toContain("'#".$prefix."g1-5'");
+});
+
 // ---------------------------------------------------------------------------
 // compile() — dangerous input rejection (no TeX Live required)
 // ---------------------------------------------------------------------------

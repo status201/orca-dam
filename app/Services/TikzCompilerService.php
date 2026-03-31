@@ -330,15 +330,7 @@ LATEX;
         $result = $this->runProcess($command, $tmpDir, $timeout);
 
         if (file_exists($outputFile)) {
-            $svg = file_get_contents($outputFile);
-            Log::debug('TikZ raw SVG sample', [
-                'first_500' => substr($svg, 0, 500),
-                'has_id_dq' => (bool) preg_match('/id="/', $svg),
-                'has_id_sq' => (bool) preg_match("/id='/", $svg),
-                'has_id_any' => (bool) preg_match('/\bid=/', $svg),
-            ]);
-
-            return $this->uniquifySvgIds($svg);
+            return $this->uniquifySvgIds(file_get_contents($outputFile));
         }
 
         Log::warning("dvisvgm failed for {$outputName}", [
@@ -359,7 +351,9 @@ LATEX;
     {
         $prefix = 'z'.substr(md5(uniqid('', true)), 0, 4).'-';
 
-        preg_match_all('/\bid="([^"]+)"/', $svg, $matches);
+        // dvisvgm uses single quotes; browsers normalise to double quotes.
+        // Match both variants.
+        preg_match_all('/\bid=[\'"]([^\'"]+)[\'"]/', $svg, $matches);
         $ids = array_unique($matches[1]);
 
         if (empty($ids)) {
@@ -369,8 +363,16 @@ LATEX;
         foreach ($ids as $id) {
             $prefixedId = $prefix.$id;
             $svg = str_replace(
-                ['id="'.$id.'"', '"#'.$id.'"', '(#'.$id.')'],
-                ['id="'.$prefixedId.'"', '"#'.$prefixedId.'"', '(#'.$prefixedId.')'],
+                [
+                    "id='".$id."'", 'id="'.$id.'"',
+                    "'#".$id."'", '"#'.$id.'"',
+                    '(#'.$id.')',
+                ],
+                [
+                    "id='".$prefixedId."'", 'id="'.$prefixedId.'"',
+                    "'#".$prefixedId."'", '"#'.$prefixedId.'"',
+                    '(#'.$prefixedId.')',
+                ],
                 $svg
             );
         }
