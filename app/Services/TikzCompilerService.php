@@ -331,16 +331,14 @@ LATEX;
 
         if (file_exists($outputFile)) {
             $svg = file_get_contents($outputFile);
-            Log::debug('TikZ uniquifySvgIds: before prefix, first id match', [
-                'has_ids' => (bool) preg_match('/\bid="([^"]+)"/', $svg, $m),
-                'first_id' => $m[1] ?? 'none',
-            ]);
-            $svg = $this->uniquifySvgIds($svg);
-            Log::debug('TikZ uniquifySvgIds: after prefix', [
-                'first_id' => preg_match('/\bid="([^"]+)"/', $svg, $m2) ? $m2[1] : 'none',
+            Log::debug('TikZ raw SVG sample', [
+                'first_500' => substr($svg, 0, 500),
+                'has_id_dq' => (bool) preg_match('/id="/', $svg),
+                'has_id_sq' => (bool) preg_match("/id='/", $svg),
+                'has_id_any' => (bool) preg_match('/\bid=/', $svg),
             ]);
 
-            return $svg;
+            return $this->uniquifySvgIds($svg);
         }
 
         Log::warning("dvisvgm failed for {$outputName}", [
