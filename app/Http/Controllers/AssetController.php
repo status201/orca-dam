@@ -6,6 +6,7 @@ use App\Http\Requests\StoreAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Tag;
+use App\Models\User;
 use App\Services\AssetProcessingService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
@@ -87,9 +88,16 @@ class AssetController extends Controller
             $query->inFolder($folder);
         }
 
-        // Apply user filter (admins only)
-        if (Auth::user()->isAdmin() && $userId = $request->input('user')) {
-            $query->byUser($userId);
+        // Apply user filter (admins: any user, editors: own ID only)
+        $filterUser = null;
+        if ($userId = $request->input('user')) {
+            if (Auth::user()->isAdmin() || (int) $userId === Auth::id()) {
+                $query->byUser($userId);
+                $filterUserModel = User::find($userId);
+                if ($filterUserModel) {
+                    $filterUser = ['id' => $filterUserModel->id, 'name' => $filterUserModel->name];
+                }
+            }
         }
 
         // Apply missing filter
@@ -112,7 +120,7 @@ class AssetController extends Controller
 
         $missingCount = Asset::missing()->count();
 
-        return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount');
+        return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount', 'filterUser');
     }
 
     /**

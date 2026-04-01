@@ -13,7 +13,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $users = User::orderBy('name')->get();
+        $users = User::withCount('assets')->orderBy('name')->get();
 
         return view('users.index', compact('users'));
     }

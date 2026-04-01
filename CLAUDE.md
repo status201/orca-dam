@@ -95,8 +95,8 @@ php artisan queue:work --tries=3
 - `admin`: Full access + permanent delete, discovery, export, user management, system settings
 - `api`: API-only (view, create, update; no delete, no admin features)
 
-Editor+Admin: restore from trash
-Admin-only: force delete, discover, export CSV, bulk move (requires `maintenance_mode`), bulk force delete (requires `maintenance_mode`), system page, API docs page
+Editor+Admin: restore from trash, filter assets by own user ID (`?user=`)
+Admin-only: filter assets by any user ID (`?user=`), force delete, discover, export CSV, bulk move (requires `maintenance_mode`), bulk force delete (requires `maintenance_mode`), system page, API docs page
 
 ### Locale System
 
@@ -218,7 +218,7 @@ TIKZ_PNG_DPI=300                     # Default PNG DPI (72-600)
 
 ## Testing
 
-**Pest PHP** with in-memory SQLite. ~569 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
+**Pest PHP** with in-memory SQLite. ~629 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
 
 **Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
 

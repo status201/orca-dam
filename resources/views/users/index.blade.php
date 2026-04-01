@@ -29,6 +29,9 @@
                     {{ __('Role') }}
                 </th>
                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ __('Assets') }}
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {{ __('2FA') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -58,6 +61,11 @@
                     <span class="px-2 py-1 text-xs font-semibold rounded-full @if($user->isAdmin()) bg-purple-100 text-purple-700 @elseif($user->isApiUser()) bg-red-100 text-red-700 @else bg-blue-100 text-blue-700 @endif">
                         {{ ucfirst($user->role) }}
                     </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    <a href="{{ route('assets.index', ['user' => $user->id]) }}" class="text-blue-600 hover:underline">
+                        {{ $user->assets_count }}
+                    </a>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                     @if($user->hasTwoFactorEnabled())

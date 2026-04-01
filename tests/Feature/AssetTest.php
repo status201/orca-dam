@@ -169,6 +169,45 @@ test('assets index search without quotes still works as before', function () {
     $response->assertDontSee('mountain-view.jpg');
 });
 
+test('assets index can filter by user for admins', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $otherUser = User::factory()->create(['role' => 'editor']);
+    Asset::factory()->create(['user_id' => $admin->id, 'filename' => 'admin-file.jpg']);
+    Asset::factory()->create(['user_id' => $otherUser->id, 'filename' => 'editor-file.jpg']);
+
+    $response = $this->actingAs($admin)->get(route('assets.index', ['user' => $otherUser->id]));
+
+    $response->assertStatus(200);
+    $response->assertSee('editor-file.jpg');
+    $response->assertDontSee('admin-file.jpg');
+});
+
+test('assets index allows editors to filter by their own user id', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+    $otherUser = User::factory()->create(['role' => 'editor']);
+    Asset::factory()->create(['user_id' => $editor->id, 'filename' => 'my-file.jpg']);
+    Asset::factory()->create(['user_id' => $otherUser->id, 'filename' => 'other-file.jpg']);
+
+    $response = $this->actingAs($editor)->get(route('assets.index', ['user' => $editor->id]));
+
+    $response->assertStatus(200);
+    $response->assertSee('my-file.jpg');
+    $response->assertDontSee('other-file.jpg');
+});
+
+test('assets index ignores user filter when editor tries to filter by another user', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+    $otherUser = User::factory()->create(['role' => 'editor']);
+    Asset::factory()->create(['user_id' => $editor->id, 'filename' => 'my-file.jpg']);
+    Asset::factory()->create(['user_id' => $otherUser->id, 'filename' => 'other-file.jpg']);
+
+    $response = $this->actingAs($editor)->get(route('assets.index', ['user' => $otherUser->id]));
+
+    $response->assertStatus(200);
+    $response->assertSee('my-file.jpg');
+    $response->assertSee('other-file.jpg');
+});
+
 test('assets index can filter by type', function () {
     $user = User::factory()->create();
     Asset::factory()->image()->create(['filename' => 'image.jpg']);

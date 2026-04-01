@@ -8,6 +8,8 @@ export function assetGrid() {
         rootFolder: config.rootFolder || '',
         navigating: false,
         sort: config.sort || 'date_desc',
+        user: config.user || '',
+        userName: config.userName || '',
         selectedTags: config.selectedTags || [],
         initialTags: config.initialTags || [],
         showTagFilter: false,
@@ -106,6 +108,7 @@ export function assetGrid() {
             if (this.type) params.append('type', this.type);
             if (this.folder) params.append('folder', this.folder);
             if (this.sort) params.append('sort', this.sort);
+            if (this.user) params.append('user', this.user);
             if (this.perPage && this.perPage !== config.perPage) params.append('per_page', this.perPage);
             if (this.selectedTags.length > 0) {
                 this.selectedTags.forEach(tag => params.append('tags[]', tag));

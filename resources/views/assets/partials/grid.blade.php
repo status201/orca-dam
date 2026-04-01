@@ -211,7 +211,7 @@
     </div>
 
     <!-- Active Filters Bar -->
-    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || initialTags.length > 0)" x-cloak class="active-filters mb-4 flex flex-wrap items-center gap-2">
+    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || user || initialTags.length > 0)" x-cloak class="active-filters mb-4 flex flex-wrap items-center gap-2">
         <span class="text-sm text-gray-500 font-medium">{{ __('Active filters') }}:</span>
 
         <!-- Search pill -->
@@ -241,6 +241,15 @@
             </span>
         </template>
 
+        <!-- User pill -->
+        <template x-if="user">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
+                <i class="fas fa-user text-xs"></i>
+                <span x-text="userName"></span>
+                <button @click="user = ''; userName = ''; applyFilters()" class="ml-1 hover:text-gray-600">&times;</button>
+            </span>
+        </template>
+
         <!-- Tag pills -->
         <template x-for="tagId in initialTags" :key="tagId">
             <span class="inline-flex items-center gap-1 px-3 py-1 bg-gray-200 text-orca-black text-sm rounded-full">
@@ -251,7 +260,7 @@
         </template>
 
         <!-- Clear all -->
-        <button @click="search = ''; folder = ''; type = ''; selectedTags = []; applyFilters()"
+        <button @click="search = ''; folder = ''; type = ''; user = ''; userName = ''; selectedTags = []; applyFilters()"
                 class="text-sm text-gray-500 hover:text-gray-700 underline ml-2">
             {{ __('Clear all filters') }}
         </button>
@@ -1022,6 +1031,8 @@ window.assetGridConfig = {
     rootFolder: @json($rootFolder),
     folderCount: {{ count($folders) }},
     sort: @json(request('sort', 'date_desc')),
+    user: @json($filterUser['id'] ?? ''),
+    userName: @json($filterUser['name'] ?? ''),
     selectedTags: @json(request('tags', [])),
     initialTags: @json(request('tags', [])),
     perPage: '{{ $perPage }}',

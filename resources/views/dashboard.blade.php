@@ -56,7 +56,7 @@
 
                         <x-stat-card icon="fas fa-images" bgClass="bg-blue-500" :label="__('Total Assets')" :value="number_format($stats['total_assets'])" :link="route('assets.index')" linkClass="text-blue-600 hover:text-blue-800" />
 
-                        <x-stat-card icon="fas fa-user" bgClass="bg-green-500" :label="__('My Assets')" :value="number_format($stats['my_assets'])" />
+                        <x-stat-card icon="fas fa-user" bgClass="bg-green-500" :label="__('My Assets')" :value="number_format($stats['my_assets'])" :link="route('assets.index', ['user' => Auth::id()])" linkClass="text-green-600 hover:text-green-800" />
 
                         <x-stat-card icon="fas fa-tags" bgClass="bg-purple-500" :label="__('Total Tags')" :value="number_format($stats['total_tags'])" :link="route('tags.index')" linkClass="text-purple-600 hover:text-purple-800">
                             <dd class="text-xs text-gray-500 mt-1">
