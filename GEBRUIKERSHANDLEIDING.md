@@ -392,7 +392,7 @@ Compileer TikZ-diagrammen op de server met een volledige TeX Live-installatie. V
  
 **Tooltips:** Veel elementen zijn voorzien van tooltips met extra (gedetailleerde) informatie, zoals complete tijdstempels en gebruikersinformatie.  
  
-**Footer:** Klik nooit een tweede keer op het ORCA logo in de footer voordat deze weer geland is ;-)  
+**Footer:** Klik nooit een tweede keer op het ORCA logo in de footer voordat de orca weer geland is ;-)  
  
 **Best practices:**
 1. **Geef bestanden een duidelijke naam vóór het uploaden** — je kunt later hernoemen, maar duidelijke originelen helpen

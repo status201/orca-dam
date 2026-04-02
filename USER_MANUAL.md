@@ -392,7 +392,7 @@ Compile TikZ diagrams on the server using a full TeX Live installation. Requires
  
 **Tooltips:** Many elements have "tooltips" on mouse hover with extra (detailed) information, like complete timestamps and user info.  
  
-**Footer:** Never click the ORCA logo in the footer a second time before it has landed again ;-)  
+**Footer:** Never click the ORCA logo in the footer a second time before the orca has landed again ;-)  
 
 **Best Practices:**
 1. **Name files clearly before uploading** — you can rename later, but clear originals help
