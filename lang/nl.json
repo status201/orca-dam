@@ -449,7 +449,7 @@
     "Files will be uploaded to:": "Bestanden worden geupload naar:",
     "File Type": "Bestandstype",
     "File Type:": "Bestandstype:",
-    "Filter by file type (e.g., image, video, application)": "Filteren op bestandstype (bijv. afbeelding, video, applicatie)",
+    "Filter by file type (e.g., image, video, document)": "Filteren op bestandstype (bijv. afbeelding, video, document)",
     "Filter by name...": "Filteren op naam...",
     "Filter by S3 folder (leave empty for all)": "Filteren op S3-map (laat leeg voor alles)",
     "Filter by Tags": "Filteren op tags",
