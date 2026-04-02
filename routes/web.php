@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FolderController;
+use App\Http\Controllers\GameScoreController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\JwtSecretController;
 use App\Http\Controllers\ProfileController;
@@ -55,6 +56,10 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('about', [AboutController::class, 'index'])->name('about.index');
+
+    // Game high scores
+    Route::get('game/scores', [GameScoreController::class, 'index'])->name('game.scores');
+    Route::post('game/scores', [GameScoreController::class, 'store'])->name('game.scores.store');
 
     // Bulk asset tag management (must be before resource route)
     Route::post('assets/bulk/tags', [AssetController::class, 'bulkAddTags'])->name('assets.bulk.tags.add');

@@ -61,5 +61,5 @@
     </div>
 
     <!-- Game area (hidden by default) -->
-    <div id="orca-game-area" style="display:none;"></div>
+    <div id="orca-game-area" style="display:none;" data-player="{{ Auth::user()?->name }}"></div>
 </footer>

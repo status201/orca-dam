@@ -45,7 +45,22 @@
     const IDLE_DRIFT_Y_AMP = 6;    // px vertical oscillation amplitude
     const IDLE_DRIFT_Y_FREQ = 0.6; // Hz
 
+    // --- API helper ---
+    function gameApi(method, url, body) {
+        const opts = {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            },
+        };
+        if (body) opts.body = JSON.stringify(body);
+        return fetch(url, opts).then(r => r.json());
+    }
+
     // --- State ---
+    let playerName = '';
     let score, lives, orcaX, orcaY, orcaVelocity, isJumping, restingY;
     let entities, spawnTimer, sharkTimer, nextSharkInterval, swordfishTimer, nextSwordfishInterval;
     let gameTime; // total elapsed game time for idle drift
@@ -160,6 +175,8 @@
         gameArea = document.getElementById('orca-game-area');
 
         if (!footer || !footerContent || !gameArea) return;
+
+        playerName = gameArea.dataset.player || 'Player';
 
         // Capture logo position BEFORE hiding footer content (only if visible)
         const logoContainer = document.getElementById('orca-logo-container');
@@ -735,27 +752,34 @@
         gameArea.removeEventListener('touchcancel', onGameTouchEnd);
         touchActive = false;
 
-        // Save high score
-        let highScores = [];
-        try {
-            highScores = JSON.parse(localStorage.getItem('orca_high_scores') || '[]');
-        } catch (_) { /* ignore */ }
-        highScores.push(score);
-        highScores.sort((a, b) => b - a);
-        highScores = highScores.slice(0, 5);
-        localStorage.setItem('orca_high_scores', JSON.stringify(highScores));
+        // Save score to server and show global leaderboard
+        const currentScore = score;
+        gameApi('POST', '/game/scores', { score: currentScore })
+            .then(data => showGameOverOverlay(data.leaderboard, currentScore))
+            .catch(() => {
+                // Fallback to localStorage if server unreachable
+                let local = [];
+                try { local = JSON.parse(localStorage.getItem('orca_high_scores') || '[]'); } catch (_) {}
+                local.push(currentScore);
+                local.sort((a, b) => b - a);
+                local = local.slice(0, 5);
+                localStorage.setItem('orca_high_scores', JSON.stringify(local));
+                showGameOverOverlay(local.map(s => ({ name: playerName, score: s })), currentScore);
+            });
+    }
 
-        // Build overlay
+    function showGameOverOverlay(leaderboard, currentScore) {
+        let scoresHtml = leaderboard.map((entry, i) => {
+            const isCurrent = entry.score === currentScore && entry.name === playerName;
+            const name = entry.name.length > 10 ? entry.name.substring(0, 10) : entry.name.padEnd(10, ' ');
+            return `<li class="${isCurrent ? 'current' : ''}">${String(i + 1)}. ${String(entry.score).padStart(6, '0')} ${name}</li>`;
+        }).join('');
+
         const overlay = document.createElement('div');
         overlay.className = 'game-over-screen';
-
-        let scoresHtml = highScores.map((s, i) =>
-            `<li class="${s === score && i === highScores.indexOf(score) ? 'current' : ''}">${String(i + 1).padStart(2, ' ')}. ${String(s).padStart(6, '0')}</li>`
-        ).join('');
-
         overlay.innerHTML = `
             <h2>GAME OVER</h2>
-            <div class="final-score">SCORE: ${String(score).padStart(6, '0')}</div>
+            <div class="final-score">SCORE: ${String(currentScore).padStart(6, '0')}</div>
             <div class="high-scores">
                 <h3>HIGH SCORES</h3>
                 <ol>${scoresHtml}</ol>

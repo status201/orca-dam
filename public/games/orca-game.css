@@ -350,6 +350,7 @@
     color: #ffff00;
     line-height: 1.6;
     letter-spacing: 1px;
+    white-space: pre;
 }
 
 .game-over-screen .high-scores li.current {
