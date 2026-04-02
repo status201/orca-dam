@@ -204,11 +204,13 @@
                 </div>
 
                 {{-- Font --}}
-                <div>
+                <div :class="{ 'opacity-50': isFullDocument() }"
+                     :title="isFullDocument() ? '{{ __('Set font in the document preamble for full LaTeX documents.') }}' : ''">
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Font') }}</label>
                     <select
                         x-model="fontPackage"
-                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal">
+                        :disabled="isFullDocument()"
+                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
                         @foreach($fontPackages as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
                         @endforeach
@@ -244,19 +246,22 @@
             </div>
 
             {{-- Extra TikZ libraries --}}
-            <div class="pt-2 border-t border-gray-100">
+            <div class="pt-2 border-t border-gray-100"
+                 :class="{ 'opacity-50': isFullDocument() }"
+                 :title="isFullDocument() ? '{{ __('Set packages in the document preamble for full LaTeX documents.') }}' : ''">
                 <label class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide cursor-pointer">
-                    <input type="checkbox" x-model="extraLibraries" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                    <input type="checkbox" x-model="extraLibraries" :disabled="isFullDocument()" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
                     {{ __('Additional TikZ libraries') }}
                 </label>
                 <div x-show="extraLibraries" x-collapse class="mt-2">
                     <input
                         type="text"
                         x-model="extraLibrariesText"
-                        class="w-full text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent"
+                        :disabled="isFullDocument()"
+                        class="w-full text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent disabled:cursor-not-allowed"
                         placeholder="pgfplots,automata,...">
                     <p class="text-xs text-gray-400 mt-1">
-                        {{ __('Comma-separated. Ignored when loading a full LaTeX document.') }}
+                        {{ __('Comma-separated.') }}
                         {{ __('Already included:') }} <span class="font-mono">calc, arrows.meta, positioning, decorations.pathreplacing, decorations.markings, patterns, shapes.geometric, angles, quotes, intersections, fit, backgrounds, matrix, trees</span>.
                     </p>
                 </div>
