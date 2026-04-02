@@ -25,7 +25,7 @@ function tikzServer() {
             png: true,
         },
         extraLibraries: false,
-        extraLibrariesText: 'pgfplots,automata,mindmap,circuits.ee.IEC',
+        extraLibrariesText: 'automata,mindmap,circuits.ee.IEC,pgfplots',
 
         // Template browser
         templateSearchQuery: '',
@@ -117,6 +117,10 @@ function tikzServer() {
             {
                 label: 'Clock face',
                 code: '\\begin{tikzpicture}\n  \\draw[thick] (0,0) circle (2.2);\n  \\draw[fill=white] (0,0) circle (2.1);\n  \\foreach \\a/\\l in {90/12,60/1,30/2,0/3,-30/4,-60/5,-90/6,-120/7,-150/8,180/9,150/10,120/11}\n    \\node[font=\\small] at (\\a:1.75) {\\l};\n  \\foreach \\a in {0,30,...,330}\n    \\draw (\\a:1.95) -- (\\a:2.05);\n  \\foreach \\a in {0,90,180,270}\n    \\draw[thick] (\\a:1.85) -- (\\a:2.05);\n  \\draw[very thick,cap=round] (0,0) -- (120:1.2);\n  \\draw[thick,cap=round] (0,0) -- (60:1.6);\n  \\draw[red,thin,cap=round] (0,0) -- (-30:1.7);\n  \\fill (0,0) circle (0.06);\n\\end{tikzpicture}',
+            },
+            {
+                label: 'Plot (pgfplots)',
+                code: '% Requires extra package: pgfplots\n\\begin{tikzpicture}\n  \\begin{axis}[xlabel=$x$, ylabel=$y$]\n    \\addplot {x^2};\n  \\end{axis}\n\\end{tikzpicture}',
             },
         ],
 

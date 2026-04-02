@@ -52,6 +52,21 @@ class TikzCompilerService
     ];
 
     /**
+     * Extra packages that need \usepackage{} instead of \usetikzlibrary{}.
+     * Key = name as entered by user, value = LaTeX preamble lines.
+     */
+    private const EXTRA_PACKAGES = [
+        'pgfplots' => "\\usepackage{pgfplots}\n\\pgfplotsset{compat=1.18}",
+        'circuitikz' => '\\usepackage{circuitikz}',
+        'tikz-cd' => '\\usepackage{tikz-cd}',
+        'tikz-3dplot' => '\\usepackage{tikz-3dplot}',
+        'pgf-pie' => '\\usepackage{pgf-pie}',
+        'forest' => '\\usepackage{forest}',
+        'chemfig' => '\\usepackage{chemfig}',
+        'tikz-timing' => '\\usepackage{tikz-timing}',
+    ];
+
+    /**
      * TikZ libraries to include in the document preamble.
      */
     private const TIKZ_LIBRARIES = [
@@ -246,12 +261,20 @@ class TikzCompilerService
      */
     public function buildTexDocument(string $tikzSnippet, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = '', string $extraLibraries = ''): string
     {
-        // Merge default + extra libraries
+        // Merge default + extra libraries, separating packages from TikZ libraries
         $allLibraries = self::TIKZ_LIBRARIES;
+        $packageLines = '';
         if ($extraLibraries !== '') {
             $extra = array_filter(array_map('trim', explode(',', $extraLibraries)));
             $extra = array_filter($extra, fn ($l) => preg_match('/^[a-zA-Z0-9._-]+$/', $l));
-            $allLibraries = array_unique(array_merge($allLibraries, $extra));
+            foreach ($extra as $item) {
+                if (isset(self::EXTRA_PACKAGES[$item])) {
+                    $packageLines .= self::EXTRA_PACKAGES[$item]."\n";
+                } else {
+                    $allLibraries[] = $item;
+                }
+            }
+            $allLibraries = array_unique($allLibraries);
         }
         $libraries = implode(',', $allLibraries);
 
@@ -283,7 +306,7 @@ LATEX;
 \\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amssymb,amsfonts}
 {$fontLine}\\usepackage{tikz}
-\\usetikzlibrary{{$libraries}}
+{$packageLines}\\usetikzlibrary{{$libraries}}
 \\begin{document}
 {$tikzSnippet}
 \\end{document}
