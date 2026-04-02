@@ -47,6 +47,42 @@
     100% { transform: translateX(-400px); }
 }
 
+/* Underwater plants — parallax decoration */
+.game-plant {
+    position: absolute;
+    pointer-events: none;
+    transform-origin: bottom center;
+}
+
+.game-plant.bg {
+    z-index: 2;
+    opacity: 0.2;
+    animation: plant-sway-bg 4s ease-in-out infinite;
+}
+
+.game-plant.fg {
+    z-index: 20;
+    opacity: 0.6;
+    animation: plant-sway-fg 3s ease-in-out infinite;
+}
+
+.game-plant svg {
+    display: block;
+}
+
+@keyframes plant-sway-bg {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    25%      { transform: rotate(3deg) scaleX(1.02); }
+    75%      { transform: rotate(-2deg) scaleX(0.98); }
+}
+
+@keyframes plant-sway-fg {
+    0%, 100% { transform: rotate(0deg) scaleX(1); }
+    20%      { transform: rotate(-4deg) scaleX(0.97); }
+    50%      { transform: rotate(3deg) scaleX(1.03); }
+    80%      { transform: rotate(-2deg) scaleX(0.99); }
+}
+
 /* Player orca */
 .game-orca {
     position: absolute;

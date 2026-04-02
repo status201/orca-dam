@@ -59,10 +59,39 @@
         return fetch(url, opts).then(r => r.json());
     }
 
+    // --- Plant config ---
+    const PLANT_BG_SPEED = 30;          // px/s — slow background layer
+    const PLANT_FG_SPEED = 120;         // px/s — fast foreground layer
+    const PLANT_BG_INTERVAL = 2.5;      // seconds between background plants
+    const PLANT_FG_INTERVAL = 3.5;      // seconds between foreground plants
+
+    // Seaweed SVG generators — each returns a unique plant with slight variation
+    function seaweedSvg(height, bladeCount, color, strokeColor) {
+        let paths = '';
+        const w = bladeCount * 12 + 10;
+        for (let i = 0; i < bladeCount; i++) {
+            const x = 8 + i * 12 + (Math.random() - 0.5) * 4;
+            const h = height * (0.6 + Math.random() * 0.4);
+            const sway = 6 + Math.random() * 8;
+            const cp1x = x + sway;
+            const cp1y = height - h * 0.6;
+            const cp2x = x - sway * 0.5;
+            const cp2y = height - h * 0.85;
+            const tipX = x + (Math.random() - 0.5) * 4;
+            paths += `<path d="M${x},${height} C${cp1x},${cp1y} ${cp2x},${cp2y} ${tipX},${height - h}" fill="none" stroke="${strokeColor}" stroke-width="${2 + Math.random() * 2}" stroke-linecap="round"/>`;
+            // Leaf blobs along the blade
+            const leafY = height - h * (0.3 + Math.random() * 0.3);
+            const leafR = 2 + Math.random() * 2.5;
+            paths += `<ellipse cx="${x + (Math.random() > 0.5 ? 3 : -3)}" cy="${leafY}" rx="${leafR}" ry="${leafR * 1.5}" fill="${color}" opacity="0.6"/>`;
+        }
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${height}" width="${w}" height="${height}">${paths}</svg>`;
+    }
+
     // --- State ---
     let playerName = '';
     let score, lives, orcaX, orcaY, orcaVelocity, isJumping, restingY;
     let entities, spawnTimer, sharkTimer, nextSharkInterval, swordfishTimer, nextSwordfishInterval;
+    let plants, plantBgTimer, plantFgTimer;
     let gameTime; // total elapsed game time for idle drift
     let keys = {};
     let running = false;
@@ -212,13 +241,19 @@
         orcaVelocity = 0;
         isJumping = false;
         entities = [];
+        plants = [];
         spawnTimer = 0;
         sharkTimer = 0;
         swordfishTimer = 0;
+        plantBgTimer = 0;
+        plantFgTimer = 0;
         gameTime = 0;
         nextSharkInterval = randomRange(SHARK_MIN_INTERVAL, SHARK_MAX_INTERVAL);
         nextSwordfishInterval = randomRange(SWORDFISH_MIN_INTERVAL, SWORDFISH_MAX_INTERVAL);
         keys = {};
+
+        // Seed a few plants so the scene isn't empty at start
+        seedInitialPlants();
 
         // Create orca element
         orcaEl = document.createElement('div');
@@ -427,6 +462,9 @@
                 spawnSwordfish(areaWidth);
             }
         }
+
+        // Move plants (decorative parallax)
+        updatePlants(dt);
 
         // Move entities and check collisions
         for (let i = entities.length - 1; i >= 0; i--) {
@@ -858,6 +896,7 @@
             e.el.remove();
         }
         entities = [];
+        clearPlants();
     }
 
     // --- Input Handlers ---
@@ -918,6 +957,73 @@
         keys['ArrowRight'] = false;
         keys['ArrowUp'] = false;
         keys['ArrowDown'] = false;
+    }
+
+    // --- Plants (parallax decoration) ---
+    function spawnPlant(layer, x) {
+        const isBg = layer === 'bg';
+        const height = isBg ? randomRange(60, 150) : randomRange(20, 110);
+        const bladeCount = isBg ? Math.floor(randomRange(3, 6)) : Math.floor(randomRange(2, 4));
+        const color = isBg ? 'rgba(40,140,70,0.5)' : 'rgba(30,160,80,0.4)';
+        const stroke = isBg ? 'rgba(30,120,55,0.45)' : 'rgba(25,145,65,0.35)';
+
+        const el = document.createElement('div');
+        el.className = 'game-plant ' + (isBg ? 'bg' : 'fg');
+        el.innerHTML = seaweedSvg(height, bladeCount, color, stroke);
+        el.style.left = (x !== undefined ? x : gameArea.offsetWidth + 10) + 'px';
+        el.style.bottom = '0';
+        // Randomize animation offset so plants don't sway in sync
+        el.style.animationDelay = (-Math.random() * 3) + 's';
+        gameArea.appendChild(el);
+
+        plants.push({
+            el: el,
+            x: x !== undefined ? x : gameArea.offsetWidth + 10,
+            speed: isBg ? PLANT_BG_SPEED : PLANT_FG_SPEED,
+            w: bladeCount * 12 + 10,
+        });
+    }
+
+    function seedInitialPlants() {
+        const areaWidth = gameArea.offsetWidth;
+        // Scatter a few background plants across the width
+        for (let px = randomRange(50, 150); px < areaWidth; px += randomRange(120, 280)) {
+            spawnPlant('bg', px);
+        }
+        // And a couple foreground
+        for (let px = randomRange(80, 200); px < areaWidth; px += randomRange(200, 400)) {
+            spawnPlant('fg', px);
+        }
+    }
+
+    function updatePlants(dt) {
+        // Spawn new plants
+        plantBgTimer += dt;
+        if (plantBgTimer >= PLANT_BG_INTERVAL) {
+            plantBgTimer -= PLANT_BG_INTERVAL;
+            spawnPlant('bg');
+        }
+        plantFgTimer += dt;
+        if (plantFgTimer >= PLANT_FG_INTERVAL) {
+            plantFgTimer -= PLANT_FG_INTERVAL;
+            spawnPlant('fg');
+        }
+
+        // Move and cull
+        for (let i = plants.length - 1; i >= 0; i--) {
+            const p = plants[i];
+            p.x -= p.speed * dt;
+            p.el.style.left = p.x + 'px';
+            if (p.x < -p.w - 20) {
+                p.el.remove();
+                plants.splice(i, 1);
+            }
+        }
+    }
+
+    function clearPlants() {
+        for (const p of plants) p.el.remove();
+        plants = [];
     }
 
     // --- Helpers ---
