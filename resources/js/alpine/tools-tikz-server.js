@@ -26,6 +26,7 @@ function tikzServer() {
         },
         extraLibraries: false,
         extraLibrariesText: 'automata,mindmap,circuits.ee.IEC,pgfplots',
+        namingTemplate: 'diagram-{count}-{variant}.{extension}',
 
         // Template browser
         templateSearchQuery: '',
@@ -409,6 +410,21 @@ function tikzServer() {
             return suffixes[type] || '';
         },
 
+        buildFilename(index, type) {
+            var variantNames = {
+                svg_standard: 'standard',
+                svg_embedded: 'embedded',
+                svg_paths: 'paths',
+                png: 'png',
+            };
+            var ext = type === 'png' ? 'png' : 'svg';
+            var count = String(index + 1).padStart(2, '0');
+            return this.namingTemplate
+                .replace('{count}', count)
+                .replace('{variant}', variantNames[type] || type)
+                .replace('{extension}', ext);
+        },
+
         formatSize(bytes) {
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
@@ -477,7 +493,7 @@ function tikzServer() {
                             selected: v.type === 'svg_paths',
                             uploading: false,
                             uploaded: null,
-                            name: 'diagram-' + (i + 1) + this.variantNameSuffix(v.type) + this.variantExtension(v.type),
+                            name: this.buildFilename(i, v.type),
                         };
                     }.bind(this));
 

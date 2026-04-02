@@ -261,6 +261,23 @@
                     </p>
                 </div>
             </div>
+
+            {{-- Naming template --}}
+            <div class="pt-2 border-t border-gray-100">
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">
+                    {{ __('Filename template') }}
+                </label>
+                <input
+                    type="text"
+                    x-model="namingTemplate"
+                    class="w-full text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent"
+                    placeholder="diagram-{count}-{variant}.{extension}">
+                <p class="text-xs text-gray-400 mt-1">
+                    <span class="font-mono">{count}</span> = {{ __('diagram number (01, 02, …)') }},
+                    <span class="font-mono">{variant}</span> = {{ __('standard, embedded, paths, png') }},
+                    <span class="font-mono">{extension}</span> = {{ __('svg or png') }}
+                </p>
+            </div>
         </div>
         </div>
     </div>
