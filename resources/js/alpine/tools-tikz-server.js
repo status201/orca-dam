@@ -255,9 +255,19 @@ function tikzServer() {
         },
 
         loadExample(code) {
-            this.tikzCode = this.tikzCode.trim()
-                ? this.tikzCode + '\n\n' + code
-                : code;
+            var current = this.tikzCode.trim();
+            if (!current) {
+                this.tikzCode = code;
+            } else if (this.isFullDocument()) {
+                var endDocPos = this.tikzCode.lastIndexOf('\\end{document}');
+                if (endDocPos !== -1) {
+                    this.tikzCode = this.tikzCode.substring(0, endDocPos) + code + '\n\n' + this.tikzCode.substring(endDocPos);
+                } else {
+                    this.tikzCode = this.tikzCode + '\n\n' + code;
+                }
+            } else {
+                this.tikzCode = this.tikzCode + '\n\n' + code;
+            }
         },
 
         loadTemplateFile(event) {
