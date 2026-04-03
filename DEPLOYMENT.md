@@ -19,10 +19,10 @@ This guide covers deploying ORCA DAM to a production environment.
 Edit your `php.ini` file with these minimum settings:
 
 ```ini
-memory_limit = 256M
-upload_max_filesize = 100M
-post_max_size = 100M
-max_execution_time = 300
+memory_limit = 256M # 512M recommended
+upload_max_filesize = 15M
+post_max_size = 16M
+max_execution_time = 120 # 300 recommended
 ```
 
 ### Required PHP Extensions
@@ -38,10 +38,63 @@ All of these should be present.
 ```bash
 # Ubuntu/Debian
 sudo apt-get install texlive texlive-pictures dvisvgm librsvg2-bin
+# Extra fonts
+sudo apt-get update && sudo apt-get install -y texlive-fonts-extra --no-install-recommends
 
 # Verify
 latex --version && dvisvgm --version && rsvg-convert --version
 ```
+
+<details>
+<summary><strong>Laravel Forge Recipe: Full TikZ Server Setup</strong></summary>
+
+Run as root. Installs all TeX Live packages, SVG/PNG conversion tools, and fonts needed for the TikZ Server Render tool.
+
+```bash
+#!/bin/bash
+set -e
+
+echo "==> Updating package index..."
+apt-get update -y
+
+echo "==> Installing TeX Live + LaTeX packages..."
+apt-get install -y \
+  texlive-latex-base \
+  texlive-latex-recommended \
+  texlive-latex-extra \
+  texlive-pictures \
+  texlive-science \
+  texlive-fonts-recommended \
+  texlive-fonts-extra \
+  texlive-font-utils \
+  lmodern \
+  cm-super \
+  --no-install-recommends
+
+echo "==> Installing SVG/PNG conversion tools..."
+apt-get install -y \
+  pdf2svg \
+  dvisvgm \
+  librsvg2-bin \
+  poppler-utils \
+  ghostscript
+
+echo "==> Installing support utilities..."
+apt-get install -y \
+  perl \
+  wget \
+  latexmk
+
+echo "==> Verifying installation..."
+pdflatex --version
+dvisvgm --version
+rsvg-convert --version
+pdf2svg 2>&1 | head -1 || true
+
+echo "==> Done! TeX Live + TikZ-to-SVG/PNG pipeline ready."
+```
+
+</details>
 
 ## Deployment Steps
 
