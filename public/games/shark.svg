@@ -37,7 +37,7 @@
   </g>
 
   <!-- Eye — solid black with glint -->
-  <circle cx="14" cy="15" r="2" fill="#1a1a2e" stroke="#111" stroke-width="0.5"/>
+  <circle cx="14" cy="15" r="2.5" fill="#1a1a2e" stroke="#111" stroke-width="0.5"/>
   <!-- Glint -->
   <circle cx="14.6" cy="14" r="0.55" fill="white" opacity="0.75"/>
 </svg>

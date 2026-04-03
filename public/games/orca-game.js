@@ -23,6 +23,27 @@
     const SHARK_H = 48;
     const FAST_FISH_POINTS = 50;
     const SLOW_FISH_POINTS = 10;
+
+    // Tropical fish color palettes: [body, bodyStroke, fin, finStroke, belly, scales]
+    const TROPICAL_PALETTES = [
+        ['#e8b830', '#b08a18', '#c8960a', '#a07808', '#f0d060', '#c8a020'], // Gold (original)
+        ['#e85050', '#b03030', '#c83a3a', '#a02020', '#f08080', '#c84040'], // Red
+        ['#50b8e8', '#2088b0', '#3aa0c8', '#1870a0', '#80d0f0', '#40a8c8'], // Blue
+        ['#50c878', '#208848', '#3ab060', '#187038', '#80e8a0', '#40c070'], // Green
+        ['#c070e0', '#8840a8', '#a858c8', '#703090', '#d8a0f0', '#b060d0'], // Purple
+        ['#e8a040', '#b07018', '#c88828', '#a06010', '#f0c070', '#c89030'], // Orange
+        ['#e87098', '#b04068', '#c85880', '#a03058', '#f0a0b8', '#c86890'], // Pink
+        ['#40c8c8', '#189898', '#30b0b0', '#108080', '#70e0e0', '#38c0c0'], // Teal
+    ];
+
+    function colorizeFish(svgString, palette) {
+        const orig = TROPICAL_PALETTES[0]; // gold = original colors
+        let result = svgString;
+        for (let i = 0; i < orig.length; i++) {
+            result = result.split(orig[i]).join(palette[i]);
+        }
+        return result;
+    }
     const SALMON_SPEED = 350;
     const SALMON_POINTS = 75;
     const SALMON_W = 44;
@@ -303,7 +324,7 @@
                 <div class="fish-info">
                     <span class="salmon">SALMON</span> = ${SALMON_POINTS} PTS (fast & tricky!)<br>
                     <span class="silver">SILVER FISH</span> = ${FAST_FISH_POINTS} PTS (fast!)<br>
-                    <span class="gold">GOLD FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
+                    <span class="tropical">TROPICAL FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
                     <span class="danger">AVOID THE SHARKS!</span><br>
                     <span class="danger">BEWARE THE SWORDFISH!</span>
                 </div>
@@ -319,7 +340,7 @@
                 <div class="fish-info">
                     <span class="salmon">SALMON</span> = ${SALMON_POINTS} PTS (fast & tricky!)<br>
                     <span class="silver">SILVER FISH</span> = ${FAST_FISH_POINTS} PTS (fast!)<br>
-                    <span class="gold">GOLD FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
+                    <span class="tropical">TROPICAL FISH</span> = ${SLOW_FISH_POINTS} PTS (slow)<br>
                     <span class="danger">AVOID THE SHARKS!</span><br>
                     <span class="danger">BEWARE THE SWORDFISH!</span>
                 </div>
@@ -607,7 +628,8 @@
             points = FAST_FISH_POINTS;
         } else {
             el.className = 'game-fish slow';
-            el.innerHTML = svgCache.gold;
+            const palette = TROPICAL_PALETTES[Math.floor(Math.random() * TROPICAL_PALETTES.length)];
+            el.innerHTML = colorizeFish(svgCache.gold, palette);
             w = 52;
             h = 29;
             speed = SLOW_FISH_SPEED;
