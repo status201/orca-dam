@@ -1,57 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="80" height="40">
-  <!-- Tail fin — classic crescent shape -->
-  <path d="M72,20 Q72,14 80,8 Q73,17 76,20 Q73,23 80,32 Q72,26 72,20 Z" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -8 110 52" width="130" height="52">
+  <!-- Tail fin — wider asymmetric crescent, upper lobe larger -->
+  <path d="M92,20 Q90,12 100,2 Q94,14 96,20 Q94,26 100,38 Q90,28 92,20 Z" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.7"/>
 
-  <!-- Body — tapered toward the tail, beefy at the head -->
-  <path d="M5,20 Q3,11 18,7 L42,7 Q58,8 65,14 L72,20 L65,26 Q58,32 42,33 L18,33 Q3,29 5,20 Z" fill="#6e7e8e" stroke="#3e4e5e" stroke-width="1"/>
+  <!-- Body — sleek fusiform, flat top, curved belly -->
+  <path d="M4,20 Q4,10 20,8 L54,8 Q74,9 84,15 L92,20 L84,25 Q74,32 54,33 L20,33 Q4,31 4,20 Z" fill="#6e849c" stroke="#3e5a74" stroke-width="1"/>
+
   <!-- Body top highlight -->
-  <path d="M7,17 Q11,9 20,7.5 L42,7.5 Q56,9 63,15" fill="#8a9aaa" opacity="0.45"/>
+  <path d="M6,16 Q14,8 22,8.5 L54,8.5 Q72,10 82,16" fill="#8a9eb4" opacity="0.4"/>
 
   <!-- Belly — lighter underside -->
-  <path d="M7,26 Q9,31 18,33 L48,33 Q61,31 63,25 L55,29 Q38,33 19,25 Z" fill="#ccd4dc" opacity="0.7"/>
+  <path d="M6,24 Q12,30 21,33 L58,33 Q76,31 82,25 L72,26 Q46,34 18,24 Z" fill="#d0c8c0" opacity="0.65"/>
 
-  <!-- Scars -->
-  <line x1="34" y1="12" x2="40" y2="14" stroke="#4a5a6a" stroke-width="0.6" opacity="0.5"/>
-  <line x1="42" y1="16" x2="47" y2="15" stroke="#4a5a6a" stroke-width="0.5" opacity="0.4"/>
-
-  <!-- Dorsal fin — tall and menacing -->
-  <path d="M22,8.8 L32,0 L32,8.8" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.8" stroke-linejoin="round"/>
+  <!-- Dorsal fin — large, prominent, swept back -->
+  <path d="M32,9 L46,-6 L50,9" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.8" stroke-linejoin="round"/>
 
   <!-- Small rear dorsal -->
-  <path d="M50,10 L53,5 L55,10" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.5"/>
+  <path d="M70,12 L75,6 L76,12" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.5"/>
 
-  <!-- Pectoral fin -->
-  <path d="M22,28 L21,38 L31,33" fill="#5e6e7e" stroke="#3e4e5e" stroke-width="0.6" stroke-linejoin="round"/>
+  <!-- Pectoral fin — large, angled down and back -->
+  <path d="M26,29 L24,40 L36,33" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.6" stroke-linejoin="round"/>
 
   <!-- Gill slits -->
-  <line x1="21" y1="15" x2="21" y2="24" stroke="#3e4e5e" stroke-width="0.7" opacity="0.5"/>
-  <line x1="24" y1="14" x2="24" y2="25" stroke="#3e4e5e" stroke-width="0.7" opacity="0.4"/>
-  <line x1="27" y1="13" x2="27" y2="25" stroke="#3e4e5e" stroke-width="0.6" opacity="0.3"/>
+  <line x1="24" y1="14" x2="24" y2="27" stroke="#3e5a74" stroke-width="0.7" opacity="0.45"/>
+  <line x1="27" y1="13.5" x2="27" y2="27.5" stroke="#3e5a74" stroke-width="0.6" opacity="0.35"/>
+  <line x1="30" y1="13" x2="30" y2="28" stroke="#3e5a74" stroke-width="0.5" opacity="0.25"/>
 
-  <!-- Gum upper teeth (red) -->
-  <line x1="5" y1="17" x2="18.7" y2="18.7" stroke="#F00" stroke-width="2.1" opacity="0.9"/>
-
-  <!-- Mouth interior (dark) -->
-  <rect x="5" y="18" width="14" height="5" rx="1" fill="#1a0505" opacity="0.8"/>
-
-  <!-- Upper teeth — clean zigzag -->
-  <path d="M5,17 L7,20 L8,17 L9,19 L10,17 L11,19 L14,18 L19,18" fill="white" stroke="#aaa" stroke-width="0.35" stroke-linejoin="round"/>
+  <!-- Mouth interior — dark gap -->
+  <path d="M4,16 Q10,22 19,21 L18,26 Q10,26.5 4,24 Z" fill="#1a0808" opacity="0.85"/>
 
   <!-- === LOWER JAW — animated via CSS === -->
   <g class="shark-jaw">
-    <!-- Gum lower teeth (red) -->
-    <line x1="5" y1="25" x2="19" y2="23" stroke="#D00" stroke-width="1.8" opacity="0.9"/>
-
-    <!-- Lower teeth — clean zigzag -->
-    <path d="M5,25 L5,20 L7,24 L9,21 L11,24 L13,21 L18,23 L17,23" fill="white" stroke="#aaa" stroke-width="0.35" stroke-linejoin="round"/>
+    <!-- Lower jaw shape -->
+    <path d="M4,26 Q10,25 18,26 Q19,28 6,27.5 Q1,26 4,24 Z" fill="#c0b8b0" stroke="#3e5a74" stroke-width="0.5"/>
+    <!-- Lower teeth — cartoon zigzag -->
+    <path d="M4,25.2 L6,19 L9,24.5 L11,21 L13,24.5 L15,22 L17,24.5" fill="white" stroke="#ccc" stroke-width="0.4" stroke-linejoin="round"/>
   </g>
 
-  <!-- Eye -->
-  <ellipse cx="14" cy="14" rx="3" ry="2.6" fill="#ffe8cc" stroke="#333" stroke-width="0.8"/>
-  <!-- Pupil — vertical slit -->
-  <ellipse cx="13.7" cy="14" rx="1.7" ry="2.2" fill="#220000"/>
+  <!-- Eye — solid black with glint -->
+  <circle cx="14" cy="15" r="2" fill="#1a1a2e" stroke="#111" stroke-width="0.5"/>
   <!-- Glint -->
-  <circle cx="14.2" cy="12.8" r="0.5" fill="white" opacity="0.7"/>
-  <!-- Nostril -->
-  <circle cx="8" cy="14.5" r="0.7" fill="#3e4e5e" opacity="0.6"/>
+  <circle cx="14.6" cy="14" r="0.55" fill="white" opacity="0.75"/>
 </svg>

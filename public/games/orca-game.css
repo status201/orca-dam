@@ -181,8 +181,8 @@
 /* Shark entity */
 .game-shark {
     position: absolute;
-    width: 96px;
-    height: 48px;
+    width: 120px;
+    height: 52px;
     z-index: 8;
     transition: none;
     filter: drop-shadow(0 0 8px rgba(255, 40, 40, 0.4));
@@ -203,15 +203,15 @@
 
 /* Shark jaw chomp — opens periodically for a menacing bite */
 .game-shark .shark-jaw {
-    transform-origin: 16px 22px;
-    animation: shark-chomp 2.4s ease-in-out infinite;
+    transform-origin: 18px 23px;
+    animation: shark-chomp 3.4s ease-in-out infinite;
 }
 
 @keyframes shark-chomp {
     0%, 65% { transform: rotate(0deg); }
-    70% { transform: rotate(10deg); }
+    70% { transform: rotate(-16deg); }
     75% { transform: rotate(0deg); }
-    80% { transform: rotate(12deg); }
+    80% { transform: rotate(-18deg); }
     85% { transform: rotate(0deg); }
     100% { transform: rotate(0deg); }
 }
