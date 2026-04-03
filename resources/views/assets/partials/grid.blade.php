@@ -328,11 +328,11 @@
         @foreach($assets as $asset)
         <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
              x-data="assetCard({{ $asset->id }})"
-             @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.toggle({{ $asset->id }}); } else { window.location.href = '{{ route('assets.show', $asset) }}'; }">
+             @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset) }}'; }">
             <!-- Selection checkbox -->
             <div class="absolute top-2 left-2 z-20"
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
-                 @click.stop="$store.bulkSelection.toggle({{ $asset->id }})">
+                 @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
                 <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
                      class="w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
                     <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
