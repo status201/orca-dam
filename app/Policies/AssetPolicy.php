@@ -116,4 +116,20 @@ class AssetPolicy
     {
         return $user->isAdmin() && (bool) Setting::get('maintenance_mode', false);
     }
+
+    /**
+     * Determine whether the user can bulk trash assets.
+     */
+    public function bulkTrash(User $user): bool
+    {
+        return ! $user->isApiUser();
+    }
+
+    /**
+     * Determine whether the user can bulk download assets.
+     */
+    public function bulkDownload(User $user): bool
+    {
+        return true;
+    }
 }

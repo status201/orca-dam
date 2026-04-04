@@ -290,8 +290,9 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Metadata extraction
 
 ### 5. User Roles
-- **Editors**: Upload and manage all assets (view, edit filenames/metadata, soft delete), access trash and restore deleted assets, set personal preferences
+- **Editors**: Upload and manage all assets (view, edit filenames/metadata, soft delete, bulk trash), access trash and restore deleted assets, set personal preferences
 - **Admins**: Full access including permanent delete, discover, export, bulk move (maintenance mode), bulk permanent delete (maintenance mode), user management, system settings, and API token/JWT secret management
+- All authenticated users can bulk download assets as ZIP (max 100 files / 500MB)
 - **API Users**: API-only access for external integrations (view, create, update assets; no delete or admin features)
 
 ### 6. User Preferences
@@ -329,6 +330,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Editors and admins can restore assets from trash
 - ✅ Permanent delete (admin only) removes database record AND S3 objects
 - ✅ Bulk permanent delete from index page (admin, maintenance mode)
+- ✅ Bulk trash from index page (editors + admins)
 - ✅ Discovery marks soft-deleted assets to prevent re-import
 
 ### 11. System Administration (Admin Only)
@@ -653,6 +655,14 @@ Select multiple unmapped objects in Discover to import in bulk.
    - Delete the S3 thumbnail
    - Permanently remove the database record
    - **This action cannot be undone!**
+
+**Bulk Move to Trash:**
+1. Select assets on the index page and click "Move to Trash"
+2. Confirm — assets are soft-deleted (S3 objects preserved, restorable from trash)
+
+**Bulk Download:**
+1. Select assets on the index page and click "Download"
+2. A ZIP file is generated and downloaded (max 100 files / 500MB)
 
 **Bulk Permanent Delete:**
 1. Enable maintenance mode in System → Settings

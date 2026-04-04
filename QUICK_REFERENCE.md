@@ -177,6 +177,7 @@ orca-dam/
 │   │   ├── BulkForceDeleteTest.php    # Bulk permanent delete
 │   │   ├── BulkMoveTest.php           # Bulk asset move
 │   │   ├── BulkTrashTest.php          # Bulk soft delete & restore
+│   │   ├── BulkDownloadTest.php      # Bulk ZIP download
 │   │   ├── DuplicatePreventionTest.php# Duplicate asset detection
 │   │   ├── ExportTest.php             # CSV export
 │   │   ├── ImportTest.php             # CSV metadata import
@@ -234,6 +235,8 @@ POST /assets/bulk/tags/remove  # Bulk remove tags from selected assets
 POST /assets/bulk/tags/list    # Get tags for selected assets
 POST /assets/bulk/move         # Bulk move assets between folders (admin, maintenance mode)
 DELETE /assets/bulk/force-delete  # Bulk permanent delete (admin, maintenance mode)
+POST /assets/bulk/trash        # Bulk soft delete (editors + admins)
+POST /assets/bulk/download     # Bulk download as ZIP (all authenticated, max 100/500MB)
 GET  /assets/trash/index       # View trash (admin)
 POST /assets/{id}/restore      # Restore from trash (admin)
 DELETE /assets/{id}/force-delete # Permanent delete (admin)

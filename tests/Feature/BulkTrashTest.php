@@ -248,3 +248,95 @@ test('editor gets 403 on bulk force delete', function () {
     $response->assertForbidden();
     expect(Asset::onlyTrashed()->find($asset->id))->not->toBeNull();
 });
+
+// --- Bulk trash from index (soft delete) tests ---
+
+test('admin can bulk trash assets from index', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $asset1 = Asset::factory()->create();
+    $asset2 = Asset::factory()->create();
+
+    $response = $this->actingAs($admin)->postJson(route('assets.bulk.trash'), [
+        'asset_ids' => [$asset1->id, $asset2->id],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('trashed', 2);
+    $response->assertJsonPath('failed', 0);
+
+    expect(Asset::find($asset1->id))->toBeNull();
+    expect(Asset::find($asset2->id))->toBeNull();
+    expect(Asset::onlyTrashed()->find($asset1->id))->not->toBeNull();
+    expect(Asset::onlyTrashed()->find($asset2->id))->not->toBeNull();
+});
+
+test('editor can bulk trash assets from index', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+
+    $asset1 = Asset::factory()->create();
+    $asset2 = Asset::factory()->create();
+
+    $response = $this->actingAs($editor)->postJson(route('assets.bulk.trash'), [
+        'asset_ids' => [$asset1->id, $asset2->id],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('trashed', 2);
+
+    expect(Asset::onlyTrashed()->find($asset1->id))->not->toBeNull();
+    expect(Asset::onlyTrashed()->find($asset2->id))->not->toBeNull();
+});
+
+test('api user gets 403 on bulk trash', function () {
+    $apiUser = User::factory()->create(['role' => 'api']);
+
+    $asset = Asset::factory()->create();
+
+    $response = $this->actingAs($apiUser)->postJson(route('assets.bulk.trash'), [
+        'asset_ids' => [$asset->id],
+    ]);
+
+    $response->assertForbidden();
+    expect(Asset::find($asset->id))->not->toBeNull();
+});
+
+test('bulk trash validates asset_ids', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('assets.bulk.trash'), []);
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors('asset_ids');
+
+    $response = $this->actingAs($admin)->postJson(route('assets.bulk.trash'), [
+        'asset_ids' => [],
+    ]);
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors('asset_ids');
+});
+
+test('bulk trash soft deletes without removing S3 objects', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/folder/file.jpg',
+        'thumbnail_s3_key' => 'thumbnails/folder/file_thumb.jpg',
+    ]);
+
+    // S3Service should NOT be called for soft deletes
+    $this->spy(S3Service::class, function ($mock) {
+        $mock->shouldNotReceive('deleteAssetFiles');
+        $mock->shouldNotReceive('deleteFile');
+    });
+
+    $response = $this->actingAs($admin)->postJson(route('assets.bulk.trash'), [
+        'asset_ids' => [$asset->id],
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('trashed', 1);
+
+    $trashedAsset = Asset::onlyTrashed()->find($asset->id);
+    expect($trashedAsset)->not->toBeNull();
+    expect($trashedAsset->s3_key)->toBe('assets/folder/file.jpg');
+});

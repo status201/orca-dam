@@ -97,6 +97,7 @@ php artisan queue:work --tries=3
 
 Editor+Admin: restore from trash, filter assets by own user ID (`?user=`)
 Admin-only: filter assets by any user ID (`?user=`), force delete, discover, export CSV, bulk move (requires `maintenance_mode`), bulk force delete (requires `maintenance_mode`), system page, API docs page
+All authenticated: bulk download (ZIP, max 100 files / 500MB)
 
 ### Locale System
 
@@ -144,6 +145,8 @@ Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domai
 - `POST /assets/bulk/tags/list` - Get tags for selected assets
 - `POST /assets/bulk/move` - Bulk move assets between folders (admin, maintenance mode)
 - `DELETE /assets/bulk/force-delete` - Bulk permanent delete (admin, maintenance mode)
+- `POST /assets/bulk/trash` - Bulk soft delete (editors + admins)
+- `POST /assets/bulk/download` - Bulk download as ZIP (all authenticated, max 100 files / 500MB)
 - `DELETE /tags/bulk` - Bulk delete tags
 - `PATCH/DELETE /assets/{asset}` - Update/delete asset
 - `POST /assets/{asset}/ai-tag` - Trigger AI tagging
@@ -224,7 +227,7 @@ TIKZ_PNG_DPI=300                     # Default PNG DPI (72-600)
 
 ```
 tests/Feature/  - AssetTest, TagTest, TagAttributionTest, EmbedTest, ExportTest, ImportTest, ApiTest, SystemTest,
-                  IntegrityTest, BulkMoveTest, BulkForceDeleteTest, BulkTrashTest,
+                  IntegrityTest, BulkMoveTest, BulkForceDeleteTest, BulkTrashTest, BulkDownloadTest,
                   DuplicatePreventionTest,
                   JwtAuthTest, JwtSecretManagementTest, LocaleTest, ProfileTest, TwoFactorAuthTest,
                   Auth/ (Authentication, Registration, PasswordReset, PasswordUpdate, PasswordConfirmation, EmailVerification)
@@ -249,6 +252,10 @@ Web-based test runner at `/system` -> Tests tab (admin only).
 **Bulk Move** (admin, maintenance mode): Select assets on index → pick destination folder → S3 objects moved (copy+delete) for original, thumbnail, and resize variants → DB keys updated. Destination must be within configured S3 folders. Shows copyable summary of old→new keys. Enable via `maintenance_mode` setting in System → Settings.
 
 **Bulk Permanent Delete** (admin, maintenance mode): Select assets on index → click red bulk delete button → confirm → S3 objects (original + thumbnail + resized variants) and DB records permanently removed. Enable via `maintenance_mode` setting in System → Settings.
+
+**Bulk Trash** (editors + admins): Select assets on index → click "Move to Trash" → confirm → assets soft-deleted. S3 objects preserved. Can be restored from trash.
+
+**Bulk Download** (all authenticated): Select assets on index → click "Download" → server fetches files from S3, packages as ZIP, streams to browser. Limits: max 100 files, 500MB total. Duplicate filenames disambiguated with `_1`, `_2` suffixes. Failed S3 fetches skipped.
 
 **S3 Integrity** (admin): `assets:verify-integrity` command dispatches `VerifyAssetIntegrity` jobs for all assets -> each job checks S3 object existence via `getObjectMetadata()` -> sets `s3_missing_at` timestamp if missing, clears if found. System page card shows live status with AJAX refresh. Assets index supports `?missing=1` filter.
 
@@ -312,7 +319,7 @@ resources/
 
 tests/
 ├── Feature/ (Asset, Tag, Export, Import, Api, System, Integrity,
-│             BulkMove, BulkForceDelete, BulkTrash,
+│             BulkMove, BulkForceDelete, BulkTrash, BulkDownload,
 │             JwtAuth, JwtSecretManagement, Locale, Profile, TwoFactorAuth)
 ├── Feature/Auth/ (Authentication, Registration, PasswordReset, etc.)
 └── Unit/ (Asset, Tag, Setting, UserPreferences, TwoFactorService,

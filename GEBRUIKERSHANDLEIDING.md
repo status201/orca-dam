@@ -17,17 +17,18 @@
 9. [De Prullenbak](#de-prullenbak)
 10. [Gebruikersvoorkeuren](#gebruikersvoorkeuren)
 11. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
-12. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
-13. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
-14. [Ontdek-functie (alleen admin)](#ontdek-functie-alleen-admin)
-15. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
-16. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
-17. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
-18. [S3-integriteitscontrole (alleen admin)](#s3-integriteitscontrole-alleen-admin)
-19. [Tools](#tools)
-20. [Tips & trucs](#tips--trucs)
-21. [Woordenlijst](#woordenlijst)
-22. [Hulp nodig?](#hulp-nodig)
+12. [Bulksgewijs prullenbak & downloaden](#bulksgewijs-prullenbak--downloaden)
+13. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
+14. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
+15. [Ontdek-functie (alleen admin)](#ontdek-functie-alleen-admin)
+16. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
+17. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
+18. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
+19. [S3-integriteitscontrole (alleen admin)](#s3-integriteitscontrole-alleen-admin)
+20. [Tools](#tools)
+21. [Tips & trucs](#tips--trucs)
+22. [Woordenlijst](#woordenlijst)
+23. [Hulp nodig?](#hulp-nodig)
 
 ---
 
@@ -124,7 +125,7 @@ In Lijstweergave kun je tags en licentie-info direct inline bewerken.
 
 ### Meerdere assets selecteren
 
-Klik op checkboxes om individuele assets te selecteren. Houd **Shift** ingedrukt en klik om een reeks te selecteren. Eenmaal geselecteerd verschijnt een werkbalk met bulkacties, waaronder **bulksgewijs tags beheren** (tags toevoegen aan of verwijderen van alle geselecteerde assets tegelijk).
+Klik op checkboxes om individuele assets te selecteren. Houd **Shift** ingedrukt en klik om een reeks te selecteren. Eenmaal geselecteerd verschijnt een werkbalk met bulkacties, waaronder **bulksgewijs tags beheren** (tags toevoegen aan of verwijderen van alle geselecteerde assets tegelijk), **downloaden** (ZIP-archief) en **naar prullenbak verplaatsen**.
 
 ---
 
@@ -249,6 +250,14 @@ Als de onderhoudsmodus niet beschikbaar is, of je een enkel bestand zonder admin
 5. **Werk alle links bij** in Studyflow naar de nieuwe URL
 
 Ja, het is omslachtig. Dat is met opzet — het dwingt je om goed na te denken en herinnert je eraan die links bij te werken.
+
+---
+
+## Bulksgewijs prullenbak & downloaden
+
+**Naar prullenbak verplaatsen:** Selecteer assets op de indexpagina en klik op **Naar prullenbak** in de actiebalk. Bevestig het dialoogvenster. Assets worden "soft deleted" — S3-objecten blijven behouden en kunnen worden hersteld uit de prullenbak. Beschikbaar voor editors en admins.
+
+**Downloaden:** Selecteer assets en klik op **Downloaden**. De server verpakt de geselecteerde bestanden in een ZIP-archief en downloadt dit naar je browser. Limieten: max 100 bestanden, 500 MB totaal. Dubbele bestandsnamen krijgen een `_1`, `_2` achtervoegsel. Beschikbaar voor alle ingelogde gebruikers.
 
 ---
 

@@ -916,4 +916,116 @@ class AssetController extends Controller
             'message' => 'Tag removed successfully',
         ]);
     }
+
+    /**
+     * Soft delete multiple assets (move to trash)
+     */
+    public function bulkTrash(Request $request)
+    {
+        $this->authorize('bulkTrash', Asset::class);
+
+        $request->validate([
+            'asset_ids' => 'required|array|max:500',
+            'asset_ids.*' => 'integer|exists:assets,id',
+        ]);
+
+        $assets = Asset::whereIn('id', $request->asset_ids)->get();
+        $trashed = 0;
+        $failed = 0;
+
+        foreach ($assets as $asset) {
+            try {
+                $asset->delete();
+                $trashed++;
+            } catch (\Exception $e) {
+                Log::error("Bulk trash failed for asset {$asset->id}: ".$e->getMessage());
+                $failed++;
+            }
+        }
+
+        return response()->json([
+            'message' => __(':trashed asset(s) moved to trash', ['trashed' => $trashed]),
+            'trashed' => $trashed,
+            'failed' => $failed,
+        ]);
+    }
+
+    /**
+     * Download multiple assets as a ZIP file
+     */
+    public function bulkDownload(Request $request)
+    {
+        $this->authorize('bulkDownload', Asset::class);
+
+        $request->validate([
+            'asset_ids' => 'required|array|max:100',
+            'asset_ids.*' => 'integer|exists:assets,id',
+        ]);
+
+        $assets = Asset::whereIn('id', $request->asset_ids)->get();
+
+        // Check total size limit (500MB)
+        $totalSize = $assets->sum('size');
+        $maxSize = 500 * 1024 * 1024;
+        if ($totalSize > $maxSize) {
+            return response()->json([
+                'message' => __('Total file size exceeds 500 MB. Please select fewer assets.'),
+            ], 422);
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'orca_dam_');
+        $zip = new \ZipArchive;
+
+        if ($zip->open($tempFile, \ZipArchive::OVERWRITE) !== true) {
+            return response()->json([
+                'message' => __('Failed to create ZIP archive.'),
+            ], 500);
+        }
+
+        $usedFilenames = [];
+        $added = 0;
+
+        foreach ($assets as $asset) {
+            try {
+                $content = $this->s3Service->getObjectContent($asset->s3_key);
+                if ($content === null) {
+                    continue;
+                }
+
+                // Deduplicate filenames
+                $filename = $asset->filename;
+                if (isset($usedFilenames[$filename])) {
+                    $usedFilenames[$filename]++;
+                    $ext = pathinfo($filename, PATHINFO_EXTENSION);
+                    $name = pathinfo($filename, PATHINFO_FILENAME);
+                    $filename = $name.'_'.$usedFilenames[$filename].($ext ? '.'.$ext : '');
+                } else {
+                    $usedFilenames[$filename] = 0;
+                }
+
+                $zip->addFromString($filename, $content);
+                $added++;
+            } catch (\Exception $e) {
+                Log::warning("Bulk download: failed to fetch asset {$asset->id}: ".$e->getMessage());
+            }
+        }
+
+        $zip->close();
+
+        if ($added === 0) {
+            @unlink($tempFile);
+
+            return response()->json([
+                'message' => __('No files could be downloaded.'),
+            ], 422);
+        }
+
+        $date = now()->format('Y-m-d');
+        $zipContent = file_get_contents($tempFile);
+        @unlink($tempFile);
+
+        return response($zipContent)
+            ->header('Content-Type', 'application/zip')
+            ->header('Content-Disposition', 'attachment; filename="orca-dam-assets-'.$date.'.zip"');
+    }
 }

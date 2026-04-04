@@ -67,6 +67,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('assets/bulk/tags/list', [AssetController::class, 'bulkGetTags'])->name('assets.bulk.tags.list');
     Route::post('assets/bulk/move', [AssetController::class, 'bulkMoveAssets'])->name('assets.bulk.move');
     Route::delete('assets/bulk/force-delete', [AssetController::class, 'bulkForceDelete'])->name('assets.bulk.force-delete');
+    Route::post('assets/bulk/trash', [AssetController::class, 'bulkTrash'])->name('assets.bulk.trash');
+    Route::post('assets/bulk/download', [AssetController::class, 'bulkDownload'])->name('assets.bulk.download');
 
     // Asset embed (iframe-friendly, no header/footer)
     Route::get('assets/embed', [AssetController::class, 'embed'])->name('assets.embed');

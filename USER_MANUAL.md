@@ -17,17 +17,18 @@
 9. [The Trash](#the-trash)
 10. [User Preferences](#user-preferences)
 11. [Moving Files (The Long Way)](#moving-files-the-long-way)
-12. [Bulk Move (Admin Only)](#bulk-move-admin-only)
-13. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
-14. [Discover Feature (Admin Only)](#discover-feature-admin-only)
-15. [Import Metadata (Admin Only)](#import-metadata-admin-only)
-16. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
-17. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
-18. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
-19. [Tools](#tools)
-20. [Tips & Tricks](#tips--tricks)
-21. [Glossary](#glossary)
-22. [Getting Help](#getting-help)
+12. [Bulk Trash & Download](#bulk-trash--download)
+13. [Bulk Move (Admin Only)](#bulk-move-admin-only)
+14. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
+15. [Discover Feature (Admin Only)](#discover-feature-admin-only)
+16. [Import Metadata (Admin Only)](#import-metadata-admin-only)
+17. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
+18. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
+19. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
+20. [Tools](#tools)
+21. [Tips & Tricks](#tips--tricks)
+22. [Glossary](#glossary)
+23. [Getting Help](#getting-help)
 
 ---
 
@@ -124,7 +125,7 @@ In List View, you can edit tags and license info directly inline.
 
 ### Selecting Multiple Assets
 
-Click checkboxes to select individual assets. Hold **Shift** and click to select a range. Once selected, a toolbar appears with bulk actions including **bulk tag management** (add or remove tags from all selected assets at once).
+Click checkboxes to select individual assets. Hold **Shift** and click to select a range. Once selected, a toolbar appears with bulk actions including **bulk tag management** (add or remove tags from all selected assets at once), **download** (ZIP archive), and **move to trash**.
 
 ---
 
@@ -249,6 +250,14 @@ If maintenance mode is not available, or you need to move a single file without 
 5. **Update all links** in the content to point to the new URL
 
 Yes, it's tedious. That's intentional — it makes you think twice and reminds you to update those links.
+
+---
+
+## Bulk Trash & Download
+
+**Bulk Move to Trash:** Select assets on the index page and click **Move to Trash** in the action bar. Confirm the prompt. Assets are soft-deleted — S3 objects are preserved and can be restored from the trash. Available to editors and admins.
+
+**Bulk Download:** Select assets and click **Download**. The server packages selected files into a ZIP archive and downloads it to your browser. Limits: max 100 files, 500MB total size. If a file can't be fetched from S3, it's skipped. Duplicate filenames get a `_1`, `_2` suffix. Available to all authenticated users.
 
 ---
 

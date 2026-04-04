@@ -50,6 +50,8 @@ export function assetGrid() {
         bulkDeleting: false,
         bulkDeleteResults: null,
         bulkDeleteShowSummary: false,
+        bulkTrashing: false,
+        bulkDownloading: false,
 
         init() {
             // If page loaded with selected tags, resolve their names for pill display
@@ -458,6 +460,86 @@ export function assetGrid() {
             this.bulkDeleteShowSummary = false;
             this.bulkDeleteResults = null;
             window.location.reload();
+        },
+
+        async bulkTrash() {
+            const translations = window.assetTranslations || {};
+            const count = Alpine.store('bulkSelection').selected.length;
+            if (!confirm(translations.bulkTrashConfirm || `Move ${count} asset(s) to trash?`)) {
+                return;
+            }
+
+            this.bulkTrashing = true;
+            try {
+                const response = await fetch('/assets/bulk/trash', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.getCsrfToken(),
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        asset_ids: Alpine.store('bulkSelection').selected,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Failed to move assets to trash');
+                }
+
+                const data = await response.json();
+                window.showToast(data.message, 'success');
+                Alpine.store('bulkSelection').clear();
+                setTimeout(() => window.location.reload(), 800);
+            } catch (error) {
+                console.error('Bulk trash failed:', error);
+                window.showToast(translations.bulkTrashFailed || 'Failed to move assets to trash', 'error');
+            } finally {
+                this.bulkTrashing = false;
+            }
+        },
+
+        async bulkDownload() {
+            const translations = window.assetTranslations || {};
+            this.bulkDownloading = true;
+            try {
+                const response = await fetch('/assets/bulk/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.getCsrfToken(),
+                        'Accept': 'application/zip',
+                    },
+                    body: JSON.stringify({
+                        asset_ids: Alpine.store('bulkSelection').selected,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Failed to download assets');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                // Extract filename from Content-Disposition header or use default
+                const disposition = response.headers.get('Content-Disposition');
+                const match = disposition && disposition.match(/filename="?([^"]+)"?/);
+                a.download = match ? match[1] : 'orca-dam-assets.zip';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                window.showToast(translations.downloadSuccess || 'Download started', 'success');
+            } catch (error) {
+                console.error('Bulk download failed:', error);
+                window.showToast(error.message || translations.downloadFailed || 'Failed to download assets', 'error');
+            } finally {
+                this.bulkDownloading = false;
+            }
         },
 
         async bulkRemoveTag(tagId) {

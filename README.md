@@ -33,6 +33,8 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - ♻️ Restore for editors and admins; permanent delete for admins only
 - 📦 Bulk move assets between S3 folders (maintenance mode)
 - 🗑️ Bulk permanent delete from index page (maintenance mode)
+- 🗑️ Bulk move to trash from index page (editors + admins)
+- 📥 Bulk download as ZIP (max 100 files / 500MB)
 - ✔️ S3 integrity verification (detect missing assets in cloud storage)
 - 📱 Responsive design
 - 🖼️ **Embeddable asset browser** (`/assets/embed`) for iframe integration, with configurable allowed domains
@@ -184,6 +186,8 @@ php artisan serve  # Or use Herd
 - Batch operations
 - Bulk move assets between folders (requires maintenance mode)
 - Bulk permanent delete (requires maintenance mode)
+- Bulk move to trash
+- Bulk download as ZIP
 - System administration (queue management, logs, diagnostics)
 - **Settings panel** - Configure items per page, AI tag limits, language, timezone, custom domain
 - **API Docs & Management** - API token management, JWT secret management, interactive API docs
@@ -221,6 +225,14 @@ php artisan serve  # Or use Herd
 2. Click permanent delete button (red trash icon)
 3. Confirm deletion
 4. Removes S3 objects AND database record (cannot be undone)
+
+**Bulk Move to Trash:**
+1. Select assets on the index page and click "Move to Trash"
+2. Confirm — assets are soft-deleted (S3 objects preserved, can be restored)
+
+**Bulk Download:**
+1. Select assets on the index page and click "Download"
+2. A ZIP file is generated and downloaded (max 100 files / 500MB)
 
 **Bulk Permanent Delete:**
 1. Enable maintenance mode in System → Settings
