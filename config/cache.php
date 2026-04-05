@@ -103,6 +103,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Serializable Classes
+    |--------------------------------------------------------------------------
+    |
+    | Controls which classes may be unserialized from the cache. Setting this
+    | to false prevents PHP object deserialization attacks if the app key is
+    | ever compromised. Set to an array of class names to allowlist specific
+    | classes, or true to allow all (not recommended).
+    |
+    */
+
+    'serializable_classes' => false,
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache Key Prefix
     |--------------------------------------------------------------------------
     |

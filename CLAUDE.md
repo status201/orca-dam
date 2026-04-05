@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-ORCA DAM (ORCA Retrieves Cloud Assets) is a Digital Asset Management system built with Laravel 12 with AWS S3 integration, AI-powered tagging via AWS Rekognition, role-based access control, and a RESTful API for Rich Text Editor integration.
+ORCA DAM (ORCA Retrieves Cloud Assets) is a Digital Asset Management system built with Laravel 13 with AWS S3 integration, AI-powered tagging via AWS Rekognition, role-based access control, and a RESTful API for Rich Text Editor integration.
 
 **Frontend Stack**: Blade + Alpine.js (modular, 15 components in `resources/js/alpine/`), Tailwind CSS, Font Awesome 6.4.0, Vite, Intervention Image 3.x (GD driver)
 

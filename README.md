@@ -310,7 +310,7 @@ Find your path via SSH: `which php`
 
 ## Architecture
 
-- **Backend:** Laravel 12 with AWS SDK v3
+- **Backend:** Laravel 13 with AWS SDK v3
 - **Frontend:** Blade templates + Alpine.js (modular, 15 components in `resources/js/alpine/`)
 - **Styling:** Tailwind CSS with custom ORCA theme
 - **Image Processing:** Intervention Image 3.x (GD driver)
