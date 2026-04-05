@@ -4,7 +4,7 @@ All notable changes to ORCA DAM will be documented in this file.
 
 ---
 
-## [Unreleased] — Riptide
+## [v1.2.0] — Riptide
 
 ### Upgraded
 - Laravel 12 → **Laravel 13.3** (framework, Symfony 8.x components)
