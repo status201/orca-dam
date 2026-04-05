@@ -25,7 +25,8 @@
       "Bash(dvisvgm:*)",
       "Bash(php -m)",
       "Bash(ls:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(composer show:*)"
     ]
   }
 }
