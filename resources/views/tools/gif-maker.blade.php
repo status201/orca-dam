@@ -201,7 +201,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Background') }}</label>
                 <div class="flex items-center gap-2">
                     <input type="color" x-model="bgColor"
-                        class="w-8 h-8 rounded border border-gray-300 cursor-pointer p-0.5">
+                        class="attention w-8 h-8 rounded border border-gray-300 cursor-pointer p-0.5">
                     <input type="text" x-model="bgColor" maxlength="7"
                         class="w-24 text-sm font-mono border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                 </div>
