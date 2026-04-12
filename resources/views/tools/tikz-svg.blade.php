@@ -22,8 +22,8 @@
     <div class="mb-6">
         <div class="flex items-center gap-3">
             <h1 class="text-3xl font-bold">{{ __('TikZ to SVG') }}</h1>
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                {{ __('Beta') }}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                {{ __('Deprecated') }}
             </span>
         </div>
         <p class="text-gray-600 mt-1">{{ __('Render TikZ diagrams to SVG and upload them directly to ORCA.') }}</p>
