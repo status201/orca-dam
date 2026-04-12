@@ -19,6 +19,16 @@
         </div>
     </div>
 
+    <div class="mb-6">
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-bold">{{ __('Animated GIF Maker') }}</h1>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                {{ __('Beta') }}
+            </span>
+        </div>
+        <p class="text-gray-600 mt-1">{{ __('Create animated GIFs from a sequence of images. Add frames, set timing, and preview the animation before saving.') }}</p>
+    </div>
+
     {{-- Frames card --}}
     <div class="bg-white rounded-lg shadow p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
