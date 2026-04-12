@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Asset;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,7 +14,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $users = User::withCount('assets')->orderBy('name')->get();
+        $users = User::withCount(['assets' => fn ($q) => $q->withTrashed()])->orderBy('name')->get();
 
         return view('users.index', compact('users'));
     }
@@ -79,18 +80,35 @@ class UserController extends Controller
             ->with('success', 'User updated successfully.');
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user)
     {
         $this->authorize('delete', $user);
 
         // Prevent deleting yourself
         if ($user->id === auth()->id()) {
-            return back()->with('error', 'You cannot delete your own account.');
+            return back()->with('error', __('You cannot delete your own account.'));
+        }
+
+        // Reassign assets (including trashed) to another user before deletion
+        $assetCount = Asset::withTrashed()->where('user_id', $user->id)->count();
+
+        if ($assetCount > 0) {
+            $request->validate([
+                'transfer_to_user_id' => [
+                    'required',
+                    'exists:users,id',
+                    Rule::notIn([$user->id]),
+                ],
+            ]);
+
+            Asset::withTrashed()
+                ->where('user_id', $user->id)
+                ->update(['user_id' => $request->transfer_to_user_id]);
         }
 
         $user->delete();
 
         return redirect()->route('users.index')
-            ->with('success', 'User deleted successfully.');
+            ->with('success', __('User deleted successfully.'));
     }
 }

@@ -3,6 +3,19 @@
 @section('title', __('Users'))
 
 @section('content')
+<div x-data="{
+    deleteUserId: null,
+    deleteUserName: '',
+    deleteUserAssetCount: 0,
+    transferToUserId: '',
+    confirmDelete(id, name, assetCount) {
+        this.deleteUserId = id;
+        this.deleteUserName = name;
+        this.deleteUserAssetCount = assetCount;
+        this.transferToUserId = '';
+        $dispatch('open-modal', 'confirm-user-delete');
+    }
+}">
 <div class="mb-6">
     <div class="flex items-center justify-between">
         <div>
@@ -79,19 +92,76 @@
                         <i class="fas fa-edit"></i> {{ __('Edit') }}
                     </a>
                     @if($user->id !== auth()->id())
-                        <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline"
-                              onsubmit="return confirm('{{ __('Are you sure you want to delete this user?') }}');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="warning text-red-600 hover:text-red-900">
-                                <i class="fas fa-trash"></i> {{ __('Delete') }}
-                            </button>
-                        </form>
+                        <button type="button"
+                            class="warning text-red-600 hover:text-red-900"
+                            @click="confirmDelete({{ $user->id }}, '{{ addslashes($user->name) }}', {{ $user->assets_count }})">
+                            <i class="fas fa-trash"></i> {{ __('Delete') }}
+                        </button>
                     @endif
                 </td>
             </tr>
             @endforeach
         </tbody>
     </table>
+</div>
+
+<x-modal name="confirm-user-delete" maxWidth="md" focusable>
+    <form :action="'{{ url('users') }}/' + deleteUserId" method="POST" class="p-6">
+        @csrf
+        @method('DELETE')
+
+        <h2 class="text-lg font-medium text-gray-900">
+            {{ __('Delete User') }}
+        </h2>
+
+        <p class="mt-1 text-sm text-gray-600" x-text="deleteUserName"></p>
+
+        <template x-if="deleteUserAssetCount > 0">
+            <div>
+                <p class="mt-3 text-sm text-gray-600">
+                    {{ __('This user owns') }}
+                    <span class="font-semibold" x-text="deleteUserAssetCount"></span>
+                    {{ __('asset(s). Select a user to transfer them to before deletion.') }}
+                </p>
+
+                <div class="mt-4">
+                    <x-input-label :value="__('Transfer assets to')" for="transfer_to_user_id" />
+                    <select name="transfer_to_user_id"
+                            id="transfer_to_user_id"
+                            x-model="transferToUserId"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-orca-black focus:border-transparent"
+                            required>
+                        <option value="">{{ __('Select a user...') }}</option>
+                        @foreach($users as $targetUser)
+                            <option value="{{ $targetUser->id }}"
+                                    x-show="deleteUserId !== {{ $targetUser->id }}">
+                                {{ $targetUser->name }} ({{ $targetUser->email }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </template>
+
+        <template x-if="deleteUserAssetCount === 0">
+            <p class="mt-3 text-sm text-gray-600">
+                {{ __('Are you sure you want to delete this user? This action cannot be undone.') }}
+            </p>
+        </template>
+
+        <div class="mt-6 flex justify-end">
+            <x-secondary-button x-on:click="$dispatch('close')">
+                {{ __('Cancel') }}
+            </x-secondary-button>
+
+            <x-danger-button class="warning ms-3"
+                :disabled="false"
+                x-bind:disabled="deleteUserAssetCount > 0 && !transferToUserId">
+                {{ __('Delete User') }}
+            </x-danger-button>
+        </div>
+    </form>
+</x-modal>
+
 </div>
 @endsection
