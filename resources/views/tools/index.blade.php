@@ -28,6 +28,24 @@
                 </span>
             </div>
         </a>
+        <!-- Animated GIF Maker -->
+        <a href="{{ route('tools.gif-maker') }}" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
+            <div class="flex flex-col items-start">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="text-orca-teal group-hover:text-orca-teal-hover transition-colors">
+                        <i class="fas fa-film fa-3x"></i>
+                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        {{ __('Beta') }}
+                    </span>
+                </div>
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ __('Animated GIF Maker') }}</h2>
+                <p class="text-sm text-gray-600 mb-4">{{ __('Create animated GIFs from image sequences. Upload frames, set timing, and generate GIFs entirely in your browser.') }}</p>
+                <span class="inline-flex items-center text-sm font-medium text-orca-teal group-hover:text-orca-teal-hover">
+                    {{ __('Open') }} <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                </span>
+            </div>
+        </a>
         <!-- LaTeX to MathML -->
         <a href="{{ route('tools.latex-mathml') }}" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
             <div class="flex flex-col items-start">

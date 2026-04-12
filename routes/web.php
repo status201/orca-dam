@@ -147,6 +147,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('tools/bakoma-font/{name}', [ToolsController::class, 'bakomaFont'])->name('tools.bakoma-font');
     Route::get('tools/tikz-png', [ToolsController::class, 'tikzPng'])->name('tools.tikz-png');
     Route::post('tools/tikz-png/upload', [ToolsController::class, 'uploadTikzPng'])->name('tools.tikz-png.upload');
+    Route::get('tools/gif-maker', [ToolsController::class, 'gifMaker'])->name('tools.gif-maker');
+    Route::post('tools/gif-maker/upload', [ToolsController::class, 'uploadGif'])->name('tools.gif-maker.upload');
     Route::get('tools/tikz-server', [ToolsController::class, 'tikzServer'])->name('tools.tikz-server');
     Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])->name('tools.tikz-server.render');
     Route::get('tools/tikz-server/templates', [ToolsController::class, 'searchTexTemplates'])->name('tools.tikz-server.templates');

@@ -23,6 +23,7 @@ import './alpine/tools-tikz-svg';
 import './alpine/tools-tikz-png';
 import './alpine/tools-tikz-svg-fonts';
 import './alpine/tools-tikz-server';
+import './alpine/tools-gif-maker';
 
 window.Alpine = Alpine;
 
