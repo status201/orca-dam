@@ -35,7 +35,6 @@
             <h2 class="text-base font-semibold text-gray-900">
                 <i class="fas fa-film text-orca-teal mr-1"></i>
                 {{ __('Frames') }}
-                <span class="inline-flex items-center ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">{{ __('Beta') }}</span>
                 <span class="text-sm font-normal text-gray-500 ml-2" x-show="frames.length > 0" x-text="'(' + frames.length + ' frame' + (frames.length !== 1 ? 's' : '') + ')'"></span>
             </h2>
             <button x-show="frames.length > 0" @click="clearAll()" class="text-sm text-gray-500 hover:text-gray-700">
