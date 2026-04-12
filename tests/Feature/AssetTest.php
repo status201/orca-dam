@@ -2,7 +2,10 @@
 
 use App\Models\Asset;
 use App\Models\Setting;
+use App\Models\Tag;
 use App\Models\User;
+use App\Services\S3Service;
+use Illuminate\Http\UploadedFile;
 
 test('guests cannot access assets index', function () {
     $response = $this->get(route('assets.index'));
@@ -387,7 +390,7 @@ test('replace rejects file with different extension', function () {
     ]);
 
     // Create a fake PDF file (wrong extension)
-    $file = \Illuminate\Http\UploadedFile::fake()->create('replacement.pdf', 100);
+    $file = UploadedFile::fake()->create('replacement.pdf', 100);
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.replace.store', $asset), [
@@ -408,7 +411,7 @@ test('replace accepts file with same extension', function () {
     ]);
 
     // Mock the S3Service
-    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service = Mockery::mock(S3Service::class);
     $s3Service->shouldReceive('replaceFile')->once()->andReturn([
         'filename' => 'replacement.jpg',
         'mime_type' => 'image/jpeg',
@@ -421,9 +424,9 @@ test('replace accepts file with same extension', function () {
     $s3Service->shouldReceive('deleteResizedImages')->once();
     $s3Service->shouldReceive('generateThumbnail')->andReturn('thumbnails/new_thumb.jpg');
     $s3Service->shouldReceive('generateResizedImages')->andReturn(['s' => 'thumbnails/S/new.jpg', 'm' => 'thumbnails/M/new.jpg', 'l' => 'thumbnails/L/new.jpg']);
-    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+    $this->app->instance(S3Service::class, $s3Service);
 
-    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg', 1920, 1080);
+    $file = UploadedFile::fake()->image('replacement.jpg', 1920, 1080);
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.replace.store', $asset), [
@@ -465,7 +468,7 @@ test('guests cannot access replace form', function () {
 
 test('guests cannot perform replace action', function () {
     $asset = Asset::factory()->create(['filename' => 'test.jpg']);
-    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg');
+    $file = UploadedFile::fake()->image('replacement.jpg');
 
     $response = $this->postJson(route('assets.replace.store', $asset), [
         'file' => $file,
@@ -481,7 +484,7 @@ test('replace accepts file with different case extension', function () {
         's3_key' => 'assets/original-uuid.jpg',
     ]); // lowercase s3_key
 
-    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service = Mockery::mock(S3Service::class);
     $s3Service->shouldReceive('replaceFile')->once()->andReturn([
         'filename' => 'replacement.JPG', // uppercase
         'mime_type' => 'image/jpeg',
@@ -494,10 +497,10 @@ test('replace accepts file with different case extension', function () {
     $s3Service->shouldReceive('deleteResizedImages')->once();
     $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
-    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+    $this->app->instance(S3Service::class, $s3Service);
 
     // Upload file with uppercase extension
-    $file = \Illuminate\Http\UploadedFile::fake()->create('replacement.JPG', 100, 'image/jpeg');
+    $file = UploadedFile::fake()->create('replacement.JPG', 100, 'image/jpeg');
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.replace.store', $asset), [
@@ -515,7 +518,7 @@ test('replace uses s3_key extension not filename extension', function () {
         's3_key' => 'assets/original-uuid.jpg',
     ]);
 
-    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service = Mockery::mock(S3Service::class);
     $s3Service->shouldReceive('replaceFile')->once()->andReturn([
         'filename' => 'replacement.jpg',
         'mime_type' => 'image/jpeg',
@@ -528,10 +531,10 @@ test('replace uses s3_key extension not filename extension', function () {
     $s3Service->shouldReceive('deleteResizedImages')->once();
     $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
-    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+    $this->app->instance(S3Service::class, $s3Service);
 
     // Upload a .jpg file — should match s3_key extension, not filename
-    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg', 800, 600);
+    $file = UploadedFile::fake()->image('replacement.jpg', 800, 600);
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.replace.store', $asset), [
@@ -547,11 +550,11 @@ test('replace preserves tags after replacement', function () {
     $asset = Asset::factory()->image()->create(['filename' => 'original.jpg']);
 
     // Add tags to the asset
-    $userTag = \App\Models\Tag::factory()->create(['name' => 'user-tag', 'type' => 'user']);
-    $aiTag = \App\Models\Tag::factory()->create(['name' => 'ai-tag', 'type' => 'ai']);
+    $userTag = Tag::factory()->create(['name' => 'user-tag', 'type' => 'user']);
+    $aiTag = Tag::factory()->create(['name' => 'ai-tag', 'type' => 'ai']);
     $asset->tags()->attach([$userTag->id, $aiTag->id]);
 
-    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service = Mockery::mock(S3Service::class);
     $s3Service->shouldReceive('replaceFile')->once()->andReturn([
         'filename' => 'replacement.jpg',
         'mime_type' => 'image/jpeg',
@@ -564,9 +567,9 @@ test('replace preserves tags after replacement', function () {
     $s3Service->shouldReceive('deleteResizedImages')->once();
     $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
-    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+    $this->app->instance(S3Service::class, $s3Service);
 
-    $file = \Illuminate\Http\UploadedFile::fake()->image('replacement.jpg');
+    $file = UploadedFile::fake()->image('replacement.jpg');
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.replace.store', $asset), [
@@ -781,12 +784,12 @@ test('storeThumbnail uploads base64 thumbnail for video asset', function () {
         'thumbnail_s3_key' => null,
     ]);
 
-    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service = Mockery::mock(S3Service::class);
     $s3Service->shouldReceive('uploadThumbnail')
         ->once()
         ->with('assets/video.mp4', Mockery::type('string'))
         ->andReturn('thumbnails/video_thumb.jpg');
-    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+    $this->app->instance(S3Service::class, $s3Service);
 
     // Valid 1x1 white JPEG as base64
     $base64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAFRABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AOANH/9k=';
@@ -812,7 +815,7 @@ test('storeThumbnail deletes old thumbnail before uploading new one', function (
         'thumbnail_s3_key' => 'thumbnails/old_thumb.jpg',
     ]);
 
-    $s3Service = Mockery::mock(\App\Services\S3Service::class);
+    $s3Service = Mockery::mock(S3Service::class);
     $s3Service->shouldReceive('deleteFile')
         ->once()
         ->with('thumbnails/old_thumb.jpg')
@@ -820,7 +823,7 @@ test('storeThumbnail deletes old thumbnail before uploading new one', function (
     $s3Service->shouldReceive('uploadThumbnail')
         ->once()
         ->andReturn('thumbnails/video_thumb.jpg');
-    $this->app->instance(\App\Services\S3Service::class, $s3Service);
+    $this->app->instance(S3Service::class, $s3Service);
 
     $base64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAFRABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AOANH/9k=';
 

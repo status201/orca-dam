@@ -6,6 +6,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Setting;
 use App\Services\S3Service;
 use App\Services\SystemService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -90,7 +91,7 @@ class ProfileController extends Controller
     /**
      * Update the user's preferences.
      */
-    public function updatePreferences(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
+    public function updatePreferences(Request $request): RedirectResponse|JsonResponse
     {
         $rootFolder = S3Service::getRootFolder();
 

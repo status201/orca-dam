@@ -2,6 +2,7 @@
 
 use App\Models\Asset;
 use App\Models\User;
+use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use App\Services\TikzCompilerService;
 
@@ -308,9 +309,9 @@ test('svg upload creates asset with svg mime type', function () {
     $this->app->instance(S3Service::class, $s3Mock);
 
     // Mock AssetProcessingService to avoid real processing
-    $processingMock = Mockery::mock(\App\Services\AssetProcessingService::class);
+    $processingMock = Mockery::mock(AssetProcessingService::class);
     $processingMock->shouldReceive('processImageAsset')->once();
-    $this->app->instance(\App\Services\AssetProcessingService::class, $processingMock);
+    $this->app->instance(AssetProcessingService::class, $processingMock);
 
     $response = $this->actingAs($user)->postJson(route('tools.tikz-svg.upload'), [
         'content' => '<svg xmlns="http://www.w3.org/2000/svg"><circle r="10"/></svg>',
@@ -358,9 +359,9 @@ test('png upload creates asset with dimensions', function () {
     ]);
     $this->app->instance(S3Service::class, $s3Mock);
 
-    $processingMock = Mockery::mock(\App\Services\AssetProcessingService::class);
+    $processingMock = Mockery::mock(AssetProcessingService::class);
     $processingMock->shouldReceive('processImageAsset')->once();
-    $this->app->instance(\App\Services\AssetProcessingService::class, $processingMock);
+    $this->app->instance(AssetProcessingService::class, $processingMock);
 
     $response = $this->actingAs($user)->postJson(route('tools.tikz-png.upload'), [
         'content' => $pngContent,

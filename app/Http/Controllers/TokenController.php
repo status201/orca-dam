@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -100,7 +101,7 @@ class TokenController extends Controller
                     'created_new_user' => $createNew,
                 ],
             ]);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+        } catch (AuthorizationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Authorization failed: '.$e->getMessage(),

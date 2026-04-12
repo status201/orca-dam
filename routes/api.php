@@ -1,13 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\AssetApiController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
 // Public API endpoints (no authentication required)
 Route::get('assets/meta', [AssetApiController::class, 'getMeta']);
-Route::get('health', \App\Http\Controllers\Api\HealthController::class);
+Route::get('health', HealthController::class);
 
 Route::middleware('auth.multi')->group(function () {
     // Asset API

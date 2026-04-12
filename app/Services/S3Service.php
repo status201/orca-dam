@@ -528,7 +528,7 @@ class S3Service
     {
         $prefix = $prefix ?? self::getRootPrefix();
         $s3Objects = $this->listObjects($prefix);
-        $mappedKeys = \App\Models\Asset::pluck('s3_key')->toArray();
+        $mappedKeys = Asset::pluck('s3_key')->toArray();
 
         return collect($s3Objects)
             ->filter(function ($object) use ($mappedKeys) {

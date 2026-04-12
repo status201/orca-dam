@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\AllowEmbedding;
+use App\Http\Middleware\AuthenticateMultiple;
+use App\Http\Middleware\SetLocale;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,13 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
-            \App\Http\Middleware\SetLocale::class,
-            \App\Http\Middleware\AllowEmbedding::class,
+            SetLocale::class,
+            AllowEmbedding::class,
         ]);
 
         $middleware->alias([
-            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-            'auth.multi' => \App\Http\Middleware\AuthenticateMultiple::class,
+            'verified' => EnsureEmailIsVerified::class,
+            'auth.multi' => AuthenticateMultiple::class,
         ]);
     })
     ->withSchedule(function (Schedule $schedule): void {

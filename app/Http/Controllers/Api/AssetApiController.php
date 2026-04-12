@@ -11,6 +11,7 @@ use App\Models\Tag;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class AssetApiController extends Controller
@@ -457,7 +458,7 @@ class AssetApiController extends Controller
     /**
      * Collect Asset models from the four identifier types in the request.
      *
-     * @return array{0: \Illuminate\Support\Collection, 1: array} [$assets, $notFoundS3Keys]
+     * @return array{0: Collection, 1: array} [$assets, $notFoundS3Keys]
      */
     private function collectAssetsFromRequest(Request $request): array
     {

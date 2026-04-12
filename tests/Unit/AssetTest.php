@@ -1,8 +1,11 @@
 <?php
 
 use App\Models\Asset;
+use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\S3Service;
+use Carbon\Carbon;
 
 test('asset belongs to a user', function () {
     $user = User::factory()->create();
@@ -70,7 +73,7 @@ test('asset casts license_expiry_date to date', function () {
         'license_expiry_date' => '2025-12-31',
     ]);
 
-    expect($asset->license_expiry_date)->toBeInstanceOf(\Carbon\Carbon::class);
+    expect($asset->license_expiry_date)->toBeInstanceOf(Carbon::class);
     expect($asset->license_expiry_date->format('Y-m-d'))->toBe('2025-12-31');
 });
 
@@ -127,7 +130,7 @@ test('asset url uses custom domain when configured', function () {
     expect($asset->url)->toBe($s3Url.'/assets/test-image.jpg');
 
     // With custom domain, should use it
-    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
     cache()->forget('setting:custom_domain');
 
     // Re-fetch to get fresh attribute
@@ -135,7 +138,7 @@ test('asset url uses custom domain when configured', function () {
     expect($asset->url)->toBe('https://cdn.example.com/assets/test-image.jpg');
 
     // Clean up
-    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    Setting::where('key', 'custom_domain')->delete();
     cache()->forget('setting:custom_domain');
 });
 
@@ -146,19 +149,19 @@ test('asset thumbnail_url uses custom domain when configured', function () {
         'mime_type' => 'image/jpeg',
     ]);
 
-    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
     cache()->forget('setting:custom_domain');
 
     $asset->refresh();
     expect($asset->thumbnail_url)->toBe('https://cdn.example.com/thumbnails/test-image_thumb.jpg');
 
     // Clean up
-    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    Setting::where('key', 'custom_domain')->delete();
     cache()->forget('setting:custom_domain');
 });
 
 test('asset url falls back to s3 url when custom domain is empty', function () {
-    \App\Models\Setting::set('custom_domain', '', 'string', 'aws');
+    Setting::set('custom_domain', '', 'string', 'aws');
     cache()->forget('setting:custom_domain');
 
     $asset = Asset::factory()->create(['s3_key' => 'assets/test.jpg']);
@@ -167,7 +170,7 @@ test('asset url falls back to s3 url when custom domain is empty', function () {
     expect($asset->url)->toBe($s3Url.'/assets/test.jpg');
 
     // Clean up
-    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    Setting::where('key', 'custom_domain')->delete();
     cache()->forget('setting:custom_domain');
 });
 
@@ -178,7 +181,7 @@ test('asset resize url accessors return correct urls when keys are set', functio
         'resize_l_s3_key' => 'thumbnails/L/test.jpg',
     ]);
 
-    $baseUrl = \App\Services\S3Service::getPublicBaseUrl();
+    $baseUrl = S3Service::getPublicBaseUrl();
     expect($asset->resize_s_url)->toBe($baseUrl.'/thumbnails/S/test.jpg');
     expect($asset->resize_m_url)->toBe($baseUrl.'/thumbnails/M/test.jpg');
     expect($asset->resize_l_url)->toBe($baseUrl.'/thumbnails/L/test.jpg');
@@ -343,7 +346,7 @@ test('folder accessor returns single segment path for top-level s3_key', functio
 
 test('folder accessor falls back to S3Service root folder for root-only key', function () {
     $asset = Asset::factory()->create(['s3_key' => 'img.jpg']);
-    $expected = \App\Services\S3Service::getRootFolder();
+    $expected = S3Service::getRootFolder();
 
     expect($asset->folder)->toBe($expected);
 });
@@ -440,6 +443,83 @@ test('isPdf returns false for non-pdf mime types', function () {
 
     expect($image->isPdf())->toBeFalse();
     expect($video->isPdf())->toBeFalse();
+});
+
+// ─── search: alt_text and caption field coverage ─────────────────────────────
+
+test('asset search matches caption field', function () {
+    Asset::factory()->create(['filename' => 'photo.jpg', 'caption' => 'beautiful landscape']);
+    Asset::factory()->create(['filename' => 'other.jpg', 'caption' => 'city skyline']);
+    Asset::factory()->create(['filename' => 'third.jpg', 'caption' => null]);
+
+    $results = Asset::search('landscape')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('photo.jpg');
+});
+
+test('asset search matches alt_text field', function () {
+    Asset::factory()->create(['filename' => 'photo.jpg', 'alt_text' => 'a golden retriever playing']);
+    Asset::factory()->create(['filename' => 'other.jpg', 'alt_text' => 'office building']);
+
+    $results = Asset::search('retriever')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('photo.jpg');
+});
+
+test('asset search with quoted phrase matches alt_text', function () {
+    Asset::factory()->create(['filename' => 'a.jpg', 'alt_text' => 'summer beach party']);
+    Asset::factory()->create(['filename' => 'b.jpg', 'alt_text' => 'beach in winter']);
+    Asset::factory()->create(['filename' => 'c.jpg', 'alt_text' => 'summer in the city']);
+
+    $results = Asset::search('"summer beach"')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('a.jpg');
+});
+
+test('asset search with quoted phrase matches caption', function () {
+    Asset::factory()->create(['filename' => 'a.jpg', 'caption' => 'annual team photo']);
+    Asset::factory()->create(['filename' => 'b.jpg', 'caption' => 'team meeting notes']);
+    Asset::factory()->create(['filename' => 'c.jpg', 'caption' => 'annual report cover']);
+
+    $results = Asset::search('"annual team"')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('a.jpg');
+});
+
+test('asset search exclude works on caption', function () {
+    Asset::factory()->create(['filename' => 'a.jpg', 'caption' => 'sunset over mountains']);
+    Asset::factory()->create(['filename' => 'b.jpg', 'caption' => 'sunrise over mountains']);
+
+    $results = Asset::search('mountains -sunset')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('b.jpg');
+});
+
+test('asset search require works on caption', function () {
+    Asset::factory()->create(['filename' => 'a.jpg', 'caption' => 'red car on highway']);
+    Asset::factory()->create(['filename' => 'b.jpg', 'caption' => 'blue car in garage']);
+    Asset::factory()->create(['filename' => 'c.jpg', 'caption' => 'red bike on road']);
+
+    $results = Asset::search('+red +car')->get();
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()->filename)->toBe('a.jpg');
+});
+
+test('asset search escapeFulltextTerm strips double quotes', function () {
+    // Use reflection to test the private helper
+    $method = new ReflectionMethod(Asset::class, 'escapeFulltextTerm');
+
+    expect($method->invoke(null, 'hello'))->toBe('"hello"');
+    expect($method->invoke(null, 'hello world'))->toBe('"hello world"');
+    expect($method->invoke(null, 'test"injection'))->toBe('"testinjection"');
+    expect($method->invoke(null, '"already quoted"'))->toBe('"already quoted"');
+    expect($method->invoke(null, '+special -chars'))->toBe('"+special -chars"');
 });
 
 test('asset scope withTags filters by tag ids', function () {

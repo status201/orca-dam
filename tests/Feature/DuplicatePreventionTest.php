@@ -5,6 +5,7 @@ use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\S3Service;
+use Illuminate\Http\UploadedFile;
 
 test('web upload blocks duplicate files by etag', function () {
     $user = User::factory()->create();
@@ -23,7 +24,7 @@ test('web upload blocks duplicate files by etag', function () {
     $s3Service->shouldReceive('deleteFile')->once()->with('assets/new-file.jpg')->andReturn(true);
     $this->app->instance(S3Service::class, $s3Service);
 
-    $file = \Illuminate\Http\UploadedFile::fake()->image('photo.jpg', 800, 600);
+    $file = UploadedFile::fake()->image('photo.jpg', 800, 600);
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.store'), ['files' => [$file]]);
@@ -50,7 +51,7 @@ test('web upload allows files with unique etag', function () {
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
     $this->app->instance(S3Service::class, $s3Service);
 
-    $file = \Illuminate\Http\UploadedFile::fake()->image('photo.jpg', 800, 600);
+    $file = UploadedFile::fake()->image('photo.jpg', 800, 600);
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.store'), ['files' => [$file]]);
@@ -77,7 +78,7 @@ test('web upload detects duplicate even when existing is trashed', function () {
     $s3Service->shouldReceive('deleteFile')->once()->with('assets/new-file.jpg')->andReturn(true);
     $this->app->instance(S3Service::class, $s3Service);
 
-    $file = \Illuminate\Http\UploadedFile::fake()->image('photo.jpg', 800, 600);
+    $file = UploadedFile::fake()->image('photo.jpg', 800, 600);
 
     $response = $this->actingAs($user)
         ->postJson(route('assets.store'), ['files' => [$file]]);
@@ -103,7 +104,7 @@ test('api upload blocks duplicate files by etag', function () {
     $s3Service->shouldReceive('deleteFile')->once()->with('assets/new-file.jpg')->andReturn(true);
     $this->app->instance(S3Service::class, $s3Service);
 
-    $file = \Illuminate\Http\UploadedFile::fake()->image('photo.jpg', 800, 600);
+    $file = UploadedFile::fake()->image('photo.jpg', 800, 600);
 
     $response = $this->withHeader('Authorization', "Bearer {$token}")
         ->postJson('/api/assets', ['files' => [$file]]);
@@ -130,7 +131,7 @@ test('api upload saves etag on asset', function () {
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
     $this->app->instance(S3Service::class, $s3Service);
 
-    $file = \Illuminate\Http\UploadedFile::fake()->image('photo.jpg', 800, 600);
+    $file = UploadedFile::fake()->image('photo.jpg', 800, 600);
 
     $response = $this->withHeader('Authorization', "Bearer {$token}")
         ->postJson('/api/assets', ['files' => [$file]]);

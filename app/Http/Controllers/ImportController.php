@@ -7,6 +7,7 @@ use App\Models\Tag;
 use App\Services\CsvImportService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ImportController extends Controller
 {
@@ -152,34 +153,37 @@ class ImportController extends Controller
                 }
             }
 
-            if (! empty($updateData)) {
-                $updateData['last_modified_by'] = $request->user()->id;
-                $asset->update($updateData);
-            }
-
-            // Handle user_tags
             $userTagIds = [];
-            if (isset($row['user_tags']) && trim($row['user_tags']) !== '') {
-                $tagNames = array_filter(array_map('trim', explode(',', $row['user_tags'])));
-                $tagNames = array_filter($tagNames, fn ($name) => strlen($name) <= 100);
-
-                if (! empty($tagNames)) {
-                    $userTagIds = Tag::resolveUserTagIds($tagNames);
-                    $asset->syncTagsWithAttribution($userTagIds, 'user');
-                }
-            }
-
-            // Handle reference_tags
             $refTagIds = [];
-            if (isset($row['reference_tags']) && trim($row['reference_tags']) !== '') {
-                $refTagNames = array_filter(array_map('trim', explode(',', $row['reference_tags'])));
-                $refTagNames = array_filter($refTagNames, fn ($name) => strlen($name) <= 100);
 
-                if (! empty($refTagNames)) {
-                    $refTagIds = Tag::resolveReferenceTagIds($refTagNames);
-                    $asset->syncTagsWithAttribution($refTagIds, 'reference');
+            DB::transaction(function () use ($asset, $row, &$updateData, &$userTagIds, &$refTagIds, $request) {
+                if (! empty($updateData)) {
+                    $updateData['last_modified_by'] = $request->user()->id;
+                    $asset->update($updateData);
                 }
-            }
+
+                // Handle user_tags
+                if (isset($row['user_tags']) && trim($row['user_tags']) !== '') {
+                    $tagNames = array_filter(array_map('trim', explode(',', $row['user_tags'])));
+                    $tagNames = array_filter($tagNames, fn ($name) => strlen($name) <= 100);
+
+                    if (! empty($tagNames)) {
+                        $userTagIds = Tag::resolveUserTagIds($tagNames);
+                        $asset->syncTagsWithAttribution($userTagIds, 'user');
+                    }
+                }
+
+                // Handle reference_tags
+                if (isset($row['reference_tags']) && trim($row['reference_tags']) !== '') {
+                    $refTagNames = array_filter(array_map('trim', explode(',', $row['reference_tags'])));
+                    $refTagNames = array_filter($refTagNames, fn ($name) => strlen($name) <= 100);
+
+                    if (! empty($refTagNames)) {
+                        $refTagIds = Tag::resolveReferenceTagIds($refTagNames);
+                        $asset->syncTagsWithAttribution($refTagIds, 'reference');
+                    }
+                }
+            });
 
             if (! empty($updateData) || ! empty($userTagIds) || ! empty($refTagIds)) {
                 $updated++;

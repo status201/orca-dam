@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Setting;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -26,7 +27,7 @@ class SetLocale
         // Priority 2: Global DB setting
         if (! $locale) {
             try {
-                $globalLocale = \App\Models\Setting::get('locale', null);
+                $globalLocale = Setting::get('locale', null);
                 if ($globalLocale && in_array($globalLocale, static::$supportedLocales)) {
                     $locale = $globalLocale;
                 }

@@ -6,24 +6,34 @@ use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        // Consolidated asset stats: 1 query instead of 3 (total + my_assets + sum)
+        $assetStats = DB::selectOne(
+            'SELECT COUNT(*) as total, SUM(CASE WHEN user_id = ? THEN 1 ELSE 0 END) as mine, COALESCE(SUM(size), 0) as total_size FROM assets WHERE deleted_at IS NULL',
+            [Auth::id()]
+        );
+
+        // Consolidated tag stats: 1 query instead of 3 (total + user + ai)
+        $tagCounts = DB::selectOne(
+            "SELECT COUNT(*) as total, SUM(CASE WHEN type = 'user' THEN 1 ELSE 0 END) as user_tags, SUM(CASE WHEN type = 'ai' THEN 1 ELSE 0 END) as ai_tags FROM tags"
+        );
+
         $stats = [
-            'total_assets' => Asset::count(),
-            'total_tags' => Tag::count(),
-            'user_tags' => Tag::where('type', 'user')->count(),
-            'ai_tags' => Tag::where('type', 'ai')->count(),
-            'my_assets' => Asset::where('user_id', Auth::id())->count(),
+            'total_assets' => (int) $assetStats->total,
+            'total_tags' => (int) $tagCounts->total,
+            'user_tags' => (int) $tagCounts->user_tags,
+            'ai_tags' => (int) $tagCounts->ai_tags,
+            'my_assets' => (int) $assetStats->mine,
             'total_users' => User::count(),
             'trashed_assets' => Asset::onlyTrashed()->count(),
         ];
 
-        // Calculate total storage used
-        $totalSize = Asset::sum('size');
-        $stats['total_storage'] = $this->formatBytes($totalSize);
+        $stats['total_storage'] = $this->formatBytes((int) $assetStats->total_size);
 
         // Get user role
         $user = Auth::user();

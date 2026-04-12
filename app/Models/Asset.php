@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Asset extends Model
 {
@@ -92,11 +93,18 @@ class Asset extends Model
      */
     public function syncTagsWithAttribution(array $tagIds, string $attachedBy): void
     {
+        if (empty($tagIds)) {
+            return;
+        }
+
         $pivotData = array_fill_keys($tagIds, ['attached_by' => $attachedBy]);
         $this->tags()->syncWithoutDetaching($pivotData);
-        foreach ($tagIds as $tagId) {
-            $this->tags()->updateExistingPivot($tagId, ['attached_by' => $attachedBy]);
-        }
+
+        // Bulk update all existing pivots in one query instead of N individual updates
+        DB::table('asset_tag')
+            ->where('asset_id', $this->id)
+            ->whereIn('tag_id', $tagIds)
+            ->update(['attached_by' => $attachedBy]);
     }
 
     /**
@@ -211,7 +219,7 @@ class Asset extends Model
         $parts = explode('/', $this->s3_key);
         array_pop($parts); // Remove filename
 
-        return implode('/', $parts) ?: \App\Services\S3Service::getRootFolder();
+        return implode('/', $parts) ?: S3Service::getRootFolder();
     }
 
     /**
@@ -482,17 +490,49 @@ class Asset extends Model
     }
 
     /**
+     * Check if the current DB driver supports FULLTEXT search.
+     */
+    private static function useFulltext(): bool
+    {
+        return in_array(DB::getDriverName(), ['mysql', 'mariadb']);
+    }
+
+    /**
+     * Escape a term for use in FULLTEXT BOOLEAN MODE.
+     *
+     * Wraps the term in double quotes (phrase matching) to prevent FULLTEXT
+     * operators (+, -, *, ~, etc.) from being interpreted. Strips any existing
+     * double quotes from the term to avoid breaking the quoting.
+     */
+    private static function escapeFulltextTerm(string $term): string
+    {
+        return '"'.str_replace('"', '', $term).'"';
+    }
+
+    /**
      * Add OR search condition across all searchable fields for a single term.
+     *
+     * Uses FULLTEXT index on (alt_text, caption) for MySQL/MariaDB, falls back
+     * to LIKE for SQLite (used in tests).
      */
     private static function addSearchCondition($query, string $term): void
     {
         $query->where('filename', 'like', "%{$term}%")
-            ->orWhere('s3_key', 'like', "%{$term}%")
-            ->orWhere('alt_text', 'like', "%{$term}%")
-            ->orWhere('caption', 'like', "%{$term}%")
-            ->orWhereHas('tags', function ($tagQuery) use ($term) {
-                $tagQuery->where('name', 'like', "%{$term}%");
-            });
+            ->orWhere('s3_key', 'like', "%{$term}%");
+
+        if (self::useFulltext()) {
+            $query->orWhereRaw(
+                'MATCH(alt_text, caption) AGAINST(? IN BOOLEAN MODE)',
+                [self::escapeFulltextTerm($term)]
+            );
+        } else {
+            $query->orWhere('alt_text', 'like', "%{$term}%")
+                ->orWhere('caption', 'like', "%{$term}%");
+        }
+
+        $query->orWhereHas('tags', function ($tagQuery) use ($term) {
+            $tagQuery->where('name', 'like', "%{$term}%");
+        });
     }
 
     /**

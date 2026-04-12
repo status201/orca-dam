@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Auth\JwtGuard;
 use App\Http\Controllers\SystemController;
+use App\Models\Setting;
 use App\Policies\SystemPolicy;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -26,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Apply timezone from database setting
         try {
-            $timezone = \App\Models\Setting::get('timezone', config('app.timezone'));
+            $timezone = Setting::get('timezone', config('app.timezone'));
             if (in_array($timezone, timezone_identifiers_list())) {
                 date_default_timezone_set($timezone);
                 config(['app.timezone' => $timezone]);

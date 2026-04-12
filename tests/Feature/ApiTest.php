@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Asset;
+use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 
 test('api assets index requires authentication', function () {
@@ -261,7 +263,7 @@ test('api asset meta works with custom domain url', function () {
         'alt_text' => 'Custom domain test',
     ]);
 
-    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
     cache()->forget('setting:custom_domain');
 
     $response = $this->getJson('/api/assets/meta?url='.urlencode('https://cdn.example.com/assets/test-image.jpg'));
@@ -270,7 +272,7 @@ test('api asset meta works with custom domain url', function () {
     $response->assertJsonFragment(['alt_text' => 'Custom domain test']);
 
     // Clean up
-    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    Setting::where('key', 'custom_domain')->delete();
     cache()->forget('setting:custom_domain');
 });
 
@@ -280,7 +282,7 @@ test('api asset meta still works with s3 url when custom domain is set', functio
         'alt_text' => 'S3 fallback test',
     ]);
 
-    \App\Models\Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
+    Setting::set('custom_domain', 'https://cdn.example.com', 'string', 'aws');
     cache()->forget('setting:custom_domain');
 
     $s3Url = config('filesystems.disks.s3.url');
@@ -290,7 +292,7 @@ test('api asset meta still works with s3 url when custom domain is set', functio
     $response->assertJsonFragment(['alt_text' => 'S3 fallback test']);
 
     // Clean up
-    \App\Models\Setting::where('key', 'custom_domain')->delete();
+    Setting::where('key', 'custom_domain')->delete();
     cache()->forget('setting:custom_domain');
 });
 
@@ -488,8 +490,8 @@ test('api folders endpoint returns folder list', function () {
     Asset::factory()->create(['s3_key' => 'assets/design/logo.png']);
 
     // Clear any cached folders so they rebuild from assets
-    \App\Models\Setting::where('key', 's3_folders')->delete();
-    \Illuminate\Support\Facades\Cache::forget('settings');
+    Setting::where('key', 's3_folders')->delete();
+    Cache::forget('settings');
 
     $response = $this->getJson('/api/folders');
 

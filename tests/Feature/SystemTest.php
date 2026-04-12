@@ -1,7 +1,10 @@
 <?php
 
+use App\Jobs\RegenerateResizedImage;
+use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 
 test('guests cannot access system page', function () {
     $response = $this->get(route('system.index'));
@@ -276,17 +279,17 @@ test('admin can regenerate resized images', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 
     // Create some image assets
-    \App\Models\Asset::factory()->image()->count(3)->create();
-    \App\Models\Asset::factory()->pdf()->create(); // Should be excluded
+    Asset::factory()->image()->count(3)->create();
+    Asset::factory()->pdf()->create(); // Should be excluded
 
-    \Illuminate\Support\Facades\Queue::fake();
+    Queue::fake();
 
     $response = $this->actingAs($admin)->postJson(route('system.regenerate-resized-images'));
 
     $response->assertOk();
     $response->assertJson(['success' => true, 'count' => 3]);
 
-    \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\RegenerateResizedImage::class, 3);
+    Queue::assertPushed(RegenerateResizedImage::class, 3);
 });
 
 test('editors cannot regenerate resized images', function () {

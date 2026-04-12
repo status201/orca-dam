@@ -144,7 +144,7 @@ test('bulk force delete reports failures when S3 deletion throws', function () {
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('deleteAssetFiles')->andReturnUsing(function ($asset) {
             if (str_contains($asset->s3_key, 'fail')) {
-                throw new \Exception('S3 error');
+                throw new Exception('S3 error');
             }
         });
     });

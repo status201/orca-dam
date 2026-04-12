@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Services\TwoFactorService;
 use Illuminate\Support\Facades\Hash;
+use PragmaRX\Google2FA\Google2FA;
 
 test('generateSecret returns valid base32 string', function () {
     $service = app(TwoFactorService::class);
@@ -17,7 +18,7 @@ test('verifyCode validates correct totp code', function () {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
 
-    $google2fa = new PragmaRX\Google2FA\Google2FA;
+    $google2fa = new Google2FA;
     $validCode = $google2fa->getCurrentOtp($secret);
 
     expect($service->verifyCode($secret, $validCode))->toBeTrue();

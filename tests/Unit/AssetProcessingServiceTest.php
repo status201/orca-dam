@@ -135,7 +135,7 @@ test('processImageAsset continues with resize when thumbnail fails', function ()
     ]);
 
     $s3Service->shouldReceive('generateThumbnail')
-        ->andThrow(new \RuntimeException('S3 error'));
+        ->andThrow(new RuntimeException('S3 error'));
 
     $s3Service->shouldReceive('generateResizedImages')
         ->with('assets/photo.jpg')

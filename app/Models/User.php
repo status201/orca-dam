@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\S3Service;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -141,7 +142,7 @@ class User extends Authenticatable
     public function getHomeFolder(): string
     {
         $userFolder = $this->getPreference('home_folder');
-        $globalRoot = \App\Services\S3Service::getRootFolder();
+        $globalRoot = S3Service::getRootFolder();
 
         if ($userFolder && $this->isValidHomeFolder($userFolder)) {
             return $userFolder;
@@ -155,7 +156,7 @@ class User extends Authenticatable
      */
     public function isValidHomeFolder(string $folder): bool
     {
-        $globalRoot = \App\Services\S3Service::getRootFolder();
+        $globalRoot = S3Service::getRootFolder();
 
         // If no global root configured, any folder is valid
         if ($globalRoot === '') {
@@ -176,7 +177,7 @@ class User extends Authenticatable
             return (int) $userPref;
         }
 
-        return (int) \App\Models\Setting::get('items_per_page', 24);
+        return (int) Setting::get('items_per_page', 24);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -112,7 +113,7 @@ class SystemService
             return [
                 'success' => $success,
                 'output' => $output,
-                'error' => !$success ? "Command exited with code {$exitCode}" : null,
+                'error' => ! $success ? "Command exited with code {$exitCode}" : null,
                 'exit_code' => $exitCode,
             ];
 
@@ -265,7 +266,7 @@ class SystemService
     public function testS3Connection(): array
     {
         try {
-            $s3Service = app(\App\Services\S3Service::class);
+            $s3Service = app(S3Service::class);
 
             // List objects with limit of 1 to test connection
             $objects = $s3Service->listObjects('', 1);
@@ -573,7 +574,7 @@ class SystemService
      */
     public function getSettings(): array
     {
-        return \App\Models\Setting::query()
+        return Setting::query()
             ->orderBy('group')
             ->orderBy('key')
             ->get()
@@ -618,7 +619,7 @@ class SystemService
      */
     public function updateSetting(string $key, mixed $value): bool
     {
-        return \App\Models\Setting::set($key, $value);
+        return Setting::set($key, $value);
     }
 
     /**
@@ -627,7 +628,7 @@ class SystemService
     private function getS3BucketEndpoint(): ?string
     {
         try {
-            return app(\App\Services\S3Service::class)->getBucketEndpoint();
+            return app(S3Service::class)->getBucketEndpoint();
         } catch (\Exception $e) {
             return null;
         }
@@ -641,7 +642,7 @@ class SystemService
     private function getS3Versioning(): ?bool
     {
         try {
-            $status = app(\App\Services\S3Service::class)->getBucketVersioning();
+            $status = app(S3Service::class)->getBucketVersioning();
 
             if ($status === null) {
                 return null;

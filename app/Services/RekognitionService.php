@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\Tag;
 use Aws\Rekognition\RekognitionClient;
@@ -166,7 +167,7 @@ class RekognitionService
     /**
      * Auto-tag an asset with AI-detected labels
      */
-    public function autoTagAsset(\App\Models\Asset $asset): array
+    public function autoTagAsset(Asset $asset): array
     {
         if (! $asset->isImage()) {
             return [];

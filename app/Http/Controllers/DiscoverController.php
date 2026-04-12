@@ -9,6 +9,7 @@ use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DiscoverController extends Controller
@@ -68,12 +69,16 @@ class DiscoverController extends Controller
         $prefix = $selectedFolder !== '' ? $selectedFolder.'/' : null;
         $unmappedObjects = $this->s3Service->findUnmappedObjects($prefix);
 
-        // Enrich with metadata and check for soft-deleted assets
-        $enrichedObjects = collect($unmappedObjects)->map(function ($object) {
-            $metadata = $this->s3Service->getObjectMetadata($object['key']);
+        // Pre-fetch all soft-deleted assets for these keys in one query
+        $unmappedKeys = collect($unmappedObjects)->pluck('key');
+        $deletedAssets = Asset::onlyTrashed()
+            ->whereIn('s3_key', $unmappedKeys)
+            ->pluck('deleted_at', 's3_key');
 
-            // Check if this S3 key belongs to a soft-deleted asset
-            $deletedAsset = Asset::onlyTrashed()->where('s3_key', $object['key'])->first();
+        // Enrich with metadata and soft-delete status
+        $enrichedObjects = collect($unmappedObjects)->map(function ($object) use ($deletedAssets) {
+            $metadata = $this->s3Service->getObjectMetadata($object['key']);
+            $deletedAt = $deletedAssets->get($object['key']);
 
             return [
                 'key' => $object['key'],
@@ -82,8 +87,8 @@ class DiscoverController extends Controller
                 'last_modified' => $object['last_modified'],
                 'mime_type' => $metadata['mime_type'] ?? 'unknown',
                 'url' => $this->s3Service->getUrl($object['key']),
-                'is_deleted' => $deletedAsset !== null,
-                'deleted_at' => $deletedAsset ? $deletedAsset->deleted_at->toDateTimeString() : null,
+                'is_deleted' => $deletedAt !== null,
+                'deleted_at' => $deletedAt?->toDateTimeString(),
             ];
         })->toArray();
 
@@ -110,9 +115,15 @@ class DiscoverController extends Controller
         $skipped = 0;
         $queued = [];
 
+        // Pre-fetch existing s3_keys in one query
+        $existingKeys = Asset::withTrashed()
+            ->whereIn('s3_key', $request->keys)
+            ->pluck('s3_key')
+            ->flip();
+
         foreach ($request->keys as $s3Key) {
-            // Check if asset already exists by s3_key (quick database query, including trashed)
-            if (Asset::withTrashed()->where('s3_key', $s3Key)->exists()) {
+            // Check if asset already exists by s3_key (pre-fetched set)
+            if ($existingKeys->has($s3Key)) {
                 $skipped++;
 
                 continue;
@@ -143,16 +154,17 @@ class DiscoverController extends Controller
                 // Extract filename from S3 key
                 $filename = basename($s3Key);
 
-                // Create asset record immediately (no thumbnail yet, dimensions will be set by job)
-                $asset = Asset::create([
-                    's3_key' => $s3Key,
-                    'etag' => $metadata['etag'] ?? null,
-                    'filename' => $filename,
-                    'mime_type' => $metadata['mime_type'],
-                    'size' => $metadata['size'],
-                    'user_id' => Auth::id(),
-                    // width, height, thumbnail_s3_key will be set by background job
-                ]);
+                // Create asset record and dispatch job atomically
+                $asset = DB::transaction(function () use ($s3Key, $metadata, $filename) {
+                    return Asset::create([
+                        's3_key' => $s3Key,
+                        'etag' => $metadata['etag'] ?? null,
+                        'filename' => $filename,
+                        'mime_type' => $metadata['mime_type'],
+                        'size' => $metadata['size'],
+                        'user_id' => Auth::id(),
+                    ]);
+                });
 
                 // Dispatch background job to process thumbnails and AI tagging
                 ProcessDiscoveredAsset::dispatch($asset->id);

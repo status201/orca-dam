@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class VerifyAssetIntegrity implements ShouldQueue
@@ -40,12 +41,14 @@ class VerifyAssetIntegrity implements ShouldQueue
                 // Object is missing — only set timestamp if not already set
                 if (! $asset->s3_missing_at) {
                     $asset->update(['s3_missing_at' => now()]);
+                    Cache::forget('assets:missing_count');
                     Log::warning("VerifyAssetIntegrity: Asset {$asset->id} ({$asset->s3_key}) is missing from S3");
                 }
             } else {
                 // Object exists — clear missing flag if it was set
                 if ($asset->s3_missing_at) {
                     $asset->update(['s3_missing_at' => null]);
+                    Cache::forget('assets:missing_count');
                     Log::info("VerifyAssetIntegrity: Asset {$asset->id} ({$asset->s3_key}) recovered on S3");
                 }
             }

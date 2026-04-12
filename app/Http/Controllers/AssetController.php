@@ -13,6 +13,8 @@ use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AssetController extends Controller
@@ -118,7 +120,7 @@ class AssetController extends Controller
         $assets = $query->paginate((int) $perPage)->onEachSide(2)->withQueryString();
         $folders = S3Service::getConfiguredFolders();
 
-        $missingCount = Asset::missing()->count();
+        $missingCount = Cache::remember('assets:missing_count', 300, fn () => Asset::missing()->count());
 
         return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount', 'filterUser');
     }
@@ -620,10 +622,14 @@ class AssetController extends Controller
 
         foreach ($assets as $asset) {
             $this->authorize('update', $asset);
-            $asset->syncTagsWithAttribution($tagIds, 'user');
         }
 
-        Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
+        DB::transaction(function () use ($assets, $tagIds, $request) {
+            foreach ($assets as $asset) {
+                $asset->syncTagsWithAttribution($tagIds, 'user');
+            }
+            Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
+        });
 
         return response()->json([
             'message' => __(':count asset(s) updated', ['count' => $assets->count()]),
@@ -646,10 +652,14 @@ class AssetController extends Controller
 
         foreach ($assets as $asset) {
             $this->authorize('update', $asset);
-            $asset->tags()->detach($request->tag_ids);
         }
 
-        Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
+        DB::transaction(function () use ($assets, $request) {
+            foreach ($assets as $asset) {
+                $asset->tags()->detach($request->tag_ids);
+            }
+            Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
+        });
 
         return response()->json([
             'message' => __(':count asset(s) updated', ['count' => $assets->count()]),
@@ -714,9 +724,12 @@ class AssetController extends Controller
 
         foreach ($assets as $asset) {
             try {
+                // S3 deletion first (external), then DB deletion in transaction
                 $this->s3Service->deleteAssetFiles($asset);
+                DB::transaction(function () use ($asset) {
+                    $asset->forceDelete();
+                });
                 $deletedKeys[] = $asset->s3_key;
-                $asset->forceDelete();
                 $deleted++;
             } catch (\Exception $e) {
                 Log::error("Bulk force delete failed for asset {$asset->id}: ".$e->getMessage());
@@ -791,7 +804,10 @@ class AssetController extends Controller
                 }
             }
 
-            $asset->update($updateData);
+            // S3 moves done, now persist new keys atomically
+            DB::transaction(function () use ($asset, $updateData) {
+                $asset->update($updateData);
+            });
 
             Log::info("Asset moved: {$oldS3Key} -> {$newS3Key}");
             $moves[] = ['old' => $oldS3Key, 'new' => $newS3Key];
@@ -862,8 +878,10 @@ class AssetController extends Controller
         foreach ($assets as $asset) {
             try {
                 $this->s3Service->deleteAssetFiles($asset);
+                DB::transaction(function () use ($asset) {
+                    $asset->forceDelete();
+                });
                 $deletedKeys[] = $asset->s3_key;
-                $asset->forceDelete();
                 $deleted++;
             } catch (\Exception $e) {
                 Log::error("Bulk force delete (trash) failed for asset {$asset->id}: ".$e->getMessage());

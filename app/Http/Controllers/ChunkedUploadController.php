@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DuplicateAssetException;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\UploadSession;
@@ -165,7 +166,7 @@ class ChunkedUploadController extends Controller
                 'asset' => $asset->load('tags'),
             ]);
 
-        } catch (\App\Exceptions\DuplicateAssetException $e) {
+        } catch (DuplicateAssetException $e) {
             return response()->json([
                 'message' => 'Duplicate file detected. This file already exists in the library.',
                 'duplicates' => [[

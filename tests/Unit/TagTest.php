@@ -2,6 +2,7 @@
 
 use App\Models\Asset;
 use App\Models\Tag;
+use Illuminate\Database\QueryException;
 
 test('tag can have many assets', function () {
     $tag = Tag::factory()->create();
@@ -28,7 +29,7 @@ test('tag name is unique', function () {
     Tag::factory()->create(['name' => 'unique-tag']);
 
     expect(fn () => Tag::factory()->create(['name' => 'unique-tag']))
-        ->toThrow(\Illuminate\Database\QueryException::class);
+        ->toThrow(QueryException::class);
 });
 
 test('resolveUserTagIds creates missing tags and returns their ids', function () {

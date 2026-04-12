@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Services\TwoFactorService;
 use Illuminate\Support\Facades\Hash;
+use PragmaRX\Google2FA\Google2FA;
 
 test('user can access 2fa setup page', function () {
     $user = User::factory()->create(['role' => 'admin']);
@@ -34,7 +35,7 @@ test('user can enable 2fa with valid code', function () {
     $this->actingAs($user)
         ->withSession(['two_factor_setup_secret' => $secret]);
 
-    $validCode = (new PragmaRX\Google2FA\Google2FA)->getCurrentOtp($secret);
+    $validCode = (new Google2FA)->getCurrentOtp($secret);
 
     $response = $this->actingAs($user)
         ->withSession(['two_factor_setup_secret' => $secret])
@@ -115,7 +116,7 @@ test('2fa challenge accepts valid totp code', function () {
         'two_factor_confirmed_at' => now(),
     ]);
 
-    $validCode = (new PragmaRX\Google2FA\Google2FA)->getCurrentOtp($secret);
+    $validCode = (new Google2FA)->getCurrentOtp($secret);
 
     $response = $this->withSession([
         'two_factor_user_id' => $user->id,
