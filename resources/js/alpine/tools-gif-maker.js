@@ -168,6 +168,104 @@ function gifMaker() {
             return this.frames.length >= 2 && this.frames.every(f => f.loaded);
         },
 
+        effectiveDelay(frame) {
+            const d = frame.delay;
+            if (d === null || d === undefined || Number.isNaN(Number(d))) {
+                return Number(this.globalDelay) || 500;
+            }
+            return Number(d);
+        },
+
+        get totalTimelineDuration() {
+            if (this.frames.length === 0) return 0;
+            let total = (Number(this.preDelay) || 0) + (Number(this.postDelay) || 0);
+            for (const f of this.frames) total += this.effectiveDelay(f);
+            return total;
+        },
+
+        get timelineLayout() {
+            const total = Math.max(1, this.totalTimelineDuration);
+            const out = [];
+            let cursor = 0;
+            for (let i = 0; i < this.frames.length; i++) {
+                const f = this.frames[i];
+                const pre = i === 0 ? (Number(this.preDelay) || 0) : 0;
+                const post = i === this.frames.length - 1 ? (Number(this.postDelay) || 0) : 0;
+                const body = this.effectiveDelay(f);
+                const startPct = (cursor / total) * 100;
+                const prePct = (pre / total) * 100;
+                const bodyPct = (body / total) * 100;
+                const postPct = (post / total) * 100;
+                out.push({
+                    id: f.id,
+                    index: i,
+                    objectUrl: f.objectUrl,
+                    delayMs: body,
+                    startPct,
+                    prePct,
+                    bodyPct,
+                    postPct,
+                    totalPct: prePct + bodyPct + postPct,
+                });
+                cursor += pre + body + post;
+            }
+            return out;
+        },
+
+        get timelineTicks() {
+            const total = this.totalTimelineDuration;
+            if (total <= 0) return [];
+            const steps = [50, 100, 250, 500, 1000, 2000, 5000, 10000];
+            let step = steps[steps.length - 1];
+            for (const s of steps) {
+                if (total / s <= 10) { step = s; break; }
+            }
+            const ticks = [];
+            for (let t = 0; t <= total; t += step) {
+                ticks.push({ ms: t, pct: (t / total) * 100 });
+            }
+            return ticks;
+        },
+
+        formatTickLabel(ms) {
+            if (ms >= 1000) return (ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1) + 's';
+            return ms + 'ms';
+        },
+
+        startDurationDrag(frameId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const frame = this.frames.find(f => f.id === frameId);
+            if (!frame) return;
+
+            const startX = event.clientX;
+            const startDelay = this.effectiveDelay(frame);
+            if (frame.delay === null || frame.delay === undefined) frame.delay = startDelay;
+
+            const timelineEl = this.$refs.timeline;
+            const containerWidth = timelineEl ? timelineEl.offsetWidth : 1;
+            const totalMs = Math.max(1, this.totalTimelineDuration);
+            const msPerPx = totalMs / Math.max(1, containerWidth);
+
+            const onMove = (e) => {
+                const deltaPx = e.clientX - startX;
+                const deltaMs = Math.round((deltaPx * msPerPx) / 50) * 50;
+                const next = Math.max(50, Math.min(10000, startDelay + deltaMs));
+                frame.delay = next;
+            };
+            const onUp = () => {
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            };
+
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+        },
+
         _drawFrame(ctx, frame, w, h) {
             const imgW = frame.img.naturalWidth;
             const imgH = frame.img.naturalHeight;

@@ -91,6 +91,66 @@
                 </div>
             </template>
         </div>
+
+        {{-- Visual timeline --}}
+        <div x-show="frames.length > 0" class="mt-6">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-gray-700">
+                    <i class="fas fa-bars-staggered text-gray-400 mr-1"></i>
+                    {{ __('Timeline') }}
+                </h3>
+                <span class="text-xs text-gray-400" x-text="formatTickLabel(totalTimelineDuration) + ' {{ __('total') }}'"></span>
+            </div>
+            <div x-ref="timeline"
+                 class="relative w-full border border-gray-200 rounded-lg bg-gray-50 overflow-hidden select-none"
+                 style="height: 5.5rem;">
+                {{-- Ruler --}}
+                <div class="absolute top-0 left-0 right-0 h-5 bg-white border-b border-gray-200">
+                    <template x-for="tick in timelineTicks" :key="tick.ms">
+                        <div class="absolute top-0 h-full pointer-events-none"
+                             :style="'left:' + tick.pct + '%'">
+                            <div class="w-px h-2 bg-gray-300"></div>
+                            <span class="absolute top-2 left-1 text-[10px] text-gray-400 whitespace-nowrap"
+                                  x-text="formatTickLabel(tick.ms)"></span>
+                        </div>
+                    </template>
+                </div>
+                {{-- Tracks --}}
+                <div class="absolute left-0 right-0 bottom-0 top-5">
+                    <template x-for="item in timelineLayout" :key="item.id">
+                        <div class="absolute top-0 bottom-0 flex"
+                             :style="'left:' + item.startPct + '%; width:' + item.totalPct + '%'">
+                            {{-- Pre-delay tint (first frame only) --}}
+                            <div x-show="item.prePct > 0"
+                                 class="h-full bg-amber-100 border-r border-amber-200"
+                                 :style="'width:' + (item.totalPct > 0 ? (item.prePct / item.totalPct * 100) : 0) + '%'"
+                                 :title="'{{ __('Pre-delay') }}'"></div>
+                            {{-- Frame body --}}
+                            <div class="relative h-full bg-white border border-gray-200 overflow-hidden"
+                                 :style="'width:' + (item.totalPct > 0 ? (item.bodyPct / item.totalPct * 100) : 0) + '%'">
+                                <img :src="item.objectUrl"
+                                     class="absolute inset-0 w-full h-full object-contain"
+                                     :alt="'Frame ' + (item.index + 1)">
+                                <span class="absolute top-0 left-0 px-1 text-[10px] text-gray-700 bg-white/85 rounded-br"
+                                      x-text="'#' + (item.index + 1) + ' · ' + item.delayMs + 'ms'"></span>
+                                {{-- Drag handle on the right edge --}}
+                                <div class="absolute top-0 bottom-0 right-0 w-1.5 bg-orca-teal opacity-0 hover:opacity-80 cursor-ew-resize transition-opacity"
+                                     @mousedown="startDurationDrag(item.id, $event)"
+                                     :title="'{{ __('Drag to adjust delay') }}'"></div>
+                            </div>
+                            {{-- Post-delay tint (last frame only) --}}
+                            <div x-show="item.postPct > 0"
+                                 class="h-full bg-amber-100 border-l border-amber-200"
+                                 :style="'width:' + (item.totalPct > 0 ? (item.postPct / item.totalPct * 100) : 0) + '%'"
+                                 :title="'{{ __('Post-delay') }}'"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            <p class="mt-2 text-xs text-gray-400">
+                {{ __('Drag the right edge of a frame to adjust its delay. Amber zones show pre/post-delay.') }}
+            </p>
+        </div>
     </div>
 
     {{-- Settings card --}}
