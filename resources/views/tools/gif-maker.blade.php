@@ -167,17 +167,30 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Frame delay') }}</label>
                 <div class="flex items-center gap-2">
                     <input type="number" x-model.number="globalDelay" min="50" max="10000" step="50"
+                        :disabled="allFramesHaveCustomDelay"
+                        :class="allFramesHaveCustomDelay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''"
                         class="w-24 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <span class="text-xs text-gray-400">ms</span>
                 </div>
-                <div class="flex gap-1.5 mt-2">
-                    <button @click="globalDelay = 200" :class="globalDelay === 200 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
-                        class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Fast') }}</button>
-                    <button @click="globalDelay = 500" :class="globalDelay === 500 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
-                        class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Normal') }}</button>
-                    <button @click="globalDelay = 1000" :class="globalDelay === 1000 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
-                        class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Slow') }}</button>
-                </div>
+                <template x-if="!allFramesHaveCustomDelay">
+                    <div class="flex gap-1.5 mt-2">
+                        <button @click="globalDelay = 200" :class="globalDelay === 200 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
+                            class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Fast') }}</button>
+                        <button @click="globalDelay = 500" :class="globalDelay === 500 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
+                            class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Normal') }}</button>
+                        <button @click="globalDelay = 1000" :class="globalDelay === 1000 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
+                            class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Slow') }}</button>
+                    </div>
+                </template>
+                <template x-if="allFramesHaveCustomDelay">
+                    <div class="mt-2">
+                        <p class="text-xs text-gray-400 mb-1.5">{{ __('All frames have custom delays') }}</p>
+                        <button @click="resetAllFrameDelays()"
+                            class="text-xs text-orca-teal hover:underline">
+                            <i class="fas fa-rotate-left mr-1"></i>{{ __('Reset all frame delays') }}
+                        </button>
+                    </div>
+                </template>
             </div>
 
             {{-- Pre-delay --}}

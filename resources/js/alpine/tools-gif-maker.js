@@ -168,6 +168,20 @@ function gifMaker() {
             return this.frames.length >= 2 && this.frames.every(f => f.loaded);
         },
 
+        get allFramesHaveCustomDelay() {
+            if (this.frames.length === 0) return false;
+            return this.frames.every(f => {
+                const d = f.delay;
+                return d !== null && d !== undefined && !Number.isNaN(Number(d));
+            });
+        },
+
+        resetAllFrameDelays() {
+            for (const f of this.frames) {
+                f.delay = null;
+            }
+        },
+
         effectiveDelay(frame) {
             const d = frame.delay;
             if (d === null || d === undefined || Number.isNaN(Number(d))) {
