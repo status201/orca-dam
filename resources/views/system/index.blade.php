@@ -665,6 +665,7 @@
                            x-model="settings.tikz_color_package"
                            @change="updateSetting('tikz_color_package', settings.tikz_color_package)"
                            @input="updateColorSwatches()"
+                           spellcheck="false"
                            rows="15"
                            placeholder="% studyflow-colors.sty&#10;\RequirePackage{xcolor}&#10;&#10;\definecolor{SF_primair}{HTML}{1B4D8E}&#10;..."
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm"></textarea>
