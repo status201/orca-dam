@@ -124,12 +124,49 @@
 
         {{-- Card body --}}
         <div class="p-6">
-            <p class="text-xs text-gray-500 mb-3">
-                <i class="fas fa-info-circle mr-1 text-gray-400"></i>
-                {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded">\begin{tikzpicture}...\end{tikzpicture}</code>
-                {{ __('blocks will be extracted and rendered separately.') }}
-                {{ __('You can also paste a full LaTeX document — the preamble (colors, packages, commands) will be applied to each diagram.') }}
-            </p>
+            <div class="flex items-start justify-between gap-4 mb-3 relative">
+                <p class="text-xs text-gray-500">
+                    <i class="fas fa-info-circle mr-1 text-gray-400"></i>
+                    {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded">\begin{tikzpicture}...\end{tikzpicture}</code>
+                    {{ __('blocks will be extracted and rendered separately.') }}
+                    {{ __('You can also paste a full LaTeX document — the preamble (colors, packages, commands) will be applied to each diagram.') }}
+                </p>
+
+                {{-- Color palette button + dropdown --}}
+                <div x-show="paletteColors.length > 0" class="relative shrink-0">
+                    <button
+                        @click="colorPaletteOpen = !colorPaletteOpen"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-600 hover:border-purple-500 hover:text-purple-600 transition-colors"
+                        :class="colorPaletteOpen && 'border-purple-500 text-purple-600'">
+                        <i class="fas fa-palette"></i>
+                        {{ __('Colors') }}
+                    </button>
+
+                    <div x-show="colorPaletteOpen" x-transition @click.outside="colorPaletteOpen = false"
+                        class="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div class="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
+                            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Color Palette') }}</span>
+                            <button @click="colorPaletteOpen = false" class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                        </div>
+                        <div class="max-h-64 overflow-y-auto invert-scrollbar-colors">
+                            <template x-for="color in paletteColors" :key="color.name">
+                                <button
+                                    @click="copyColorName(color.name)"
+                                    class="w-full text-left px-3 py-1.5 hover:bg-gray-50 border-b border-gray-50 transition-colors flex items-center gap-3 group">
+                                    <span class="w-5 h-5 rounded-full shrink-0 border border-gray-200" :style="'background-color:' + color.cssColor"></span>
+                                    <span class="text-sm font-mono text-gray-800 group-hover:text-purple-700" x-text="color.name"></span>
+                                    <span class="text-xs text-gray-400 ml-auto font-mono" x-text="color.hex"></span>
+                                </button>
+                            </template>
+                        </div>
+                        <div class="px-3 py-1.5 border-t border-gray-100">
+                            <span class="text-[10px] text-gray-400">{{ __('Click to copy color name') }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {{-- Textarea --}}
             <textarea
@@ -581,6 +618,7 @@ window.__pageData = {
     saveTemplatePrompt: '{{ __('Template name') }}:',
     csrfToken: '{{ csrf_token() }}',
     compilerAvailable: @json($compilerAvailable),
+    colorPackage: @json($colorPackage),
 };
 </script>
 @endsection

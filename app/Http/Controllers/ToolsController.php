@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\Setting;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use App\Services\TikzCompilerService;
@@ -347,8 +348,9 @@ class ToolsController extends Controller
         $rootFolder = S3Service::getRootFolder();
         $compilerAvailable = $this->tikzCompilerService->isAvailable();
         $fontPackages = TikzCompilerService::fontPackages();
+        $colorPackage = Setting::get('tikz_color_package', '');
 
-        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable', 'fontPackages'));
+        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable', 'fontPackages', 'colorPackage'));
     }
 
     public function renderTikzServer(Request $request)

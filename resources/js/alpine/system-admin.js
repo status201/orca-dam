@@ -50,6 +50,7 @@ export function systemAdmin() {
         integrityCheckQueued: false,
         integrityQueuedCount: 0,
         refreshingIntegrity: false,
+        _lastColorSwatchContent: '',
 
         systemInfo: {
           jwtEnvEnabled: pageData.jwtEnvEnabled,
@@ -109,6 +110,17 @@ export function systemAdmin() {
             // Initial load
             this.refreshQueueStatus();
             this.refreshSupervisorStatus();
+
+            // Color swatches for TikZ color package textarea
+            this.$nextTick(() => this.updateColorSwatches());
+            this.$watch('settings.tikz_color_package', () => {
+                this.$nextTick(() => this.updateColorSwatches());
+            });
+            this.$watch('activeTab', (tab) => {
+                if (tab === 'settings') {
+                    this.$nextTick(() => this.updateColorSwatches());
+                }
+            });
         },
 
         async refreshQueueStatus() {
@@ -724,6 +736,65 @@ export function systemAdmin() {
                 window.showToast(pageData.translations.failedCopyOutput, 'error');
             }
             textArea.remove();
+        },
+
+        updateColorSwatches() {
+            var ta = this.$refs.tikzColorPackage;
+            if (!ta) return;
+
+            var content = this.settings.tikz_color_package || '';
+
+            if (content === this._lastColorSwatchContent) return;
+            this._lastColorSwatchContent = content;
+
+            var lines = content.split('\n');
+            var style = window.getComputedStyle(ta);
+            var fontSize = parseFloat(style.fontSize);
+            var lineHeight = parseFloat(style.lineHeight) || fontSize * 1.5;
+            var paddingTop = parseFloat(style.paddingTop);
+            var gutterWidth = 24;
+
+            var hexPattern = /\\definecolor\{[^}]*\}\{html\}\{([0-9a-f]{3,8})\}/i;
+            var rgbPattern = /\\definecolor\{[^}]*\}\{rgb\}\{(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\}/i;
+
+            var circles = '';
+            var hasAny = false;
+
+            for (var i = 0; i < lines.length; i++) {
+                var hexMatch = lines[i].match(hexPattern);
+                var rgbMatch = lines[i].match(rgbPattern);
+                var color = null;
+
+                if (hexMatch) {
+                    color = '#' + hexMatch[1];
+                } else if (rgbMatch) {
+                    color = 'rgb(' + rgbMatch[1] + ',' + rgbMatch[2] + ',' + rgbMatch[3] + ')';
+                }
+
+                if (color) {
+                    hasAny = true;
+                    var cy = paddingTop + (i + 0.5) * lineHeight;
+                    var cx = gutterWidth / 2;
+                    var r = 5;
+                    circles += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + color + '" stroke="#d1d5db" stroke-width="1"/>';
+                }
+            }
+
+            if (!hasAny) {
+                ta.style.backgroundImage = 'none';
+                ta.style.paddingLeft = '';
+                return;
+            }
+
+            var svgHeight = paddingTop + lines.length * lineHeight + 20;
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + gutterWidth + '" height="' + svgHeight + '">' +
+                circles +
+                '</svg>';
+
+            ta.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+            ta.style.backgroundAttachment = 'local';
+            ta.style.backgroundRepeat = 'no-repeat';
+            ta.style.paddingLeft = (gutterWidth + 8) + 'px';
         }
     };
 }

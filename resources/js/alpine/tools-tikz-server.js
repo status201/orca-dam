@@ -28,6 +28,10 @@ function tikzServer() {
         extraLibrariesText: 'automata,mindmap,circuits.ee.IEC,pgfplots',
         namingTemplate: 'diagram-{count}-{variant}.{extension}',
 
+        // Color palette
+        colorPaletteOpen: false,
+        paletteColors: [],
+
         // Template browser
         templateSearchQuery: '',
         templateSearchResults: [],
@@ -43,6 +47,7 @@ function tikzServer() {
         init() {
             this.$watch('tikzCode', () => this.updateLineNumbers());
             this.$nextTick(() => this.updateLineNumbers());
+            this.parsePaletteColors();
         },
 
         updateLineNumbers() {
@@ -76,6 +81,49 @@ function tikzServer() {
             ta.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
             ta.style.backgroundAttachment = 'local';
             ta.style.backgroundRepeat = 'no-repeat';
+        },
+
+        parsePaletteColors() {
+            var content = (pageData.colorPackage || '').toString();
+            if (!content.trim()) return;
+
+            var lines = content.split('\n');
+            var hexPattern = /\\definecolor\{([^}]+)\}\{html\}\{([0-9a-f]{3,8})\}/i;
+            var rgbPattern = /\\definecolor\{([^}]+)\}\{rgb\}\{(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\}/i;
+            var colors = [];
+
+            for (var i = 0; i < lines.length; i++) {
+                var hexMatch = lines[i].match(hexPattern);
+                var rgbMatch = lines[i].match(rgbPattern);
+
+                if (hexMatch) {
+                    colors.push({ name: hexMatch[1], hex: '#' + hexMatch[2], cssColor: '#' + hexMatch[2] });
+                } else if (rgbMatch) {
+                    var hex = '#' + [rgbMatch[2], rgbMatch[3], rgbMatch[4]].map(function (v) {
+                        return ('0' + parseInt(v, 10).toString(16)).slice(-2);
+                    }).join('');
+                    colors.push({ name: rgbMatch[1], hex: hex, cssColor: hex });
+                }
+            }
+
+            this.paletteColors = colors;
+        },
+
+        copyColorName(name) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(name);
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = name;
+                ta.style.position = 'fixed';
+                ta.style.top = '-999999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+            }
+            window.showToast('Copied: ' + name, 'success');
+            this.colorPaletteOpen = false;
         },
 
         examples: [
