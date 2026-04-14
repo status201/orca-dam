@@ -54,6 +54,7 @@ export function systemAdmin() {
         systemInfo: {
           jwtEnvEnabled: pageData.jwtEnvEnabled,
         },
+        cloudflareEnvEnabled: pageData.cloudflareEnvEnabled,
 
         // Documentation
         selectedDoc: 'USER_MANUAL.md',
