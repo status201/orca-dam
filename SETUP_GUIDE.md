@@ -94,6 +94,12 @@ JWT_ENABLED=false                        # Enable/disable JWT authentication
 JWT_MAX_TTL=36000                        # Maximum token lifetime in seconds (default: 10 hours)
 JWT_LEEWAY=60                            # Clock skew tolerance in seconds
 
+# Optional: Cloudflare cache purging (purges CDN cache on asset replacement)
+# Also enable via System → Settings → S3 Storage (requires custom domain)
+CLOUDFLARE_ENABLED=false                 # Enable/disable Cloudflare cache purging
+CLOUDFLARE_API_TOKEN=                    # API token with Zone.Cache Purge permission
+CLOUDFLARE_ZONE_ID=                      # Zone ID from Cloudflare dashboard
+
 # Optional: TikZ Server Render (requires TeX Live on server)
 TIKZ_LATEX_PATH=latex                    # Path to latex binary
 TIKZ_DVISVGM_PATH=dvisvgm               # Path to dvisvgm binary

@@ -88,6 +88,9 @@
                             {{ __('Users') }}
                         </x-nav-link>
                     @endcan
+                    <x-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')">
+                        {{ __('Tools') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
                         {{ __('About ORCA') }}
                     </x-nav-link>
@@ -125,10 +128,6 @@
                                 <i class="fas fa-file-import fa-fw mr-2 {{ request()->routeIs('import.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Import') }}
                             </a>
                         @endcan
-
-                        <a href="{{ route('tools.index') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('tools.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
-                            <i class="fas fa-wrench fa-fw mr-2 {{ request()->routeIs('tools.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Tools') }}
-                        </a>
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
@@ -201,6 +200,9 @@
                     {{ __('Users') }}
                 </x-responsive-nav-link>
             @endcan
+            <x-responsive-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')">
+                {{ __('Tools') }}
+            </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
                 {{ __('About ORCA') }}
             </x-responsive-nav-link>
@@ -234,10 +236,6 @@
                         <i class="fas fa-file-import fa-fw mr-2"></i>{{ __('Import') }}
                     </x-responsive-nav-link>
                 @endcan
-
-                <x-responsive-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')">
-                    <i class="fas fa-wrench fa-fw mr-2"></i>{{ __('Tools') }}
-                </x-responsive-nav-link>
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">

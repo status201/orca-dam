@@ -168,6 +168,12 @@ JWT_MAX_TTL=36000              # Max token lifetime (10 hours)
 JWT_LEEWAY=60                  # Clock skew tolerance
 JWT_ISSUER=                    # Optional: Required issuer claim
 
+# Cloudflare cache purging (optional, for CDN setups)
+# Also enable via System → Settings → S3 Storage (requires custom domain)
+CLOUDFLARE_ENABLED=false       # Purge CDN cache on asset replacement
+CLOUDFLARE_API_TOKEN=          # Token with Zone.Cache Purge permission
+CLOUDFLARE_ZONE_ID=            # Zone ID from Cloudflare dashboard
+
 # TikZ Server Render (optional, requires TeX Live)
 TIKZ_LATEX_PATH=latex          # Path to latex binary
 TIKZ_DVISVGM_PATH=dvisvgm     # Path to dvisvgm binary
@@ -470,6 +476,7 @@ If you use a CDN (CloudFront, Cloudflare, etc.) in front of your S3 bucket:
 2. Under **S3 Storage**, enter your custom domain (e.g., `https://cdn.example.com`)
 3. All asset URLs across the application will immediately use the custom domain
 4. The `/api/assets/meta` endpoint accepts both custom domain and original S3 URLs
+5. If using Cloudflare: enable the **Cloudflare cache purge** toggle (requires `CLOUDFLARE_*` env vars)
 
 ### 3. Configure API Authentication (if needed)
 

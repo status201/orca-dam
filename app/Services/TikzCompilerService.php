@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 
 class TikzCompilerService
@@ -140,6 +141,19 @@ class TikzCompilerService
         }
 
         try {
+            // Write color package .sty file to temp dir if configured
+            $colorPkgName = Setting::get('tikz_color_package_name', '');
+            $colorPkgContent = Setting::get('tikz_color_package', '');
+            if ($colorPkgName !== '' && $colorPkgContent !== '') {
+                $sanitizedPkg = $this->sanitizeInput($colorPkgContent);
+                if ($sanitizedPkg === null) {
+                    $this->cleanup($tmpDir);
+
+                    return ['success' => false, 'error' => 'Color package setting contains dangerous LaTeX commands.'];
+                }
+                file_put_contents($tmpDir.DIRECTORY_SEPARATOR.$colorPkgName.'.sty', $sanitizedPkg);
+            }
+
             $texContent = $this->buildTexDocument($sanitized, $borderPt, $fontPackage, $preamble, $extraLibraries);
             $texFile = $tmpDir.DIRECTORY_SEPARATOR.'input.tex';
             file_put_contents($texFile, $texContent);
@@ -301,12 +315,20 @@ LATEX;
             $fontLine .= "\n";
         }
 
+        // Auto-include color package in snippet mode when configured
+        $colorPkgLine = '';
+        $colorPkgName = Setting::get('tikz_color_package_name', '');
+        $colorPkgContent = Setting::get('tikz_color_package', '');
+        if ($colorPkgName !== '' && $colorPkgContent !== '') {
+            $colorPkgLine = "\\usepackage{{$colorPkgName}}\n";
+        }
+
         return <<<LATEX
 \\documentclass[tikz]{standalone}
 \\usepackage[T1]{fontenc}
 \\usepackage{amsmath,amssymb,amsfonts}
 {$fontLine}\\usepackage{tikz}
-{$packageLines}\\usetikzlibrary{{$libraries}}
+{$colorPkgLine}{$packageLines}\\usetikzlibrary{{$libraries}}
 \\begin{document}
 {$tikzSnippet}
 \\end{document}

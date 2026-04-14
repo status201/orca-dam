@@ -247,6 +247,12 @@ class SystemController extends Controller
 
                 return is_array($decoded) && collect($decoded)->every(fn ($d) => preg_match('/^https?:\/\/[a-zA-Z0-9\-\.\*]+\.[a-zA-Z]{2,}(\/.*)?$/', $d));
             },
+            'tikz_color_package_name' => function ($v) {
+                return $v === '' || (strlen($v) <= 50 && preg_match('/^[a-zA-Z0-9_-]+$/', $v));
+            },
+            'tikz_color_package' => function ($v) {
+                return strlen($v) <= 100000;
+            },
         ];
 
         if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {

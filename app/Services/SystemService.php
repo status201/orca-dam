@@ -216,6 +216,7 @@ class SystemService
             'gd_enabled' => extension_loaded('gd'),
             'imagick_enabled' => extension_loaded('imagick'),
             'jwt_enabled' => config('jwt.enabled'),
+            'cloudflare_enabled' => config('cloudflare.enabled') && config('cloudflare.api_token') !== '' && config('cloudflare.zone_id') !== '',
             's3_bucket_endpoint' => $this->getS3BucketEndpoint(),
             's3_versioning' => $this->getS3Versioning(),
         ];

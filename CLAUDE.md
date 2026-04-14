@@ -71,6 +71,8 @@ php artisan queue:work --tries=3
 
 **TestRunnerService** - Runs Pest suite in a subprocess for the web test runner. `run()` executes `php artisan test` with correct env variables. Parses output into per-test pass/fail results.
 
+**CloudflareService** - Cloudflare CDN cache purging on asset replacement. `collectAssetUrls(Asset)` gathers up to 5 URLs (original + thumbnail + resize S/M/L). `purgeUrls(array)` calls Cloudflare Cache Purge API. Requires env config + `custom_domain` setting + `cloudflare_cache_purge` toggle in System → Settings. Non-blocking: logs errors but never throws. Config in `config/cloudflare.php`.
+
 **TikzCompilerService** - Server-side TikZ/LaTeX compilation via TeX Live. `compile()` runs the full pipeline: input sanitization → LaTeX→DVI → dvisvgm SVG conversion → optional PNG rasterization. Produces four output variants: SVG (standard), SVG (embedded WOFF2 fonts), SVG (text as paths), PNG. Supports 17 font packages, configurable border padding, PNG DPI, extra TikZ libraries, and custom preambles from full LaTeX documents. Security: blocks `\write18`, `\openin`, file I/O commands; runs with `--no-shell-escape` and paranoid file mode. Config in `config/tikz.php`.
 
 ### Authentication
@@ -170,7 +172,7 @@ Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domai
 
 **users** (extra columns): `jwt_secret` (encrypted), `jwt_secret_generated_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`)
 
-**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `embed_allowed_domains`=[], `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `api_upload_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false
+**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `embed_allowed_domains`=[], `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `api_upload_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false, `cloudflare_cache_purge`=false
 
 ## Environment Configuration
 
@@ -190,6 +192,12 @@ JWT_ALGORITHM=HS256
 JWT_MAX_TTL=36000                     # seconds, default: 10h
 JWT_LEEWAY=60
 JWT_ISSUER=                           # optional issuer validation
+
+# Optional: Cloudflare cache purging on asset replacement
+# Also requires custom_domain + cloudflare_cache_purge toggle in System → Settings
+CLOUDFLARE_ENABLED=false
+CLOUDFLARE_API_TOKEN=             # Token with Zone.Cache Purge permission
+CLOUDFLARE_ZONE_ID=               # Zone ID from Cloudflare dashboard
 
 # Optional: PHP CLI path for web test runner
 PHP_CLI_PATH=/usr/bin/php
@@ -290,7 +298,7 @@ app/
 ├── Policies/ (AssetPolicy, SystemPolicy, UserPolicy)
 ├── Services/
 │   ├── S3Service, AssetProcessingService, ChunkedUploadService
-│   ├── RekognitionService, SystemService, TikzCompilerService, TwoFactorService
+│   ├── CloudflareService, RekognitionService, SystemService, TikzCompilerService, TwoFactorService
 │   ├── CsvExportService, CsvImportService, ImageProcessingService
 │   ├── QueueService, TestRunnerService
 └── View/Components/ (AppLayout, GuestLayout)
@@ -323,11 +331,11 @@ tests/
 │             JwtAuth, JwtSecretManagement, Locale, Profile, TwoFactorAuth)
 ├── Feature/Auth/ (Authentication, Registration, PasswordReset, etc.)
 └── Unit/ (Asset, Tag, Setting, UserPreferences, TwoFactorService,
-           JwtGuard, AssetProcessingService, S3Service, AssetSortScope,
-           CsvExportService, CsvImportService, ImageProcessingService,
-           QueueService, TestRunnerService)
+           JwtGuard, AssetProcessingService, CloudflareService, S3Service,
+           AssetSortScope, CsvExportService, CsvImportService,
+           ImageProcessingService, QueueService, TestRunnerService)
 
-config/ (app, auth, cache, database, filesystems, jwt, logging, mail, queue, services, session, tikz, two-factor)
+config/ (app, auth, cache, cloudflare, database, filesystems, jwt, logging, mail, queue, services, session, tikz, two-factor)
 database/migrations/ (33 migrations)
 database/factories/ (Asset, Tag, User, Setting)
 database/seeders/ (Database, AdminUser)

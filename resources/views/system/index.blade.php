@@ -524,6 +524,33 @@
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <p class="text-xs text-gray-500 mt-1">{{ __('Replaces the S3 bucket domain in asset URLs. Leave empty to use the default S3 URL.') }}</p>
                     </div>
+
+                    <!-- Cloudflare Cache Purge -->
+                    <div class="md:col-span-2">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">
+                                    {{ __('Cloudflare cache purge') }}
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1">{{ __('Automatically purge Cloudflare CDN cache when an asset file is replaced') }}</p>
+                            </div>
+                            <label class="relative inline-flex items-center" :class="cloudflareEnvEnabled && settings.custom_domain ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'">
+                                <input type="checkbox"
+                                       x-model="settings.cloudflare_cache_purge"
+                                       @change="updateSetting('cloudflare_cache_purge', settings.cloudflare_cache_purge ? '1' : '0')"
+                                       :checked="settings.cloudflare_cache_purge === '1' || settings.cloudflare_cache_purge === true"
+                                       :disabled="!cloudflareEnvEnabled || !settings.custom_domain"
+                                       class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                            </label>
+                        </div>
+                        <template x-if="!cloudflareEnvEnabled">
+                            <p class="text-xs text-amber-600 mt-2"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('Set CLOUDFLARE_ENABLED, CLOUDFLARE_API_TOKEN, and CLOUDFLARE_ZONE_ID in .env to enable.') }}</p>
+                        </template>
+                        <template x-if="cloudflareEnvEnabled && !settings.custom_domain">
+                            <p class="text-xs text-amber-600 mt-2"><i class="fas fa-exclamation-triangle mr-1"></i>{{ __('A custom domain must be configured above to enable cache purging.') }}</p>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -605,6 +632,41 @@
                            placeholder="https://example.com&#10;https://other.com"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm"></textarea>
                     <p class="text-xs text-gray-500 mt-1">{{ __('Domains allowed to embed this application in an iframe. One domain per line (e.g. https://example.com). When set, overrides X-Frame-Options with a CSP frame-ancestors header.') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TikZ / LaTeX Settings -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
+                <h4 class="text-base font-semibold text-gray-900">
+                    <i class="attention fas fa-palette mr-2 text-purple-500"></i>{{ __('TikZ / LaTeX') }}
+                </h4>
+                <p class="text-sm text-gray-500 mt-1">{{ __('Color package injected into every TikZ compilation') }}</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        {{ __('Package name') }}
+                    </label>
+                    <input type="text"
+                           x-model="settings.tikz_color_package_name"
+                           @change="updateSetting('tikz_color_package_name', settings.tikz_color_package_name)"
+                           placeholder="studyflow-colors"
+                           class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm">
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Name without .sty extension. Must match the \\usepackage{name} in your .tex files.') }}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        {{ __('Package content') }}
+                    </label>
+                    <textarea
+                           x-model="settings.tikz_color_package"
+                           @change="updateSetting('tikz_color_package', settings.tikz_color_package)"
+                           rows="15"
+                           placeholder="% studyflow-colors.sty&#10;\RequirePackage{xcolor}&#10;&#10;\definecolor{SF_primair}{HTML}{1B4D8E}&#10;..."
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Full .sty file content. In snippet mode this package is auto-loaded. In full documents, add \\usepackage{name} to your preamble. Keep in sync with your local .sty file.') }}</p>
                 </div>
             </div>
         </div>
@@ -1355,6 +1417,7 @@ window.__systemPageData = {
     queueStats: @json($queueStats),
     missingAssetsCount: {{ $missingAssetsCount }},
     jwtEnvEnabled: '{{ $systemInfo['jwt_enabled'] ? '1' : '0' }}',
+    cloudflareEnvEnabled: {{ $systemInfo['cloudflare_enabled'] ? 'true' : 'false' }},
     settings: {
         items_per_page: '{{ collect($settings)->firstWhere('key', 'items_per_page')['value'] ?? '24' }}',
         timezone: '{{ collect($settings)->firstWhere('key', 'timezone')['value'] ?? 'UTC' }}',
@@ -1375,6 +1438,9 @@ window.__systemPageData = {
         uploadEndpointEnabled: '{{ filter_var(collect($settings)->firstWhere('key', 'api_upload_enabled')['value'] ?? '1', FILTER_VALIDATE_BOOLEAN) ? '1' : '0' }}',
         metaEndpointEnabled: '{{ filter_var(collect($settings)->firstWhere('key', 'api_meta_endpoint_enabled')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? '1' : '0' }}',
         maintenance_mode: {{ filter_var(collect($settings)->firstWhere('key', 'maintenance_mode')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' }},
+        cloudflare_cache_purge: {{ filter_var(collect($settings)->firstWhere('key', 'cloudflare_cache_purge')['value'] ?? '0', FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false' }},
+        tikz_color_package_name: {!! json_encode(collect($settings)->firstWhere('key', 'tikz_color_package_name')['value'] ?? 'studyflow-colors') !!},
+        tikz_color_package: {!! json_encode(collect($settings)->firstWhere('key', 'tikz_color_package')['value'] ?? '') !!},
     },
     routes: {
         queueStatus: '{{ route('system.queue-status') }}',

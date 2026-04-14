@@ -368,6 +368,11 @@ JWT_MAX_TTL=36000
 JWT_LEEWAY=60
 JWT_ISSUER=                    # Optional issuer validation
 
+# Cloudflare cache purging (optional, also needs toggle in Settings)
+CLOUDFLARE_ENABLED=true|false
+CLOUDFLARE_API_TOKEN=          # Zone.Cache Purge permission
+CLOUDFLARE_ZONE_ID=            # From Cloudflare dashboard
+
 # Database
 DB_CONNECTION=mysql
 DB_DATABASE=orca_dam
@@ -394,6 +399,7 @@ TIKZ_PNG_DPI=300               # Default PNG DPI (72-600)
 - `timezone` — Application timezone
 - `locale` — Global UI language (`en` or `nl`)
 - `items_per_page` — Default pagination
+- `cloudflare_cache_purge` — Purge Cloudflare CDN cache on asset replacement (requires `CLOUDFLARE_*` env vars + custom domain)
 - `embed_allowed_domains` — Domains allowed to embed ORCA in an iframe (sets CSP `frame-ancestors`)
 
 **API settings** (configured via API Docs → Dashboard):

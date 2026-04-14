@@ -8,6 +8,7 @@ use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\AssetProcessingService;
+use App\Services\CloudflareService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -27,11 +28,14 @@ class AssetController extends Controller
 
     protected AssetProcessingService $assetProcessingService;
 
-    public function __construct(S3Service $s3Service, RekognitionService $rekognitionService, AssetProcessingService $assetProcessingService)
+    protected CloudflareService $cloudflareService;
+
+    public function __construct(S3Service $s3Service, RekognitionService $rekognitionService, AssetProcessingService $assetProcessingService, CloudflareService $cloudflareService)
     {
         $this->s3Service = $s3Service;
         $this->rekognitionService = $rekognitionService;
         $this->assetProcessingService = $assetProcessingService;
+        $this->cloudflareService = $cloudflareService;
     }
 
     /**
@@ -478,6 +482,9 @@ class AssetController extends Controller
         ]);
 
         try {
+            // Collect asset URLs for Cloudflare cache purge before keys are reset
+            $urlsToPurge = $this->cloudflareService->collectAssetUrls($asset);
+
             // Replace file in S3 using the same key
             $fileData = $this->s3Service->replaceFile(
                 $request->file('file'),
@@ -509,6 +516,9 @@ class AssetController extends Controller
 
             // Regenerate thumbnail, resized images, and AI tags
             $this->assetProcessingService->processImageAsset($asset);
+
+            // Purge old URLs from Cloudflare cache
+            $this->cloudflareService->purgeUrls($urlsToPurge);
 
             return response()->json([
                 'message' => 'Asset replaced successfully',

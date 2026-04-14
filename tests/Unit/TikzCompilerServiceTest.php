@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Setting;
 use App\Services\TikzCompilerService;
 
 // ---------------------------------------------------------------------------
@@ -296,5 +297,76 @@ test('compile rejects dangerous preamble', function () {
     );
 
     expect($result['success'])->toBeFalse();
+    expect($result['error'])->toContain('dangerous');
+});
+
+// ---------------------------------------------------------------------------
+// Color package injection via settings
+// ---------------------------------------------------------------------------
+
+test('buildTexDocument includes color package usepackage when settings configured', function () {
+    Setting::set('tikz_color_package_name', 'studyflow-colors', 'string', 'general');
+    Setting::set('tikz_color_package', "\\RequirePackage{xcolor}\n\\definecolor{SF_primair}{HTML}{1B4D8E}", 'string', 'general');
+
+    $service = app(TikzCompilerService::class);
+    $doc = $service->buildTexDocument('\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}');
+
+    expect($doc)->toContain('\\usepackage{studyflow-colors}');
+});
+
+test('buildTexDocument omits color package when settings empty', function () {
+    Setting::set('tikz_color_package_name', '', 'string', 'general');
+    Setting::set('tikz_color_package', '', 'string', 'general');
+
+    $service = app(TikzCompilerService::class);
+    $doc = $service->buildTexDocument('\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}');
+
+    expect($doc)->not->toContain('studyflow-colors');
+});
+
+test('buildTexDocument omits color package when name set but content empty', function () {
+    Setting::set('tikz_color_package_name', 'studyflow-colors', 'string', 'general');
+    Setting::set('tikz_color_package', '', 'string', 'general');
+
+    $service = app(TikzCompilerService::class);
+    $doc = $service->buildTexDocument('\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}');
+
+    expect($doc)->not->toContain('studyflow-colors');
+});
+
+test('buildTexDocument does not inject color package in preamble mode', function () {
+    Setting::set('tikz_color_package_name', 'studyflow-colors', 'string', 'general');
+    Setting::set('tikz_color_package', '\\RequirePackage{xcolor}', 'string', 'general');
+
+    $service = app(TikzCompilerService::class);
+    $preamble = "\\usepackage{xcolor}\n\\usepackage{studyflow-colors}";
+    $doc = $service->buildTexDocument('\\begin{tikzpicture}\\end{tikzpicture}', preamble: $preamble);
+
+    // The preamble itself contains the usepackage, but buildTexDocument should not add another one
+    $count = substr_count($doc, '\\usepackage{studyflow-colors}');
+    expect($count)->toBe(1);
+});
+
+test('buildTexDocument does not inject color package in full document mode', function () {
+    Setting::set('tikz_color_package_name', 'studyflow-colors', 'string', 'general');
+    Setting::set('tikz_color_package', '\\RequirePackage{xcolor}', 'string', 'general');
+
+    $service = app(TikzCompilerService::class);
+    $fullDoc = "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}";
+    $result = $service->buildTexDocument($fullDoc);
+
+    expect($result)->toBe($fullDoc);
+    expect($result)->not->toContain('\\usepackage{studyflow-colors}');
+});
+
+test('compile rejects dangerous content in color package setting', function () {
+    Setting::set('tikz_color_package_name', 'evil-colors', 'string', 'general');
+    Setting::set('tikz_color_package', '\\write18{rm -rf /}', 'string', 'general');
+
+    $service = app(TikzCompilerService::class);
+    $result = $service->compile('\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}');
+
+    expect($result['success'])->toBeFalse();
+    expect($result['error'])->toContain('Color package');
     expect($result['error'])->toContain('dangerous');
 });
