@@ -510,7 +510,8 @@
     "Folder hierarchy refreshed from S3": "Mappenhierarchie vernieuwd vanuit S3",
     "Folders refreshed from S3": "Mappen vernieuwd vanuit S3",
     "Font": "Lettertype",
-    "Full .sty file content. In snippet mode this package is auto-loaded. In full documents, add \\usepackage{name} to your preamble. Keep in sync with your local .sty file.": "Volledige .sty-bestandsinhoud. In snippetmodus wordt dit pakket automatisch geladen. Voeg in volledige documenten \\usepackage{naam} toe aan je preamble. Houd dit in sync met je lokale .sty-bestand.",
+    "Full .sty file content. In snippet mode this package is auto-loaded. In full documents, add": "Volledige .sty-bestandsinhoud. In snippetmodus wordt dit pakket automatisch geladen. Voeg in volledige documenten",
+
     "Font embedding": "Lettertype-inbedding",
     "Force a refresh": "Forceer een refresh",
     "Force Dark Mode": "Donkere modus forceren",
@@ -1084,6 +1085,7 @@
     "Timezone:": "Tijdzone:",
     "to": "naar",
     "to compile TikZ\/LaTeX to SVG directly in the browser via a WebAssembly TeX engine.": "om TikZ\/LaTeX rechtstreeks in de browser naar SVG te compileren via een WebAssembly TeX-engine.",
+    "to your preamble. Keep in sync with your local .sty file.": "toe aan je preamble. Houd dit in sync met je lokale .sty-bestand.",
     "To enable JWT, set": "Om JWT in te schakelen, stel",
     "Token copied to clipboard": "Token gekopieerd naar klembord",
     "Token created successfully": "Token succesvol aangemaakt",
