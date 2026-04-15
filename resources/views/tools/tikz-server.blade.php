@@ -155,7 +155,7 @@
                                 <button
                                     @click="copyColorName(color.name)"
                                     class="w-full text-left px-3 py-1.5 hover:bg-gray-50 border-b border-gray-50 transition-colors flex items-center gap-3 group">
-                                    <span class="w-5 h-5 rounded-full shrink-0 border border-gray-200" :style="'background-color:' + color.cssColor"></span>
+                                    <span class="attention w-5 h-5 rounded-full shrink-0 border border-gray-200" :style="'background-color:' + color.cssColor"></span>
                                     <span class="text-sm font-mono text-gray-800 group-hover:text-purple-700" x-text="color.name"></span>
                                     <span class="text-xs text-gray-400 ml-auto font-mono" x-text="color.hex"></span>
                                 </button>

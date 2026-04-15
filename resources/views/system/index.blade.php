@@ -668,7 +668,7 @@
                            spellcheck="false"
                            rows="15"
                            placeholder="% studyflow-colors.sty&#10;\RequirePackage{xcolor}&#10;&#10;\definecolor{SF_primair}{HTML}{1B4D8E}&#10;..."
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm"></textarea>
+                           class="attention w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm"></textarea>
                     <p class="text-xs text-gray-500 mt-1">{{ __('Full .sty file content. In snippet mode this package is auto-loaded. In full documents, add') }} <code class="font-mono bg-gray-100 px-1 rounded" x-text="'\\usepackage{' + (settings.tikz_color_package_name || 'name') + '}'"></code> {{ __('to your preamble. Keep in sync with your local .sty file.') }}</p>
                 </div>
             </div>
