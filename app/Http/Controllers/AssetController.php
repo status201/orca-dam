@@ -550,6 +550,9 @@ class AssetController extends Controller
             return response()->json(['message' => 'Invalid base64 data'], 422);
         }
 
+        // Collect old thumbnail URL for Cloudflare cache purge
+        $urlsToPurge = $this->cloudflareService->collectAssetUrls($asset);
+
         // Delete old thumbnail if exists
         if ($asset->thumbnail_s3_key) {
             $this->s3Service->deleteFile($asset->thumbnail_s3_key);
@@ -561,6 +564,9 @@ class AssetController extends Controller
         }
 
         $asset->update(['thumbnail_s3_key' => $thumbnailKey]);
+
+        // Purge old thumbnail from Cloudflare cache
+        $this->cloudflareService->purgeUrls($urlsToPurge);
 
         return response()->json([
             'message' => __('Preview generated successfully.'),
