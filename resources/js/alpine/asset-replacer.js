@@ -1,3 +1,5 @@
+import { generatePdfThumbnail, generateVideoThumbnail, uploadThumbnail } from './thumbnail-generator';
+
 export function assetReplacer() {
     const pageData = window.__pageData || {};
 
@@ -5,6 +7,7 @@ export function assetReplacer() {
         // State
         dragActive: false,
         selectedFile: null,
+        thumbnail: null,
         uploading: false,
         uploadProgress: 0,
         showConfirmation: false,
@@ -52,10 +55,23 @@ export function assetReplacer() {
             }
 
             this.selectedFile = file;
+            this.thumbnail = null;
+            this.generateThumbnail(file);
+        },
+
+        async generateThumbnail(file) {
+            if (file.type === 'application/pdf') {
+                const result = await generatePdfThumbnail(file);
+                if (result) this.thumbnail = result.base64;
+            } else if (file.type.startsWith('video/')) {
+                const result = await generateVideoThumbnail(file);
+                if (result) this.thumbnail = result.base64;
+            }
         },
 
         clearSelection() {
             this.selectedFile = null;
+            this.thumbnail = null;
             this.error = null;
             this.$refs.fileInput.value = '';
         },
@@ -91,6 +107,9 @@ export function assetReplacer() {
 
                     if (xhr.status >= 200 && xhr.status < 300) {
                         const response = JSON.parse(xhr.responseText);
+                        if (this.thumbnail && response.asset?.id) {
+                            uploadThumbnail(response.asset.id, this.thumbnail);
+                        }
                         this.success = true;
                         this.successMessage = response.message || pageData.translations.assetReplacedSuccessfully;
                         this.startRedirectCountdown();
