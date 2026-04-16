@@ -28,13 +28,17 @@
             <div class="image-container bg-white rounded-lg shadow-lg overflow-hidden relative"
                  @if($asset->isImage() || $asset->isSvg())
                      x-data="imageRefresher(@js($asset->url), @js($asset->filename))"
-                    @endif
+                 @elseif($asset->isPdf() && $asset->thumbnail_url)
+                     x-data="imageRefresher(@js($asset->thumbnail_url), @js($asset->filename))"
+                 @elseif($asset->isVideo())
+                     x-data="videoRefresher(@js($asset->url), @js($asset->mime_type))"
+                 @endif
             >
 
                 @if($asset->isImage())
 
                     <!-- Refresh Icon Button -->
-                    <button @click="refreshImage()" title="{{ __('Force a refresh') }}"
+                    <button @click="refresh()" title="{{ __('Force a refresh') }}"
                             class="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10"
                             :disabled="isRefreshing">
                         <svg class="w-5 h-5 text-gray-700" :class="{ 'animate-spin [animation-direction:reverse]': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,7 +61,7 @@
 
                 @elseif($asset->isSvg())
                     <!-- Refresh Icon Button -->
-                    <button @click="refreshImage()" title="{{ __('Force a refresh') }}"
+                    <button @click="refresh()" title="{{ __('Force a refresh') }}"
                             class="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10"
                             :disabled="isRefreshing">
                         <svg class="w-5 h-5 text-gray-700" :class="{ 'animate-spin [animation-direction:reverse]': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,8 +78,17 @@
                         <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
                     </a>
                 @elseif($asset->isVideo())
-                    <video controls class="w-full" preload="metadata">
-                        <source src="{{ $asset->url }}" type="{{ $asset->mime_type }}">
+                    <!-- Refresh Icon Button -->
+                    <button @click="refresh()" title="{{ __('Force a refresh') }}"
+                            class="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10"
+                            :disabled="isRefreshing">
+                        <svg class="w-5 h-5 text-gray-700" :class="{ 'animate-spin [animation-direction:reverse]': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                    <video controls class="w-full" preload="metadata" x-ref="mainVideo">
+                        <source :src="videoSrc" :type="videoMimeType">
                         {{ __('Your browser does not support the video tag.') }}
                     </video>
                     <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
@@ -89,12 +102,20 @@
                         <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>
                     </a>
                 @elseif($asset->isPdf() && $asset->thumbnail_url)
-                    <img src="{{ $asset->thumbnail_url }}"
-                         alt="{{ $asset->filename }}"
-                         class="h-auto my-0 mx-auto">
-                    <div class="attention absolute top-1 right-1 pointer-events-none">
-                        <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
-                    </div>
+                    <!-- Refresh Icon Button -->
+                    <button @click="refresh()" title="{{ __('Force a refresh') }}"
+                            class="absolute top-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10"
+                            :disabled="isRefreshing">
+                        <svg class="w-5 h-5 text-gray-700" :class="{ 'animate-spin [animation-direction:reverse]': isRefreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                    <img :src="imageSrc"
+                         :alt="imageAlt"
+                         class="h-auto my-0 mx-auto"
+                         :style="isBlurred ? 'filter: blur(12px); transition: filter 0.5s ease' : 'transition: filter 0.5s ease'"
+                         x-ref="mainImage">
                     <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}"
                        class="absolute bottom-2 right-2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all hover:scale-110 z-10">
                         <i class="fas fa-arrow-up-right-from-square w-5 h-5 text-gray-700 flex items-center justify-center"></i>

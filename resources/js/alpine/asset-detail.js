@@ -1,3 +1,17 @@
+async function cacheBustFetch(url) {
+    const response = await fetch(url, {
+        cache: 'reload',
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+}
+
 export function assetDetail() {
     const t = window.__pageData?.translations || {};
 
@@ -75,7 +89,7 @@ export function imageRefresher(url, alt) {
         isRefreshing: false,
         isBlurred: false,
 
-        async refreshImage() {
+        async refresh() {
             this.isRefreshing = true;
             this.isBlurred = true;
 
@@ -83,35 +97,19 @@ export function imageRefresher(url, alt) {
             const blurInDelay = new Promise(resolve => setTimeout(resolve, 500));
 
             try {
-                // Run fetch and blur-in transition in parallel
-                const [response] = await Promise.all([
-                    fetch(this.baseImageUrl, {
-                        cache: 'reload',
-                        headers: {
-                            'Cache-Control': 'no-cache, no-store, must-revalidate',
-                            'Pragma': 'no-cache',
-                            'Expires': '0'
-                        }
-                    }),
+                const [objectUrl] = await Promise.all([
+                    cacheBustFetch(this.baseImageUrl),
                     blurInDelay
                 ]);
 
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const objectUrl = URL.createObjectURL(blob);
-
-                    // Update to blob URL temporarily
+                if (objectUrl) {
                     this.imageSrc = objectUrl;
 
-                    // After image loads, switch back to original URL
                     await new Promise(resolve => {
                         this.$refs.mainImage.onload = resolve;
                     });
 
-                    // Clean up blob URL
                     URL.revokeObjectURL(objectUrl);
-
-                    // Set back to original URL (now cached fresh)
                     this.imageSrc = this.baseImageUrl;
                 }
             } catch (error) {
@@ -124,3 +122,39 @@ export function imageRefresher(url, alt) {
     }
 }
 window.imageRefresher = imageRefresher;
+
+export function videoRefresher(url, mimeType) {
+    return {
+        baseVideoUrl: url,
+        videoMimeType: mimeType,
+        videoSrc: url,
+        isRefreshing: false,
+
+        async refresh() {
+            this.isRefreshing = true;
+
+            try {
+                const objectUrl = await cacheBustFetch(this.baseVideoUrl);
+
+                if (objectUrl) {
+                    this.videoSrc = objectUrl;
+                    const video = this.$refs.mainVideo;
+
+                    await new Promise(resolve => {
+                        video.oncanplay = resolve;
+                        video.load();
+                    });
+
+                    URL.revokeObjectURL(objectUrl);
+                    this.videoSrc = this.baseVideoUrl;
+                    video.load();
+                }
+            } catch (error) {
+                console.error('Failed to refresh video:', error);
+            } finally {
+                this.isRefreshing = false;
+            }
+        }
+    }
+}
+window.videoRefresher = videoRefresher;
