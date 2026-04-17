@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class ToolsController extends Controller
 {
@@ -114,6 +115,7 @@ class ToolsController extends Controller
             'filename' => ['required', 'string', 'max:255'],
             'folder' => ['nullable', 'string', 'max:255'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            ...$this->metadataValidationRules(),
         ]);
 
         $folder = $request->input('folder', S3Service::getRootFolder());
@@ -148,6 +150,15 @@ class ToolsController extends Controller
             ]);
 
             $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
+
+            // Apply batch upload metadata
+            $this->assetProcessingService->applyUploadMetadata(
+                $asset,
+                $request->input('metadata_tags'),
+                $request->input('metadata_license_type'),
+                $request->input('metadata_copyright'),
+                $request->input('metadata_copyright_source'),
+            );
         } catch (\Exception $e) {
             Log::error('TikZ SVG upload failed: '.$e->getMessage());
 
@@ -180,6 +191,7 @@ class ToolsController extends Controller
             'filename' => ['required', 'string', 'max:255'],
             'folder' => ['nullable', 'string', 'max:255'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            ...$this->metadataValidationRules(),
         ]);
 
         $folder = $request->input('folder', S3Service::getRootFolder());
@@ -214,6 +226,15 @@ class ToolsController extends Controller
             ]);
 
             $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
+
+            // Apply batch upload metadata
+            $this->assetProcessingService->applyUploadMetadata(
+                $asset,
+                $request->input('metadata_tags'),
+                $request->input('metadata_license_type'),
+                $request->input('metadata_copyright'),
+                $request->input('metadata_copyright_source'),
+            );
         } catch (\Exception $e) {
             Log::error('TikZ SVG (embedded fonts) upload failed: '.$e->getMessage());
 
@@ -283,6 +304,7 @@ class ToolsController extends Controller
             'width' => ['nullable', 'integer', 'min:1'],
             'height' => ['nullable', 'integer', 'min:1'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            ...$this->metadataValidationRules(),
         ]);
 
         $folder = $request->input('folder', S3Service::getRootFolder());
@@ -327,6 +349,15 @@ class ToolsController extends Controller
             ]);
 
             $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
+
+            // Apply batch upload metadata
+            $this->assetProcessingService->applyUploadMetadata(
+                $asset,
+                $request->input('metadata_tags'),
+                $request->input('metadata_license_type'),
+                $request->input('metadata_copyright'),
+                $request->input('metadata_copyright_source'),
+            );
         } catch (\Exception $e) {
             Log::error('TikZ PNG upload failed: '.$e->getMessage());
 
@@ -574,5 +605,16 @@ class ToolsController extends Controller
             'asset_url' => route('assets.show', $asset),
             'filename' => $asset->filename,
         ]);
+    }
+
+    private function metadataValidationRules(): array
+    {
+        return [
+            'metadata_tags' => 'nullable|array',
+            'metadata_tags.*' => 'string|max:100',
+            'metadata_license_type' => ['nullable', 'string', Rule::in(array_keys(Asset::licenseTypes()))],
+            'metadata_copyright' => 'nullable|string|max:500',
+            'metadata_copyright_source' => 'nullable|string|max:500',
+        ];
     }
 }

@@ -536,6 +536,9 @@
                 <h3 class="text-sm font-semibold text-gray-700 mb-3">
                     <i class="fas fa-cloud-arrow-up mr-2 text-gray-400"></i>{{ __('Upload to ORCA') }}
                 </h3>
+
+                @include('partials.upload-metadata')
+
                 <div class="flex flex-wrap gap-4 items-end">
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
@@ -683,6 +686,7 @@ window.__pageData = {
     templateSearchUrl: '{{ route('tools.tikz-server.templates') }}',
     templateLoadUrl: '{{ url('tools/tikz-server/templates') }}',
     templateUploadUrl: '{{ route('tools.tikz-server.templates.upload') }}',
+    tagsSearch: '{{ route('tags.search') }}',
     saveTemplatePrompt: '{{ __('Template name') }}:',
     csrfToken: '{{ csrf_token() }}',
     compilerAvailable: @json($compilerAvailable),

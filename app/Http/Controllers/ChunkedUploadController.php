@@ -13,6 +13,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class ChunkedUploadController extends Controller
 {
@@ -148,6 +149,11 @@ class ChunkedUploadController extends Controller
 
         $request->validate([
             'session_token' => 'required|string',
+            'metadata_tags' => 'nullable|array',
+            'metadata_tags.*' => 'string|max:100',
+            'metadata_license_type' => ['nullable', 'string', Rule::in(array_keys(Asset::licenseTypes()))],
+            'metadata_copyright' => 'nullable|string|max:500',
+            'metadata_copyright_source' => 'nullable|string|max:500',
         ]);
 
         try {
@@ -160,6 +166,15 @@ class ChunkedUploadController extends Controller
 
             // Generate thumbnail, resized images, and AI tags
             $this->assetProcessingService->processImageAsset($asset);
+
+            // Apply batch upload metadata
+            $this->assetProcessingService->applyUploadMetadata(
+                $asset,
+                $request->input('metadata_tags'),
+                $request->input('metadata_license_type'),
+                $request->input('metadata_copyright'),
+                $request->input('metadata_copyright_source'),
+            );
 
             return response()->json([
                 'message' => 'Upload completed successfully',

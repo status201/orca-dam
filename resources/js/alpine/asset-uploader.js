@@ -1,9 +1,11 @@
 import { generatePdfThumbnail, generateVideoThumbnail, uploadThumbnail } from './thumbnail-generator';
+import { uploadMetadata } from './upload-metadata';
 
 export function assetUploader() {
     const pageData = window.__pageData || {};
 
     return {
+        ...uploadMetadata(),
         dragActive: false,
         selectedFiles: [],
         uploading: false,
@@ -312,6 +314,14 @@ export function assetUploader() {
                 formData.append('keep_original_filename', '1');
             }
 
+            const meta = this.getMetadataPayload();
+            if (meta.metadata_tags) {
+                meta.metadata_tags.forEach(tag => formData.append('metadata_tags[]', tag));
+            }
+            if (meta.metadata_license_type) formData.append('metadata_license_type', meta.metadata_license_type);
+            if (meta.metadata_copyright) formData.append('metadata_copyright', meta.metadata_copyright);
+            if (meta.metadata_copyright_source) formData.append('metadata_copyright_source', meta.metadata_copyright_source);
+
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
 
@@ -449,7 +459,10 @@ export function assetUploader() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ session_token: sessionToken }),
+                body: JSON.stringify({
+                    session_token: sessionToken,
+                    ...this.getMetadataPayload(),
+                }),
             });
 
             if (response.status === 409) {

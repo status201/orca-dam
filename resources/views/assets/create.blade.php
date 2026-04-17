@@ -83,6 +83,8 @@
             <p class="mt-1 text-xs text-gray-500">{{ __('Use the original filename in the URL instead of a generated name. Useful for download links.') }}</p>
         </div>
 
+        @include('partials.upload-metadata')
+
         <!-- Drag and drop area -->
         <div @drop.prevent="handleDrop"
              @dragover.prevent="dragActive = true"
@@ -194,6 +196,7 @@
             foldersStore: '{{ route('folders.store') }}',
             assetsStore: '{{ route('assets.store') }}',
             assetsIndex: '{{ route('assets.index') }}',
+            tagsSearch: '{{ route('tags.search') }}',
         },
         translations: {
             failedToScanFolders: @js(__('Failed to scan folders')),

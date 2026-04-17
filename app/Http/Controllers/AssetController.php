@@ -224,6 +224,15 @@ class AssetController extends Controller
                     // Generate thumbnail, resized images, and AI tags
                     $this->assetProcessingService->processImageAsset($asset);
 
+                    // Apply batch upload metadata
+                    $this->assetProcessingService->applyUploadMetadata(
+                        $asset,
+                        $request->input('metadata_tags'),
+                        $request->input('metadata_license_type'),
+                        $request->input('metadata_copyright'),
+                        $request->input('metadata_copyright_source'),
+                    );
+
                     $uploadedAssets[] = $asset;
                 } catch (\Exception $e) {
                     \Log::error("Failed to upload {$file->getClientOriginalName()}: ".$e->getMessage());

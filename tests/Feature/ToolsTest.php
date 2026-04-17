@@ -311,6 +311,7 @@ test('svg upload creates asset with svg mime type', function () {
     // Mock AssetProcessingService to avoid real processing
     $processingMock = Mockery::mock(AssetProcessingService::class);
     $processingMock->shouldReceive('processImageAsset')->once();
+    $processingMock->shouldReceive('applyUploadMetadata')->once();
     $this->app->instance(AssetProcessingService::class, $processingMock);
 
     $response = $this->actingAs($user)->postJson(route('tools.tikz-svg.upload'), [
@@ -361,6 +362,7 @@ test('png upload creates asset with dimensions', function () {
 
     $processingMock = Mockery::mock(AssetProcessingService::class);
     $processingMock->shouldReceive('processImageAsset')->once();
+    $processingMock->shouldReceive('applyUploadMetadata')->once();
     $this->app->instance(AssetProcessingService::class, $processingMock);
 
     $response = $this->actingAs($user)->postJson(route('tools.tikz-png.upload'), [

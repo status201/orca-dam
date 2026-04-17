@@ -1,7 +1,10 @@
+import { uploadMetadata } from './upload-metadata';
+
 function tikzServer() {
     const pageData = window.__pageData || {};
 
     return {
+        ...uploadMetadata(),
         tikzCode: '',
         templateName: '',
         pngDpi: 300,
@@ -739,22 +742,24 @@ function tikzServer() {
                     var uploadUrl = isSvg ? pageData.svgUploadUrl : pageData.pngUploadUrl;
                     var body = {};
 
+                    var meta = this.getMetadataPayload();
+
                     if (isSvg) {
-                        body = {
+                        body = Object.assign({
                             content: v.content,
                             filename: v.name,
                             folder: this.uploadFolder,
                             caption: '',
-                        };
+                        }, meta);
                     } else {
-                        body = {
+                        body = Object.assign({
                             content: v.content,
                             filename: v.name,
                             folder: this.uploadFolder,
                             width: v.width,
                             height: v.height,
                             caption: '',
-                        };
+                        }, meta);
                     }
 
                     var res = await fetch(uploadUrl, {

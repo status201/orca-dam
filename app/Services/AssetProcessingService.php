@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\GenerateAiTags;
 use App\Models\Asset;
+use App\Models\Tag;
 use Illuminate\Support\Facades\Log;
 
 class AssetProcessingService
@@ -54,6 +55,32 @@ class AssetProcessingService
             } catch (\Exception $e) {
                 Log::error("AI tagging dispatch failed for {$asset->filename}: ".$e->getMessage());
             }
+        }
+    }
+
+    /**
+     * Apply batch upload metadata (tags, license, copyright) to a newly created asset.
+     */
+    public function applyUploadMetadata(
+        Asset $asset,
+        ?array $tagNames,
+        ?string $licenseType,
+        ?string $copyright,
+        ?string $copyrightSource
+    ): void {
+        $updates = array_filter([
+            'license_type' => $licenseType,
+            'copyright' => $copyright,
+            'copyright_source' => $copyrightSource,
+        ], fn ($v) => $v !== null && $v !== '');
+
+        if (! empty($updates)) {
+            $asset->update($updates);
+        }
+
+        if (! empty($tagNames)) {
+            $tagIds = Tag::resolveUserTagIds($tagNames);
+            $asset->syncTagsWithAttribution($tagIds, 'user');
         }
     }
 }
