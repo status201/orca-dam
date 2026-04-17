@@ -36,6 +36,7 @@ function tikzServer() {
         floatingX: 0,
         floatingY: 0,
         _paletteDrag: null,
+        settingsNavUrl: '',
 
         // Template browser
         templateSearchQuery: '',
@@ -173,6 +174,25 @@ function tikzServer() {
 
         endPaletteDrag() {
             this._paletteDrag = null;
+        },
+
+        confirmSettingsNavigation(url) {
+            this.settingsNavUrl = url;
+            if (!this.tikzCode.trim()) {
+                window.location.href = url;
+                return;
+            }
+            this.colorPaletteOpen = false;
+            this.$dispatch('open-modal', 'settings-nav-confirm');
+        },
+
+        navigateSettingsSameTab() {
+            if (this.settingsNavUrl) window.location.href = this.settingsNavUrl;
+        },
+
+        navigateSettingsNewTab() {
+            if (this.settingsNavUrl) window.open(this.settingsNavUrl, '_blank', 'noopener');
+            this.$dispatch('close');
         },
 
         copyColorName(name) {

@@ -637,7 +637,7 @@
         </div>
 
         <!-- TikZ / LaTeX Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div id="tikz-latex" class="bg-white rounded-lg shadow overflow-hidden scroll-mt-6">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fas fa-palette mr-2 text-purple-500"></i>{{ __('TikZ / LaTeX') }}

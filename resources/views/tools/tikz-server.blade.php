@@ -162,6 +162,15 @@
                                     <span class="ml-1 text-gray-400 normal-case tracking-normal" x-text="'(' + filteredPaletteColors.length + ')'"></span>
                                 </span>
                                 <div class="flex items-center gap-2">
+                                    @can('access', App\Http\Controllers\SystemController::class)
+                                        <a href="{{ route('system.index') }}?section=tikz-latex#settings"
+                                            @mousedown.stop
+                                            @click.prevent.stop="confirmSettingsNavigation($el.href)"
+                                            title="{{ __('Color settings') }}"
+                                            class="text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-cog text-xs"></i>
+                                        </a>
+                                    @endcan
                                     <button @click.stop="toggleFloatingPalette()"
                                         @mousedown.stop
                                         :title="colorPaletteFloating ? '{{ __('Dock') }}' : '{{ __('Undock') }}'"
@@ -553,6 +562,29 @@
             </div>
         </div>
     </div>
+
+    {{-- Settings navigation confirmation modal --}}
+    <x-modal name="settings-nav-confirm" maxWidth="md" focusable>
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-2">
+                <i class="fas fa-triangle-exclamation mr-2 text-amber-500"></i>{{ __('Open color settings?') }}
+            </h2>
+            <p class="text-sm text-gray-600">
+                {{ __('You have unsaved TikZ code in the editor. Navigating away in the same tab will discard it unless you save it first.') }}
+            </p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button @click="navigateSettingsSameTab()"
+                    class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+                    {{ __('Open in this tab') }}
+                </button>
+                <button @click="navigateSettingsNewTab()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-orca-teal text-white text-sm font-medium rounded-md hover:bg-orca-teal-hover transition-colors">
+                    <i class="fas fa-up-right-from-square"></i>
+                    {{ __('Open in new window') }}
+                </button>
+            </div>
+        </div>
+    </x-modal>
 
     {{-- Save template modal --}}
     <x-modal name="save-template" maxWidth="md" focusable>

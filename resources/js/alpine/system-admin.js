@@ -111,6 +111,20 @@ export function systemAdmin() {
             this.refreshQueueStatus();
             this.refreshSupervisorStatus();
 
+            // Deep-link: ?section=<id> scrolls to that element after the tab renders
+            const params = new URLSearchParams(window.location.search);
+            const section = params.get('section');
+            if (section) {
+                this.$nextTick(() => {
+                    const el = document.getElementById(section);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+                params.delete('section');
+                const qs = params.toString();
+                const clean = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+                history.replaceState(null, '', clean);
+            }
+
             // Color swatches for TikZ color package textarea
             this.$nextTick(() => this.updateColorSwatches());
             this.$watch('settings.tikz_color_package', () => {
