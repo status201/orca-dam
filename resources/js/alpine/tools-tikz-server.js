@@ -31,6 +31,11 @@ function tikzServer() {
         // Color palette
         colorPaletteOpen: false,
         paletteColors: [],
+        colorSearchQuery: '',
+        colorPaletteFloating: false,
+        floatingX: 0,
+        floatingY: 0,
+        _paletteDrag: null,
 
         // Template browser
         templateSearchQuery: '',
@@ -109,6 +114,67 @@ function tikzServer() {
             this.paletteColors = colors;
         },
 
+        get filteredPaletteColors() {
+            var q = this.colorSearchQuery.toLowerCase().trim();
+            if (!q) return this.paletteColors;
+            return this.paletteColors.filter(function (c) {
+                return c.name.toLowerCase().includes(q) || c.hex.toLowerCase().includes(q);
+            });
+        },
+
+        openColorPalette() {
+            if (!this.paletteColors.length) return;
+            this.colorPaletteOpen = true;
+            this.$nextTick(() => {
+                if (this.$refs.colorSearch) this.$refs.colorSearch.focus();
+            });
+        },
+
+        toggleFloatingPalette() {
+            if (this.colorPaletteFloating) {
+                this.colorPaletteFloating = false;
+                return;
+            }
+            if (this.floatingX === 0 && this.floatingY === 0) {
+                var anchor = this.$refs.colorButton;
+                if (anchor) {
+                    var rect = anchor.getBoundingClientRect();
+                    this.floatingX = Math.max(8, rect.right - 288);
+                    this.floatingY = rect.bottom + 8;
+                } else {
+                    this.floatingX = 80;
+                    this.floatingY = 80;
+                }
+            }
+            this.colorPaletteFloating = true;
+            this.colorPaletteOpen = true;
+        },
+
+        startPaletteDrag(event) {
+            if (!this.colorPaletteFloating) return;
+            this._paletteDrag = {
+                mouseX: event.clientX,
+                mouseY: event.clientY,
+                startX: this.floatingX,
+                startY: this.floatingY,
+            };
+            event.preventDefault();
+        },
+
+        onPaletteDrag(event) {
+            if (!this._paletteDrag) return;
+            var nextX = this._paletteDrag.startX + (event.clientX - this._paletteDrag.mouseX);
+            var nextY = this._paletteDrag.startY + (event.clientY - this._paletteDrag.mouseY);
+            var maxX = window.innerWidth - 40;
+            var maxY = window.innerHeight - 40;
+            this.floatingX = Math.min(Math.max(-248, nextX), maxX);
+            this.floatingY = Math.min(Math.max(0, nextY), maxY);
+        },
+
+        endPaletteDrag() {
+            this._paletteDrag = null;
+        },
+
         copyColorName(name) {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(name);
@@ -123,7 +189,9 @@ function tikzServer() {
                 ta.remove();
             }
             window.showToast('Copied: ' + name, 'success');
-            this.colorPaletteOpen = false;
+            if (!this.colorPaletteFloating) {
+                this.colorPaletteOpen = false;
+            }
         },
 
         examples: [

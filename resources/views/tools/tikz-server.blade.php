@@ -133,25 +133,58 @@
                 </p>
 
                 {{-- Color palette button + dropdown --}}
-                <div x-show="paletteColors.length > 0" class="relative shrink-0">
+                <div x-show="paletteColors.length > 0" x-cloak class="relative shrink-0"
+                    @keydown.window.alt.c.prevent="openColorPalette()"
+                    @mousemove.window="onPaletteDrag($event)"
+                    @mouseup.window="endPaletteDrag()">
                     <button
-                        @click="colorPaletteOpen = !colorPaletteOpen"
+                        x-ref="colorButton"
+                        @click="colorPaletteOpen ? (colorPaletteOpen = false) : openColorPalette()"
+                        title="{{ __('Colors') }} (Alt+C)"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-600 hover:border-purple-500 hover:text-purple-600 transition-colors"
                         :class="colorPaletteOpen && 'border-purple-500 text-purple-600'">
                         <i class="fas fa-palette"></i>
                         {{ __('Colors') }}
                     </button>
 
-                    <div x-show="colorPaletteOpen" x-transition @click.outside="colorPaletteOpen = false"
-                        class="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                        <div class="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
-                            <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ __('Color Palette') }}</span>
-                            <button @click="colorPaletteOpen = false" class="text-gray-400 hover:text-gray-600">
-                                <i class="fas fa-times text-xs"></i>
-                            </button>
+                    <div x-show="colorPaletteOpen" x-transition.opacity
+                        @click.outside="!colorPaletteFloating && (colorPaletteOpen = false)"
+                        :class="colorPaletteFloating
+                            ? 'fixed w-72 bg-white rounded-lg shadow-2xl border border-gray-200 z-50'
+                            : 'absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50'"
+                        :style="colorPaletteFloating ? ('top:' + floatingY + 'px;left:' + floatingX + 'px') : ''">
+                        <div class="px-3 py-2 border-b border-gray-100"
+                            :class="colorPaletteFloating && 'cursor-move select-none'"
+                            @mousedown="startPaletteDrag($event)">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    {{ __('Color Palette') }}
+                                    <span class="ml-1 text-gray-400 normal-case tracking-normal" x-text="'(' + filteredPaletteColors.length + ')'"></span>
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <button @click.stop="toggleFloatingPalette()"
+                                        @mousedown.stop
+                                        :title="colorPaletteFloating ? '{{ __('Dock') }}' : '{{ __('Undock') }}'"
+                                        class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas text-xs" :class="colorPaletteFloating ? 'fa-thumbtack' : 'fa-up-right-from-square'"></i>
+                                    </button>
+                                    <button @click.stop="colorPaletteOpen = false; colorPaletteFloating = false"
+                                        @mousedown.stop
+                                        class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-times text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="text"
+                                x-ref="colorSearch"
+                                x-model="colorSearchQuery"
+                                @mousedown.stop
+                                @keydown.escape="colorPaletteOpen = false"
+                                placeholder="{{ __('Search colors…') }}"
+                                class="mt-2 w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal">
                         </div>
-                        <div class="max-h-64 overflow-y-auto invert-scrollbar-colors">
-                            <template x-for="color in paletteColors" :key="color.name">
+                        <div class="max-h-[17rem] overflow-y-auto invert-scrollbar-colors">
+                            <template x-for="color in filteredPaletteColors" :key="color.name">
                                 <button
                                     @click="copyColorName(color.name)"
                                     class="w-full text-left px-3 py-1.5 hover:bg-gray-50 border-b border-gray-50 transition-colors flex items-center gap-3 group">
@@ -160,6 +193,9 @@
                                     <span class="text-xs text-gray-400 ml-auto font-mono" x-text="color.hex"></span>
                                 </button>
                             </template>
+                            <div x-show="filteredPaletteColors.length === 0" class="px-3 py-4 text-xs text-gray-400 text-center">
+                                {{ __('No colors match') }}
+                            </div>
                         </div>
                         <div class="px-3 py-1.5 border-t border-gray-100">
                             <span class="text-[10px] text-gray-400">{{ __('Click to copy color name') }}</span>
