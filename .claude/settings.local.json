@@ -26,7 +26,8 @@
       "Bash(php -m)",
       "Bash(ls:*)",
       "Bash(wc:*)",
-      "Bash(composer show:*)"
+      "Bash(composer show:*)",
+      "Bash(./vendor/bin/pint --dirty)"
     ]
   }
 }
