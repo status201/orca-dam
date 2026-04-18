@@ -167,19 +167,19 @@
                                             @mousedown.stop
                                             @click.prevent.stop="confirmSettingsNavigation($el.href)"
                                             title="{{ __('Color settings') }}"
-                                            class="text-gray-400 hover:text-gray-600">
+                                            class="text-gray-400 hover:text-gray-600 pl-1 pr-1">
                                             <i class="fas fa-cog text-xs"></i>
                                         </a>
                                     @endcan
                                     <button @click.stop="toggleFloatingPalette()"
                                         @mousedown.stop
                                         :title="colorPaletteFloating ? '{{ __('Dock') }}' : '{{ __('Undock') }}'"
-                                        class="text-gray-400 hover:text-gray-600">
+                                        class="text-gray-400 hover:text-gray-600 pl-1 pr-1">
                                         <i class="fas text-xs" :class="colorPaletteFloating ? 'fa-thumbtack' : 'fa-up-right-from-square'"></i>
                                     </button>
                                     <button @click.stop="colorPaletteOpen = false; colorPaletteFloating = false"
                                         @mousedown.stop
-                                        class="text-gray-400 hover:text-gray-600">
+                                        class="text-gray-400 hover:text-gray-600 pl-1">
                                         <i class="fas fa-times text-xs"></i>
                                     </button>
                                 </div>
