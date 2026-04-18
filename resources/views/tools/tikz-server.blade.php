@@ -461,7 +461,7 @@
 
         <div class="p-6">
             {{-- Result cards --}}
-            <div class="space-y-6 mb-6">
+            <div class="space-y-6 mb-12">
                 <template x-for="(result, rIdx) in results" :key="rIdx">
                     <div class="border border-gray-200 rounded-lg overflow-hidden">
                         {{-- Snippet header --}}
@@ -533,7 +533,7 @@
 
             {{-- Upload to ORCA --}}
             <div class="border-t border-gray-100 pt-5">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">
+                <h3 class="font-semibold text-gray-700 mb-3">
                     <i class="fas fa-cloud-arrow-up mr-2 text-gray-400"></i>{{ __('Upload to ORCA') }}
                 </h3>
 
