@@ -91,8 +91,9 @@ Remember: you can't move files later, so **choose the correct folder before uplo
 2. Select your target folder
 3. Drag and drop files onto the upload area, or click to browse
 4. Optionally check **Keep original filename** to use the file's original name instead of a generated UUID
-5. Watch the progress bars — larger files may take a moment
-6. Done! Thumbnails and AI tags generate in the background; just refresh the page
+5. Optionally expand **Add Metadata** to apply user tags, license type, copyright, and copyright source to every file in this batch
+6. Watch the progress bars — larger files may take a moment
+7. Done! Thumbnails and AI tags generate in the background; just refresh the page
 
 **File size limit:** Up to 500MB per file. Larger files upload in chunks automatically, so connection hiccups won't lose your progress.
 

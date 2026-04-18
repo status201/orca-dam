@@ -91,8 +91,9 @@ Onthoud: je kunt bestanden later niet verplaatsen, dus **kies de juiste map vó�
 2. Selecteer de doelmap
 3. Sleep bestanden naar het uploadgebied, of klik om te bladeren
 4. Vink eventueel **Originele bestandsnaam behouden** aan om de oorspronkelijke naam te gebruiken in plaats van een gegenereerde UUID
-5. Bekijk de voortgangsbalken — grotere bestanden kunnen even duren
-6. Klaar! Thumbnails en AI-tags worden op de achtergrond gegenereerd; ververs de pagina even
+5. Klap eventueel **Metadata toevoegen** open om gebruikers-tags, licentietype, copyright en copyrightbron toe te passen op elk bestand in deze batch
+6. Bekijk de voortgangsbalken — grotere bestanden kunnen even duren
+7. Klaar! Thumbnails en AI-tags worden op de achtergrond gegenereerd; ververs de pagina even
 
 **Bestandslimiet:** Maximaal 500MB per bestand. Grotere bestanden worden automatisch in chunks geüpload, dus verbindingsproblemen kosten je geen voortgang.
 

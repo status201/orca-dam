@@ -51,7 +51,7 @@ php artisan queue:work --tries=3
 
 **S3Service** - All S3 operations (upload/delete/list/move). Streams files to avoid memory issues. `uploadFile()` supports `keepOriginalFilename` flag (sanitizes via `sanitizeFilename()`). Generates JPEG thumbnails (skips animated GIFs). Thumbnails mirror folder structure (`assets/folder/img.jpg` -> `thumbnails/folder/img_thumb.jpg`). `generateResizedImages()` creates S/M/L presets at configurable dimensions (stored in `thumbnails/S|M|L/`), keeping original format (GIFs→JPEG). `deleteResizedImages()` removes all resize variants. `deleteAssetFiles()` removes all S3 files for an asset (original + thumbnail + resizes). `moveObject()` copies then deletes (non-destructive on delete failure). Discovery finds unmapped S3 objects. Supports custom domain for CDN URLs via `getPublicBaseUrl()`.
 
-**AssetProcessingService** - Extracted shared asset processing logic used by multiple controllers. Handles thumbnail generation, resized image creation, dimension extraction, and AI tag dispatching. Called from `AssetController`, `AssetApiController`, `ChunkedUploadController`, and `ProcessDiscoveredAsset` job.
+**AssetProcessingService** - Extracted shared asset processing logic used by multiple controllers. Handles thumbnail generation, resized image creation, dimension extraction, and AI tag dispatching. Called from `AssetController`, `AssetApiController`, `ChunkedUploadController`, and `ProcessDiscoveredAsset` job. `applyUploadMetadata()` applies batch metadata (user tags, license type, copyright, copyright source) to a newly created asset — called after `processImageAsset()` from web upload controllers (`AssetController`, `ChunkedUploadController`, `ToolsController` TikZ upload endpoints).
 
 **ChunkedUploadService** - Large file uploads (>=10MB, up to 500MB) via S3 Multipart Upload API. Splits into 10MB chunks, streams directly to S3. Manages sessions via `upload_sessions` table. Idempotent chunk uploads with retry support. Supports `keepOriginalFilename`. Duplicate detection via etag on complete (throws `DuplicateAssetException`).
 
@@ -156,7 +156,7 @@ Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domai
 - `/api-docs/*` - Admin: dashboard, settings, tokens, JWT secrets
 - `GET /system/integrity-status` | `POST /system/verify-integrity` (admin) - S3 integrity check
 - `/system` - Admin: overview, settings, queue, logs, commands, diagnostics, tests
-- `/tools` - Tools index (editor+admin). TikZ Server Render: compile, save/load templates, upload results
+- `/tools` - Tools index (editor+admin). TikZ Server Render: compile, save/load templates, upload results (SVG/SVG-fonts/PNG endpoints all accept optional batch metadata: `metadata_tags`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source`)
 
 ## Database Schema
 
@@ -217,7 +217,7 @@ TIKZ_PNG_DPI=300                     # Default PNG DPI (72-600)
 
 **File organization**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware in `app/Http/Middleware/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console Commands in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g., `DuplicateAssetException`)
 
-**Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (15 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `tools-tikz-server`, `trash`). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives. The asset grid markup lives in `resources/views/assets/partials/grid.blade.php` and is shared between the index and embed views.
+**Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (15 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `tools-tikz-server`, `trash`). Shared mixins (not registered as top-level components): `upload-metadata` (batch metadata form state, spread into uploader/TikZ components) and `thumbnail-generator` (client-side PDF/video thumbnailing). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives. The asset grid markup lives in `resources/views/assets/partials/grid.blade.php` and is shared between the index and embed views.
 
 **Naming**: S3 keys `assets/{folder}/{uuid}.{ext}`, thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG). RESTful routes, snake_case columns.
 
@@ -249,7 +249,7 @@ Web-based test runner at `/system` -> Tests tab (admin only).
 
 ## Key Workflows
 
-**Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> duplicate check via etag (rejects with link to existing asset) -> S3Service streams to S3 (optional `keepOriginalFilename`) -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled. API upload endpoints can be disabled at runtime via `api_upload_enabled` setting (API Docs → Dashboard); returns 403 when disabled. Web chunked uploads use session auth and are not affected by the API upload toggle.
+**Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> duplicate check via etag (rejects with link to existing asset) -> S3Service streams to S3 (optional `keepOriginalFilename`) -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled -> optional batch metadata applied (`metadata_tags[]`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source` — same form fields shared across `/assets/create` and TikZ Server tool uploads; applied to every asset in the batch). API upload endpoints can be disabled at runtime via `api_upload_enabled` setting (API Docs → Dashboard); returns 403 when disabled. Web chunked uploads use session auth and are not affected by the API upload toggle.
 
 **Discovery** (admin): S3Service finds unmapped objects -> admin selects to import -> Asset records created -> thumbnails + resized images + AI tags applied. Soft-deleted assets shown with "Deleted" badge to prevent re-import.
 

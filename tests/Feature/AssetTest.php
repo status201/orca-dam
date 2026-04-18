@@ -861,3 +861,117 @@ test('storeThumbnail validates thumbnail field is required', function () {
     $response->assertStatus(422);
     $response->assertJsonValidationErrors('thumbnail');
 });
+
+// ---------------------------------------------------------------------------
+// Batch upload metadata (POST /assets)
+// ---------------------------------------------------------------------------
+
+test('store applies batch metadata to every uploaded file', function () {
+    $user = User::factory()->create();
+
+    $s3Service = Mockery::mock(S3Service::class);
+    $callCount = 0;
+    $s3Service->shouldReceive('uploadFile')->twice()->andReturnUsing(function () use (&$callCount) {
+        $callCount++;
+
+        return [
+            's3_key' => "assets/photo-{$callCount}.jpg",
+            'filename' => "photo-{$callCount}.jpg",
+            'mime_type' => 'image/jpeg',
+            'size' => 5000,
+            'etag' => "etag-{$callCount}",
+            'width' => 800,
+            'height' => 600,
+        ];
+    });
+    $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
+    $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
+    $this->app->instance(S3Service::class, $s3Service);
+
+    $files = [
+        UploadedFile::fake()->image('photo-1.jpg', 800, 600),
+        UploadedFile::fake()->image('photo-2.jpg', 800, 600),
+    ];
+
+    $response = $this->actingAs($user)->postJson(route('assets.store'), [
+        'files' => $files,
+        'metadata_tags' => ['Landscape', 'sunset'],
+        'metadata_license_type' => 'cc_by',
+        'metadata_copyright' => '© 2026 ACME',
+        'metadata_copyright_source' => 'https://example.com/license',
+    ]);
+
+    $response->assertStatus(200);
+
+    $assets = Asset::with('tags')->whereIn('s3_key', ['assets/photo-1.jpg', 'assets/photo-2.jpg'])->get();
+    expect($assets)->toHaveCount(2);
+
+    foreach ($assets as $asset) {
+        expect($asset->license_type)->toBe('cc_by');
+        expect($asset->copyright)->toBe('© 2026 ACME');
+        expect($asset->copyright_source)->toBe('https://example.com/license');
+
+        $tagNames = $asset->tags->pluck('name')->all();
+        expect($tagNames)->toContain('landscape');
+        expect($tagNames)->toContain('sunset');
+
+        foreach ($asset->tags as $tag) {
+            expect($tag->type)->toBe('user');
+            expect($tag->pivot->attached_by)->toBe('user');
+        }
+    }
+});
+
+test('store rejects invalid metadata_license_type', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->postJson(route('assets.store'), [
+        'files' => [UploadedFile::fake()->image('photo.jpg')],
+        'metadata_license_type' => 'not-a-real-license',
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors('metadata_license_type');
+});
+
+test('store rejects metadata_copyright longer than 500 characters', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->postJson(route('assets.store'), [
+        'files' => [UploadedFile::fake()->image('photo.jpg')],
+        'metadata_copyright' => str_repeat('a', 501),
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors('metadata_copyright');
+});
+
+test('store works without any metadata fields', function () {
+    $user = User::factory()->create();
+
+    $s3Service = Mockery::mock(S3Service::class);
+    $s3Service->shouldReceive('uploadFile')->once()->andReturn([
+        's3_key' => 'assets/photo.jpg',
+        'filename' => 'photo.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 5000,
+        'etag' => 'etag-no-meta',
+        'width' => 800,
+        'height' => 600,
+    ]);
+    $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
+    $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
+    $this->app->instance(S3Service::class, $s3Service);
+
+    $response = $this->actingAs($user)->postJson(route('assets.store'), [
+        'files' => [UploadedFile::fake()->image('photo.jpg')],
+    ]);
+
+    $response->assertStatus(200);
+
+    $asset = Asset::where('etag', 'etag-no-meta')->first();
+    expect($asset)->not->toBeNull();
+    expect($asset->license_type)->toBeNull();
+    expect($asset->copyright)->toBeNull();
+    expect($asset->tags()->count())->toBe(0);
+});
