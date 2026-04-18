@@ -1,34 +1,35 @@
 # ORCA DAM — Snelstartgids
 
-**ORCA Retrieves Cloud Assets** — Je vriendelijke Digital Asset Manager
+**ORCA Retrieves Cloud Assets**
 
 ---
 
 ## Inhoudsopgave
 
 1. [Welkom bij ORCA!](#welkom-bij-orca)
-2. [De Gouden Regels](#de-gouden-regels)
-3. [Aan de slag](#aan-de-slag)
-4. [Bestanden uploaden](#bestanden-uploaden)
-5. [Bladeren & zoeken](#bladeren--zoeken)
-6. [Werken met tags](#werken-met-tags)
-7. [Assetgegevens bewerken](#assetgegevens-bewerken)
-8. [Assets vervangen](#assets-vervangen)
-9. [De Prullenbak](#de-prullenbak)
-10. [Gebruikersvoorkeuren](#gebruikersvoorkeuren)
-11. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
-12. [Bulksgewijs prullenbak & downloaden](#bulksgewijs-prullenbak--downloaden)
-13. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
-14. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
-15. [Ontdek-functie (alleen admin)](#ontdek-functie-alleen-admin)
-16. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
-17. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
-18. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
-19. [S3-integriteitscontrole (alleen admin)](#s3-integriteitscontrole-alleen-admin)
-20. [Tools](#tools)
-21. [Tips & trucs](#tips--trucs)
-22. [Woordenlijst](#woordenlijst)
-23. [Hulp nodig?](#hulp-nodig)
+2. [Systeemarchitectuur](#systeemarchitectuur)
+3. [De Gouden Regels](#de-gouden-regels)
+4. [Aan de slag](#aan-de-slag)
+5. [Bestanden uploaden](#bestanden-uploaden)
+6. [Bladeren & zoeken](#bladeren--zoeken)
+7. [Werken met tags](#werken-met-tags)
+8. [Assetgegevens bewerken](#assetgegevens-bewerken)
+9. [Assets vervangen](#assets-vervangen)
+10. [De Prullenbak](#de-prullenbak)
+11. [Gebruikersvoorkeuren](#gebruikersvoorkeuren)
+12. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
+13. [Bulksgewijs prullenbak & downloaden](#bulksgewijs-prullenbak--downloaden)
+14. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
+15. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
+16. [Ontdek-functie (alleen admin)](#ontdek-functie-alleen-admin)
+17. [Metadata importeren (alleen admin)](#metadata-importeren-alleen-admin)
+18. [Exporteren naar CSV (alleen admin)](#exporteren-naar-csv-alleen-admin)
+19. [API Docs & tokenbeheer (alleen admin)](#api-docs--tokenbeheer-alleen-admin)
+20. [S3-integriteitscontrole (alleen admin)](#s3-integriteitscontrole-alleen-admin)
+21. [Tools](#tools)
+22. [Tips & trucs](#tips--trucs)
+23. [Woordenlijst](#woordenlijst)
+24. [Hulp nodig?](#hulp-nodig)
 
 ---
 
@@ -37,6 +38,52 @@
 Gefeliciteerd met je toegang tot ORCA DAM! Of je nu afbeeldingen uploadt voor lesmateriaal, documenten beheert of mediabestanden organiseert — je bent op de juiste plek.
 
 Ooit geprobeerd om bestanden rechtstreeks op Amazon S3 te beheren? Geen zoekfunctie, geen notities bij bestanden, geen idee wie wat heeft geüpload, en één verkeerde klik maakt iets openbaar dat privé hoorde te zijn. **Niet leuk.** ORCA is de vriendelijke receptie vóór dat enorme magazijn — het zit tussen jou en de ruwe cloudopslag, en maakt alles veiliger, doorzoekbaar en beheersbaar.
+
+---
+
+## Systeemarchitectuur
+
+Waar *zit* ORCA eigenlijk in het grotere geheel? Het onderstaande diagram laat zien hoe assets van opslag helemaal tot in de browser van een leerling reizen, en waar Auteurs, Spark en Studyflow.nl in passen. De pijlen volgen de werkelijke stroom van content — volg er eentje om te zien hoe een pagina of afbeelding daadwerkelijk bij de gebruiker terechtkomt.
+
+```
+   ┌───────────────┐              ┌───────────────────┐     ┌───────────────────┐
+   │    AUTEUR     │              │ LEERLING / DOCENT │     │ INTERNETBEZOEKER  │
+   │  (medewerker) │              │                   │     │                   │
+   └───────┬───────┘              └─────────▲─────────┘     └─────────▲─────────┘
+           │                                │                         │
+           │ uploaden                       │ pagina's                │ pagina's
+           │ en bewerken                    │ geserveerd              │ geserveerd
+           ├─── beheert Spark ─────┐        │                         │
+           │    content            │        │                         │
+           ▼                       ▼        │                         │
+   ┌───────────────┐        ┌───────────────────┐           ┌───────────────────┐
+   │               │        │                   │           │                   │
+   │     ORCA      │        │       SPARK       │           │   STUDYFLOW.NL    │
+   │               │        │   (leersysteem)   │           │    (marketing)    │
+   │ ┌────────────┐│◄──────►│                   │           │                   │
+   │ │  ORCA API  ││  API   │                   │           │                   │
+   │ │ OpenAPI 3  ││        │                   │           │                   │
+   │ └────────────┘│        │                   │           │                   │
+   └──┬──▲─────┬───┘        └─────────▲─────────┘           └─────────▲─────────┘
+      │  │     │                      │                               │
+      │  │     │ cache                │ assets ingebed                │ assets ingebed
+      │  │     │ legen                │ in geserveerde                │ in geserveerde
+      │  │     ▼                      │ pagina's                      │ pagina's
+      │  │  ┌─────────────────────────────────────────────────────────────────────┐
+      │  │  │               CLOUDFLARE CDN (assets.studyflow.nl)                  │
+      │  │  │             (edge-cache voor elke publieke asset-URL;               │
+      │  │  │            serveert <img> ook rechtstreeks aan browsers)            │
+      │  │  └────────────────────────▲────────────────────────────────────────────┘
+      │  │                           │ "origin pull"
+      │  │ lezen / schrijven         │ (bij missende cache)
+      ▼  │                           │
+   ┌─────┴───────────────────────────┴──────────────────────────────────────────┐
+   │                               AWS S3                                       │
+   │                (bucket: bron van waarheid voor alle asset-bytes)           │
+   └────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Hoe lees je dit:** AWS S3 is waar elke asset-byte leeft — de enige bron van waarheid. ORCA is de Digital Asset Management interface: auteurs uploaden en beheren hier assets, en ORCA leest *en* schrijft naar S3. Al het publieke verkeer loopt via Cloudflare, dat bij een ontbrekende cache de assets uit S3 ophaalt en door ORCA geleegd wordt wanneer een asset verandert. Spark (het leerplatform) praat met de ORCA REST API om metadata op te halen, gebruik te registreren via reference tags; auteurs schrijven les- en toetsinhoud ook rechtstreeks in Spark. Wanneer een leerling of docent een Spark-les of toets opent, of een bezoeker op Studyflow.nl landt, bevat de ontvangen HTML `<img>`-URL's die naar Cloudflare wijzen — de beeldbytes reizen dus van Cloudflare → browser zonder ORCA, Spark of S3 direct aan te raken.
 
 ---
 

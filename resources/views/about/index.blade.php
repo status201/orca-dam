@@ -132,6 +132,7 @@
     margin: 1rem 0;
     border: 1px solid #374151;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    line-height: 1.35;
 }
 
 .prose-doc pre code {
@@ -140,7 +141,7 @@
     padding: 0;
     border: none;
     font-size: 0.8125rem;
-    line-height: 1.6;
+    line-height: inherit;
 }
 
 .prose-doc blockquote {

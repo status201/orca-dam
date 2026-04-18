@@ -1,34 +1,35 @@
 # ORCA DAM — Quick Start Guide
 
-**ORCA Retrieves Cloud Assets** — Your friendly Digital Asset Manager
+**ORCA Retrieves Cloud Assets**
 
 ---
 
 ## Table of Contents
 
 1. [Welcome to ORCA!](#welcome-to-orca)
-2. [The Golden Rules](#the-golden-rules)
-3. [Getting Started](#getting-started)
-4. [Uploading Files](#uploading-files)
-5. [Browsing & Finding Assets](#browsing--finding-assets)
-6. [Working with Tags](#working-with-tags)
-7. [Editing Asset Details](#editing-asset-details)
-8. [Replacing Assets](#replacing-assets)
-9. [The Trash](#the-trash)
-10. [User Preferences](#user-preferences)
-11. [Moving Files (The Long Way)](#moving-files-the-long-way)
-12. [Bulk Trash & Download](#bulk-trash--download)
-13. [Bulk Move (Admin Only)](#bulk-move-admin-only)
-14. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
-15. [Discover Feature (Admin Only)](#discover-feature-admin-only)
-16. [Import Metadata (Admin Only)](#import-metadata-admin-only)
-17. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
-18. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
-19. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
-20. [Tools](#tools)
-21. [Tips & Tricks](#tips--tricks)
-22. [Glossary](#glossary)
-23. [Getting Help](#getting-help)
+2. [System Architecture](#system-architecture)
+3. [The Golden Rules](#the-golden-rules)
+4. [Getting Started](#getting-started)
+5. [Uploading Files](#uploading-files)
+6. [Browsing & Finding Assets](#browsing--finding-assets)
+7. [Working with Tags](#working-with-tags)
+8. [Editing Asset Details](#editing-asset-details)
+9. [Replacing Assets](#replacing-assets)
+10. [The Trash](#the-trash)
+11. [User Preferences](#user-preferences)
+12. [Moving Files (The Long Way)](#moving-files-the-long-way)
+13. [Bulk Trash & Download](#bulk-trash--download)
+14. [Bulk Move (Admin Only)](#bulk-move-admin-only)
+15. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
+16. [Discover Feature (Admin Only)](#discover-feature-admin-only)
+17. [Import Metadata (Admin Only)](#import-metadata-admin-only)
+18. [Export to CSV (Admin Only)](#export-to-csv-admin-only)
+19. [API Docs & Token Management (Admin Only)](#api-docs--token-management-admin-only)
+20. [S3 Integrity Check (Admin Only)](#s3-integrity-check-admin-only)
+21. [Tools](#tools)
+22. [Tips & Tricks](#tips--tricks)
+23. [Glossary](#glossary)
+24. [Getting Help](#getting-help)
 
 ---
 
@@ -37,6 +38,52 @@
 Congratulations on getting access to ORCA DAM! Whether you're uploading images for course materials, managing documents, or organizing media files, you've come to the right place.
 
 Ever tried managing files directly on Amazon S3? No search, no notes on files, no idea who uploaded what, and one wrong click makes something public that shouldn't be. **Not fun.** ORCA is the friendly reception desk in front of that massive warehouse — it sits between you and the raw cloud storage, making everything safer, searchable, and manageable.
+
+---
+
+## System Architecture
+
+Where does ORCA actually *sit* in the bigger picture? The diagram below shows how assets travel from storage all the way to a student's browser, and where Authors, Spark, and Studyflow.nl fit in. Arrows follow the real flow of content — follow one to see how a page or image actually gets delivered.
+
+```
+   ┌───────────────┐              ┌───────────────────┐     ┌───────────────────┐
+   │    AUTHOR     │              │ STUDENT / TEACHER │     │ INTERNET VISITOR  │
+   │ (staff/admin) │              │                   │     │                   │
+   └───────┬───────┘              └─────────▲─────────┘     └─────────▲─────────┘
+           │                                │                         │
+           │ upload                         │ pages served            │ pages served
+           │ and edit                       │                         │
+           ├──── authors Spark ────┐        │                         │
+           │     content           │        │                         │
+           ▼                       ▼        │                         │
+   ┌───────────────┐        ┌───────────────────┐           ┌───────────────────┐
+   │               │        │                   │           │                   │
+   │     ORCA      │        │       SPARK       │           │   STUDYFLOW.NL    │
+   │               │        │ (learning system) │           │    (marketing)    │
+   │ ┌────────────┐│◄──────►│                   │           │                   │
+   │ │  ORCA API  ││  API   │                   │           │                   │
+   │ │ OpenAPI 3  ││        │                   │           │                   │
+   │ └────────────┘│        │                   │           │                   │
+   └──┬──▲─────┬───┘        └─────────▲─────────┘           └─────────▲─────────┘
+      │  │     │                      │                               │
+      │  │     │ cache                │ assets embedded               │ assets embedded
+      │  │     │ purge                │ in served pages               │ in served pages
+      │  │     ▼                      │                               │
+      │  │  ┌─────────────────────────────────────────────────────────────────────┐
+      │  │  │                CLOUDFLARE CDN (assets.studyflow.nl)                 │
+      │  │  │              (edge cache for every public asset URL;                │
+      │  │  │         also serves <img> loads directly to user browsers)          │
+      │  │  └────────────────────────▲────────────────────────────────────────────┘
+      │  │                           │ 
+      │  │ read / write              │ origin pull (cache miss)
+      ▼  │                           │
+   ┌─────┴───────────────────────────┴──────────────────────────────────────────┐
+   │                               AWS S3                                       │
+   │                  (bucket: source of truth for asset bytes)                 │
+   └────────────────────────────────────────────────────────────────────────────┘
+```
+
+**How to read it:** AWS S3 is where every asset byte lives — the single source of truth. ORCA is the Digital Asset Management interface: Authors upload and curate assets here, and ORCA reads from *and* writes to S3. All public traffic flows through Cloudflare, which pulls from S3 on cache miss and is purged by ORCA when an asset changes. Spark (the learning platform) talks to ORCA's REST API to fetch metadata, register usage via reference tags, and occasionally upload; Authors also create lesson content directly in Spark. When a Student/Teacher opens a Spark lesson, or a visitor lands on Studyflow.nl, the HTML they receive embeds `<img>` URLs pointing at Cloudflare — so image bytes travel edge → browser without touching ORCA, Spark, or S3 directly.
 
 ---
 
