@@ -1,4 +1,5 @@
 import { uploadMetadata } from './upload-metadata';
+import { applyFirefoxBgLocalPolyfill } from './firefox-bg-local-polyfill';
 
 function tikzServer() {
     const pageData = window.__pageData || {};
@@ -90,6 +91,7 @@ function tikzServer() {
             ta.style.backgroundImage = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
             ta.style.backgroundAttachment = 'local';
             ta.style.backgroundRepeat = 'no-repeat';
+            applyFirefoxBgLocalPolyfill(ta);
         },
 
         parsePaletteColors() {

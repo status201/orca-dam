@@ -1,3 +1,5 @@
+import { applyFirefoxBgLocalPolyfill } from './firefox-bg-local-polyfill';
+
 export function systemAdmin() {
     const pageData = window.__systemPageData;
 
@@ -809,6 +811,7 @@ export function systemAdmin() {
             ta.style.backgroundAttachment = 'local';
             ta.style.backgroundRepeat = 'no-repeat';
             ta.style.paddingLeft = (gutterWidth + 8) + 'px';
+            applyFirefoxBgLocalPolyfill(ta);
         }
     };
 }
