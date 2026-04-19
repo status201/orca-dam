@@ -1,10 +1,16 @@
+    @php
+        // Append the current index query string so the show page can reconstruct
+        // the result-set context (for cycle navigation and the back button).
+        $showQuery = request()->getQueryString();
+        $showSuffix = $showQuery ? '?'.$showQuery : '';
+    @endphp
     <!-- Asset grid -->
     <!-- Grid View -->
     <div x-show="viewMode === 'grid'" x-cloak class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 xxl:grid-cols-12 gap-4">
         @foreach($assets as $asset)
         <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
              x-data="assetCard({{ $asset->id }})"
-             @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset) }}'; }">
+             @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset).$showSuffix }}'; }">
             <!-- Selection checkbox -->
             <div class="absolute top-2 left-2 z-20"
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
@@ -165,7 +171,7 @@
 
                         <!-- Thumbnail -->
                         <td class="px-4 py-3">
-                            <a href="{{ route('assets.show', $asset) }}" class="block">
+                            <a href="{{ route('assets.show', $asset).$showSuffix }}" class="block">
                                 <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orca-500 transition-all relative">
                                     @if($asset->is_missing)
                                     <div class="absolute top-0 right-0 z-10">
@@ -224,7 +230,7 @@
                         <!-- Actions -->
                         <td class="actions-icons px-4 py-3">
                             <div class="flex gap-3">
-                                <a href="{{ route('assets.show', $asset) }}"
+                                <a href="{{ route('assets.show', $asset).$showSuffix }}"
                                    class="text-blue-600 hover:text-blue-800"
                                    title="{{ __('View asset') }}">
                                     <i class="fas fa-eye"></i>

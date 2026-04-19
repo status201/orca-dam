@@ -11,6 +11,7 @@ use App\Services\AssetProcessingService;
 use App\Services\CloudflareService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,15 @@ use Illuminate\Support\Facades\Log;
 class AssetController extends Controller
 {
     use AuthorizesRequests;
+
+    /**
+     * Query parameters that describe an index result set. Used to detect
+     * whether the show page was reached "in context" (from a filtered index)
+     * so we can render prev/next cycle navigation.
+     */
+    private const CONTEXT_KEYS = ['search', 'tags', 'type', 'folder', 'user', 'missing', 'sort', 'per_page', 'page'];
+
+    private const ALLOWED_PER_PAGE = [12, 24, 36, 48, 60, 72, 96];
 
     protected S3Service $s3Service;
 
@@ -69,36 +79,13 @@ class AssetController extends Controller
      */
     private function buildIndexData(Request $request): array
     {
-        $query = Asset::with(['tags', 'user']);
-
-        // Apply search
-        if ($search = $request->input('search')) {
-            $query->search($search);
-        }
-
-        // Apply tag filter
-        if ($tagIds = $request->input('tags')) {
-            $query->withTags(is_array($tagIds) ? $tagIds : explode(',', $tagIds));
-        }
-
-        // Apply type filter
-        if ($type = $request->input('type')) {
-            $query->ofType($type);
-        }
-
-        // Apply folder filter: URL param > user preference > global root
         $rootFolder = S3Service::getRootFolder();
         $userHomeFolder = Auth::user()->getHomeFolder();
         $folder = $request->input('folder', $userHomeFolder);
-        if ($folder !== '') {
-            $query->inFolder($folder);
-        }
 
-        // Apply user filter (admins: any user, editors: own ID only)
         $filterUser = null;
         if ($userId = $request->input('user')) {
             if (Auth::user()->isAdmin() || (int) $userId === Auth::id()) {
-                $query->byUser($userId);
                 $filterUserModel = User::find($userId);
                 if ($filterUserModel) {
                     $filterUser = ['id' => $filterUserModel->id, 'name' => $filterUserModel->name];
@@ -106,27 +93,71 @@ class AssetController extends Controller
             }
         }
 
-        // Apply missing filter
-        if ($request->boolean('missing')) {
-            $query->missing();
-        }
+        $query = $this->buildFilteredAssetQuery($request)->with(['tags', 'user']);
+        $perPage = $this->resolvePerPage($request);
 
-        // Apply sorting
-        $sort = $request->input('sort', 'date_desc');
-        $query->applySort($sort);
-
-        // Items per page: URL param > user preference > global setting
-        $allowedPerPage = [12, 24, 36, 48, 60, 72, 96];
-        $perPage = $request->input('per_page');
-        if (! $perPage || ! in_array((int) $perPage, $allowedPerPage)) {
-            $perPage = Auth::user()->getItemsPerPage();
-        }
-        $assets = $query->paginate((int) $perPage)->onEachSide(2)->withQueryString();
+        $assets = $query->paginate($perPage)->onEachSide(2)->withQueryString();
         $folders = S3Service::getConfiguredFolders();
 
         $missingCount = Cache::remember('assets:missing_count', 300, fn () => Asset::missing()->count());
 
         return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount', 'filterUser');
+    }
+
+    /**
+     * Build the unpaginated, filtered asset query that drives both the index
+     * and the show-page cycle navigation. Pure: no eager loads, no pagination.
+     */
+    private function buildFilteredAssetQuery(Request $request): Builder
+    {
+        $query = Asset::query();
+
+        if ($search = $request->input('search')) {
+            $query->search($search);
+        }
+
+        if ($tagIds = $request->input('tags')) {
+            $query->withTags(is_array($tagIds) ? $tagIds : explode(',', $tagIds));
+        }
+
+        if ($type = $request->input('type')) {
+            $query->ofType($type);
+        }
+
+        // Folder filter: URL param > user home folder. Empty string means "all folders".
+        $userHomeFolder = Auth::user()->getHomeFolder();
+        $folder = $request->input('folder', $userHomeFolder);
+        if ($folder !== '') {
+            $query->inFolder($folder);
+        }
+
+        if ($userId = $request->input('user')) {
+            if (Auth::user()->isAdmin() || (int) $userId === Auth::id()) {
+                $query->byUser($userId);
+            }
+        }
+
+        if ($request->boolean('missing')) {
+            $query->missing();
+        }
+
+        $query->applySort($request->input('sort', 'date_desc'));
+
+        return $query;
+    }
+
+    /**
+     * Resolve items-per-page: URL param > user preference. Falls back to user
+     * preference when the URL value is missing or not in the allow-list.
+     */
+    private function resolvePerPage(Request $request): int
+    {
+        $perPage = $request->input('per_page');
+        if (! $perPage || ! in_array((int) $perPage, self::ALLOWED_PER_PAGE, true)) {
+            $perPage = Auth::user()->getItemsPerPage();
+        }
+
+        return (int) $perPage;
     }
 
     /**
@@ -307,14 +338,180 @@ class AssetController extends Controller
     /**
      * Display the specified asset
      */
-    public function show(Asset $asset)
+    public function show(Request $request, Asset $asset)
     {
         $this->authorize('view', $asset);
         $asset->load(['tags' => function ($query) {
             $query->withCount('assets');
         }, 'user']);
 
-        return view('assets.show', compact('asset'));
+        $cycleNav = $this->buildCycleNav($request, $asset);
+        $backUrl = $this->buildBackUrl($request);
+
+        return view('assets.show', compact('asset', 'cycleNav', 'backUrl'));
+    }
+
+    /**
+     * Extract the index-context query parameters that are present on the
+     * current request, in the canonical order. Returns an empty array when
+     * the show page was opened as a deeplink.
+     */
+    private function extractContextParams(Request $request): array
+    {
+        $context = [];
+        foreach (self::CONTEXT_KEYS as $key) {
+            if ($request->has($key) && $request->input($key) !== '' && $request->input($key) !== null) {
+                $context[$key] = $request->input($key);
+            }
+        }
+
+        return $context;
+    }
+
+    /**
+     * Build the cycle-navigation payload used by the show view.
+     *
+     * Returns null when there is no index context, when the current asset
+     * isn't part of the reconstructed result set (stale link), or when the
+     * result set has only one entry.
+     */
+    private function buildCycleNav(Request $request, Asset $asset): ?array
+    {
+        $context = $this->extractContextParams($request);
+        if (empty($context)) {
+            return null;
+        }
+
+        // The full ordered ID list doesn't depend on the page or per_page params,
+        // so cache by the filter+sort fingerprint only.
+        $cacheKeyContext = $context;
+        unset($cacheKeyContext['page'], $cacheKeyContext['per_page']);
+        ksort($cacheKeyContext);
+        $cacheKey = 'asset-cycle:'.Auth::id().':'.sha1((string) json_encode($cacheKeyContext));
+
+        $idList = Cache::remember(
+            $cacheKey,
+            60,
+            fn () => $this->buildFilteredAssetQuery($request)->pluck('id')->all()
+        );
+
+        $total = count($idList);
+        if ($total <= 1) {
+            return null;
+        }
+
+        $index = array_search($asset->id, $idList, false);
+        if ($index === false) {
+            return null;
+        }
+
+        $perPage = $this->resolvePerPage($request);
+        $prevId = $index > 0 ? $idList[$index - 1] : null;
+        $nextId = $index < $total - 1 ? $idList[$index + 1] : null;
+
+        $neighbourIds = array_filter([$prevId, $nextId]);
+        $neighbours = $neighbourIds
+            ? Asset::whereIn('id', $neighbourIds)->get()->keyBy('id')
+            : collect();
+
+        return [
+            'position' => $index + 1,
+            'total' => $total,
+            'prev' => $prevId ? $this->buildCycleEntry($context, $prevId, $index - 1, $perPage, $neighbours->get($prevId)) : null,
+            'next' => $nextId ? $this->buildCycleEntry($context, $nextId, $index + 1, $perPage, $neighbours->get($nextId)) : null,
+            'summary' => $this->buildContextSummary($request),
+        ];
+    }
+
+    /**
+     * Build a single prev/next entry: URL with page param adjusted to the
+     * index page that contains this neighbour, plus its thumbnail for prefetch.
+     */
+    private function buildCycleEntry(array $context, int $neighbourId, int $neighbourIndex, int $perPage, ?Asset $neighbour): array
+    {
+        $context['page'] = (int) floor($neighbourIndex / max($perPage, 1)) + 1;
+
+        return [
+            'url' => route('assets.show', $neighbourId).'?'.http_build_query($context),
+            'thumb' => $neighbour?->thumbnail_url ?: $neighbour?->url,
+            'filename' => $neighbour?->filename ?? '',
+        ];
+    }
+
+    /**
+     * Build the back-to-index URL. When context params are present we
+     * derive the URL from them so the user lands on the exact same view
+     * (filters, sort, page). Otherwise fall back to the session-stored
+     * return URL (for entries from non-index pages like the dashboard).
+     */
+    private function buildBackUrl(Request $request): string
+    {
+        $context = $this->extractContextParams($request);
+        if (! empty($context)) {
+            return route('assets.index').'?'.http_build_query($context);
+        }
+
+        return session('assets_return_url', route('assets.index'));
+    }
+
+    /**
+     * Build a short, human-readable summary of the active filter/sort, used
+     * by the cycle-nav badge ("Filtered by tag-name, sorted by name"). Only
+     * mentions non-default values; returns an empty string when nothing
+     * notable is active.
+     */
+    private function buildContextSummary(Request $request): string
+    {
+        $parts = [];
+
+        if ($search = $request->input('search')) {
+            $parts[] = '"'.$search.'"';
+        }
+
+        if ($type = $request->input('type')) {
+            $parts[] = $type;
+        }
+
+        if ($tagIds = $request->input('tags')) {
+            $ids = is_array($tagIds) ? $tagIds : explode(',', $tagIds);
+            $names = Tag::whereIn('id', $ids)->pluck('name')->all();
+            if (! empty($names)) {
+                $parts[] = implode(', ', $names);
+            }
+        }
+
+        if ($request->boolean('missing')) {
+            $parts[] = __('Missing');
+        }
+
+        $summary = '';
+        if (! empty($parts)) {
+            $summary = __('Filtered by').' '.implode(' · ', $parts);
+        }
+
+        $sort = $request->input('sort');
+        if ($sort && $sort !== 'date_desc') {
+            $sortLabel = $this->sortLabel($sort);
+            $summary .= ($summary !== '' ? ' · ' : '').__('sorted by').' '.$sortLabel;
+        }
+
+        return $summary;
+    }
+
+    private function sortLabel(string $sort): string
+    {
+        return match ($sort) {
+            'date_asc' => __('Oldest First'),
+            'upload_desc' => __('Newest Uploads'),
+            'upload_asc' => __('Oldest Uploads'),
+            'size_desc' => __('Largest First'),
+            'size_asc' => __('Smallest First'),
+            'name_asc' => __('Name A-Z'),
+            'name_desc' => __('Name Z-A'),
+            's3key_asc' => __('S3 Key A-Z'),
+            's3key_desc' => __('S3 Key Z-A'),
+            default => $sort,
+        };
     }
 
     /**

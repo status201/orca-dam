@@ -3,14 +3,22 @@
 @section('title', $asset->filename)
 
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="assetDetail()">
-    <!-- Back button and breadcrumb -->
-    <div class="mb-6 flex items-center justify-between">
-        <a href="{{ session('assets_return_url', route('assets.index')) }}" class="inline-flex items-center text-orca-black hover:text-orca-black-hover">
-            <i class="fas fa-arrow-left mr-2"></i> {{ __('Back to Assets') }}
-        </a>
+<div class="max-w-7xl mx-auto" x-data="assetDetail({{ Js::from($cycleNav) }})">
+    <!-- Header: mirrors the body grid so the cycle nav lines up with the image's right edge -->
+    <div class="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+        <div class="lg:col-span-2 flex flex-wrap items-center justify-between gap-3">
+            <a href="{{ $backUrl }}" class="inline-flex items-center text-orca-black hover:text-orca-black-hover">
+                <i class="fas fa-arrow-left mr-2"></i> {{ __('Back to Assets') }}
+            </a>
 
-        <x-asset-breadcrumb :asset="$asset" />
+            @if($cycleNav)
+                <x-asset-cycle-nav :nav="$cycleNav" />
+            @endif
+        </div>
+
+        <div class="flex justify-end">
+            <x-asset-breadcrumb :asset="$asset" />
+        </div>
     </div>
 
     <x-alert-messages />

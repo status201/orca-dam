@@ -12,10 +12,11 @@ async function cacheBustFetch(url) {
     return URL.createObjectURL(blob);
 }
 
-export function assetDetail() {
+export function assetDetail(cycleNav = null) {
     const t = window.__pageData?.translations || {};
 
     return {
+        cycleNav,
         copiedStates: {
             main: false,
             thumb: false,
@@ -24,6 +25,47 @@ export function assetDetail() {
             resize_l: false
         },
         downloading: false,
+        _cycleKeyHandler: null,
+
+        init() {
+            if (!this.cycleNav) return;
+            this.prefetchNeighbours();
+            this._cycleKeyHandler = (e) => this.handleCycleKey(e);
+            window.addEventListener('keydown', this._cycleKeyHandler);
+        },
+
+        destroy() {
+            if (this._cycleKeyHandler) {
+                window.removeEventListener('keydown', this._cycleKeyHandler);
+                this._cycleKeyHandler = null;
+            }
+        },
+
+        prefetchNeighbours() {
+            for (const side of ['prev', 'next']) {
+                const target = this.cycleNav?.[side];
+                if (!target?.thumb) continue;
+                const img = new Image();
+                img.decoding = 'async';
+                img.src = target.thumb;
+            }
+        },
+
+        handleCycleKey(e) {
+            if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+            const target = e.target;
+            if (!target) return;
+            const tag = (target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable) return;
+
+            if (e.key === 'ArrowLeft' && this.cycleNav?.prev) {
+                e.preventDefault();
+                window.location.href = this.cycleNav.prev.url;
+            } else if (e.key === 'ArrowRight' && this.cycleNav?.next) {
+                e.preventDefault();
+                window.location.href = this.cycleNav.next.url;
+            }
+        },
 
         async downloadAsset(url) {
             this.downloading = true;
