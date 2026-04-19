@@ -1260,12 +1260,51 @@
             <!-- Progress Bar -->
             <div x-show="runningTests" class="mb-6">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm text-gray-600">{{ __('Running tests...') }}</span>
-                    <span class="text-sm text-gray-600" x-text="Math.round(testProgress) + '%'"></span>
+                    <span class="text-sm text-gray-600">
+                        <span x-show="testRunStatus === 'queued'">{{ __('Waiting for queue worker...') }}</span>
+                        <span x-show="testRunStatus !== 'queued'">{{ __('Running tests...') }}</span>
+                        <span x-show="testRunStatus !== 'queued'" class="text-gray-400"
+                              x-text="' — ' + Math.round(testElapsed) + 's' + (testEstimate ? ' / ~' + Math.round(testEstimate) + 's' : '')"></span>
+                    </span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-gray-600"
+                              x-text="testEstimate ? (Math.round(testProgress) + '%') : ''"></span>
+                        <button type="button"
+                                x-show="testRunId && testRunStatus !== 'queued'"
+                                @click="abortTestRun()"
+                                class="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
+                            <i class="fas fa-stop mr-1"></i>{{ __('Abort') }}
+                        </button>
+                    </div>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="attention bg-green-600 h-2.5 rounded-full transition-all duration-300"
-                         :style="'width: ' + Math.round(testProgress) + '%'"></div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                    <template x-if="testEstimate">
+                        <div class="attention bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                             :style="'width: ' + Math.round(testProgress) + '%'"></div>
+                    </template>
+                    <template x-if="!testEstimate">
+                        <div class="h-2.5 rounded-full bg-gradient-to-r from-green-400 via-green-600 to-green-400 animate-pulse w-full"></div>
+                    </template>
+                </div>
+                <div x-show="testRunStatus !== 'queued' && !testEstimate" class="mt-2 text-xs text-gray-500">
+                    {{ __('First run — no time estimate yet. Subsequent runs will show a real progress bar.') }}
+                </div>
+                <div x-show="testRunWorkerWarning" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                    <div>
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        {{ __('Test run is still queued. Is a queue worker running? Start one with:') }}
+                        <code class="ml-1 px-1 py-0.5 bg-yellow-100 rounded">php artisan queue:work --timeout=900</code>
+                    </div>
+                    <div class="mt-2">
+                        {{ __('No shell access?') }}
+                        <button type="button"
+                                @click="processQueueJobs()"
+                                :disabled="processingJobs"
+                                class="ml-1 inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-200 text-yellow-900 rounded hover:bg-yellow-300 disabled:opacity-50">
+                            <i class="fas mr-1" :class="processingJobs ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
+                            <span x-text="processingJobs ? @js(__('Processing jobs...')) : @js(__('Process the job now'))"></span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1348,7 +1387,7 @@
                     <p class="text-sm mt-2">{{ __('Click "Run Tests" to execute the test suite') }}</p>
                 </div>
                 <div x-show="testOutput || runningTests" class="attention bg-gray-900 rounded-lg p-4 overflow-x-auto max-h-[600px] overflow-y-auto">
-                    <pre class="text-sm font-mono whitespace-pre-wrap text-gray-100" x-html="formatTestOutput(testOutput)"></pre>
+                    <pre class="text-sm font-mono whitespace-pre text-gray-100" x-html="formatTestOutput(testOutput)"></pre>
                 </div>
             </div>
         </div>
@@ -1462,6 +1501,8 @@ window.__systemPageData = {
         testS3: '{{ route('system.test-s3') }}',
         documentation: '{{ route('system.documentation') }}',
         runTests: '{{ route('system.run-tests') }}',
+        runTestsStatus: '{{ route('system.run-tests.status', ['runId' => '__RUN_ID__']) }}',
+        runTestsAbort: '{{ route('system.run-tests.abort', ['runId' => '__RUN_ID__']) }}',
     },
     translations: {
         failedRefreshQueueStatus: @js(__('Failed to refresh queue status')),
@@ -1500,6 +1541,8 @@ window.__systemPageData = {
         all: @js(__('All')),
         testsPassed: @js(__('tests passed!')),
         failedRunTests: @js(__('Failed to run tests')),
+        testsAborted: @js(__('Tests aborted')),
+        testRunLost: @js(__('Test run could not be found (cache may have expired).')),
         outputCopiedToClipboard: @js(__('Output copied to clipboard')),
         failedCopyOutput: @js(__('Failed to copy output')),
     },

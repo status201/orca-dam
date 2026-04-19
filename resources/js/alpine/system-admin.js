@@ -71,6 +71,13 @@ export function systemAdmin() {
         runningTests: false,
         testOutput: '',
         testProgress: 0,
+        testElapsed: 0,
+        testEstimate: null,
+        testRunId: null,
+        testRunStatus: null,
+        testRunStartedAt: null,
+        testRunWorkerWarning: false,
+        testPollHandle: null,
         testStats: {
             total: 0,
             passed: 0,
@@ -534,9 +541,17 @@ export function systemAdmin() {
         },
 
         async runTests() {
+            this.stopTestPolling();
+
             this.runningTests = true;
             this.testOutput = '';
             this.testProgress = 0;
+            this.testElapsed = 0;
+            this.testEstimate = null;
+            this.testRunId = null;
+            this.testRunStatus = 'queued';
+            this.testRunStartedAt = Date.now();
+            this.testRunWorkerWarning = false;
             this.testStats = {
                 total: 0,
                 passed: 0,
@@ -547,13 +562,6 @@ export function systemAdmin() {
                 tests: []
             };
             this.expandedSuites = [];
-
-            // Simulate progress
-            const progressInterval = setInterval(() => {
-                if (this.testProgress < 90) {
-                    this.testProgress += Math.random() * 10;
-                }
-            }, 500);
 
             try {
                 const response = await fetch(pageData.routes.runTests, {
@@ -570,30 +578,140 @@ export function systemAdmin() {
 
                 const result = await response.json();
 
-                if (result.success) {
-                    this.testOutput = result.output;
-                    this.testStats = result.stats;
-                    this.testProgress = 100;
-
-                    // Auto-expand suites with failures
-                    this.$nextTick(() => this.autoExpandFailedSuites());
-
-                    if (result.stats.failed > 0) {
-                        window.showToast(pageData.translations.testsCompleted + ' ' + result.stats.failed + ' ' + pageData.translations.failed, 'error');
-                    } else {
-                        window.showToast(pageData.translations.all + ' ' + result.stats.passed + ' ' + pageData.translations.testsPassed, 'success');
-                    }
-                } else {
+                if (!result.success || !result.run_id) {
                     this.testOutput = result.error || pageData.translations.failedRunTests;
                     window.showToast(pageData.translations.failedRunTests, 'error');
+                    this.runningTests = false;
+                    return;
                 }
+
+                this.testRunId = result.run_id;
+                this.testPollHandle = setInterval(() => this.pollTestRun(), 750);
+                // Fire an immediate poll so the UI updates before the first tick.
+                this.pollTestRun();
+                // Surface the freshly-queued job in the Queue tab without
+                // requiring a manual refresh.
+                this.refreshQueueStatus();
             } catch (error) {
                 console.error('Failed to run tests:', error);
                 this.testOutput = 'Error: ' + error.message;
                 window.showToast(pageData.translations.failedRunTests, 'error');
-            } finally {
-                clearInterval(progressInterval);
                 this.runningTests = false;
+            }
+        },
+
+        async pollTestRun() {
+            if (!this.testRunId) return;
+
+            try {
+                const url = pageData.routes.runTestsStatus.replace('__RUN_ID__', this.testRunId);
+                const response = await fetch(url, {
+                    headers: { 'Accept': 'application/json' },
+                });
+
+                if (!response.ok) {
+                    // If the run vanished (cache evicted / server restart), stop polling gracefully.
+                    if (response.status === 404) {
+                        this.stopTestPolling();
+                        this.runningTests = false;
+                        this.testOutput = pageData.translations.testRunLost || 'Test run not found.';
+                        window.showToast(pageData.translations.failedRunTests, 'error');
+                    }
+                    return;
+                }
+
+                const result = await response.json();
+                if (!result.success || !result.state) return;
+
+                const state = result.state;
+                this.testRunStatus = state.status;
+                this.testElapsed = state.duration || 0;
+                this.testEstimate = state.estimate || null;
+
+                // Pest/PHPUnit buffer their output until the subprocess exits,
+                // so we can't stream per-test counters on Windows. Drive the
+                // bar off wall-clock elapsed vs. last run's duration — caps at
+                // 95% so the final jump to 100 always coincides with "done".
+                if (state.status === 'running' && this.testEstimate && this.testEstimate > 0) {
+                    const pct = (this.testElapsed / this.testEstimate) * 100;
+                    this.testProgress = Math.min(95, Math.max(0, pct));
+                } else if (state.status === 'completed' || state.status === 'failed' || state.status === 'aborted') {
+                    this.testProgress = 100;
+                }
+
+                // Show a worker-missing hint if we've been queued for a while.
+                if (state.status === 'queued' && Date.now() - this.testRunStartedAt > 3000) {
+                    this.testRunWorkerWarning = true;
+                } else {
+                    this.testRunWorkerWarning = false;
+                }
+
+                if (state.status === 'completed' || state.status === 'failed' || state.status === 'aborted') {
+                    this.finishTestRun(state);
+                }
+            } catch (error) {
+                console.error('Failed to poll test run:', error);
+            }
+        },
+
+        finishTestRun(state) {
+            this.stopTestPolling();
+
+            const stats = state.stats || {
+                total: (state.passed || 0) + (state.failed || 0) + (state.skipped || 0),
+                passed: state.passed || 0,
+                failed: state.failed || 0,
+                skipped: state.skipped || 0,
+                assertions: 0,
+                duration: state.duration || 0,
+                tests: [],
+            };
+
+            this.testStats = stats;
+            this.testOutput = state.output_tail || '';
+            this.testProgress = 100;
+            this.runningTests = false;
+            this.testRunWorkerWarning = false;
+
+            this.$nextTick(() => this.autoExpandFailedSuites());
+
+            // Refresh the Queue tab so the now-finished job disappears without
+            // requiring a manual refresh.
+            this.refreshQueueStatus();
+
+            if (state.status === 'aborted') {
+                window.showToast(pageData.translations.testsAborted || 'Tests aborted', 'info');
+            } else if (state.status === 'failed' && state.error) {
+                this.testOutput = state.error + (state.output_tail ? '\n\n' + state.output_tail : '');
+                window.showToast(pageData.translations.failedRunTests, 'error');
+            } else if (stats.failed > 0) {
+                window.showToast(pageData.translations.testsCompleted + ' ' + stats.failed + ' ' + pageData.translations.failed, 'error');
+            } else {
+                window.showToast(pageData.translations.all + ' ' + stats.passed + ' ' + pageData.translations.testsPassed, 'success');
+            }
+        },
+
+        stopTestPolling() {
+            if (this.testPollHandle) {
+                clearInterval(this.testPollHandle);
+                this.testPollHandle = null;
+            }
+        },
+
+        async abortTestRun() {
+            if (!this.testRunId) return;
+
+            try {
+                const url = pageData.routes.runTestsAbort.replace('__RUN_ID__', this.testRunId);
+                await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                });
+                // The next poll tick will see status=aborted and call finishTestRun().
+            } catch (error) {
+                console.error('Failed to abort test run:', error);
             }
         },
 

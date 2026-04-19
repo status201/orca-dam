@@ -1,9 +1,13 @@
 <?php
 
 use App\Jobs\RegenerateResizedImage;
+use App\Jobs\RunTestSuiteJob;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\TestRunnerService;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
 test('guests cannot access system page', function () {
@@ -298,6 +302,110 @@ test('editors cannot regenerate resized images', function () {
     $response = $this->actingAs($editor)->postJson(route('system.regenerate-resized-images'));
 
     $response->assertForbidden();
+});
+
+test('admin can dispatch a test run and receives a run id', function () {
+    Bus::fake();
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('system.run-tests'), [
+        'suite' => 'unit',
+        'filter' => 'SettingTest',
+    ]);
+
+    $response->assertOk();
+    $response->assertJson(['success' => true, 'status' => 'queued']);
+    expect($response->json('run_id'))->toBeString()->not->toBeEmpty();
+
+    Bus::assertDispatched(RunTestSuiteJob::class, function ($job) use ($response) {
+        return $job->runId === $response->json('run_id')
+            && $job->suite === 'unit'
+            && $job->filter === 'SettingTest';
+    });
+});
+
+test('editor cannot dispatch a test run', function () {
+    Bus::fake();
+    $user = User::factory()->create(['role' => 'editor']);
+
+    $response = $this->actingAs($user)->postJson(route('system.run-tests'));
+
+    $response->assertForbidden();
+    Bus::assertNothingDispatched();
+});
+
+test('test run status returns cached payload', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $runId = 'test-run-id-123';
+    Cache::put(TestRunnerService::CACHE_PREFIX.$runId, [
+        'status' => 'running',
+        'total' => 42,
+        'completed' => 17,
+        'passed' => 16,
+        'failed' => 1,
+        'skipped' => 0,
+        'current_suite' => 'Tests\\Feature\\FooTest',
+        'started_at' => microtime(true),
+        'duration' => 2.5,
+    ], 60);
+
+    $response = $this->actingAs($admin)->getJson(route('system.run-tests.status', $runId));
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'state' => [
+            'status' => 'running',
+            'total' => 42,
+            'completed' => 17,
+            'passed' => 16,
+            'failed' => 1,
+            'current_suite' => 'Tests\\Feature\\FooTest',
+        ],
+    ]);
+});
+
+test('test run status returns 404 for unknown run', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->getJson(route('system.run-tests.status', 'nonexistent'));
+
+    $response->assertNotFound();
+    $response->assertJson(['success' => false]);
+});
+
+test('editor cannot read test run status', function () {
+    $user = User::factory()->create(['role' => 'editor']);
+
+    $response = $this->actingAs($user)->getJson(route('system.run-tests.status', 'anything'));
+
+    $response->assertForbidden();
+});
+
+test('admin can abort a test run', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $runId = 'abortable-run';
+    Cache::put(TestRunnerService::CACHE_PREFIX.$runId, [
+        'status' => 'running',
+        'pid' => null,
+        'started_at' => microtime(true),
+    ], 60);
+
+    $response = $this->actingAs($admin)->deleteJson(route('system.run-tests.abort', $runId));
+
+    $response->assertOk();
+    $response->assertJson(['success' => true]);
+    expect(Cache::get(TestRunnerService::CACHE_PREFIX.$runId)['status'])->toBe('aborted');
+});
+
+test('aborting an unknown run returns 404', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->deleteJson(route('system.run-tests.abort', 'ghost'));
+
+    $response->assertNotFound();
 });
 
 test('system page loads all settings correctly', function () {

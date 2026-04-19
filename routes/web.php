@@ -173,6 +173,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('system/integrity-status', [SystemController::class, 'integrityStatus'])->name('system.integrity-status');
         Route::post('system/verify-integrity', [SystemController::class, 'verifyIntegrity'])->name('system.verify-integrity');
         Route::post('system/run-tests', [SystemController::class, 'runTests'])->name('system.run-tests');
+        Route::get('system/run-tests/{runId}/status', [SystemController::class, 'runTestsStatus'])->name('system.run-tests.status');
+        Route::delete('system/run-tests/{runId}', [SystemController::class, 'runTestsAbort'])->name('system.run-tests.abort');
 
         // Import metadata
         Route::get('import', [ImportController::class, 'index'])->name('import.index');

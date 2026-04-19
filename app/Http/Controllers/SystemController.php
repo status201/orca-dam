@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\RegenerateResizedImage;
+use App\Jobs\RunTestSuiteJob;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Services\QueueService;
@@ -10,6 +11,7 @@ use App\Services\SystemService;
 use App\Services\TestRunnerService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
 
 class SystemController extends Controller
@@ -328,7 +330,7 @@ class SystemController extends Controller
     }
 
     /**
-     * Run automated tests (AJAX)
+     * Dispatch a queued test run and return its run id immediately.
      */
     public function runTests(Request $request)
     {
@@ -339,16 +341,51 @@ class SystemController extends Controller
             'filter' => 'nullable|string|max:255',
         ]);
 
-        $result = $this->testRunnerService->run(
-            $request->input('suite', 'all'),
-            $request->input('filter')
-        );
+        $suite = $request->input('suite', 'all');
+        $filter = $request->input('filter') ?: null;
 
-        if (isset($result['error'])) {
-            return response()->json(['success' => false, 'error' => $result['error']], 500);
+        $runId = (string) Str::uuid();
+        $this->testRunnerService->seedQueued($runId, $suite, $filter);
+
+        RunTestSuiteJob::dispatch($runId, $suite, $filter);
+
+        return response()->json([
+            'success' => true,
+            'run_id' => $runId,
+            'status' => 'queued',
+        ]);
+    }
+
+    /**
+     * Return the live status payload for a test run.
+     */
+    public function runTestsStatus(string $runId)
+    {
+        $this->authorize('access', SystemController::class);
+
+        $state = $this->testRunnerService->status($runId);
+
+        if (! $state) {
+            return response()->json(['success' => false, 'error' => 'Run not found'], 404);
         }
 
-        return response()->json($result);
+        return response()->json(['success' => true, 'state' => $state]);
+    }
+
+    /**
+     * Abort a running test process.
+     */
+    public function runTestsAbort(string $runId)
+    {
+        $this->authorize('access', SystemController::class);
+
+        $aborted = $this->testRunnerService->abort($runId);
+
+        if (! $aborted) {
+            return response()->json(['success' => false, 'error' => 'Run not found'], 404);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     /**
