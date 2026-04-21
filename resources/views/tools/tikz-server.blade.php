@@ -235,7 +235,7 @@
                     <div class="flex flex-wrap gap-2">
                         <template x-for="ex in examples" :key="ex.label">
                             <button
-                                @click="loadExample(ex.code)"
+                                @click="loadExample(ex)"
                                 class="px-2.5 py-1 text-xs rounded-md border border-gray-200 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors"
                                 x-text="ex.label">
                             </button>

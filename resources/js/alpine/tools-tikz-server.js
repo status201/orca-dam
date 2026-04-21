@@ -237,7 +237,27 @@ function tikzServer() {
         examples: [
             {
                 label: 'GIF frames',
-                code: '% GIF frames: bouncing ball across a 7\u00d73 cm canvas.\n% Enable "Force canvas size for all" (7 \u00d7 3 cm) in Render Settings\n% so every frame renders at identical dimensions \u2014 otherwise each\n% frame is tightly cropped to its own content and the ball appears\n% to jitter instead of move.\n\\begin{tikzpicture}\n  \\draw[gray] (0,0) -- (7,0);\n  \\fill[blue] (1,0.5) circle (0.3);\n\\end{tikzpicture}\n\\begin{tikzpicture}\n  \\draw[gray] (0,0) -- (7,0);\n  \\fill[blue] (2,2) circle (0.3);\n\\end{tikzpicture}\n\\begin{tikzpicture}\n  \\draw[gray] (0,0) -- (7,0);\n  \\fill[blue] (3,2.5) circle (0.3);\n\\end{tikzpicture}\n\\begin{tikzpicture}\n  \\draw[gray] (0,0) -- (7,0);\n  \\fill[blue] (4,2) circle (0.3);\n\\end{tikzpicture}\n\\begin{tikzpicture}\n  \\draw[gray] (0,0) -- (7,0);\n  \\fill[blue] (5,0.5) circle (0.3);\n\\end{tikzpicture}\n\\begin{tikzpicture}\n  \\draw[gray] (0,0) -- (7,0);\n  \\fill[blue] (6,0.5) circle (0.3);\n\\end{tikzpicture}',
+                code:
+                    '% GIF frames demo: growing circle. Without Force Canvas each frame\n' +
+                    '% would re-fit to the circle\'s own bounding box, hiding the growth.\n' +
+                    '% With Force Canvas 8\u00d75 cm + Clip, every frame shares the same\n' +
+                    '% dimensions and the last frames clip cleanly at the canvas edges.\n' +
+                    '\\begin{tikzpicture}\n  \\fill[blue] (4,2.5) circle (0.3);\n\\end{tikzpicture}\n' +
+                    '\\begin{tikzpicture}\n  \\fill[blue] (4,2.5) circle (0.9);\n\\end{tikzpicture}\n' +
+                    '\\begin{tikzpicture}\n  \\fill[blue] (4,2.5) circle (1.5);\n\\end{tikzpicture}\n' +
+                    '\\begin{tikzpicture}\n  \\fill[blue] (4,2.5) circle (2.1);\n\\end{tikzpicture}\n' +
+                    '\\begin{tikzpicture}\n  \\fill[blue] (4,2.5) circle (2.7);\n\\end{tikzpicture}\n' +
+                    '\\begin{tikzpicture}\n  \\fill[blue] (4,2.5) circle (3.3);\n\\end{tikzpicture}',
+                settings: {
+                    forceCanvas: true,
+                    canvasWidthCm: 8,
+                    canvasHeightCm: 5,
+                    clipToCanvas: true,
+                    gifDelayMs: 200,
+                    gifLoopInfinite: true,
+                    enabledVariants: { animated_gif: true, png: true },
+                    revealSettings: true,
+                },
             },
             {
                 label: 'Circle & axes',
@@ -414,7 +434,10 @@ function tikzServer() {
             return matches.map(function(s) { return s.replace(/\n([ \t]*\n)+/g, '\n'); });
         },
 
-        loadExample(code) {
+        loadExample(exampleOrCode) {
+            // Accept either a string (legacy) or an example object { code, settings? }.
+            var example = typeof exampleOrCode === 'string' ? { code: exampleOrCode } : (exampleOrCode || {});
+            var code = example.code || '';
             var current = this.tikzCode.trim();
             if (!current) {
                 this.tikzCode = code;
@@ -427,6 +450,23 @@ function tikzServer() {
                 }
             } else {
                 this.tikzCode = this.tikzCode + '\n\n' + code;
+            }
+
+            // Apply any example-provided render settings (e.g. force canvas, animated GIF).
+            if (example.settings && typeof example.settings === 'object') {
+                var s = example.settings;
+                if (typeof s.forceCanvas === 'boolean') this.forceCanvas = s.forceCanvas;
+                if (typeof s.canvasWidthCm === 'number') this.canvasWidthCm = s.canvasWidthCm;
+                if (typeof s.canvasHeightCm === 'number') this.canvasHeightCm = s.canvasHeightCm;
+                if (typeof s.clipToCanvas === 'boolean') this.clipToCanvas = s.clipToCanvas;
+                if (typeof s.gifDelayMs === 'number') this.gifDelayMs = s.gifDelayMs;
+                if (typeof s.gifLoopInfinite === 'boolean') this.gifLoopInfinite = s.gifLoopInfinite;
+                if (s.enabledVariants && typeof s.enabledVariants === 'object') {
+                    Object.assign(this.enabledVariants, s.enabledVariants);
+                    this.onAnimatedGifToggle();
+                }
+                // Auto-expand the settings panel so the user sees what got applied.
+                if (s.revealSettings) this.showSettings = true;
             }
         },
 
@@ -839,10 +879,10 @@ function tikzServer() {
                         body.extra_libraries = this.extraLibrariesText.trim();
                     }
                     if (this.forceCanvas) {
-                        body.force_canvas = true;
+                        body.force_canvas = Boolean(this.forceCanvas);
                         body.canvas_width_cm = this.canvasWidthCm;
                         body.canvas_height_cm = this.canvasHeightCm;
-                        body.clip_to_canvas = this.clipToCanvas;
+                        body.clip_to_canvas = Boolean(this.clipToCanvas);
                     }
 
                     var res = await fetch(pageData.renderUrl, {
