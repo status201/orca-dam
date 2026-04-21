@@ -380,8 +380,9 @@ class ToolsController extends Controller
         $compilerAvailable = $this->tikzCompilerService->isAvailable();
         $fontPackages = TikzCompilerService::fontPackages();
         $colorPackage = Setting::get('tikz_color_package', '');
+        $colorPackageName = Setting::get('tikz_color_package_name', '');
 
-        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable', 'fontPackages', 'colorPackage'));
+        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable', 'fontPackages', 'colorPackage', 'colorPackageName'));
     }
 
     public function renderTikzServer(Request $request)

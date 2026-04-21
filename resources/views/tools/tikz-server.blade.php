@@ -199,15 +199,22 @@
                                     class="w-full text-left px-3 py-1.5 hover:bg-gray-50 border-b border-gray-50 transition-colors flex items-center gap-3 group">
                                     <span class="attention w-5 h-5 rounded-full shrink-0 border border-gray-200" :style="'background-color:' + color.cssColor"></span>
                                     <span class="text-sm font-mono text-gray-800 group-hover:text-purple-700" x-text="color.name"></span>
-                                    <span class="text-xs text-gray-400 ml-auto font-mono" x-text="color.hex"></span>
+                                    <span class="text-xs text-gray-400 ml-auto font-mono" x-text="color.isAlias ? ('= ' + color.source) : color.hex"></span>
                                 </button>
                             </template>
                             <div x-show="filteredPaletteColors.length === 0" class="px-3 py-4 text-xs text-gray-400 text-center">
                                 {{ __('No colors match') }}
                             </div>
                         </div>
-                        <div class="px-3 py-1.5 border-t border-gray-100">
+                        <div class="px-3 py-1.5 border-t border-gray-100 flex items-center justify-between">
                             <span class="text-[10px] text-gray-400">{{ __('Click to copy color name') }}</span>
+                            <button
+                                @click.stop="generateColorStyleguide()"
+                                class="inline-flex items-center gap-1 text-[10px] font-medium text-purple-600 hover:text-purple-800 transition-colors"
+                                title="{{ __('Generate a compilable color reference document') }}">
+                                <i class="fas fa-swatchbook text-[10px]"></i>
+                                {{ __('Styleguide') }}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -738,6 +745,29 @@
         </div>
     </x-modal>
 
+    {{-- Styleguide replacement confirmation modal --}}
+    <x-modal name="styleguide-confirm" maxWidth="md" focusable>
+        <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 mb-2">
+                <i class="fas fa-triangle-exclamation mr-2 text-amber-500"></i>{{ __('Replace editor content?') }}
+            </h2>
+            <p class="text-sm text-gray-600">
+                {{ __('The editor already contains code. Generating the color styleguide will replace all current content.') }}
+            </p>
+            <div class="mt-6 flex justify-end gap-3">
+                <button @click="$dispatch('close')"
+                    class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+                    {{ __('Cancel') }}
+                </button>
+                <button @click="confirmLoadStyleguide()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-orca-teal text-white text-sm font-medium rounded-md hover:bg-orca-teal-hover transition-colors">
+                    <i class="fas fa-palette"></i>
+                    {{ __('Replace') }}
+                </button>
+            </div>
+        </div>
+    </x-modal>
+
     {{-- Save template modal --}}
     <x-modal name="save-template" maxWidth="md" focusable>
         <div class="p-6">
@@ -842,6 +872,7 @@ window.__pageData = {
     csrfToken: '{{ csrf_token() }}',
     compilerAvailable: @json($compilerAvailable),
     colorPackage: @json($colorPackage),
+    colorPackageName: @json($colorPackageName),
 };
 </script>
 @endsection

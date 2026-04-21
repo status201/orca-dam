@@ -116,20 +116,42 @@ function tikzServer() {
             var lines = content.split('\n');
             var hexPattern = /\\definecolor\{([^}]+)\}\{html\}\{([0-9a-f]{3,8})\}/i;
             var rgbPattern = /\\definecolor\{([^}]+)\}\{rgb\}\{(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\}/i;
+            var colorletPattern = /\\colorlet\{([^}]+)\}\{([^}]+)\}/;
             var colors = [];
+            var colorMap = {};
 
             for (var i = 0; i < lines.length; i++) {
                 var hexMatch = lines[i].match(hexPattern);
                 var rgbMatch = lines[i].match(rgbPattern);
 
                 if (hexMatch) {
-                    colors.push({ name: hexMatch[1], hex: '#' + hexMatch[2], cssColor: '#' + hexMatch[2] });
+                    var hex = '#' + hexMatch[2];
+                    colors.push({ name: hexMatch[1], hex: hex, cssColor: hex, isAlias: false, source: null });
+                    colorMap[hexMatch[1]] = hex;
                 } else if (rgbMatch) {
                     var hex = '#' + [rgbMatch[2], rgbMatch[3], rgbMatch[4]].map(function (v) {
                         return ('0' + parseInt(v, 10).toString(16)).slice(-2);
                     }).join('');
-                    colors.push({ name: rgbMatch[1], hex: hex, cssColor: hex });
+                    colors.push({ name: rgbMatch[1], hex: hex, cssColor: hex, isAlias: false, source: null });
+                    colorMap[rgbMatch[1]] = hex;
                 }
+            }
+
+            for (var i = 0; i < lines.length; i++) {
+                var letMatch = lines[i].match(colorletPattern);
+                if (!letMatch) continue;
+                var name = letMatch[1];
+                var sourceExpr = letMatch[2].trim();
+                var baseName = sourceExpr.indexOf('!') === -1 ? sourceExpr : sourceExpr.split('!')[0];
+                var resolvedHex = colorMap[baseName] || null;
+                colors.push({
+                    name: name,
+                    hex: resolvedHex || '?',
+                    cssColor: resolvedHex || '#ccc',
+                    isAlias: true,
+                    source: sourceExpr,
+                });
+                if (resolvedHex) colorMap[name] = resolvedHex;
             }
 
             this.paletteColors = colors;
@@ -139,7 +161,8 @@ function tikzServer() {
             var q = this.colorSearchQuery.toLowerCase().trim();
             if (!q) return this.paletteColors;
             return this.paletteColors.filter(function (c) {
-                return c.name.toLowerCase().includes(q) || c.hex.toLowerCase().includes(q);
+                return c.name.toLowerCase().includes(q) || c.hex.toLowerCase().includes(q)
+                    || (c.source && c.source.toLowerCase().includes(q));
             });
         },
 
@@ -232,6 +255,128 @@ function tikzServer() {
             if (!this.colorPaletteFloating) {
                 this.colorPaletteOpen = false;
             }
+        },
+
+        generateColorStyleguide() {
+            var packageName = (pageData.colorPackageName || '').toString().trim();
+            var content = (pageData.colorPackage || '').toString().trim();
+            if (!content || !packageName) {
+                window.showToast('No color package configured', 'warning');
+                return;
+            }
+            if (this.tikzCode.trim()) {
+                this.colorPaletteOpen = false;
+                this.$dispatch('open-modal', 'styleguide-confirm');
+                return;
+            }
+            this._loadStyleguideCode();
+        },
+
+        confirmLoadStyleguide() {
+            this.$dispatch('close');
+            this._loadStyleguideCode();
+        },
+
+        _loadStyleguideCode() {
+            var packageName = (pageData.colorPackageName || '').toString().trim();
+            var content = (pageData.colorPackage || '').toString().trim();
+
+            var lines = content.split('\n');
+            var hexPattern = /\\definecolor\{([^}]+)\}\{html\}\{([0-9a-f]{3,8})\}/i;
+            var rgbPattern = /\\definecolor\{([^}]+)\}\{rgb\}\{(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\}/i;
+            var colorletPattern = /\\colorlet\{([^}]+)\}\{([^}]+)\}/;
+            var baseColors = [];
+            var aliases = [];
+
+            for (var i = 0; i < lines.length; i++) {
+                var hexMatch = lines[i].match(hexPattern);
+                var rgbMatch = lines[i].match(rgbPattern);
+                var letMatch = lines[i].match(colorletPattern);
+                if (hexMatch) {
+                    baseColors.push({ name: hexMatch[1], hex: '#' + hexMatch[2].toUpperCase() });
+                } else if (rgbMatch) {
+                    var hex = '#' + [rgbMatch[2], rgbMatch[3], rgbMatch[4]].map(function (v) {
+                        return ('0' + parseInt(v, 10).toString(16)).slice(-2);
+                    }).join('').toUpperCase();
+                    baseColors.push({ name: rgbMatch[1], hex: hex });
+                } else if (letMatch) {
+                    aliases.push({ name: letMatch[1], source: letMatch[2].trim() });
+                }
+            }
+
+            function esc(s) { return s.replace(/_/g, '\\_'); }
+
+            var colW = 9;
+            var rowH = 1.0;
+            var swW = 1.2;
+            var swH = 0.6;
+            var cols = 2;
+            var y;
+
+            var d = '\\documentclass[border=10pt]{standalone}\n';
+            d += '\\usepackage[T1]{fontenc}\n';
+            d += '\\usepackage{arev}\n';
+            d += '\\usepackage{tikz}\n';
+            d += '\\usepackage{' + packageName + '}\n';
+
+            if (aliases.length > 0) {
+                d += '\n% Alias definitions from ' + packageName + ':\n';
+                for (var i = 0; i < aliases.length; i++) {
+                    d += '% \\colorlet{' + aliases[i].name + '}{' + aliases[i].source + '}\n';
+                }
+            }
+
+            d += '\n\\begin{document}\n';
+            d += '\\begin{tikzpicture}\n\n';
+
+            d += '  \\node[anchor=west, font=\\Large\\bfseries] at (0, 0)\n';
+            d += '    {' + esc(packageName) + ' \\textcolor{gray}{\\normalsize--- Color Styleguide}};\n\n';
+
+            y = -1.2;
+
+            if (baseColors.length > 0) {
+                d += '  \\node[anchor=west, font=\\large\\bfseries] at (0, ' + y.toFixed(1) + ') {Base Colors};\n';
+                y -= 0.8;
+
+                for (var i = 0; i < baseColors.length; i++) {
+                    var col = i % cols;
+                    var row = Math.floor(i / cols);
+                    var x = col * colW;
+                    var cy = y - row * rowH;
+                    d += '  \\fill[' + baseColors[i].name + '] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
+                    d += '  \\draw[gray!40] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
+                    d += '  \\node[anchor=west, font=\\small\\ttfamily] at (' + (x + swW + 0.2).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + esc(baseColors[i].name) + '};\n';
+                    d += '  \\node[anchor=east, font=\\tiny\\ttfamily, text=gray] at (' + (x + colW - 0.3).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + baseColors[i].hex + '};\n';
+                }
+
+                y -= Math.ceil(baseColors.length / cols) * rowH + 0.4;
+            }
+
+            if (aliases.length > 0) {
+                d += '\n  \\node[anchor=west, font=\\large\\bfseries] at (0, ' + y.toFixed(1) + ') {Color Aliases};\n';
+                y -= 0.8;
+
+                for (var i = 0; i < aliases.length; i++) {
+                    var col = i % cols;
+                    var row = Math.floor(i / cols);
+                    var x = col * colW;
+                    var cy = y - row * rowH;
+                    d += '  \\fill[' + aliases[i].name + '] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
+                    d += '  \\draw[gray!40] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
+                    d += '  \\node[anchor=west, font=\\small\\ttfamily] at (' + (x + swW + 0.2).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + esc(aliases[i].name) + '};\n';
+                    d += '  \\node[anchor=east, font=\\tiny\\ttfamily, text=gray] at (' + (x + colW - 0.3).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {= ' + esc(aliases[i].source) + '};\n';
+                }
+            }
+
+            d += '\n\\end{tikzpicture}\n';
+            d += '\\end{document}\n';
+
+            this.tikzCode = d;
+            this.templateName = packageName + '-styleguide.tex';
+            this.results = [];
+            this.renderError = '';
+            this.renderLog = '';
+            this.colorPaletteOpen = false;
         },
 
         examples: [
