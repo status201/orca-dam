@@ -282,27 +282,41 @@ function tikzServer() {
             var content = (pageData.colorPackage || '').toString().trim();
 
             var lines = content.split('\n');
+            var separatorPattern = /^%\s*={3,}\s*$/;
+            var headerPattern = /^%\s+(.+)$/;
             var hexPattern = /\\definecolor\{([^}]+)\}\{html\}\{([0-9a-f]{3,8})\}/i;
             var rgbPattern = /\\definecolor\{([^}]+)\}\{rgb\}\{(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\}/i;
             var colorletPattern = /\\colorlet\{([^}]+)\}\{([^}]+)\}/;
-            var baseColors = [];
-            var aliases = [];
+
+            var sections = [];
+            var current = { header: '', items: [] };
 
             for (var i = 0; i < lines.length; i++) {
+                if (separatorPattern.test(lines[i].trim()) && i + 2 < lines.length) {
+                    var hm = lines[i + 1].trim().match(headerPattern);
+                    if (hm && separatorPattern.test((lines[i + 2] || '').trim())) {
+                        if (current.items.length > 0) sections.push(current);
+                        current = { header: hm[1].trim(), items: [] };
+                        i += 2;
+                        continue;
+                    }
+                }
+
                 var hexMatch = lines[i].match(hexPattern);
                 var rgbMatch = lines[i].match(rgbPattern);
                 var letMatch = lines[i].match(colorletPattern);
                 if (hexMatch) {
-                    baseColors.push({ name: hexMatch[1], hex: '#' + hexMatch[2].toUpperCase() });
+                    current.items.push({ type: 'define', name: hexMatch[1], hex: '#' + hexMatch[2].toUpperCase() });
                 } else if (rgbMatch) {
                     var hex = '#' + [rgbMatch[2], rgbMatch[3], rgbMatch[4]].map(function (v) {
                         return ('0' + parseInt(v, 10).toString(16)).slice(-2);
                     }).join('').toUpperCase();
-                    baseColors.push({ name: rgbMatch[1], hex: hex });
+                    current.items.push({ type: 'define', name: rgbMatch[1], hex: hex });
                 } else if (letMatch) {
-                    aliases.push({ name: letMatch[1], source: letMatch[2].trim() });
+                    current.items.push({ type: 'alias', name: letMatch[1], source: letMatch[2].trim() });
                 }
             }
+            if (current.items.length > 0) sections.push(current);
 
             function esc(s) { return s.replace(/_/g, '\\_'); }
 
@@ -311,7 +325,13 @@ function tikzServer() {
             var swW = 1.2;
             var swH = 0.6;
             var cols = 2;
-            var y;
+
+            var allAliases = [];
+            sections.forEach(function (sec) {
+                sec.items.forEach(function (it) {
+                    if (it.type === 'alias') allAliases.push(it);
+                });
+            });
 
             var d = '\\documentclass[border=10pt]{standalone}\n';
             d += '\\usepackage[T1]{fontenc}\n';
@@ -319,10 +339,10 @@ function tikzServer() {
             d += '\\usepackage{tikz}\n';
             d += '\\usepackage{' + packageName + '}\n';
 
-            if (aliases.length > 0) {
+            if (allAliases.length > 0) {
                 d += '\n% Alias definitions from ' + packageName + ':\n';
-                for (var i = 0; i < aliases.length; i++) {
-                    d += '% \\colorlet{' + aliases[i].name + '}{' + aliases[i].source + '}\n';
+                for (var i = 0; i < allAliases.length; i++) {
+                    d += '% \\colorlet{' + allAliases[i].name + '}{' + allAliases[i].source + '}\n';
                 }
             }
 
@@ -332,40 +352,30 @@ function tikzServer() {
             d += '  \\node[anchor=west, font=\\Large\\bfseries] at (0, 0)\n';
             d += '    {' + esc(packageName) + ' \\textcolor{gray}{\\normalsize--- Color Styleguide}};\n\n';
 
-            y = -1.2;
+            var y = -1.2;
 
-            if (baseColors.length > 0) {
-                d += '  \\node[anchor=west, font=\\large\\bfseries] at (0, ' + y.toFixed(1) + ') {Base Colors};\n';
+            for (var s = 0; s < sections.length; s++) {
+                var sec = sections[s];
+                var heading = sec.header || 'Colors';
+
+                d += '  \\node[anchor=west, font=\\large\\bfseries] at (0, ' + y.toFixed(1) + ') {' + esc(heading) + '};\n';
                 y -= 0.8;
 
-                for (var i = 0; i < baseColors.length; i++) {
+                for (var i = 0; i < sec.items.length; i++) {
                     var col = i % cols;
                     var row = Math.floor(i / cols);
                     var x = col * colW;
                     var cy = y - row * rowH;
-                    d += '  \\fill[' + baseColors[i].name + '] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
+                    var it = sec.items[i];
+                    var label = it.type === 'alias' ? '= ' + esc(it.source) : it.hex;
+
+                    d += '  \\fill[' + it.name + '] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
                     d += '  \\draw[gray!40] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
-                    d += '  \\node[anchor=west, font=\\small\\ttfamily] at (' + (x + swW + 0.2).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + esc(baseColors[i].name) + '};\n';
-                    d += '  \\node[anchor=east, font=\\tiny\\ttfamily, text=gray] at (' + (x + colW - 0.3).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + baseColors[i].hex + '};\n';
+                    d += '  \\node[anchor=west, font=\\small\\ttfamily] at (' + (x + swW + 0.2).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + esc(it.name) + '};\n';
+                    d += '  \\node[anchor=east, font=\\tiny\\ttfamily, text=gray] at (' + (x + colW - 0.3).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + label + '};\n';
                 }
 
-                y -= Math.ceil(baseColors.length / cols) * rowH + 0.4;
-            }
-
-            if (aliases.length > 0) {
-                d += '\n  \\node[anchor=west, font=\\large\\bfseries] at (0, ' + y.toFixed(1) + ') {Color Aliases};\n';
-                y -= 0.8;
-
-                for (var i = 0; i < aliases.length; i++) {
-                    var col = i % cols;
-                    var row = Math.floor(i / cols);
-                    var x = col * colW;
-                    var cy = y - row * rowH;
-                    d += '  \\fill[' + aliases[i].name + '] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
-                    d += '  \\draw[gray!40] (' + x.toFixed(1) + ', ' + cy.toFixed(1) + ') rectangle +(' + swW + ', -' + swH + ');\n';
-                    d += '  \\node[anchor=west, font=\\small\\ttfamily] at (' + (x + swW + 0.2).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {' + esc(aliases[i].name) + '};\n';
-                    d += '  \\node[anchor=east, font=\\tiny\\ttfamily, text=gray] at (' + (x + colW - 0.3).toFixed(1) + ', ' + (cy - swH / 2).toFixed(1) + ') {= ' + esc(aliases[i].source) + '};\n';
-                }
+                y -= Math.ceil(sec.items.length / cols) * rowH + 0.6;
             }
 
             d += '\n\\end{tikzpicture}\n';
