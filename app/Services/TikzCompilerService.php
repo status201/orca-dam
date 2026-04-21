@@ -161,6 +161,10 @@ class TikzCompilerService
             $sanitized = $this->injectCanvas($sanitized, $canvasWidthCm, $canvasHeightCm, $clipToCanvas);
         }
         $effectiveBorder = $canvasActive ? 0 : $borderPt;
+        // When canvas is forced, use the DVI page size (set by standalone from \useasboundingbox)
+        // instead of the tight content bbox, so frames render at the full canvas regardless of
+        // content size or whether clipping is enabled.
+        $bboxSpec = $canvasActive ? 'papersize' : $borderPt.'pt';
 
         $tmpDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'orca_tikz_'.uniqid();
         if (! mkdir($tmpDir, 0700, true)) {
@@ -211,7 +215,7 @@ class TikzCompilerService
 
             // SVG standard (dvisvgm default: fonts as SVG path data in <defs>)
             if ($allVariants || ! empty($enabledVariants['svg_standard'])) {
-                $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', [], $effectiveBorder);
+                $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', [], $bboxSpec);
                 if ($svgStandard !== null) {
                     $variants[] = [
                         'type' => 'svg_standard',
@@ -224,7 +228,7 @@ class TikzCompilerService
 
             // SVG with embedded WOFF2 fonts
             if ($allVariants || ! empty($enabledVariants['svg_embedded'])) {
-                $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2'], $effectiveBorder);
+                $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2'], $bboxSpec);
                 if ($svgEmbedded !== null) {
                     $variants[] = [
                         'type' => 'svg_embedded',
@@ -237,7 +241,7 @@ class TikzCompilerService
 
             // SVG with text as paths (no font dependencies)
             if ($allVariants || ! empty($enabledVariants['svg_paths'])) {
-                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $effectiveBorder);
+                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $bboxSpec);
                 if ($svgPaths !== null) {
                     $variants[] = [
                         'type' => 'svg_paths',
@@ -253,7 +257,7 @@ class TikzCompilerService
                 $svgForPng = $svgPaths ?? $svgStandard ?? $svgEmbedded;
                 // If PNG is requested but no SVG was generated, generate paths SVG just for conversion
                 if ($svgForPng === null) {
-                    $svgForPng = $this->runDvisvgm($tmpDir, $dviFile, 'paths-tmp.svg', ['--no-fonts'], $effectiveBorder);
+                    $svgForPng = $this->runDvisvgm($tmpDir, $dviFile, 'paths-tmp.svg', ['--no-fonts'], $bboxSpec);
                 }
                 if ($svgForPng !== null) {
                     $pngResult = $this->convertSvgToPng($tmpDir, $svgForPng, $pngDpi);
@@ -409,7 +413,7 @@ LATEX;
     /**
      * Run dvisvgm to convert DVI to SVG.
      */
-    private function runDvisvgm(string $tmpDir, string $dviFile, string $outputName, array $extraArgs, int $borderPt = 5): ?string
+    private function runDvisvgm(string $tmpDir, string $dviFile, string $outputName, array $extraArgs, string $bboxSpec = '5pt'): ?string
     {
         $dvisvgmPath = escapeshellarg(config('tikz.dvisvgm_path', 'dvisvgm'));
         $timeout = config('tikz.timeout', 30);
@@ -417,7 +421,7 @@ LATEX;
 
         $args = array_map('escapeshellarg', $extraArgs);
         $command = $dvisvgmPath
-            .' --bbox='.escapeshellarg($borderPt.'pt')
+            .' --bbox='.escapeshellarg($bboxSpec)
             .' '.implode(' ', $args)
             .' '.escapeshellarg($dviFile)
             .' -o '.escapeshellarg($outputFile);
