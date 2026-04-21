@@ -174,7 +174,10 @@ function gifMaker() {
             if (idx === -1) return;
             const src = this.frames[idx];
             const newId = ++nextId;
-            const objectUrl = URL.createObjectURL(src.file);
+            // Handoff frames carry a data URL and no File; reuse the source URL directly.
+            // Uploaded frames have a File object — create a fresh object URL so removing
+            // either copy doesn't revoke the other's URL.
+            const objectUrl = src.file ? URL.createObjectURL(src.file) : src.objectUrl;
             const img = new Image();
             const frame = {
                 id: newId,
