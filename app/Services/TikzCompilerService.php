@@ -119,8 +119,19 @@ class TikzCompilerService
      *
      * @return array{success: bool, variants?: array, log?: string, error?: string}
      */
-    public function compile(string $tikzCode, int $pngDpi = 300, int $borderPt = 5, string $fontPackage = 'arev', string $preamble = '', array $enabledVariants = [], string $extraLibraries = ''): array
-    {
+    public function compile(
+        string $tikzCode,
+        int $pngDpi = 300,
+        int $borderPt = 5,
+        string $fontPackage = 'arev',
+        string $preamble = '',
+        array $enabledVariants = [],
+        string $extraLibraries = '',
+        bool $forceCanvas = false,
+        float $canvasWidthCm = 0,
+        float $canvasHeightCm = 0,
+        bool $clipToCanvas = false,
+    ): array {
         $sanitized = $this->sanitizeInput($tikzCode);
         if ($sanitized === null) {
             return ['success' => false, 'error' => 'Input contains potentially dangerous LaTeX commands.'];
@@ -134,6 +145,22 @@ class TikzCompilerService
             }
             $preamble = $sanitizedPreamble;
         }
+
+        // Apply forced canvas: inject \useasboundingbox (+ optional \clip) into the first
+        // tikzpicture, and override border to 0 so dvisvgm uses the exact bbox.
+        $canvasActive = $forceCanvas
+            && $canvasWidthCm >= 0.5 && $canvasWidthCm <= 100
+            && $canvasHeightCm >= 0.5 && $canvasHeightCm <= 100;
+        if ($forceCanvas && ! $canvasActive) {
+            Log::warning('TikZ force-canvas ignored: invalid dimensions', [
+                'width_cm' => $canvasWidthCm,
+                'height_cm' => $canvasHeightCm,
+            ]);
+        }
+        if ($canvasActive) {
+            $sanitized = $this->injectCanvas($sanitized, $canvasWidthCm, $canvasHeightCm, $clipToCanvas);
+        }
+        $effectiveBorder = $canvasActive ? 0 : $borderPt;
 
         $tmpDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'orca_tikz_'.uniqid();
         if (! mkdir($tmpDir, 0700, true)) {
@@ -154,7 +181,7 @@ class TikzCompilerService
                 file_put_contents($tmpDir.DIRECTORY_SEPARATOR.$colorPkgName.'.sty', $sanitizedPkg);
             }
 
-            $texContent = $this->buildTexDocument($sanitized, $borderPt, $fontPackage, $preamble, $extraLibraries);
+            $texContent = $this->buildTexDocument($sanitized, $effectiveBorder, $fontPackage, $preamble, $extraLibraries);
             $texFile = $tmpDir.DIRECTORY_SEPARATOR.'input.tex';
             file_put_contents($texFile, $texContent);
 
@@ -184,7 +211,7 @@ class TikzCompilerService
 
             // SVG standard (dvisvgm default: fonts as SVG path data in <defs>)
             if ($allVariants || ! empty($enabledVariants['svg_standard'])) {
-                $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', [], $borderPt);
+                $svgStandard = $this->runDvisvgm($tmpDir, $dviFile, 'standard.svg', [], $effectiveBorder);
                 if ($svgStandard !== null) {
                     $variants[] = [
                         'type' => 'svg_standard',
@@ -197,7 +224,7 @@ class TikzCompilerService
 
             // SVG with embedded WOFF2 fonts
             if ($allVariants || ! empty($enabledVariants['svg_embedded'])) {
-                $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2'], $borderPt);
+                $svgEmbedded = $this->runDvisvgm($tmpDir, $dviFile, 'embedded.svg', ['--font-format=woff2'], $effectiveBorder);
                 if ($svgEmbedded !== null) {
                     $variants[] = [
                         'type' => 'svg_embedded',
@@ -210,7 +237,7 @@ class TikzCompilerService
 
             // SVG with text as paths (no font dependencies)
             if ($allVariants || ! empty($enabledVariants['svg_paths'])) {
-                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $borderPt);
+                $svgPaths = $this->runDvisvgm($tmpDir, $dviFile, 'paths.svg', ['--no-fonts'], $effectiveBorder);
                 if ($svgPaths !== null) {
                     $variants[] = [
                         'type' => 'svg_paths',
@@ -226,7 +253,7 @@ class TikzCompilerService
                 $svgForPng = $svgPaths ?? $svgStandard ?? $svgEmbedded;
                 // If PNG is requested but no SVG was generated, generate paths SVG just for conversion
                 if ($svgForPng === null) {
-                    $svgForPng = $this->runDvisvgm($tmpDir, $dviFile, 'paths-tmp.svg', ['--no-fonts'], $borderPt);
+                    $svgForPng = $this->runDvisvgm($tmpDir, $dviFile, 'paths-tmp.svg', ['--no-fonts'], $effectiveBorder);
                 }
                 if ($svgForPng !== null) {
                     $pngResult = $this->convertSvgToPng($tmpDir, $svgForPng, $pngDpi);
@@ -268,6 +295,29 @@ class TikzCompilerService
         }
 
         return $code;
+    }
+
+    /**
+     * Inject \useasboundingbox (and optionally \clip) right after the first \begin{tikzpicture}
+     * so every snippet renders into the same fixed coordinate canvas.
+     */
+    public function injectCanvas(string $code, float $widthCm, float $heightCm, bool $clip): string
+    {
+        $w = rtrim(rtrim(number_format($widthCm, 4, '.', ''), '0'), '.');
+        $h = rtrim(rtrim(number_format($heightCm, 4, '.', ''), '0'), '.');
+        $inject = "\n\\useasboundingbox (0,0) rectangle ({$w}cm,{$h}cm);";
+        if ($clip) {
+            $inject .= "\n\\clip (0,0) rectangle ({$w}cm,{$h}cm);";
+        }
+
+        $result = preg_replace(
+            '/\\\\begin\{tikzpicture\}(\[[^\]]*\])?/',
+            '$0'.$inject,
+            $code,
+            1,
+        );
+
+        return $result ?? $code;
     }
 
     /**

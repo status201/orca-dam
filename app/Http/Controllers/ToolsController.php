@@ -398,6 +398,10 @@ class ToolsController extends Controller
             'variants.svg_paths' => ['nullable', 'boolean'],
             'variants.png' => ['nullable', 'boolean'],
             'extra_libraries' => ['nullable', 'string', 'max:500'],
+            'force_canvas' => ['nullable', 'boolean'],
+            'canvas_width_cm' => ['nullable', 'numeric', 'min:0.5', 'max:100'],
+            'canvas_height_cm' => ['nullable', 'numeric', 'min:0.5', 'max:100'],
+            'clip_to_canvas' => ['nullable', 'boolean'],
         ]);
 
         if (! $this->tikzCompilerService->isAvailable()) {
@@ -411,7 +415,11 @@ class ToolsController extends Controller
             $request->input('font_package', 'arev'),
             $request->input('preamble', ''),
             $request->input('variants', []),
-            $request->input('extra_libraries', '')
+            $request->input('extra_libraries', ''),
+            $request->boolean('force_canvas'),
+            (float) $request->input('canvas_width_cm', 0),
+            (float) $request->input('canvas_height_cm', 0),
+            $request->boolean('clip_to_canvas'),
         );
 
         if (! $result['success']) {
@@ -548,6 +556,7 @@ class ToolsController extends Controller
             'width' => ['nullable', 'integer', 'min:1'],
             'height' => ['nullable', 'integer', 'min:1'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            ...$this->metadataValidationRules(),
         ]);
 
         $folder = $request->input('folder', S3Service::getRootFolder());
@@ -592,6 +601,15 @@ class ToolsController extends Controller
             ]);
 
             $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
+
+            // Apply batch upload metadata (shared form with TikZ Server handoff and direct usage)
+            $this->assetProcessingService->applyUploadMetadata(
+                $asset,
+                $request->input('metadata_tags'),
+                $request->input('metadata_license_type'),
+                $request->input('metadata_copyright'),
+                $request->input('metadata_copyright_source'),
+            );
         } catch (\Exception $e) {
             Log::error('GIF upload failed: '.$e->getMessage());
 

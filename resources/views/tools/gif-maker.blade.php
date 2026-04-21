@@ -350,6 +350,8 @@
             <i class="fas fa-cloud-arrow-up mr-2 text-gray-400"></i>{{ __('Upload to ORCA') }}
         </h3>
 
+        @include('partials.upload-metadata')
+
         <div class="flex flex-wrap gap-4 items-end">
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
@@ -394,6 +396,7 @@ window.__pageData = {
     folders: @json($folders),
     rootFolder: @json($rootFolder),
     uploadUrl: '{{ route('tools.gif-maker.upload') }}',
+    tagsSearch: '{{ route('tags.search') }}',
     csrfToken: '{{ csrf_token() }}',
 };
 </script>

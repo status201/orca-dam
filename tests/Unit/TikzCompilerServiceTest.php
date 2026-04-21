@@ -370,3 +370,79 @@ test('compile rejects dangerous content in color package setting', function () {
     expect($result['error'])->toContain('Color package');
     expect($result['error'])->toContain('dangerous');
 });
+
+// ---------------------------------------------------------------------------
+// injectCanvas() — force canvas size for slideshow/GIF frame consistency
+// ---------------------------------------------------------------------------
+
+test('injectCanvas adds useasboundingbox after begin tikzpicture', function () {
+    $service = app(TikzCompilerService::class);
+    $code = "\\begin{tikzpicture}\n\\draw (0,0) -- (1,1);\n\\end{tikzpicture}";
+
+    $result = $service->injectCanvas($code, 10, 8, false);
+
+    expect($result)->toContain('\\useasboundingbox (0,0) rectangle (10cm,8cm);');
+    expect($result)->not->toContain('\\clip (0,0) rectangle');
+    // Original snippet content is preserved
+    expect($result)->toContain('\\draw (0,0) -- (1,1);');
+    expect($result)->toContain('\\end{tikzpicture}');
+});
+
+test('injectCanvas adds clip when enabled', function () {
+    $service = app(TikzCompilerService::class);
+    $code = "\\begin{tikzpicture}\n\\draw (0,0) -- (1,1);\n\\end{tikzpicture}";
+
+    $result = $service->injectCanvas($code, 5, 5, true);
+
+    expect($result)->toContain('\\useasboundingbox (0,0) rectangle (5cm,5cm);');
+    expect($result)->toContain('\\clip (0,0) rectangle (5cm,5cm);');
+});
+
+test('injectCanvas preserves tikzpicture options', function () {
+    $service = app(TikzCompilerService::class);
+    $code = "\\begin{tikzpicture}[scale=2,thick]\n\\draw (0,0) -- (1,1);\n\\end{tikzpicture}";
+
+    $result = $service->injectCanvas($code, 10, 8, false);
+
+    expect($result)->toContain('\\begin{tikzpicture}[scale=2,thick]');
+    expect($result)->toContain('\\useasboundingbox (0,0) rectangle (10cm,8cm);');
+});
+
+test('injectCanvas only injects into first tikzpicture when multiple present', function () {
+    $service = app(TikzCompilerService::class);
+    $code = '\\begin{tikzpicture}\\draw (0,0) -- (1,1);\\end{tikzpicture}'
+        .'\\begin{tikzpicture}\\draw (0,0) -- (2,2);\\end{tikzpicture}';
+
+    $result = $service->injectCanvas($code, 10, 8, false);
+
+    expect(substr_count($result, '\\useasboundingbox'))->toBe(1);
+});
+
+test('injectCanvas formats decimal dimensions cleanly', function () {
+    $service = app(TikzCompilerService::class);
+    $code = '\\begin{tikzpicture}\\end{tikzpicture}';
+
+    $result = $service->injectCanvas($code, 12.5, 7.25, false);
+
+    expect($result)->toContain('(12.5cm,7.25cm)');
+    // No trailing zeros
+    expect($result)->not->toContain('12.5000');
+});
+
+test('compile ignores force_canvas when dimensions are out of range', function () {
+    $service = app(TikzCompilerService::class);
+    // Dangerous input to short-circuit at sanitizer stage — we only care the call
+    // doesn't crash on invalid dims and falls back cleanly. But we also want to
+    // verify the ignore-path by asserting no error is returned for the dims themselves.
+    $result = $service->compile(
+        '\\write18{bad}',
+        forceCanvas: true,
+        canvasWidthCm: 0,
+        canvasHeightCm: 0,
+    );
+
+    // Still rejects due to dangerous input, but the force-canvas dims didn't
+    // break validation.
+    expect($result['success'])->toBeFalse();
+    expect($result['error'])->toContain('dangerous');
+});

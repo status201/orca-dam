@@ -1,5 +1,6 @@
 import GIF from 'gif.js';
 import Sortable from 'sortablejs';
+import { uploadMetadata } from './upload-metadata';
 
 function gifMaker() {
     const pageData = window.__pageData || {};
@@ -7,6 +8,7 @@ function gifMaker() {
     let nextId = 0;
 
     return {
+        ...uploadMetadata(),
         frames: [],
         globalDelay: 500,
         preDelay: 0,
@@ -42,7 +44,82 @@ function gifMaker() {
                         },
                     });
                 }
+                this._hydrateHandoff();
             });
+        },
+
+        // Hydrate frames + metadata from a handoff payload stashed in sessionStorage
+        // by another tool (e.g. TikZ Server). The key is cleared after use so a
+        // refresh does not re-hydrate stale data.
+        _hydrateHandoff() {
+            let raw;
+            try {
+                raw = sessionStorage.getItem('orca:gif-handoff');
+            } catch (e) {
+                return;
+            }
+            if (!raw) return;
+            sessionStorage.removeItem('orca:gif-handoff');
+
+            let payload;
+            try {
+                payload = JSON.parse(raw);
+            } catch (e) {
+                return;
+            }
+            if (!payload || !Array.isArray(payload.frames) || payload.frames.length === 0) return;
+
+            for (const f of payload.frames) {
+                if (!f || !f.dataUrl) continue;
+                const id = ++nextId;
+                const img = new Image();
+                const frame = {
+                    id,
+                    file: null,
+                    objectUrl: f.dataUrl,
+                    img,
+                    delay: null,
+                    naturalWidth: f.width || 0,
+                    naturalHeight: f.height || 0,
+                    loaded: false,
+                };
+                img.src = f.dataUrl;
+                this.frames.push(frame);
+                img.onload = () => {
+                    const target = this.frames.find(fr => fr.id === id);
+                    if (target) {
+                        target.naturalWidth = img.naturalWidth;
+                        target.naturalHeight = img.naturalHeight;
+                        target.loaded = true;
+                    }
+                };
+            }
+
+            if (typeof payload.delayMs === 'number' && payload.delayMs > 0) {
+                this.globalDelay = payload.delayMs;
+            }
+            if (typeof payload.loopInfinite === 'boolean') {
+                this.loopMode = payload.loopInfinite ? 'forever' : 'once';
+            }
+            if (typeof payload.filename === 'string' && payload.filename) {
+                this.uploadFilename = payload.filename;
+            }
+            if (payload.uploadFolder) {
+                this.uploadFolder = payload.uploadFolder;
+            }
+            if (payload.metadata && typeof payload.metadata === 'object') {
+                const m = payload.metadata;
+                if (Array.isArray(m.metadata_tags)) this.metadataTags = m.metadata_tags.slice();
+                if (m.metadata_license_type) this.metadataLicenseType = m.metadata_license_type;
+                if (m.metadata_copyright) this.metadataCopyright = m.metadata_copyright;
+                if (m.metadata_copyright_source) this.metadataCopyrightSource = m.metadata_copyright_source;
+                if (this.metadataTags.length > 0 || this.metadataLicenseType || this.metadataCopyright || this.metadataCopyrightSource) {
+                    this.showMetadata = true;
+                }
+            }
+
+            this.fitToFrames();
+            window.showToast && window.showToast('Loaded ' + payload.frames.length + ' frame(s) from TikZ Server', 'info');
         },
 
         addImages(fileList) {
@@ -446,13 +523,13 @@ function gifMaker() {
                         'X-CSRF-TOKEN': pageData.csrfToken,
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({
+                    body: JSON.stringify(Object.assign({
                         content: base64,
                         filename: this.uploadFilename || 'animation.gif',
                         folder: this.uploadFolder,
                         width: this.generatedGif.width,
                         height: this.generatedGif.height,
-                    }),
+                    }, this.getMetadataPayload())),
                 });
 
                 const data = await res.json();

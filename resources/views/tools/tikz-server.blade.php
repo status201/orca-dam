@@ -278,10 +278,33 @@
                             <input type="checkbox" x-model="enabledVariants.svg_paths" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
                             SVG ({{ __('text as paths') }})
                         </label>
-                        <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" x-model="enabledVariants.png" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                        <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer"
+                               :title="enabledVariants.animated_gif ? '{{ __('PNG is required while Animated GIF is enabled.') }}' : ''">
+                            <input type="checkbox" x-model="enabledVariants.png" :disabled="enabledVariants.animated_gif" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
                             PNG
                         </label>
+                        <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" x-model="enabledVariants.animated_gif" @change="onAnimatedGifToggle()" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            {{ __('Animated GIF') }}
+                        </label>
+                    </div>
+                    <div x-show="enabledVariants.animated_gif" x-collapse class="mt-3 flex flex-wrap items-end gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">{{ __('Frame delay') }}</label>
+                            <div class="relative">
+                                <input type="number" x-model.number="gifDelayMs" min="20" max="10000" step="20"
+                                    class="w-28 text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8">
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">ms</span>
+                            </div>
+                        </div>
+                        <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer pb-2">
+                            <input type="checkbox" x-model="gifLoopInfinite" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            {{ __('Loop forever') }}
+                        </label>
+                        <p class="text-xs text-gray-400 basis-full">
+                            {{ __('The GIF is assembled in the browser from the rendered PNG frames.') }}
+                            {{ __('Tip: combine with "Force canvas size for all" so frames share dimensions.') }}
+                        </p>
                     </div>
                 </div>
 
@@ -301,16 +324,18 @@
 
                 {{-- Edge padding + PNG DPI --}}
                 <div class="grid grid-cols-2 gap-3">
-                    <div>
+                    <div :class="{ 'opacity-50': forceCanvas }"
+                         :title="forceCanvas ? '{{ __('Edge padding is ignored when forced canvas is active.') }}' : ''">
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Edge padding') }}</label>
                         <div class="relative">
                             <input
                                 type="number"
                                 x-model.number="borderPt"
+                                :disabled="forceCanvas"
                                 min="0"
                                 max="50"
                                 step="1"
-                                class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8">
+                                class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8 disabled:cursor-not-allowed">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">pt</span>
                         </div>
                     </div>
@@ -324,6 +349,41 @@
                             step="1"
                             class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal">
                     </div>
+                </div>
+            </div>
+
+            {{-- Force canvas size --}}
+            <div class="pt-2 border-t border-gray-100">
+                <label class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide cursor-pointer">
+                    <input type="checkbox" x-model="forceCanvas" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                    {{ __('Force canvas size for all') }}
+                </label>
+                <div x-show="forceCanvas" x-collapse class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">{{ __('Width') }}</label>
+                        <div class="relative">
+                            <input type="number" x-model.number="canvasWidthCm" min="0.5" max="100" step="0.5"
+                                class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8">
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">cm</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">{{ __('Height') }}</label>
+                        <div class="relative">
+                            <input type="number" x-model.number="canvasHeightCm" min="0.5" max="100" step="0.5"
+                                class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8">
+                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">cm</span>
+                        </div>
+                    </div>
+                    <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer pb-2">
+                        <input type="checkbox" x-model="clipToCanvas" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                        {{ __('Clip to canvas') }}
+                    </label>
+                    <p class="md:col-span-3 text-xs text-gray-400" x-text="canvasPixelPreview()"></p>
+                    <p class="md:col-span-3 text-xs text-gray-400">
+                        {{ __('Edge padding is ignored when forced canvas is active.') }}
+                        {{ __('Content outside the canvas origin (0,0)–(W,H) will be cropped when clipping is enabled.') }}
+                    </p>
                 </div>
             </div>
 
@@ -460,6 +520,88 @@
         </div>
 
         <div class="p-6">
+            {{-- ============================================================ --}}
+            {{-- ANIMATED GIF CARD (top of results)                            --}}
+            {{-- ============================================================ --}}
+            <div x-show="enabledVariants.animated_gif" class="mb-6 border border-orca-teal/40 rounded-lg overflow-hidden">
+                <div class="bg-orca-teal/5 px-4 py-2.5 border-b border-orca-teal/30 flex items-center gap-2">
+                    <i class="fas fa-film text-orca-teal"></i>
+                    <span class="text-sm font-semibold text-gray-800">{{ __('Animated GIF') }}</span>
+                    <template x-if="animatedGif">
+                        <span class="text-xs text-gray-500 ml-2" x-text="animatedGif.width + ' \u00D7 ' + animatedGif.height + ' px \u2014 ' + formatSize(animatedGif.size)"></span>
+                    </template>
+                </div>
+
+                {{-- Encoding progress --}}
+                <template x-if="gifEncoding">
+                    <div class="p-6 text-center text-sm text-gray-600">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>
+                        <span>{{ __('Encoding GIF…') }}</span>
+                        <span x-text="gifProgress + '%'" class="ml-2 font-mono text-xs text-gray-500"></span>
+                    </div>
+                </template>
+
+                {{-- Not-enough-frames notice --}}
+                <template x-if="!gifEncoding && !animatedGif && !canEncodeGif">
+                    <div class="p-4 text-sm text-gray-500">
+                        <i class="fas fa-circle-info mr-1 text-gray-400"></i>
+                        {{ __('Need at least 2 rendered PNG frames to encode a GIF. Split your TikZ into multiple \\begin{tikzpicture} blocks and render again.') }}
+                    </div>
+                </template>
+
+                {{-- Ready state --}}
+                <template x-if="!gifEncoding && animatedGif">
+                    <div class="p-4">
+                        <div class="flex items-center justify-center min-h-[150px] bg-gray-50 rounded-lg border border-gray-100 p-4 mb-4 overflow-hidden">
+                            <img :src="animatedGif.objectUrl" alt="Animated GIF preview" class="max-w-full h-auto">
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <input
+                                type="text"
+                                x-model="gifFilename"
+                                class="flex-1 min-w-[200px] font-mono text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal">
+                            <button
+                                @click="downloadAnimatedGif()"
+                                class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-md hover:border-orca-teal hover:text-orca-teal transition-colors">
+                                <i class="fas fa-download"></i>{{ __('Download') }}
+                            </button>
+                            <button
+                                @click="uploadAnimatedGif()"
+                                :disabled="gifUploading || !!gifUploadedAsset"
+                                class="inline-flex items-center gap-2 px-3 py-1.5 bg-orca-teal text-white text-xs font-medium rounded-md hover:bg-orca-teal-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <template x-if="gifUploading"><i class="fas fa-spinner fa-spin"></i></template>
+                                <template x-if="!gifUploading"><i class="fas fa-cloud-arrow-up"></i></template>
+                                <span x-text="gifUploading ? '{{ __('Uploading…') }}' : '{{ __('Upload GIF') }}'"></span>
+                            </button>
+                            <template x-if="gifUploadedAsset">
+                                <a :href="gifUploadedAsset.asset_url" target="_blank"
+                                    class="inline-flex items-center gap-1 text-xs text-green-700 hover:text-green-900">
+                                    <i class="fas fa-check-circle text-green-600"></i>
+                                    <span x-text="gifUploadedAsset.filename" class="underline"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Handoff to GIF Maker (available whenever ≥2 PNG frames exist) --}}
+            <template x-if="canEncodeGif">
+                <div class="mb-6 flex items-center gap-3 flex-wrap p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <i class="fas fa-sliders text-gray-400"></i>
+                    <span class="text-sm text-gray-600 flex-1 min-w-[200px]">
+                        {{ __('Want fine-grained control — per-frame delays, transitions, custom dimensions?') }}
+                    </span>
+                    <button
+                        @click="continueInGifMaker()"
+                        :disabled="gifHandoffInProgress"
+                        class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-md hover:border-orca-teal hover:text-orca-teal disabled:opacity-50 transition-colors">
+                        <i class="fas fa-arrow-right"></i>
+                        {{ __('Continue in GIF Maker') }}
+                    </button>
+                </div>
+            </template>
+
             {{-- Result cards --}}
             <div class="space-y-6 mb-12">
                 <template x-for="(result, rIdx) in results" :key="rIdx">
@@ -493,9 +635,16 @@
                                 <div x-html="previewHtml(result)" class="max-w-full [&>svg]:max-w-full [&>svg]:h-auto [&>img]:max-w-full [&>img]:h-auto"></div>
                             </div>
 
+                            {{-- Per-variant note when upload is hidden (PNG folded into GIF) --}}
+                            <template x-if="result.activeTab === 'png' && !shouldShowVariantUpload('png')">
+                                <div class="text-xs text-gray-400 italic">
+                                    <i class="fas fa-film mr-1"></i>{{ __('This PNG frame is included in the Animated GIF output above.') }}
+                                </div>
+                            </template>
+
                             {{-- Per-variant upload controls --}}
                             <template x-for="type in variantTypes(result)" :key="'ctrl-' + type">
-                                <div x-show="result.activeTab === type" class="flex items-center gap-3">
+                                <div x-show="result.activeTab === type && shouldShowVariantUpload(type)" class="flex items-center gap-3">
                                     <input
                                         type="checkbox"
                                         x-model="result.variants[type].selected"
@@ -683,6 +832,8 @@ window.__pageData = {
     renderUrl: '{{ route('tools.tikz-server.render') }}',
     svgUploadUrl: '{{ route('tools.tikz-svg.upload') }}',
     pngUploadUrl: '{{ route('tools.tikz-png.upload') }}',
+    gifUploadUrl: '{{ route('tools.gif-maker.upload') }}',
+    gifMakerUrl: '{{ route('tools.gif-maker') }}',
     templateSearchUrl: '{{ route('tools.tikz-server.templates') }}',
     templateLoadUrl: '{{ url('tools/tikz-server/templates') }}',
     templateUploadUrl: '{{ route('tools.tikz-server.templates.upload') }}',
