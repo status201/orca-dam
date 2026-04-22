@@ -88,9 +88,38 @@
                             {{ __('Users') }}
                         </x-nav-link>
                     @endcan
-                    <x-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')">
-                        {{ __('Tools') }}
-                    </x-nav-link>
+                    <div class="relative inline-flex items-stretch" x-data="{ submenu: false }" @mouseenter="submenu = true" @mouseleave="submenu = false">
+                        <x-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')" @click="if ('ontouchstart' in window && !submenu) { $event.preventDefault(); submenu = true }">
+                            {{ __('Tools') }}
+                            <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </x-nav-link>
+
+                        <div x-show="submenu"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95"
+                             class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50"
+                             style="display: none;">
+                            <a href="{{ route('tools.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('tools.index') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <i class="fas fa-toolbox fa-fw mr-2 {{ request()->routeIs('tools.index') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Overview') }}
+                            </a>
+                            <div class="border-t border-gray-100 my-1"></div>
+                            <a href="{{ route('tools.tikz-server') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('tools.tikz-server*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <i class="fas fa-server fa-fw mr-2 {{ request()->routeIs('tools.tikz-server*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('TikZ Tool') }}
+                            </a>
+                            <a href="{{ route('tools.gif-maker') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('tools.gif-maker*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <i class="fas fa-film fa-fw mr-2 {{ request()->routeIs('tools.gif-maker*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Animated GIF Tool') }}
+                            </a>
+                            <a href="{{ route('tools.latex-mathml') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('tools.latex-mathml*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <i class="fas fa-square-root-variable fa-fw mr-2 {{ request()->routeIs('tools.latex-mathml*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('MathML Tool') }}
+                            </a>
+                        </div>
+                    </div>
                     <x-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
                         {{ __('About ORCA') }}
                     </x-nav-link>
@@ -200,9 +229,30 @@
                     {{ __('Users') }}
                 </x-responsive-nav-link>
             @endcan
-            <x-responsive-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')">
-                {{ __('Tools') }}
-            </x-responsive-nav-link>
+            <div x-data="{ open: {{ request()->routeIs('tools.*') ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-none
+                               {{ request()->routeIs('tools.*') ? 'border-orca-teal text-orca-teal-hover bg-teal-50 focus:text-orca-teal-hover focus:bg-teal-100 focus:border-orca-teal' : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 focus:text-gray-800 focus:bg-gray-50 focus:border-gray-300' }}">
+                    <span>{{ __('Tools') }}</span>
+                    <svg :class="{ 'rotate-180': open }" class="h-4 w-4 transition-transform duration-200 {{ request()->routeIs('tools.*') ? 'text-orca-teal' : 'text-gray-400' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div x-show="open">
+                    <x-responsive-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.index')" class="ps-8">
+                        <i class="fas fa-toolbox fa-fw mr-2 text-gray-400"></i>{{ __('Overview') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('tools.tikz-server')" :active="request()->routeIs('tools.tikz-server*')" class="ps-8">
+                        <i class="fas fa-server fa-fw mr-2 text-gray-400"></i>{{ __('TikZ Tool') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('tools.gif-maker')" :active="request()->routeIs('tools.gif-maker*')" class="ps-8">
+                        <i class="fas fa-film fa-fw mr-2 text-gray-400"></i>{{ __('Animated GIF Tool') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('tools.latex-mathml')" :active="request()->routeIs('tools.latex-mathml*')" class="ps-8">
+                        <i class="fas fa-square-root-variable fa-fw mr-2 text-gray-400"></i>{{ __('MathML Tool') }}
+                    </x-responsive-nav-link>
+                </div>
+            </div>
             <x-responsive-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
                 {{ __('About ORCA') }}
             </x-responsive-nav-link>
