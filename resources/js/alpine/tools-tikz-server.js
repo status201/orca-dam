@@ -254,6 +254,9 @@ function tikzServer() {
             window.showToast('Copied: ' + name, 'success');
             if (!this.colorPaletteFloating) {
                 this.colorPaletteOpen = false;
+                this.$nextTick(() => {
+                    if (this.$refs.tikzInput) this.$refs.tikzInput.focus();
+                });
             }
         },
 
