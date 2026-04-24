@@ -395,7 +395,7 @@ return [
 | `per_page` | `?per_page=24` (max 100) |
 | `page` | `?page=2` |
 | `folder` | `?folder=assets/marketing` |
-| `sort` | `?sort=date_desc` (default), `date_asc`, `upload_desc`, `upload_asc`, `size_desc`, `size_asc`, `name_asc`, `name_desc` |
+| `sort` | `?sort=date_desc` (default), `date_asc`, `upload_desc`, `upload_asc`, `size_desc`, `size_asc`, `name_asc`, `name_desc`, `s3key_asc`, `s3key_desc` |
 
 ---
 

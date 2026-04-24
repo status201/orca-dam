@@ -88,8 +88,8 @@ AWS_URL=https://your-bucket.s3.amazonaws.com
 
 # Optional: Enable AI tagging
 AWS_REKOGNITION_ENABLED=false            # Enable/disable AI tagging
-AWS_REKOGNITION_MAX_LABELS=5             # Max AI tags per asset
-AWS_REKOGNITION_MIN_CONFIDENCE=75        # Min confidence threshold (65-99)
+AWS_REKOGNITION_MAX_LABELS=3             # Max AI tags per asset (default: 3)
+AWS_REKOGNITION_MIN_CONFIDENCE=80        # Min confidence threshold, 65-99 (default: 80)
 AWS_REKOGNITION_LANGUAGE=en              # Language: en, nl, fr, de, es, etc.
 
 # Optional: TikZ Server Render (requires TeX Live on server)
