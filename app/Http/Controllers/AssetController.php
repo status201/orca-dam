@@ -480,6 +480,14 @@ class AssetController extends Controller
             }
         }
 
+        if ($userId = $request->input('user')) {
+            if (Auth::user()->isAdmin() || (int) $userId === Auth::id()) {
+                if ($user = User::find($userId)) {
+                    $parts[] = __('Uploaded by').' '.$user->name;
+                }
+            }
+        }
+
         if ($request->boolean('missing')) {
             $parts[] = __('Missing');
         }
