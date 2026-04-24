@@ -11,6 +11,34 @@ function parseOutput(string $output): array
     return $method->invoke($service, $output);
 }
 
+function invokeToUtf8(string $input): string
+{
+    $service = new TestRunnerService;
+    $method = new ReflectionMethod(TestRunnerService::class, 'toUtf8');
+    $method->setAccessible(true);
+
+    return $method->invoke($service, $input);
+}
+
+// ─── toUtf8() ────────────────────────────────────────────────────────────────
+
+test('toUtf8 scrubs truncated multi-byte sequence so json_encode succeeds', function () {
+    // Lone UTF-8 lead byte — the exact shape produced when a 32KiB read
+    // window starts mid-character.
+    $dirty = "ok\xC3";
+
+    $clean = invokeToUtf8($dirty);
+
+    expect(json_encode(['output' => $clean]))->not->toBeFalse();
+    expect(json_last_error())->toBe(JSON_ERROR_NONE);
+});
+
+test('toUtf8 preserves valid UTF-8 content', function () {
+    $input = "passed ✓ 日本語";
+
+    expect(invokeToUtf8($input))->toBe($input);
+});
+
 // ─── parseTestOutput() ───────────────────────────────────────────────────────
 
 test('parseTestOutput returns all zeros and empty tests for empty string', function () {

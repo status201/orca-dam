@@ -205,7 +205,7 @@ class TestRunnerService
         }
 
         $exitCode = proc_close($process);
-        $outputAll = $this->stripAnsi(@file_get_contents($tmpFile) ?: '');
+        $outputAll = $this->toUtf8($this->stripAnsi(@file_get_contents($tmpFile) ?: ''));
         @unlink($tmpFile);
 
         $stats = $this->parseTestOutput($outputAll);
@@ -267,7 +267,7 @@ class TestRunnerService
                 $chunk = fread($fp, $window);
                 fclose($fp);
                 if ($chunk !== false && $chunk !== '') {
-                    $state['output_tail'] = $this->tail($this->stripAnsi($chunk));
+                    $state['output_tail'] = $this->tail($this->toUtf8($this->stripAnsi($chunk)));
                 }
             }
         }
@@ -317,6 +317,15 @@ class TestRunnerService
             '',
             $output
         ) ?? $output;
+    }
+
+    private function toUtf8(string $output): string
+    {
+        if (function_exists('mb_scrub')) {
+            return mb_scrub($output, 'UTF-8');
+        }
+
+        return mb_convert_encoding($output, 'UTF-8', 'UTF-8');
     }
 
     private function buildTestCommand(string $phpCli, string $suite, ?string $filter): string
