@@ -224,6 +224,38 @@ test('back URL falls back to assets index when no context present', function () 
     expect($html)->toMatch('#href="[^"]*/assets"#');
 });
 
+test('cycle nav summary includes user filter name (admin)', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $owner = User::factory()->create(['name' => 'Alice Uploader']);
+    Asset::factory()->image()->count(2)->create(['user_id' => $owner->id]);
+
+    $target = Asset::where('user_id', $owner->id)->first();
+
+    $response = $this->actingAs($admin)
+        ->get(route('assets.show', $target).'?user='.$owner->id);
+
+    $cycleNav = $response->viewData('cycleNav');
+    expect($cycleNav)->not->toBeNull();
+    expect($cycleNav['summary'])->toContain('Alice Uploader');
+});
+
+test('cycle nav summary omits user filter for non-admin filtering other user', function () {
+    $editor = User::factory()->create(['role' => 'editor', 'name' => 'Editor One']);
+    $other = User::factory()->create(['name' => 'Someone Else']);
+    Asset::factory()->image()->count(2)->create(['user_id' => $other->id]);
+
+    $target = Asset::where('user_id', $other->id)->first();
+
+    $response = $this->actingAs($editor)
+        ->get(route('assets.show', $target).'?user='.$other->id.'&sort=name_asc');
+
+    $cycleNav = $response->viewData('cycleNav');
+    // Filter guard in buildContextSummary blocks leaking other user name
+    if ($cycleNav !== null) {
+        expect($cycleNav['summary'])->not->toContain('Someone Else');
+    }
+});
+
 test('grid card links include current query string', function () {
     $user = User::factory()->create();
     Asset::factory()->image()->create(['filename' => 'a.jpg', 's3_key' => 'assets/a.jpg']);
