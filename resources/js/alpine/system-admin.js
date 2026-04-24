@@ -586,7 +586,7 @@ export function systemAdmin() {
                 }
 
                 this.testRunId = result.run_id;
-                this.testPollHandle = setInterval(() => this.pollTestRun(), 750);
+                this.testPollHandle = setInterval(() => this.pollTestRun(), 1000);
                 // Fire an immediate poll so the UI updates before the first tick.
                 this.pollTestRun();
                 // Surface the freshly-queued job in the Queue tab without
