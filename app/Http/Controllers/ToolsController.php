@@ -115,6 +115,7 @@ class ToolsController extends Controller
             'filename' => ['required', 'string', 'max:255'],
             'folder' => ['nullable', 'string', 'max:255'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
             ...$this->metadataValidationRules(),
         ]);
 
@@ -145,6 +146,7 @@ class ToolsController extends Controller
                 'width' => null,
                 'height' => null,
                 'user_id' => Auth::id(),
+                'parent_id' => $request->input('parent_asset_id'),
                 'alt_text' => null,
                 'caption' => $request->input('caption') ?: null,
             ]);
@@ -191,6 +193,7 @@ class ToolsController extends Controller
             'filename' => ['required', 'string', 'max:255'],
             'folder' => ['nullable', 'string', 'max:255'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
             ...$this->metadataValidationRules(),
         ]);
 
@@ -221,6 +224,7 @@ class ToolsController extends Controller
                 'width' => null,
                 'height' => null,
                 'user_id' => Auth::id(),
+                'parent_id' => $request->input('parent_asset_id'),
                 'alt_text' => null,
                 'caption' => $request->input('caption') ?: null,
             ]);
@@ -304,6 +308,7 @@ class ToolsController extends Controller
             'width' => ['nullable', 'integer', 'min:1'],
             'height' => ['nullable', 'integer', 'min:1'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
             ...$this->metadataValidationRules(),
         ]);
 
@@ -344,6 +349,7 @@ class ToolsController extends Controller
                 'width' => $request->input('width'),
                 'height' => $request->input('height'),
                 'user_id' => Auth::id(),
+                'parent_id' => $request->input('parent_asset_id'),
                 'alt_text' => null,
                 'caption' => $request->input('caption') ?: null,
             ]);
@@ -557,6 +563,7 @@ class ToolsController extends Controller
             'width' => ['nullable', 'integer', 'min:1'],
             'height' => ['nullable', 'integer', 'min:1'],
             'caption' => ['nullable', 'string', 'max:1000'],
+            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
             ...$this->metadataValidationRules(),
         ]);
 
@@ -597,6 +604,7 @@ class ToolsController extends Controller
                 'width' => $request->input('width'),
                 'height' => $request->input('height'),
                 'user_id' => Auth::id(),
+                'parent_id' => $request->input('parent_asset_id'),
                 'alt_text' => null,
                 'caption' => $request->input('caption') ?: null,
             ]);

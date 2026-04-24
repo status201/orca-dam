@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
@@ -35,6 +36,7 @@ class Asset extends Model
         's3_missing_at',
         'user_id',
         'last_modified_by',
+        'parent_id',
     ];
 
     protected $casts = [
@@ -69,6 +71,22 @@ class Asset extends Model
     public function modifier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'last_modified_by');
+    }
+
+    /**
+     * The asset this one was derived from (e.g. the .tex template that produced this render).
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Asset::class, 'parent_id');
+    }
+
+    /**
+     * Assets derived from this one.
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Asset::class, 'parent_id')->orderBy('created_at');
     }
 
     /**

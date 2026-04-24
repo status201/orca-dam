@@ -17,6 +17,8 @@ function tikzServer() {
         canvasHeightCm: 8,
         clipToCanvas: false,
         rendering: false,
+        renderProgress: { current: 0, total: 0 },
+        totalSnippets: 0,
         renderError: '',
         renderLog: '',
         showLog: false,
@@ -66,6 +68,13 @@ function tikzServer() {
         savingTemplate: false,
         saveTemplateName: '',
         saveTemplateFolder: '',
+
+        // Parent-link: the .tex asset this code was loaded/saved as, and a snapshot
+        // of the code at that moment used to detect the "modified" indicator.
+        // The link itself persists through edits by design — small tweaks to a
+        // loaded template should still attribute renders to the original .tex.
+        templateAssetId: null,
+        templateSnapshot: '',
 
         _lastLineCount: 0,
 
@@ -636,6 +645,9 @@ function tikzServer() {
             reader.onload = function (e) {
                 this.tikzCode = e.target.result;
                 this.templateName = file.name;
+                // Loading a local file is not a link to an ORCA asset — drop any prior link.
+                this.templateAssetId = null;
+                this.templateSnapshot = '';
                 this.results = [];
                 this.renderError = '';
                 this.renderLog = '';
@@ -649,7 +661,10 @@ function tikzServer() {
         clearCode() {
             this.tikzCode = '';
             this.templateName = '';
+            this.templateAssetId = null;
+            this.templateSnapshot = '';
             this.results = [];
+            this.totalSnippets = 0;
             this.renderError = '';
             this.renderLog = '';
             this._lastLineCount = 0;
@@ -697,6 +712,8 @@ function tikzServer() {
                 }
                 this.tikzCode = data.content;
                 this.templateName = data.filename;
+                this.templateAssetId = data.id;
+                this.templateSnapshot = data.content;
                 this.results = [];
                 this.renderError = '';
                 this.renderLog = '';
@@ -707,6 +724,15 @@ function tikzServer() {
             } finally {
                 this.templateLoadingId = null;
             }
+        },
+
+        get templateModified() {
+            return this.templateAssetId !== null && this.tikzCode !== this.templateSnapshot;
+        },
+
+        unlinkTemplate() {
+            this.templateAssetId = null;
+            this.templateSnapshot = '';
         },
 
         saveToOrca() {
@@ -745,6 +771,8 @@ function tikzServer() {
                     return;
                 }
                 this.templateName = data.filename;
+                this.templateAssetId = data.asset_id;
+                this.templateSnapshot = this.tikzCode;
                 window.showToast(data.filename, 'success');
                 this.$dispatch('close-modal', 'save-template');
             } catch (e) {
@@ -941,6 +969,7 @@ function tikzServer() {
                     folder: this.uploadFolder,
                     width: this.animatedGif.width,
                     height: this.animatedGif.height,
+                    parent_asset_id: this.templateAssetId,
                 }, this.getMetadataPayload());
 
                 var res = await fetch(pageData.gifUploadUrl, {
@@ -1010,6 +1039,8 @@ function tikzServer() {
             delete serverVariants.animated_gif;
 
             this.rendering = true;
+            this.renderProgress = { current: 0, total: snippets.length };
+            this.totalSnippets = snippets.length;
             this.results = [];
             this.renderError = '';
             this.renderLog = '';
@@ -1022,6 +1053,7 @@ function tikzServer() {
             var preamble = this.parsePreamble();
 
             for (var i = 0; i < snippets.length; i++) {
+                this.renderProgress = { current: i + 1, total: snippets.length };
                 try {
                     var body = {
                         tikz_code: snippets[i],
@@ -1093,6 +1125,7 @@ function tikzServer() {
             }
 
             this.rendering = false;
+            this.renderProgress = { current: 0, total: 0 };
 
             // If the Animated GIF variant is active and we have enough PNG frames, auto-encode it.
             if (this.enabledVariants.animated_gif && !this.renderError && this.canEncodeGif) {
@@ -1204,6 +1237,7 @@ function tikzServer() {
                             filename: v.name,
                             folder: this.uploadFolder,
                             caption: '',
+                            parent_asset_id: this.templateAssetId,
                         }, meta);
                     } else {
                         body = Object.assign({
@@ -1213,6 +1247,7 @@ function tikzServer() {
                             width: v.width,
                             height: v.height,
                             caption: '',
+                            parent_asset_id: this.templateAssetId,
                         }, meta);
                     }
 

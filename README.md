@@ -44,7 +44,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔑 Short-lived token support (JWT bearer) for front-ends
 - 👤 User preferences (home folder, items per page, language, dark/light mode)
 - 🔒 Two-factor authentication (TOTP)
-- 🖊️ **TikZ Server Render** — compile TikZ/LaTeX diagrams server-side via TeX Live, with SVG and PNG output variants, 17 font packages, template management, and direct upload to ORCA
+- 🖊️ **TikZ Server Render** — compile TikZ/LaTeX diagrams server-side via TeX Live, with SVG and PNG output variants, 17 font packages, template management, and direct upload to ORCA (renders are linked back to their source `.tex` template via asset parent/child relations)
 - ☁️ **Cloudflare cache purge** — automatically purges CDN cache when an asset file is replaced (requires custom domain + toggle in Settings)
 
 ## Installation

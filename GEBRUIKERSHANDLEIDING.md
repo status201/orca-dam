@@ -435,6 +435,8 @@ Compileer TikZ-diagrammen op de server met een volledige TeX Live-installatie. V
 
 **Templatebeheer:** Sla je TikZ-code op als `.tex`-bestand in ORCA met **Save as .tex**, of laad bestaande templates met **Load from ORCA**.
 
+**Templatekoppeling (ouder/kind):** Zodra een `.tex`-template is geladen of opgeslagen, worden alle renders die je tijdens die sessie uploadt gekoppeld als **afgeleide assets**. De detailpagina van het `.tex`-bestand toont alle afgeleide renders, en elke render toont zijn bron-`.tex`. Een koppeling-badge in de toolbar toont de naam van de gekoppelde template; kleine aanpassingen behouden de koppeling (weergegeven als *gewijzigd*), en de ×-knop op de badge verbreekt de koppeling als je wilt dat de volgende upload los staat.
+
 **Volledig document:** Je kunt een compleet LaTeX-document plakken met `\documentclass`, eigen packages en kleurdefinities — de preamble wordt automatisch geëxtraheerd en toegepast op elk `\begin{tikzpicture}`-blok.
 
 **Meerdere diagrammen:** Als je code meerdere `\begin{tikzpicture}`-blokken bevat, wordt elk apart gecompileerd en gerenderd.

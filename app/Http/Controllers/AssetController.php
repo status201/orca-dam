@@ -343,7 +343,7 @@ class AssetController extends Controller
         $this->authorize('view', $asset);
         $asset->load(['tags' => function ($query) {
             $query->withCount('assets');
-        }, 'user']);
+        }, 'user', 'parent', 'children']);
 
         $cycleNav = $this->buildCycleNav($request, $asset);
         $backUrl = $this->buildBackUrl($request);

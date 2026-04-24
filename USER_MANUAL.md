@@ -435,6 +435,8 @@ Compile TikZ diagrams on the server using a full TeX Live installation. Requires
 
 **Template management:** Save your TikZ code as a `.tex` file in ORCA with **Save as .tex**, or load existing templates with **Load from ORCA**.
 
+**Template links (parent/child):** Once a `.tex` template is loaded or saved, any renders you upload in that session are linked to it as **derived assets**. The asset detail page of the `.tex` shows all its derived renders, and each render shows its source `.tex`. A link badge in the toolbar shows the linked template name; small edits keep the link (shown as *modified*), and the × button on the badge unlinks it if you want the next upload to stand alone.
+
 **Full document support:** You can paste a complete LaTeX document with `\documentclass`, custom packages, and color definitions — the preamble is automatically extracted and applied to each `\begin{tikzpicture}` block.
 
 **Multiple diagrams:** If your code contains multiple `\begin{tikzpicture}` blocks, each is compiled and rendered separately.

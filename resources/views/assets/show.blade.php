@@ -235,6 +235,62 @@
                 </div>
                 @endif
             </div>
+
+            @if($asset->parent || $asset->children->isNotEmpty())
+            <div class="mt-6 bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-3">{{ __('Relations') }}</h3>
+
+                @if($asset->parent)
+                    @php($parent = $asset->parent)
+                    <div class="@if($asset->children->isNotEmpty()) mb-4 @endif">
+                        <h4 class="text-sm font-semibold mb-2 text-gray-700">{{ __('Source') }}</h4>
+                        <a href="{{ route('assets.show', $parent) }}"
+                           class="flex items-center gap-3 p-2 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
+                            @if($parent->thumbnail_url)
+                                <img src="{{ $parent->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
+                            @else
+                                <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100 {{ $parent->getIconColorClass() }}">
+                                    <i class="fas {{ $parent->getFileIcon() }}"></i>
+                                </span>
+                            @endif
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-medium text-gray-800 truncate">{{ $parent->filename }}</span>
+                                <span class="block text-xs text-gray-500">{{ $parent->mime_type }} · {{ $parent->formatted_size }}</span>
+                            </span>
+                            <i class="fas fa-arrow-up-right-from-square text-gray-400 text-xs"></i>
+                        </a>
+                    </div>
+                @endif
+
+                @if($asset->children->isNotEmpty())
+                    <div>
+                        <h4 class="text-sm font-semibold mb-2 text-gray-700">
+                            {{ __('Derived assets') }} <span class="text-gray-400 font-normal">({{ $asset->children->count() }})</span>
+                        </h4>
+                        <ul class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            @foreach($asset->children as $child)
+                                <li>
+                                    <a href="{{ route('assets.show', $child) }}"
+                                       class="flex items-center gap-3 p-2 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
+                                        @if($child->thumbnail_url)
+                                            <img src="{{ $child->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
+                                        @else
+                                            <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100 {{ $child->getIconColorClass() }}">
+                                                <i class="fas {{ $child->getFileIcon() }}"></i>
+                                            </span>
+                                        @endif
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block text-sm font-medium text-gray-800 truncate">{{ $child->filename }}</span>
+                                            <span class="block text-xs text-gray-500">{{ $child->mime_type }} · {{ $child->formatted_size }}</span>
+                                        </span>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+            </div>
+            @endif
         </div>
 
         <!-- Info column -->

@@ -15,6 +15,27 @@ test('asset belongs to a user', function () {
     expect($asset->user->id)->toBe($user->id);
 });
 
+test('asset parent and children relationships link a .tex template to its renders', function () {
+    $parent = Asset::factory()->create(['filename' => 'diagram.tex', 'mime_type' => 'application/x-tex']);
+    $child1 = Asset::factory()->create(['parent_id' => $parent->id]);
+    $child2 = Asset::factory()->create(['parent_id' => $parent->id]);
+
+    expect($child1->parent)->toBeInstanceOf(Asset::class);
+    expect($child1->parent->id)->toBe($parent->id);
+    expect($parent->children)->toHaveCount(2);
+    expect($parent->children->pluck('id')->all())->toEqualCanonicalizing([$child1->id, $child2->id]);
+});
+
+test('deleting parent asset nulls parent_id on children (nullOnDelete)', function () {
+    $parent = Asset::factory()->create();
+    $child = Asset::factory()->create(['parent_id' => $parent->id]);
+
+    $parent->forceDelete();
+
+    $child->refresh();
+    expect($child->parent_id)->toBeNull();
+});
+
 test('asset can have tags', function () {
     $asset = Asset::factory()->create();
     $tags = Tag::factory()->count(3)->create();

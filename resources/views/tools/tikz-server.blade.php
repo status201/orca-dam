@@ -63,7 +63,20 @@
                     <i class="fas fa-database"></i>
                     {{ __('Load from ORCA') }}
                 </button>
-                <template x-if="templateName">
+                <template x-if="templateAssetId">
+                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-orca-teal/10 border border-orca-teal/30 text-xs font-mono text-orca-teal"
+                          :title="templateModified ? '{{ __('Code differs from the linked template; new renders will still be attributed to it.') }}' : '{{ __('New renders will be linked as children of this .tex template.') }}'">
+                        <i class="fas fa-link text-[10px]"></i>
+                        <span x-text="templateName"></span>
+                        <span x-show="templateModified" class="text-gray-400">{{ __('· modified') }}</span>
+                        <button type="button" @click="unlinkTemplate()"
+                                class="text-orca-teal/70 hover:text-orca-teal ml-0.5"
+                                title="{{ __('Unlink template') }}">
+                            <i class="fas fa-xmark text-[11px]"></i>
+                        </button>
+                    </span>
+                </template>
+                <template x-if="!templateAssetId && templateName">
                     <span class="text-xs text-gray-400 font-mono" x-text="templateName"></span>
                 </template>
 
@@ -471,7 +484,7 @@
             <template x-if="rendering">
                 <span class="text-sm text-gray-500 ml-auto">
                     <i class="fas fa-spinner fa-spin mr-1"></i>
-                    {{ __('Compiling on server. This may take a few seconds…') }}
+                    {{ __('Compiling on server. This may take a few seconds…') }}<span x-text="renderProgress.total ? ' (' + renderProgress.current + '/' + renderProgress.total + ')' : ''"></span>
                 </span>
             </template>
         </div>
@@ -517,7 +530,7 @@
             <h2 class="text-lg font-semibold text-gray-900">
                 <i class="fas fa-images mr-2 text-orca-teal"></i>
                 {{ __('Results') }}
-                <span class="text-sm font-normal text-gray-500 ml-1">(<span x-text="results.length"></span> <span x-text="results.length === 1 ? '{{ __('diagram') }}' : '{{ __('diagrams') }}'"></span>)</span>
+                <span class="text-sm font-normal text-gray-500 ml-1">(<span x-text="results.length"></span><span x-show="totalSnippets > results.length">/<span x-text="totalSnippets"></span></span> <span x-text="totalSnippets === 1 ? '{{ __('diagram') }}' : '{{ __('diagrams') }}'"></span>)</span>
             </h2>
             <div class="flex items-center gap-3 text-sm">
                 <button @click="selectAll()" class="text-orca-teal hover:text-orca-teal-hover transition-colors">{{ __('Select all') }}</button>
