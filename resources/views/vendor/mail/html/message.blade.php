@@ -1,7 +1,13 @@
 <x-mail::layout>
 {{-- Header --}}
 <x-slot:header>
-<x-mail::header :url="config('app.url')" :logo="isset($message) ? $message->embed(public_path('images/orca-logo.png')) : null">
+@php
+    $logoPath = public_path('images/orca-logo.png');
+    $logoDataUri = is_file($logoPath)
+        ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath))
+        : null;
+@endphp
+<x-mail::header :url="config('app.url')" :logo="$logoDataUri">
 {{ config('app.name') }}
 </x-mail::header>
 </x-slot:header>
