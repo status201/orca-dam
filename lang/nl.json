@@ -1273,5 +1273,17 @@
     "Your email address is unverified.": "Je e-mailadres is niet geverifieerd.",
     "Your frontend uses the JWT for ORCA API requests": "Je frontend gebruikt de JWT voor ORCA API-verzoeken",
     "Your session has expired. Refreshing the page...": "Je sessie is verlopen. Pagina wordt ververst...",
-    "Zoom and crop": "Inzoomen en bijsnijden"
+    "Zoom and crop": "Inzoomen en bijsnijden",
+    "All rights reserved.": "Alle rechten voorbehouden.",
+    "Hello!": "Hallo!",
+    "If you did not request a password reset, no further action is required.": "Als je geen wachtwoord-reset hebt aangevraagd, hoef je niets te doen.",
+    "Please wait before retrying.": "Wacht even voordat je het opnieuw probeert.",
+    "Regards": "Met vriendelijke groet",
+    "Reset Password Notification": "Wachtwoord opnieuw instellen",
+    "This password reset link will expire in :count minutes.": "Deze link verloopt over :count minuten.",
+    "This password reset token is invalid.": "Deze wachtwoord-resettoken is ongeldig.",
+    "We can't find a user with that email address.": "We kunnen geen gebruiker met dat e-mailadres vinden.",
+    "We have emailed your password reset link.": "We hebben een link om je wachtwoord opnieuw in te stellen naar je gemaild.",
+    "You are receiving this email because we received a password reset request for your account.": "Je ontvangt deze e-mail omdat we een verzoek hebben ontvangen om het wachtwoord van je account opnieuw in te stellen.",
+    "Your password has been reset.": "Je wachtwoord is opnieuw ingesteld."
 }
