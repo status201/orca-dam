@@ -21,6 +21,8 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create();
 
+        $this->assertNull($user->last_login_at);
+
         $response = $this->post('/login', [
             'email' => $user->email,
             'password' => 'password',
@@ -28,6 +30,7 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+        $this->assertNotNull($user->fresh()->last_login_at);
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
@@ -40,6 +43,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+        $this->assertNull($user->fresh()->last_login_at);
     }
 
     public function test_users_can_logout(): void

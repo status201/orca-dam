@@ -86,6 +86,9 @@ test('user with 2fa enabled is redirected to challenge on login', function () {
 
     $response->assertRedirect(route('two-factor.challenge'));
     expect(session('two_factor_user_id'))->toBe($user->id);
+
+    // Password-correct but 2FA not yet completed: last_login_at must remain null
+    expect($user->fresh()->last_login_at)->toBeNull();
 });
 
 test('user without 2fa logs in directly', function () {
@@ -127,6 +130,7 @@ test('2fa challenge accepts valid totp code', function () {
 
     $response->assertRedirect(route('dashboard'));
     $this->assertAuthenticatedAs($user);
+    expect($user->fresh()->last_login_at)->not->toBeNull();
 });
 
 test('2fa challenge accepts valid recovery code', function () {
@@ -171,6 +175,7 @@ test('2fa challenge rejects invalid code', function () {
 
     $response->assertSessionHasErrors('code');
     $this->assertGuest();
+    expect($user->fresh()->last_login_at)->toBeNull();
 });
 
 test('2fa challenge expires after configured ttl', function () {

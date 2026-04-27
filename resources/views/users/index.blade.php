@@ -48,6 +48,9 @@
                     {{ __('2FA') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ __('Last login') }}
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {{ __('Actions') }}
                 </th>
             </tr>
@@ -85,6 +88,15 @@
                         <i class="attention fas fa-check-circle text-green-600" title="{{ $user->two_factor_confirmed_at->format('M j, Y') }}"></i>
                     @else
                         <i class="attention fas fa-times-circle text-red-600"></i>
+                    @endif
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    @if($user->last_login_at)
+                        <span title="{{ $user->last_login_at->format('Y-m-d H:i') }}">
+                            {{ $user->last_login_at->diffForHumans() }}
+                        </span>
+                    @else
+                        <span class="text-gray-400">{{ __('Never') }}</span>
                     @endif
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
