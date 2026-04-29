@@ -249,8 +249,8 @@
                             @if($parent->thumbnail_url)
                                 <img src="{{ $parent->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
                             @else
-                                <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100 {{ $parent->getIconColorClass() }}">
-                                    <i class="fas {{ $parent->getFileIcon() }}"></i>
+                                <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100">
+                                    <x-file-type-icon :asset="$parent" class="w-5 h-5" />
                                 </span>
                             @endif
                             <span class="min-w-0 flex-1">
@@ -275,8 +275,8 @@
                                         @if($child->thumbnail_url)
                                             <img src="{{ $child->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
                                         @else
-                                            <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100 {{ $child->getIconColorClass() }}">
-                                                <i class="fas {{ $child->getFileIcon() }}"></i>
+                                            <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100">
+                                                <x-file-type-icon :asset="$child" class="w-5 h-5" />
                                             </span>
                                         @endif
                                         <span class="min-w-0 flex-1">

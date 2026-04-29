@@ -345,8 +345,8 @@ class Asset extends Model
         'application/eps' => 'fa-file-image',
         'image/x-eps' => 'fa-file-image',
         'image/eps' => 'fa-file-image',
-        'text/x-tex' => 'fa-file-tex',
-        'application/x-tex' => 'fa-file-tex',
+        'text/x-tex' => 'fa-file-code',
+        'application/x-tex' => 'fa-file-code',
     ];
 
     private static array $extensionIcons = [
