@@ -572,6 +572,23 @@ class AssetController extends Controller
     }
 
     /**
+     * Remove the parent relation from the given asset.
+     */
+    public function unlinkParent(Asset $asset)
+    {
+        $this->authorize('update', $asset);
+
+        if ($asset->parent_id !== null) {
+            $asset->update([
+                'parent_id' => null,
+                'last_modified_by' => Auth::id(),
+            ]);
+        }
+
+        return redirect()->back()->with('success', __('Relation removed.'));
+    }
+
+    /**
      * Soft delete the specified asset (does NOT delete S3 objects)
      */
     public function destroy(Asset $asset)

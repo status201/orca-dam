@@ -106,6 +106,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('assets/{asset}/tags', [AssetController::class, 'addTags'])->name('assets.tags.add');
     Route::delete('assets/{asset}/tags/{tag}', [AssetController::class, 'removeTag'])->name('assets.tags.remove');
 
+    // Asset relations
+    Route::delete('assets/{asset}/parent', [AssetController::class, 'unlinkParent'])->name('assets.parent.unlink');
+
     // Tag routes
     Route::get('tags', [TagController::class, 'index'])->name('tags.index');
     Route::get('tags/search', [TagController::class, 'search'])->name('tags.search');

@@ -975,3 +975,35 @@ test('store works without any metadata fields', function () {
     expect($asset->copyright)->toBeNull();
     expect($asset->tags()->count())->toBe(0);
 });
+
+test('authenticated user can unlink parent relation', function () {
+    $user = User::factory()->create();
+    $parent = Asset::factory()->create();
+    $child = Asset::factory()->create(['parent_id' => $parent->id]);
+
+    $response = $this->actingAs($user)->delete(route('assets.parent.unlink', $child));
+
+    $response->assertRedirect();
+    expect($child->fresh()->parent_id)->toBeNull();
+    expect($parent->fresh())->not->toBeNull();
+});
+
+test('unlink parent is idempotent when asset has no parent', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create(['parent_id' => null]);
+
+    $response = $this->actingAs($user)->delete(route('assets.parent.unlink', $asset));
+
+    $response->assertRedirect();
+    expect($asset->fresh()->parent_id)->toBeNull();
+});
+
+test('guests cannot unlink parent relation', function () {
+    $parent = Asset::factory()->create();
+    $child = Asset::factory()->create(['parent_id' => $parent->id]);
+
+    $response = $this->delete(route('assets.parent.unlink', $child));
+
+    $response->assertRedirect(route('login'));
+    expect($child->fresh()->parent_id)->toBe($parent->id);
+});

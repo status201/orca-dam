@@ -244,21 +244,35 @@
                     @php($parent = $asset->parent)
                     <div class="@if($asset->children->isNotEmpty()) mb-4 @endif">
                         <h4 class="text-sm font-semibold mb-2 text-gray-700">{{ __('Source') }}</h4>
-                        <a href="{{ route('assets.show', $parent) }}"
-                           class="flex items-center gap-3 p-2 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
-                            @if($parent->thumbnail_url)
-                                <img src="{{ $parent->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
-                            @else
-                                <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100">
-                                    <x-file-type-icon :asset="$parent" class="w-5 h-5" />
+                        <div class="relative">
+                            <a href="{{ route('assets.show', $parent) }}"
+                               class="flex items-center gap-3 p-2 pr-10 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
+                                @if($parent->thumbnail_url)
+                                    <img src="{{ $parent->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
+                                @else
+                                    <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100">
+                                        <x-file-type-icon :asset="$parent" class="w-5 h-5" />
+                                    </span>
+                                @endif
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-sm font-medium text-gray-800 truncate">{{ $parent->filename }}</span>
+                                    <span class="block text-xs text-gray-500">{{ $parent->mime_type }} · {{ $parent->formatted_size }}</span>
                                 </span>
-                            @endif
-                            <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-medium text-gray-800 truncate">{{ $parent->filename }}</span>
-                                <span class="block text-xs text-gray-500">{{ $parent->mime_type }} · {{ $parent->formatted_size }}</span>
-                            </span>
-                            <i class="fas fa-arrow-up-right-from-square text-gray-400 text-xs"></i>
-                        </a>
+                            </a>
+                            <form method="POST"
+                                  action="{{ route('assets.parent.unlink', $asset) }}"
+                                  onsubmit="return confirm('{{ __('Are you sure you want to remove this relation?') }}')"
+                                  class="absolute top-1 right-1">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        title="{{ __('Remove relation') }}"
+                                        aria-label="{{ __('Remove relation') }}"
+                                        class="w-6 h-6 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 @endif
 
@@ -269,9 +283,9 @@
                         </h4>
                         <ul class="grid grid-cols-1 md:grid-cols-2 gap-2">
                             @foreach($asset->children as $child)
-                                <li>
+                                <li class="relative">
                                     <a href="{{ route('assets.show', $child) }}"
-                                       class="flex items-center gap-3 p-2 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
+                                       class="flex items-center gap-3 p-2 pr-10 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
                                         @if($child->thumbnail_url)
                                             <img src="{{ $child->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
                                         @else
@@ -284,6 +298,19 @@
                                             <span class="block text-xs text-gray-500">{{ $child->mime_type }} · {{ $child->formatted_size }}</span>
                                         </span>
                                     </a>
+                                    <form method="POST"
+                                          action="{{ route('assets.parent.unlink', $child) }}"
+                                          onsubmit="return confirm('{{ __('Are you sure you want to remove this relation?') }}')"
+                                          class="absolute top-1 right-1">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                title="{{ __('Remove relation') }}"
+                                                aria-label="{{ __('Remove relation') }}"
+                                                class="w-6 h-6 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </form>
                                 </li>
                             @endforeach
                         </ul>
