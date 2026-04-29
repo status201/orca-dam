@@ -268,7 +268,7 @@
                                 <button type="submit"
                                         title="{{ __('Remove relation') }}"
                                         aria-label="{{ __('Remove relation') }}"
-                                        class="w-6 h-6 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
+                                        class="attention w-6 h-6 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
                                     <i class="fas fa-times text-xs"></i>
                                 </button>
                             </form>
@@ -307,7 +307,7 @@
                                         <button type="submit"
                                                 title="{{ __('Remove relation') }}"
                                                 aria-label="{{ __('Remove relation') }}"
-                                                class="w-6 h-6 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
+                                                class="attention w-6 h-6 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors">
                                             <i class="fas fa-times text-xs"></i>
                                         </button>
                                     </form>
