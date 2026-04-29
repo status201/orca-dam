@@ -44,15 +44,7 @@ function makeStaticGifContent(): string
 }
 
 /**
- * Build a minimal 2-frame GIF89a binary structured so that the isAnimatedGif()
- * parser correctly counts 2 image descriptors.
- *
- * isAnimatedGif() advances by 9 bytes from the 0x2C position and then does
- * one more $offset++ (intended to skip the LZW min-code-size byte), so the
- * sub-block loop effectively starts AT the LZW min-code-size byte.  To ensure
- * the loop terminates cleanly before the second frame, the 4-byte LZW block is
- * laid out as: [LZW_min_code_size=0x02][data_byte1][data_byte2][terminator=0x00].
- * The loop reads 0x02 as blockSize → skips 2 bytes → reads 0x00 → stops.
+ * Build a minimal 2-frame GIF89a binary with no Global Color Table.
  */
 function makeAnimatedGifContent(): string
 {
@@ -66,14 +58,38 @@ function makeAnimatedGifContent(): string
     // Image Descriptor (10 bytes): x=0, y=0, w=10, h=10, no LCT
     $imgDesc = "\x2C".pack('vvvvC', 0, 0, 10, 10, 0x00);
 
-    // LZW block (4 bytes): min-code=2, one data byte 0x01, one data byte 0xFF, terminator 0x00
-    // The parser starts its sub-block loop AT the min-code byte (0x02), reads blockSize=2,
-    // skips 2 bytes (0x01, 0xFF), then sees 0x00 and terminates cleanly.
+    // LZW block: min-code-size=2, one sub-block of size 1 with data 0xFF, terminator 0x00.
     $lzwBlock = "\x02\x01\xFF\x00";
 
     $frame = $gce.$imgDesc.$lzwBlock;
 
     return $header.$lsd.$frame.$frame."\x3B";
+}
+
+/**
+ * Build a realistic 2-frame animated GIF with a 2-color Global Color Table,
+ * NETSCAPE2.0 looping extension, and proper LZW-encoded pixel data — the
+ * shape produced by browser GIF encoders such as gif.js.
+ */
+function makeAnimatedGifWithGct(): string
+{
+    $header = 'GIF89a';
+    // LSD: width=1, height=1, packed=0x80 (GCT present, size code 0 → 2 colors)
+    $lsd = pack('vvCCC', 1, 1, 0x80, 0, 0);
+    // 2-color Global Color Table (6 bytes): white, black
+    $gct = "\xFF\xFF\xFF\x00\x00\x00";
+    // NETSCAPE2.0 looping application extension
+    $appExt = "\x21\xFF\x0BNETSCAPE2.0\x03\x01\x00\x00\x00";
+    // Graphic Control Extension
+    $gce = "\x21\xF9\x04\x00\x0A\x00\x00\x00";
+    // Image Descriptor (no LCT)
+    $imgDesc = "\x2C".pack('vvvvC', 0, 0, 1, 1, 0x00);
+    // LZW: min-code-size=2, sub-block of size 2 with codes [clear=4, pixel=0, eoi=5]
+    // packed LSB-first into bytes 0x44, 0x01.
+    $lzw = "\x02\x02\x44\x01\x00";
+    $frame = $gce.$imgDesc.$lzw;
+
+    return $header.$lsd.$gct.$appExt.$frame.$frame."\x3B";
 }
 
 // ─── isAnimatedGif() ─────────────────────────────────────────────────────────
@@ -96,6 +112,20 @@ test('isAnimatedGif returns true for animated GIF with two frames', function () 
     $data = makeAnimatedGifContent();
 
     expect($service->isAnimatedGif($data))->toBeTrue();
+});
+
+test('isAnimatedGif returns true for realistic animated GIF with GCT and looping extension', function () {
+    $service = new ImageProcessingService;
+    $data = makeAnimatedGifWithGct();
+
+    expect($service->isAnimatedGif($data))->toBeTrue();
+});
+
+test('createThumbnailContent returns null for realistic animated GIF with GCT', function () {
+    $service = new ImageProcessingService;
+    $result = $service->createThumbnailContent(makeAnimatedGifWithGct(), 'anim.gif');
+
+    expect($result)->toBeNull();
 });
 
 // ─── createThumbnailContent() ────────────────────────────────────────────────

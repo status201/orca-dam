@@ -163,18 +163,16 @@ class ImageProcessingService
                 // Trailer — end of GIF
                 break;
             } elseif ($byte === 0x2C) {
-                // Image Descriptor
+                // Image Descriptor: 10 bytes total (introducer + left/top/width/height u16s + packed byte).
                 $frameCount++;
                 if ($frameCount >= 2) {
                     return true;
                 }
-                // Skip Image Descriptor fixed fields (9 bytes total including introducer)
-                $offset += 9;
-                if ($offset >= $len) {
+                if ($offset + 10 > $len) {
                     break;
                 }
-                // Check for Local Color Table
-                $localPacked = ord($imageData[$offset - 1]);
+                $localPacked = ord($imageData[$offset + 9]);
+                $offset += 10;
                 if ($localPacked & 0x80) {
                     $lctSize = 3 * (1 << (($localPacked & 0x07) + 1));
                     $offset += $lctSize;
