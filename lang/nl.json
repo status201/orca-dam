@@ -900,6 +900,7 @@
     "Are you sure you want to remove this relation?": "Weet je zeker dat je deze relatie wilt verwijderen?",
     "Remove relation": "Relatie verwijderen",
     "Relation removed.": "Relatie verwijderd.",
+    "Destination folder": "Doelmap",
     "Unlink template": "Sjabloonkoppeling verwijderen",
     "· modified": "· gewijzigd",
     "Code differs from the linked template; new renders will still be attributed to it.": "Code wijkt af van het gekoppelde sjabloon; nieuwe renders worden er nog steeds aan toegekend.",

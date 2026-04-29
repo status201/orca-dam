@@ -585,6 +585,16 @@
                                 class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-md hover:border-orca-teal hover:text-orca-teal transition-colors">
                                 <i class="fas fa-download"></i>{{ __('Download') }}
                             </button>
+                            <div class="relative">
+                                <i class="fas fa-folder absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                <select
+                                    x-model="uploadFolder"
+                                    title="{{ __('Destination folder') }}"
+                                    class="appearance-none pl-7 pr-7 py-1.5 font-mono text-xs border border-gray-200 rounded bg-white hover:border-orca-teal focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal cursor-pointer max-w-[200px] truncate">
+                                    <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
+                                </select>
+                                <i class="fas fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            </div>
                             <button
                                 @click="uploadAnimatedGif()"
                                 :disabled="gifUploading || !!gifUploadedAsset"
