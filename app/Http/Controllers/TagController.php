@@ -18,12 +18,23 @@ class TagController extends Controller
     public function search(Request $request)
     {
         $search = $request->input('q', '');
-        $type = $request->input('type'); // Optional type filter
+        $type = $request->input('type'); // Optional single-type filter
+        $types = $request->input('types'); // Optional comma-separated multi-type filter
 
         $query = Tag::search($search)->orderBy('name')->limit(20);
 
         if ($type) {
             $query->where('type', $type);
+        } elseif ($types) {
+            $typeList = collect(explode(',', $types))
+                ->map(fn ($t) => trim($t))
+                ->filter()
+                ->values()
+                ->all();
+
+            if (! empty($typeList)) {
+                $query->whereIn('type', $typeList);
+            }
         }
 
         $tags = $query->get(['id', 'name', 'type']);

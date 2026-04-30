@@ -992,9 +992,10 @@
                             <code class="text-sm font-mono text-gray-900 break-all">{{ $cmd['command'] }}</code>
                             <p class="text-xs text-gray-500 mt-1">{{ $cmd['description'] }}</p>
                         </div>
-                        <button @click="customCommand = '{{ $cmd['command'] }}'; executeCustomCommand()"
+                        <button @click="customCommand = '{{ $cmd['command'] }}'; if (!customCommand.includes('<')) executeCustomCommand()"
                                 class="w-full px-3 py-1.5 text-sm bg-orca-black text-white rounded hover:bg-orca-black-hover">
-                            <i class="fas fa-play mr-1"></i>{{ __('Run') }}
+                            <i class="fas fa-play mr-1"></i>
+                            <span x-text="'{{ $cmd['command'] }}'.includes('<') ? @js(__('Edit & run')) : @js(__('Run'))"></span>
                         </button>
                     </div>
                 @endforeach

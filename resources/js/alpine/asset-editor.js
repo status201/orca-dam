@@ -45,6 +45,7 @@ export function assetEditor() {
     return {
         newTag: '',
         userTags: pageData.userTags || [],
+        referenceTags: pageData.referenceTags || [],
         suggestions: [],
         showSuggestions: false,
         selectedIndex: -1,
@@ -55,7 +56,7 @@ export function assetEditor() {
 
             if (!tag) return;
 
-            if (this.userTags.includes(tag)) {
+            if (this.userTags.includes(tag) || this.referenceTags.some(t => t.name === tag)) {
                 window.showToast(pageData.translations.tagAlreadyExists, 'error');
                 return;
             }
@@ -67,9 +68,8 @@ export function assetEditor() {
         },
 
         addTagOrSelectSuggestion() {
-            // If a suggestion is highlighted, select it
             if (this.selectedIndex >= 0 && this.suggestions[this.selectedIndex]) {
-                this.selectSuggestion(this.suggestions[this.selectedIndex].name);
+                this.selectSuggestion(this.suggestions[this.selectedIndex]);
             } else {
                 this.addTag();
             }
@@ -77,6 +77,10 @@ export function assetEditor() {
 
         removeTag(index) {
             this.userTags.splice(index, 1);
+        },
+
+        removeReferenceTag(index) {
+            this.referenceTags.splice(index, 1);
         },
 
         searchTags() {
@@ -90,11 +94,14 @@ export function assetEditor() {
 
             this.searchTimeout = setTimeout(async () => {
                 try {
-                    const response = await fetch(`${pageData.tagsSearchUrl}?q=${encodeURIComponent(this.newTag)}&type=user`);
+                    const response = await fetch(`${pageData.tagsSearchUrl}?q=${encodeURIComponent(this.newTag)}&types=user,reference`);
                     const data = await response.json();
 
-                    // Filter out tags that are already added
-                    this.suggestions = data.filter(tag => !this.userTags.includes(tag.name));
+                    const attachedRefIds = new Set(this.referenceTags.map(t => t.id));
+                    this.suggestions = data.filter(tag => {
+                        if (tag.type === 'reference') return !attachedRefIds.has(tag.id);
+                        return !this.userTags.includes(tag.name);
+                    });
                     this.showSuggestions = this.suggestions.length > 0;
                     this.selectedIndex = -1;
                 } catch (error) {
@@ -103,8 +110,25 @@ export function assetEditor() {
             }, 300);
         },
 
-        selectSuggestion(tagName) {
-            this.newTag = tagName;
+        selectSuggestion(suggestion) {
+            // Backwards-compat: callers used to pass a string name
+            if (typeof suggestion === 'string') {
+                this.newTag = suggestion;
+                this.addTag();
+                return;
+            }
+
+            if (suggestion.type === 'reference') {
+                if (!this.referenceTags.some(t => t.id === suggestion.id)) {
+                    this.referenceTags.push({ id: suggestion.id, name: suggestion.name });
+                }
+                this.newTag = '';
+                this.showSuggestions = false;
+                this.selectedIndex = -1;
+                return;
+            }
+
+            this.newTag = suggestion.name;
             this.addTag();
         },
 

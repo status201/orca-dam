@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class AssetController extends Controller
 {
@@ -548,16 +549,39 @@ class AssetController extends Controller
         ));
 
         // Handle tags only if explicitly included in request
-        if ($request->has('tags')) {
-            $tagIds = Tag::resolveUserTagIds($request->input('tags', []));
+        if ($request->has('tags') || $request->has('reference_tag_ids')) {
+            $tagIds = $request->has('tags')
+                ? Tag::resolveUserTagIds($request->input('tags', []))
+                : null; // null signals "do not touch user tags"
 
-            // Keep AI tags with their current attached_by, replace user tags
+            // Always preserve AI pivots verbatim
             $aiPivotData = [];
             foreach ($asset->aiTags as $aiTag) {
                 $aiPivotData[$aiTag->id] = ['attached_by' => $aiTag->pivot->attached_by];
             }
-            $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
-            $asset->tags()->sync($aiPivotData + $userPivotData);
+
+            // Reference pivots: sync to submitted list when present, otherwise preserve
+            if ($request->has('reference_tag_ids')) {
+                $referenceIds = array_map('intval', $request->input('reference_tag_ids', []));
+                $referencePivotData = array_fill_keys($referenceIds, ['attached_by' => 'reference']);
+            } else {
+                $referencePivotData = [];
+                foreach ($asset->referenceTags as $refTag) {
+                    $referencePivotData[$refTag->id] = ['attached_by' => $refTag->pivot->attached_by];
+                }
+            }
+
+            // User pivots: sync to submitted list when present, otherwise preserve
+            if ($tagIds !== null) {
+                $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
+            } else {
+                $userPivotData = [];
+                foreach ($asset->userTags as $userTag) {
+                    $userPivotData[$userTag->id] = ['attached_by' => $userTag->pivot->attached_by];
+                }
+            }
+
+            $asset->tags()->sync($aiPivotData + $referencePivotData + $userPivotData);
         }
 
         if ($request->expectsJson()) {
@@ -860,20 +884,33 @@ class AssetController extends Controller
         $request->validate([
             'asset_ids' => 'required|array|max:500',
             'asset_ids.*' => 'integer|exists:assets,id',
-            'tags' => 'required|array',
+            'tags' => 'required_without:reference_tag_ids|array',
             'tags.*' => 'string|max:50',
+            'reference_tag_ids' => 'required_without:tags|array',
+            'reference_tag_ids.*' => [
+                'integer',
+                Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
+            ],
         ]);
 
-        $tagIds = Tag::resolveUserTagIds($request->tags);
+        $tagNames = (array) $request->input('tags', []);
+        $referenceIds = array_map('intval', (array) $request->input('reference_tag_ids', []));
+
+        $tagIds = Tag::resolveUserTagIds($tagNames);
         $assets = Asset::whereIn('id', $request->asset_ids)->get();
 
         foreach ($assets as $asset) {
             $this->authorize('update', $asset);
         }
 
-        DB::transaction(function () use ($assets, $tagIds, $request) {
+        DB::transaction(function () use ($assets, $tagIds, $referenceIds, $request) {
             foreach ($assets as $asset) {
-                $asset->syncTagsWithAttribution($tagIds, 'user');
+                if (! empty($tagIds)) {
+                    $asset->syncTagsWithAttribution($tagIds, 'user');
+                }
+                if (! empty($referenceIds)) {
+                    $asset->syncTagsWithAttribution($referenceIds, 'reference');
+                }
             }
             Asset::whereIn('id', $request->asset_ids)->update(['last_modified_by' => Auth::id()]);
         });
@@ -1152,13 +1189,27 @@ class AssetController extends Controller
         $this->authorize('update', $asset);
 
         $request->validate([
-            'tags' => 'required|array',
+            'tags' => 'required_without:reference_tag_ids|array',
             'tags.*' => 'string|max:50',
+            'reference_tag_ids' => 'required_without:tags|array',
+            'reference_tag_ids.*' => [
+                'integer',
+                Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
+            ],
         ]);
 
-        $tagIds = Tag::resolveUserTagIds($request->tags);
+        $tagNames = (array) $request->input('tags', []);
+        $referenceIds = array_map('intval', (array) $request->input('reference_tag_ids', []));
 
-        $asset->syncTagsWithAttribution($tagIds, 'user');
+        if (! empty($tagNames)) {
+            $tagIds = Tag::resolveUserTagIds($tagNames);
+            $asset->syncTagsWithAttribution($tagIds, 'user');
+        }
+
+        if (! empty($referenceIds)) {
+            $asset->syncTagsWithAttribution($referenceIds, 'reference');
+        }
+
         $asset->update(['last_modified_by' => Auth::id()]);
 
         return response()->json([

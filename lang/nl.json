@@ -1,5 +1,6 @@
 {
     "(AI tags are preserved automatically)": "(AI-tags worden automatisch behouden)",
+    "(AI tags are preserved automatically. Reference tags from external systems can be attached but not created here.)": "(AI-tags worden automatisch behouden. Reference-tags van externe systemen kunnen wel worden toegevoegd, maar niet hier worden aangemaakt.)",
     "(for accessibility)": "(voor toegankelijkheid)",
     "(optional)": "(optioneel)",
     "(role: api) have limited permissions: view, create, and update assets. They cannot delete assets, access trash, discover unmapped files, or export data.": "(rol: api) hebben beperkte rechten: assets bekijken, aanmaken en bijwerken. Ze kunnen geen assets verwijderen, prullenbak openen, niet-gekoppelde bestanden ontdekken of gegevens exporteren.",
@@ -361,6 +362,7 @@
     "Edge padding (pt)": "Randopvulling (pt)",
     "Edge padding is ignored when forced canvas is active.": "Randopvulling wordt genegeerd wanneer de geforceerde canvas actief is.",
     "Edit": "Bewerken",
+    "Edit & run": "Bewerken en uitvoeren",
     "Edit Asset": "Asset bewerken",
     "Edit asset": "Asset bewerken",
     "Editor": "Redacteur",
@@ -1220,6 +1222,7 @@
     "Use default (root)": "Standaard gebruiken (root)",
     "Used for matching (exact match)": "Gebruikt voor matching (exacte match)",
     "User": "Gebruiker",
+    "reference": "referentie",
     "user": "gebruiker",
     "User:": "Gebruiker:",
     "User deleted successfully.": "Gebruiker succesvol verwijderd.",

@@ -328,8 +328,8 @@
             <!-- Tags -->
             <div class="mb-4 mt-6">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                    {{ __('User Tags') }}
-                    <span class="text-gray-500 font-normal">{{ __('(AI tags are preserved automatically)') }}</span>
+                    {{ __('Tags') }}
+                    <span class="text-gray-500 font-normal">{{ __('(AI tags are preserved automatically. Reference tags from external systems can be attached but not created here.)') }}</span>
                 </label>
 
                 <!-- Tag input with autocomplete -->
@@ -352,11 +352,13 @@
                                  x-cloak
                                  class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                 <template x-for="(suggestion, index) in suggestions" :key="suggestion.id">
-                                    <div @mousedown.prevent="selectSuggestion(suggestion.name)"
+                                    <div @mousedown.prevent="selectSuggestion(suggestion)"
                                          :class="{'bg-blue-50': index === selectedIndex}"
                                          class="px-4 py-2 cursor-pointer hover:bg-blue-50 flex items-center justify-between">
                                         <span x-text="suggestion.name"></span>
-                                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{{ __('user') }}</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full"
+                                              :class="suggestion.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'"
+                                              x-text="suggestion.type === 'reference' ? @js(__('reference')) : @js(__('user'))"></span>
                                     </div>
                                 </template>
                             </div>
@@ -371,7 +373,7 @@
 
                 <!-- Current tags -->
                 <div class="flex flex-wrap gap-2 mb-3">
-                    <template x-for="(tag, index) in userTags" :key="index">
+                    <template x-for="(tag, index) in userTags" :key="'u-' + index">
                         <span class="tag attention inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">
                             <span x-text="tag"></span>
                             <button type="button"
@@ -382,7 +384,23 @@
                             <input type="hidden" name="tags[]" :value="tag">
                         </span>
                     </template>
+                    <template x-for="(tag, index) in referenceTags" :key="'r-' + tag.id">
+                        <span class="tag inline-flex items-center px-3 py-1 rounded-full text-sm bg-orange-100 text-orange-700">
+                            <span x-text="tag.name"></span>
+                            <span class="ml-2 text-xs uppercase tracking-wide">{{ __('reference') }}</span>
+                            <button type="button"
+                                    @click="removeReferenceTag(index)"
+                                    class="ml-2 hover:text-orange-900">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <input type="hidden" name="reference_tag_ids[]" :value="tag.id">
+                        </span>
+                    </template>
                 </div>
+
+                @error('reference_tag_ids')
+                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
 
                 @error('tags')
                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -448,6 +466,7 @@
 <script>
     window.__pageData = {
         userTags: @json($asset->userTags->pluck('name')->toArray()),
+        referenceTags: @json($asset->referenceTags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->toArray()),
         assetId: @js($asset->id),
         assetUrl: @js($asset->url),
         tagsSearchUrl: @js(route('tags.search')),

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateAssetRequest extends FormRequest
 {
@@ -23,6 +24,11 @@ class UpdateAssetRequest extends FormRequest
             'copyright_source' => 'nullable|string|max:500',
             'tags' => 'nullable|array',
             'tags.*' => 'string|max:50',
+            'reference_tag_ids' => 'nullable|array',
+            'reference_tag_ids.*' => [
+                'integer',
+                Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
+            ],
         ];
     }
 }

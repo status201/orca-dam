@@ -38,12 +38,15 @@
                         <div x-show="bulkShowSuggestions && bulkFilteredSuggestions.length > 0"
                              x-cloak
                              class="absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                            <template x-for="(suggestion, index) in bulkFilteredSuggestions" :key="suggestion">
+                            <template x-for="(suggestion, index) in bulkFilteredSuggestions" :key="suggestion.type + '-' + suggestion.id">
                                 <button type="button"
                                         @mousedown.prevent="bulkSelectSuggestion(suggestion)"
                                         :class="bulkSelectedSuggestionIndex === index ? 'bg-blue-100' : 'hover:bg-gray-100'"
-                                        class="w-full text-left px-3 py-1.5 text-xs text-gray-700 border-b border-gray-100 last:border-b-0"
-                                        x-text="suggestion">
+                                        class="w-full text-left px-3 py-1.5 text-xs text-gray-700 border-b border-gray-100 last:border-b-0 flex items-center justify-between gap-2">
+                                    <span x-text="suggestion.name"></span>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full"
+                                          :class="suggestion.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'"
+                                          x-text="suggestion.type === 'reference' ? @js(__('reference')) : @js(__('user'))"></span>
                                 </button>
                             </template>
                         </div>

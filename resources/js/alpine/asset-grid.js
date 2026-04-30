@@ -229,12 +229,14 @@ export function assetGrid() {
             this._bulkSuggestDebounce = setTimeout(async () => {
                 try {
                     const input = this.bulkTagInput.trim();
-                    const response = await fetch(`/tags/search?q=${encodeURIComponent(input)}`, {
+                    const response = await fetch(`/tags/search?q=${encodeURIComponent(input)}&types=user,reference`, {
                         headers: { 'Accept': 'application/json' }
                     });
                     if (response.ok) {
                         const tags = await response.json();
-                        this.bulkFilteredSuggestions = tags.map(t => t.name).slice(0, 10);
+                        this.bulkFilteredSuggestions = tags
+                            .map(t => ({ id: t.id, name: t.name, type: t.type }))
+                            .slice(0, 10);
                     }
                 } catch (error) {
                     console.error('Tag suggest failed:', error);
@@ -246,18 +248,17 @@ export function assetGrid() {
         },
 
         bulkSelectSuggestion(suggestion) {
-            this.bulkTagInput = suggestion;
+            this.bulkTagInput = suggestion.name;
             this.bulkShowSuggestions = false;
             this.bulkSelectedSuggestionIndex = -1;
-            this.bulkAddTag();
+            this.bulkAddTag(suggestion);
         },
 
-        bulkSelectNextSuggestion() {bulkSelectSuggestion
-
+        bulkSelectNextSuggestion() {
             if (this.bulkFilteredSuggestions.length === 0) return;
             this.bulkSelectedSuggestionIndex =
                 (this.bulkSelectedSuggestionIndex + 1) % this.bulkFilteredSuggestions.length;
-            this.bulkTagInput = this.bulkFilteredSuggestions[this.bulkSelectedSuggestionIndex];
+            this.bulkTagInput = this.bulkFilteredSuggestions[this.bulkSelectedSuggestionIndex].name;
         },
 
         bulkSelectPrevSuggestion() {
@@ -266,12 +267,20 @@ export function assetGrid() {
                 this.bulkSelectedSuggestionIndex <= 0
                     ? this.bulkFilteredSuggestions.length - 1
                     : this.bulkSelectedSuggestionIndex - 1;
-            this.bulkTagInput = this.bulkFilteredSuggestions[this.bulkSelectedSuggestionIndex];
+            this.bulkTagInput = this.bulkFilteredSuggestions[this.bulkSelectedSuggestionIndex].name;
         },
 
-        async bulkAddTag() {
+        async bulkAddTag(suggestion = null) {
             const tagName = this.bulkTagInput.trim();
             if (this.bulkLoading || !tagName) return;
+
+            // If a reference suggestion was picked, post its ID; otherwise treat input as a user tag name.
+            const payload = { asset_ids: Alpine.store('bulkSelection').selected };
+            if (suggestion && suggestion.type === 'reference' && suggestion.name === tagName) {
+                payload.reference_tag_ids = [suggestion.id];
+            } else {
+                payload.tags = [tagName];
+            }
 
             this.bulkLoading = true;
             try {
@@ -282,10 +291,7 @@ export function assetGrid() {
                         'X-CSRF-TOKEN': this.getCsrfToken(),
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({
-                        asset_ids: Alpine.store('bulkSelection').selected,
-                        tags: [tagName],
-                    }),
+                    body: JSON.stringify(payload),
                 });
 
                 if (!response.ok) throw new Error('Failed to add tags');

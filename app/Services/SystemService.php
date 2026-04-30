@@ -23,10 +23,10 @@ class SystemService
         'config:cache',
         'route:cache',
         'view:cache',
+        'reference-tag:create',
         'storage:link',
         'uploads:cleanup',
         'queue:retry',
-        'queue:retry all',
         'queue:flush',
         'queue:restart',
         'queue:work',
@@ -165,6 +165,27 @@ class SystemService
                 }
                 if (! empty($ids)) {
                     $commandArgs['id'] = $ids;
+                }
+                break;
+
+            case 'reference-tag:create':
+                // Signature: reference-tag:create {names?*}
+                $names = [];
+                for ($i = 1; $i < count($parts); $i++) {
+                    $arg = $parts[$i];
+                    if (strpos($arg, '--') === 0) {
+                        if (strpos($arg, '=') !== false) {
+                            [$option, $value] = explode('=', $arg, 2);
+                            $commandArgs[$option] = $value;
+                        } else {
+                            $commandArgs[$arg] = true;
+                        }
+                    } else {
+                        $names[] = $arg;
+                    }
+                }
+                if (! empty($names)) {
+                    $commandArgs['names'] = $names;
                 }
                 break;
 
@@ -538,6 +559,11 @@ class SystemService
                 'category' => 'Cache',
             ],
             [
+                'command' => 'reference-tag:create <name>',
+                'description' => 'Pre-create a reference tag (replace <name>) so editors can attach it from the asset edit page',
+                'category' => 'Tags',
+            ],
+            [
                 'command' => 'two-factor:status',
                 'description' => 'List users and their two-factor authentication status',
                 'category' => '2FA',
@@ -546,11 +572,6 @@ class SystemService
                 'command' => 'uploads:cleanup',
                 'description' => 'Clean stale upload sessions',
                 'category' => 'Maintenance',
-            ],
-            [
-                'command' => 'queue:retry all',
-                'description' => 'Retry all failed queue jobs',
-                'category' => 'Queue',
             ],
             [
                 'command' => 'queue:flush',

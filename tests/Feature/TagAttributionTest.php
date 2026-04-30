@@ -148,3 +148,117 @@ test('import sets attached_by correctly for user and reference tags', function (
     expect($refTag)->not->toBeNull();
     expect($refTag->pivot->attached_by)->toBe('reference');
 });
+
+test('asset update preserves reference tag pivot when reference_tag_ids submitted', function () {
+    $asset = Asset::factory()->image()->create(['user_id' => $this->editor->id]);
+    $refTag = Tag::create(['name' => 'linkedin', 'type' => 'reference']);
+    $asset->syncTagsWithAttribution([$refTag->id], 'reference');
+
+    $this->actingAs($this->editor)
+        ->patch(route('assets.update', $asset), [
+            'filename' => $asset->filename,
+            'tags' => ['something'],
+            'reference_tag_ids' => [$refTag->id],
+        ])
+        ->assertRedirect();
+
+    $asset->refresh()->load('tags');
+    $pivot = $asset->tags->firstWhere('id', $refTag->id);
+    expect($pivot)->not->toBeNull();
+    expect($pivot->pivot->attached_by)->toBe('reference');
+});
+
+test('asset update detaches reference tag when omitted from reference_tag_ids', function () {
+    $asset = Asset::factory()->image()->create(['user_id' => $this->editor->id]);
+    $refTag = Tag::create(['name' => 'linkedin', 'type' => 'reference']);
+    $asset->syncTagsWithAttribution([$refTag->id], 'reference');
+
+    $this->actingAs($this->editor)
+        ->patch(route('assets.update', $asset), [
+            'filename' => $asset->filename,
+            'tags' => ['something'],
+            'reference_tag_ids' => [],
+        ])
+        ->assertRedirect();
+
+    $asset->refresh()->load('tags');
+    expect($asset->tags->firstWhere('id', $refTag->id))->toBeNull();
+});
+
+test('asset update preserves reference tag when reference_tag_ids field is absent', function () {
+    $asset = Asset::factory()->image()->create(['user_id' => $this->editor->id]);
+    $refTag = Tag::create(['name' => 'linkedin', 'type' => 'reference']);
+    $asset->syncTagsWithAttribution([$refTag->id], 'reference');
+
+    // API client that doesn't know about reference_tag_ids should not wipe the tag
+    $this->actingAs($this->editor)
+        ->patch(route('assets.update', $asset), [
+            'filename' => $asset->filename,
+            'tags' => ['something'],
+        ])
+        ->assertRedirect();
+
+    $asset->refresh()->load('tags');
+    $pivot = $asset->tags->firstWhere('id', $refTag->id);
+    expect($pivot)->not->toBeNull();
+    expect($pivot->pivot->attached_by)->toBe('reference');
+});
+
+test('addTags accepts reference_tag_ids and sets attached_by to reference', function () {
+    $asset = Asset::factory()->image()->create(['user_id' => $this->editor->id]);
+    $refTag = Tag::create(['name' => 'linkedin', 'type' => 'reference']);
+
+    $this->actingAs($this->editor)
+        ->postJson(route('assets.tags.add', $asset), [
+            'reference_tag_ids' => [$refTag->id],
+        ])
+        ->assertOk();
+
+    $pivot = $asset->fresh()->tags->firstWhere('id', $refTag->id);
+    expect($pivot)->not->toBeNull();
+    expect($pivot->pivot->attached_by)->toBe('reference');
+});
+
+test('addTags rejects non-reference tag IDs in reference_tag_ids', function () {
+    $asset = Asset::factory()->image()->create(['user_id' => $this->editor->id]);
+    $userTag = Tag::factory()->user()->create(['name' => 'foo']);
+
+    $this->actingAs($this->editor)
+        ->postJson(route('assets.tags.add', $asset), [
+            'reference_tag_ids' => [$userTag->id],
+        ])
+        ->assertStatus(422);
+});
+
+test('bulkAddTags accepts reference_tag_ids across multiple assets', function () {
+    $assets = Asset::factory()->image()->count(2)->create(['user_id' => $this->editor->id]);
+    $refTag = Tag::create(['name' => 'newsletter-q1', 'type' => 'reference']);
+
+    $this->actingAs($this->editor)
+        ->postJson(route('assets.bulk.tags.add'), [
+            'asset_ids' => $assets->pluck('id')->toArray(),
+            'reference_tag_ids' => [$refTag->id],
+        ])
+        ->assertOk();
+
+    foreach ($assets as $asset) {
+        $pivot = $asset->fresh()->tags->firstWhere('id', $refTag->id);
+        expect($pivot)->not->toBeNull();
+        expect($pivot->pivot->attached_by)->toBe('reference');
+    }
+});
+
+test('TagController search includes reference tags when types=user,reference', function () {
+    Tag::factory()->user()->create(['name' => 'sunshine']);
+    Tag::create(['name' => 'sunshine-publication', 'type' => 'reference']);
+    Tag::create(['name' => 'sunshine-ai', 'type' => 'ai']);
+
+    $response = $this->actingAs($this->editor)
+        ->getJson('/tags/search?q=sun&types=user,reference');
+
+    $response->assertOk();
+    $names = collect($response->json())->pluck('name');
+    expect($names)->toContain('sunshine');
+    expect($names)->toContain('sunshine-publication');
+    expect($names)->not->toContain('sunshine-ai');
+});
