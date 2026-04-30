@@ -3,6 +3,7 @@
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\AssetProcessingService;
 
 beforeEach(function () {
     $this->admin = User::factory()->create(['role' => 'admin']);
@@ -246,6 +247,29 @@ test('bulkAddTags accepts reference_tag_ids across multiple assets', function ()
         expect($pivot)->not->toBeNull();
         expect($pivot->pivot->attached_by)->toBe('reference');
     }
+});
+
+test('applyUploadMetadata attaches reference tag with attached_by=reference', function () {
+    $asset = Asset::factory()->image()->create(['user_id' => $this->editor->id]);
+    $refTag = Tag::create(['name' => 'linkedin', 'type' => 'reference']);
+
+    app(AssetProcessingService::class)->applyUploadMetadata(
+        $asset,
+        ['summer'],
+        null,
+        null,
+        null,
+        [$refTag->id],
+    );
+
+    $asset->refresh()->load('tags');
+    $userTag = $asset->tags->firstWhere('name', 'summer');
+    $reference = $asset->tags->firstWhere('id', $refTag->id);
+
+    expect($userTag)->not->toBeNull();
+    expect($userTag->pivot->attached_by)->toBe('user');
+    expect($reference)->not->toBeNull();
+    expect($reference->pivot->attached_by)->toBe('reference');
 });
 
 test('TagController search includes reference tags when types=user,reference', function () {

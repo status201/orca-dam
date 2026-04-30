@@ -66,7 +66,8 @@ class AssetProcessingService
         ?array $tagNames,
         ?string $licenseType,
         ?string $copyright,
-        ?string $copyrightSource
+        ?string $copyrightSource,
+        ?array $referenceTagIds = null
     ): void {
         $updates = array_filter([
             'license_type' => $licenseType,
@@ -81,6 +82,10 @@ class AssetProcessingService
         if (! empty($tagNames)) {
             $tagIds = Tag::resolveUserTagIds($tagNames);
             $asset->syncTagsWithAttribution($tagIds, 'user');
+        }
+
+        if (! empty($referenceTagIds)) {
+            $asset->syncTagsWithAttribution(array_map('intval', $referenceTagIds), 'reference');
         }
     }
 }

@@ -160,6 +160,7 @@ class ToolsController extends Controller
                 $request->input('metadata_license_type'),
                 $request->input('metadata_copyright'),
                 $request->input('metadata_copyright_source'),
+                $request->input('metadata_reference_tag_ids'),
             );
         } catch (\Exception $e) {
             Log::error('TikZ SVG upload failed: '.$e->getMessage());
@@ -238,6 +239,7 @@ class ToolsController extends Controller
                 $request->input('metadata_license_type'),
                 $request->input('metadata_copyright'),
                 $request->input('metadata_copyright_source'),
+                $request->input('metadata_reference_tag_ids'),
             );
         } catch (\Exception $e) {
             Log::error('TikZ SVG (embedded fonts) upload failed: '.$e->getMessage());
@@ -363,6 +365,7 @@ class ToolsController extends Controller
                 $request->input('metadata_license_type'),
                 $request->input('metadata_copyright'),
                 $request->input('metadata_copyright_source'),
+                $request->input('metadata_reference_tag_ids'),
             );
         } catch (\Exception $e) {
             Log::error('TikZ PNG upload failed: '.$e->getMessage());
@@ -618,6 +621,7 @@ class ToolsController extends Controller
                 $request->input('metadata_license_type'),
                 $request->input('metadata_copyright'),
                 $request->input('metadata_copyright_source'),
+                $request->input('metadata_reference_tag_ids'),
             );
         } catch (\Exception $e) {
             Log::error('GIF upload failed: '.$e->getMessage());
@@ -639,6 +643,11 @@ class ToolsController extends Controller
         return [
             'metadata_tags' => 'nullable|array',
             'metadata_tags.*' => 'string|max:100',
+            'metadata_reference_tag_ids' => 'nullable|array',
+            'metadata_reference_tag_ids.*' => [
+                'integer',
+                Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
+            ],
             'metadata_license_type' => ['nullable', 'string', Rule::in(array_keys(Asset::licenseTypes()))],
             'metadata_copyright' => 'nullable|string|max:500',
             'metadata_copyright_source' => 'nullable|string|max:500',

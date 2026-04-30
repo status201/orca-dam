@@ -6,7 +6,7 @@
             <i class="fas fa-tags mr-2 text-gray-400"></i>{{ __('Add Metadata') }}
         </span>
         <span class="flex items-center gap-2">
-            <template x-if="metadataTags.length > 0 || metadataLicenseType || metadataCopyright || metadataCopyrightSource">
+            <template x-if="metadataTags.length > 0 || metadataReferenceTags.length > 0 || metadataLicenseType || metadataCopyright || metadataCopyrightSource">
                 <span class="text-xs text-blue-600 font-medium">
                     <i class="fas fa-check-circle mr-1"></i>{{ __('Set') }}
                 </span>
@@ -17,9 +17,9 @@
     </button>
     <div x-show="showMetadata" x-collapse x-cloak class="border-t border-gray-200 px-4 py-4 space-y-4 bg-white">
 
-        {{-- User Tags --}}
+        {{-- Tags --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('User Tags') }}</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Tags') }}</label>
             <div class="flex space-x-2 relative">
                 <div class="flex-1 relative">
                     <input type="text"
@@ -37,12 +37,14 @@
                     <div x-show="metadataShowSuggestions && metadataTagSuggestions.length > 0"
                          x-cloak
                          class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        <template x-for="(suggestion, index) in metadataTagSuggestions" :key="suggestion.id">
-                            <div @mousedown.prevent="metadataSelectSuggestion(suggestion.name)"
+                        <template x-for="(suggestion, index) in metadataTagSuggestions" :key="suggestion.type + '-' + suggestion.id">
+                            <div @mousedown.prevent="metadataSelectSuggestion(suggestion)"
                                  :class="{'bg-blue-50': index === metadataSelectedIndex}"
                                  class="px-4 py-2 cursor-pointer hover:bg-blue-50 flex items-center justify-between text-sm">
                                 <span x-text="suggestion.name"></span>
-                                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{{ __('user') }}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full"
+                                      :class="suggestion.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'"
+                                      x-text="suggestion.type === 'reference' ? @js(__('reference')) : @js(__('user'))"></span>
                             </div>
                         </template>
                     </div>
@@ -54,11 +56,20 @@
             </div>
 
             {{-- Tag badges --}}
-            <div class="flex flex-wrap gap-2 mt-2" x-show="metadataTags.length > 0" x-cloak>
-                <template x-for="(tag, index) in metadataTags" :key="index">
+            <div class="flex flex-wrap gap-2 mt-2" x-show="metadataTags.length > 0 || metadataReferenceTags.length > 0" x-cloak>
+                <template x-for="(tag, index) in metadataTags" :key="'u-' + index">
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700">
                         <span x-text="tag"></span>
                         <button type="button" @click="metadataRemoveTag(index)" class="ml-2 hover:text-blue-900">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </span>
+                </template>
+                <template x-for="(tag, index) in metadataReferenceTags" :key="'r-' + tag.id">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-orange-100 text-orange-700">
+                        <span x-text="tag.name"></span>
+                        <span class="ml-2 text-xs uppercase tracking-wide">{{ __('reference') }}</span>
+                        <button type="button" @click="metadataRemoveReferenceTag(index)" class="ml-2 hover:text-orange-900">
                             <i class="fas fa-times"></i>
                         </button>
                     </span>

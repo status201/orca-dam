@@ -318,6 +318,9 @@ export function assetUploader() {
             if (meta.metadata_tags) {
                 meta.metadata_tags.forEach(tag => formData.append('metadata_tags[]', tag));
             }
+            if (meta.metadata_reference_tag_ids) {
+                meta.metadata_reference_tag_ids.forEach(id => formData.append('metadata_reference_tag_ids[]', id));
+            }
             if (meta.metadata_license_type) formData.append('metadata_license_type', meta.metadata_license_type);
             if (meta.metadata_copyright) formData.append('metadata_copyright', meta.metadata_copyright);
             if (meta.metadata_copyright_source) formData.append('metadata_copyright_source', meta.metadata_copyright_source);
