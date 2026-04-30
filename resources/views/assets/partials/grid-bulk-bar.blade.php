@@ -44,9 +44,11 @@
                                         :class="bulkSelectedSuggestionIndex === index ? 'bg-blue-100' : 'hover:bg-gray-100'"
                                         class="w-full text-left px-3 py-1.5 text-xs text-gray-700 border-b border-gray-100 last:border-b-0 flex items-center justify-between gap-2">
                                     <span x-text="suggestion.name"></span>
-                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full"
-                                          :class="suggestion.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'"
-                                          x-text="suggestion.type === 'reference' ? @js(__('reference')) : @js(__('user'))"></span>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                                          :class="suggestion.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'">
+                                        <span x-text="suggestion.type === 'reference' ? 'ref' : 'user'"></span>
+                                        <template x-if="suggestion.type === 'reference'"><i class="fas fa-link ml-1"></i></template>
+                                    </span>
                                 </button>
                             </template>
                         </div>

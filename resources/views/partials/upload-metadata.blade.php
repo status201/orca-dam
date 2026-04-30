@@ -42,9 +42,11 @@
                                  :class="{'bg-blue-50': index === metadataSelectedIndex}"
                                  class="px-4 py-2 cursor-pointer hover:bg-blue-50 flex items-center justify-between text-sm">
                                 <span x-text="suggestion.name"></span>
-                                <span class="text-xs px-2 py-0.5 rounded-full"
-                                      :class="suggestion.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'"
-                                      x-text="suggestion.type === 'reference' ? @js(__('reference')) : @js(__('user'))"></span>
+                                <span class="text-xs px-2 py-0.5 rounded-full font-semibold"
+                                      :class="suggestion.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'">
+                                    <span x-text="suggestion.type === 'reference' ? 'ref' : 'user'"></span>
+                                    <template x-if="suggestion.type === 'reference'"><i class="fas fa-link ml-1"></i></template>
+                                </span>
                             </div>
                         </template>
                     </div>
@@ -68,7 +70,7 @@
                 <template x-for="(tag, index) in metadataReferenceTags" :key="'r-' + tag.id">
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-orange-100 text-orange-700">
                         <span x-text="tag.name"></span>
-                        <span class="ml-2 text-xs uppercase tracking-wide">{{ __('reference') }}</span>
+                        <span class="ml-2 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-orange-200 text-orange-800">ref<i class="fas fa-link ml-1"></i></span>
                         <button type="button" @click="metadataRemoveReferenceTag(index)" class="ml-2 hover:text-orange-900">
                             <i class="fas fa-times"></i>
                         </button>
