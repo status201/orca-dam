@@ -331,11 +331,12 @@ function tikzServer() {
             if (current.items.length > 0) sections.push(current);
 
             function esc(s) {
-                return String(s)
-                    .replace(/\\/g, '\\textbackslash{}')
-                    .replace(/([#$%&_{}])/g, '\\$1')
-                    .replace(/~/g, '\\textasciitilde{}')
-                    .replace(/\^/g, '\\textasciicircum{}');
+                return String(s).replace(/[\\#$%&_{}~^]/g, function (c) {
+                    if (c === '\\') return '\\textbackslash{}';
+                    if (c === '~') return '\\textasciitilde{}';
+                    if (c === '^') return '\\textasciicircum{}';
+                    return '\\' + c;
+                });
             }
 
             var colW = 9;
