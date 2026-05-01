@@ -330,7 +330,13 @@ function tikzServer() {
             }
             if (current.items.length > 0) sections.push(current);
 
-            function esc(s) { return s.replace(/_/g, '\\_'); }
+            function esc(s) {
+                return String(s)
+                    .replace(/\\/g, '\\textbackslash{}')
+                    .replace(/([#$%&_{}])/g, '\\$1')
+                    .replace(/~/g, '\\textasciitilde{}')
+                    .replace(/\^/g, '\\textasciicircum{}');
+            }
 
             var colW = 9;
             var rowH = 1.0;
