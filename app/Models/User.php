@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
+use Laragear\WebAuthn\WebAuthnAuthentication;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements WebAuthnAuthenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, WebAuthnAuthentication;
 
     /**
      * The attributes that are mass assignable.
@@ -27,6 +29,7 @@ class User extends Authenticatable
         'jwt_secret',
         'jwt_secret_generated_at',
         'preferences',
+        'last_passkey_used_at',
         'two_factor_secret',
         'two_factor_recovery_codes',
         'two_factor_confirmed_at',
@@ -67,6 +70,7 @@ class User extends Authenticatable
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'last_passkey_used_at' => 'datetime',
         ];
     }
 
@@ -195,6 +199,23 @@ class User extends Authenticatable
      * Only admins and editors can enable 2FA (not API users)
      */
     public function canEnableTwoFactor(): bool
+    {
+        return $this->isAdmin() || $this->isEditor();
+    }
+
+    /**
+     * Check if user has at least one enabled passkey credential
+     */
+    public function hasPasskeysEnabled(): bool
+    {
+        return $this->webAuthnCredentials()->whereEnabled()->exists();
+    }
+
+    /**
+     * Check if user can register passkeys
+     * Same role gate as 2FA: admins and editors only (not API users)
+     */
+    public function canEnablePasskeys(): bool
     {
         return $this->isAdmin() || $this->isEditor();
     }

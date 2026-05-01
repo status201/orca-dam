@@ -1193,6 +1193,7 @@
                             @change="loadDocumentation()"
                             class="rounded-md border-gray-300 text-sm">
                         <option value="USER_MANUAL.md">USER_MANUAL.md</option>
+                        <option value="CHANGELOG.md">CHANGELOG.md</option>
                         <option value="CLAUDE.md">CLAUDE.md</option>
                         <option value="DEPLOYMENT.md">DEPLOYMENT.md</option>
                         <option value="GEBRUIKERSHANDLEIDING.md">GEBRUIKERSHANDLEIDING.md</option>

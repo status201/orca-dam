@@ -44,6 +44,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔑 Short-lived token support (JWT bearer) for front-ends
 - 👤 User preferences (home folder, items per page, language, dark/light mode)
 - 🔒 Two-factor authentication (TOTP)
+- 🔑 **Passkeys** (WebAuthn / FIDO2) — passwordless sign-in with Touch ID, Face ID, Windows Hello, or hardware keys; bypasses TOTP on successful passkey login
 - 🖊️ **TikZ Server Render** — compile TikZ/LaTeX diagrams server-side via TeX Live, with SVG and PNG output variants, 17 font packages, template management, and direct upload to ORCA (renders are linked back to their source `.tex` template via asset parent/child relations)
 - ☁️ **Cloudflare cache purge** — automatically purges CDN cache when an asset file is replaced (requires custom domain + toggle in Settings)
 
@@ -340,6 +341,8 @@ orca-dam/
 │   │   ├── JwtGenerateCommand.php     # Generate JWT secret for user
 │   │   ├── JwtListCommand.php         # List users with JWT secrets
 │   │   ├── JwtRevokeCommand.php       # Revoke JWT secret
+│   │   ├── PasskeysListCommand.php    # List registered passkeys
+│   │   ├── PasskeysRevokeCommand.php  # Revoke a passkey by ID or all for a user
 │   │   ├── TokenCreateCommand.php     # Create Sanctum API token
 │   │   ├── TokenListCommand.php       # List API tokens
 │   │   ├── TokenRevokeCommand.php     # Revoke API token
@@ -351,6 +354,8 @@ orca-dam/
 │   │   │   ├── AssetApiController.php # REST API for assets
 │   │   │   └── HealthController.php   # Health check endpoint
 │   │   ├── Auth/                      # Laravel Breeze auth controllers
+│   │   │   ├── PasskeyController.php       # Passkey registration (auth)
+│   │   │   ├── PasskeyLoginController.php  # Passkey assertion (guest)
 │   │   │   └── TwoFactorAuthController.php # 2FA setup & verification
 │   │   ├── ApiDocsController.php      # OpenAPI docs page
 │   │   ├── AssetController.php        # Asset CRUD & management
@@ -398,11 +403,13 @@ orca-dam/
 │       ├── SystemService.php          # System admin utilities
 │       ├── TestRunnerService.php      # Web-based test runner
 │       ├── TikzCompilerService.php    # Server-side TikZ/LaTeX compilation
-│       └── TwoFactorService.php       # 2FA TOTP management
+│       ├── TwoFactorService.php       # 2FA TOTP management
+│       └── WebAuthnService.php        # Passkey management (list/rename/delete)
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
 │   ├── tikz.php                       # TikZ Server compiler config
-│   └── two-factor.php                 # 2FA configuration
+│   ├── two-factor.php                 # 2FA configuration
+│   └── webauthn.php                   # Passkey (WebAuthn) configuration
 ├── database/
 │   ├── factories/                     # Test factories
 │   └── migrations/                    # 33 migrations

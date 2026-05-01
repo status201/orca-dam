@@ -5,6 +5,8 @@ use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasskeyController;
+use App\Http\Controllers\Auth\PasskeyLoginController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -40,6 +42,13 @@ Route::middleware('guest')->group(function () {
         ->name('two-factor.challenge');
 
     Route::post('two-factor-challenge', [TwoFactorAuthController::class, 'verifyChallenge']);
+
+    // Passkey login (WebAuthn assertion)
+    Route::post('passkey/options', [PasskeyLoginController::class, 'options'])
+        ->name('passkey.options');
+
+    Route::post('passkey/login', [PasskeyLoginController::class, 'login'])
+        ->name('passkey.login');
 });
 
 Route::middleware('auth')->group(function () {
@@ -81,4 +90,17 @@ Route::middleware('auth')->group(function () {
 
     Route::get('two-factor/recovery-codes', [TwoFactorAuthController::class, 'showRecoveryCodes'])
         ->name('two-factor.recovery-codes.show');
+
+    // Passkey management (WebAuthn registration + listing)
+    Route::post('profile/passkeys/options', [PasskeyController::class, 'options'])
+        ->name('profile.passkeys.options');
+
+    Route::post('profile/passkeys', [PasskeyController::class, 'store'])
+        ->name('profile.passkeys.store');
+
+    Route::patch('profile/passkeys/{credential}', [PasskeyController::class, 'update'])
+        ->name('profile.passkeys.update');
+
+    Route::delete('profile/passkeys/{credential}', [PasskeyController::class, 'destroy'])
+        ->name('profile.passkeys.destroy');
 });

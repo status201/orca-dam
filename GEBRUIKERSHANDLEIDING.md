@@ -17,7 +17,8 @@
 9. [Assets vervangen](#assets-vervangen)
 10. [De Prullenbak](#de-prullenbak)
 11. [Gebruikersvoorkeuren](#gebruikersvoorkeuren)
-12. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
+12. [Accountbeveiliging](#accountbeveiliging)
+13. [Bestanden verplaatsen (de omweg)](#bestanden-verplaatsen-de-omweg)
 13. [Bulksgewijs prullenbak & downloaden](#bulksgewijs-prullenbak--downloaden)
 14. [Bulksgewijs verplaatsen (alleen admin)](#bulksgewijs-verplaatsen-alleen-admin)
 15. [Bulksgewijs permanent verwijderen (alleen admin)](#bulksgewijs-permanent-verwijderen-alleen-admin)
@@ -284,6 +285,29 @@ Pas ORCA aan via de **Profiel**-pagina (klik op je naam → Profiel → sectie V
 - **Taal** — Engels of Nederlands. Selecteer "Standaard gebruiken" om de instelling van de admin te volgen. Wijzigingen gelden vanaf de volgende paginalading.
 
 Voorkeuren volgen een prioriteit: URL-parameters > jouw gebruikersvoorkeur > systeeminstelling. Je voorkeuren worden gerespecteerd, maar vrij navigeren (klikken op mappen, dropdowns wijzigen) reset pas wanneer je een nieuwe pagina laadt.
+
+---
+
+## Accountbeveiliging
+
+ORCA ondersteunt drie inlogfactoren — gebruik ze alle drie:
+
+- **Wachtwoord** — je primaire credential
+- **Tweefactor-authenticatie (2FA)** — een 6-cijferige code uit een authenticator-app (Google Authenticator, 1Password, Authy). Inschakelen via **Profiel → Beveiliging → Tweefactor-authenticatie inschakelen**. Bewaar de recovery codes goed — je hebt ze nodig als je je telefoon kwijtraakt.
+- **Passkeys** (aanbevolen) — phishing-bestendig alternatief dat de ingebouwde ontgrendeling van je apparaat gebruikt (Touch ID, Face ID, Windows Hello, schermvergrendeling) of een hardware-sleutel (YubiKey e.d.).
+
+### Passkeys gebruiken
+
+1. Ga naar **Profiel → Beveiliging → Passkey toevoegen**
+2. Geef hem optioneel een naam ("MacBook", "iPhone", "YubiKey")
+3. Bevestig met de ontgrendelmethode van je apparaat
+4. Klik bij de volgende keer inloggen op **"Inloggen met passkey"** op de loginpagina
+
+Je kunt tot **10 passkeys** per account registreren (bijvoorbeeld één per apparaat). Bij elke passkey zie je wanneer hij voor het laatst gebruikt is. Een succesvolle passkey-login **slaat de 2FA-code over** — de passkey bewijst zowel dat je het apparaat hebt *als* dat jij degene bent die hem gebruikt.
+
+Ben je al je passkey-apparaten kwijt? Dan kan een admin je passkeys wissen via de pagina Gebruiker bewerken; je logt dan in met wachtwoord + 2FA en registreert nieuwe.
+
+> Passkeys vereisen HTTPS in je browser. Lokale ontwikkeling op `localhost` werkt ook, maar custom hostnames hebben TLS nodig.
 
 ---
 

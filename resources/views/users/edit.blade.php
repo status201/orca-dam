@@ -77,5 +77,34 @@
             </div>
         </form>
     </div>
+
+    @can('clearPasskeys', $user)
+        @php
+            $passkeyCount = $user->webAuthnCredentials()->count();
+        @endphp
+        @if ($passkeyCount > 0)
+            <div class="mt-6 bg-white rounded-lg shadow p-6 border border-amber-200">
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ __('Passkeys') }}</h2>
+                <p class="text-sm text-gray-600 mb-1">
+                    {{ __(':name has :count passkey(s) registered. Use this if they have lost access to all of their passkey-bearing devices.', ['name' => $user->name, 'count' => $passkeyCount]) }}
+                </p>
+                <p class="text-xs text-gray-500 mb-4">
+                    @if ($user->last_passkey_used_at)
+                        {{ __('Last passkey sign-in: :date', ['date' => $user->last_passkey_used_at->diffForHumans()]) }}
+                    @else
+                        {{ __('Last passkey sign-in: never') }}
+                    @endif
+                </p>
+                <form method="POST" action="{{ route('users.passkeys.clear', $user) }}"
+                      onsubmit="return confirm('{{ __('Remove all passkeys for this user? They will need to register new passkeys to use passkey sign-in.') }}')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                        <i class="fas fa-key mr-2"></i> {{ __('Clear all passkeys') }}
+                    </button>
+                </form>
+            </div>
+        @endif
+    @endcan
 </div>
 @endsection

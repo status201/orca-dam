@@ -168,6 +168,12 @@ JWT_MAX_TTL=36000              # Max token lifetime (10 hours)
 JWT_LEEWAY=60                  # Clock skew tolerance
 JWT_ISSUER=                    # Optional: Required issuer claim
 
+# Passkeys (WebAuthn). Defaults derive from APP_URL host — set explicitly
+# if APP_URL doesn't match the browser-facing host (e.g. behind a proxy).
+WEBAUTHN_ID=                   # Relying-party host, e.g. orca.example.com
+WEBAUTHN_ORIGINS=              # Optional comma-separated extra origins
+# WebAuthn requires HTTPS (or localhost) — make sure SSL is in place.
+
 # Cloudflare cache purging (optional, for CDN setups)
 # Also enable via System → Settings → S3 Storage (requires custom domain)
 CLOUDFLARE_ENABLED=false       # Purge CDN cache on asset replacement
@@ -722,6 +728,8 @@ php artisan view:clear
 - [ ] Keep PHP and server software updated
 - [ ] Securely share JWT secrets with external systems (never expose in frontend)
 - [ ] Use short JWT token lifetimes (default: 1 hour recommended)
+- [ ] Encourage admins/editors to register **passkeys** for phishing-resistant sign-in (Profile → Security)
+- [ ] Set `WEBAUTHN_ID` if `APP_URL` host doesn't match the browser-facing host (e.g. proxy / multi-domain setups)
 
 ## Backup Strategy
 

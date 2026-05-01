@@ -11,6 +11,7 @@
         "firebase/php-jwt": "^7.0",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^3.0",
+        "laragear/webauthn": "^5.0",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",

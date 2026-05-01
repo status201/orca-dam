@@ -4,17 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\User;
+use App\Services\WebAuthnService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    public function __construct(protected WebAuthnService $webAuthnService) {}
+
     public function index()
     {
         $this->authorize('viewAny', User::class);
 
-        $users = User::withCount(['assets' => fn ($q) => $q->withTrashed()])->orderBy('name')->get();
+        $users = User::withCount([
+            'assets' => fn ($q) => $q->withTrashed(),
+            'webAuthnCredentials',
+        ])->orderBy('name')->get();
 
         return view('users.index', compact('users'));
     }
@@ -78,6 +84,22 @@ class UserController extends Controller
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully.');
+    }
+
+    /**
+     * Admin recovery action: clear all of a user's passkeys.
+     * Used when a user has lost all their passkey-bearing devices.
+     */
+    public function clearPasskeys(User $user)
+    {
+        $this->authorize('clearPasskeys', $user);
+
+        $count = $this->webAuthnService->clearAllCredentials($user);
+
+        return back()->with('success', __(':count passkey(s) cleared for :name.', [
+            'count' => $count,
+            'name' => $user->name,
+        ]));
     }
 
     public function destroy(Request $request, User $user)

@@ -396,6 +396,7 @@ class SystemController extends Controller
         $this->authorize('access', SystemController::class);
 
         $allowedFiles = [
+            'CHANGELOG.md',
             'CLAUDE.md',
             'DEPLOYMENT.md',
             'GEBRUIKERSHANDLEIDING.md',

@@ -82,6 +82,8 @@ orca-dam/
 │   │   ├── JwtGenerateCommand.php    # Generate JWT secret
 │   │   ├── JwtListCommand.php        # List JWT secrets
 │   │   ├── JwtRevokeCommand.php      # Revoke JWT secret
+│   │   ├── PasskeysListCommand.php   # List registered passkeys
+│   │   ├── PasskeysRevokeCommand.php # Revoke a passkey or all for a user
 │   │   ├── TokenCreateCommand.php    # Create Sanctum API token
 │   │   ├── TokenListCommand.php      # List API tokens
 │   │   ├── TokenRevokeCommand.php    # Revoke API token
@@ -92,7 +94,7 @@ orca-dam/
 │   │   ├── Api/
 │   │   │   ├── AssetApiController.php # REST API endpoints
 │   │   │   └── HealthController.php   # Health check endpoint
-│   │   ├── Auth/                      # Laravel Breeze + 2FA controllers
+│   │   ├── Auth/                      # Laravel Breeze + 2FA + Passkey controllers
 │   │   ├── ApiDocsController.php      # OpenAPI docs page
 │   │   ├── AssetController.php        # Asset CRUD & management
 │   │   ├── ChunkedUploadController.php# Large file uploads
@@ -134,6 +136,7 @@ orca-dam/
 │       ├── S3Service.php              # S3 operations, thumbnails & URLs
 │       ├── SystemService.php          # System admin utilities
 │       ├── TwoFactorService.php       # 2FA TOTP management
+│       ├── WebAuthnService.php        # Passkey management (list/rename/delete)
 │       ├── CsvExportService.php       # CSV export row generation
 │       ├── CsvImportService.php       # CSV parsing, diffing & validation
 │       ├── ImageProcessingService.php # Thumbnails, resizing, dimensions
@@ -143,7 +146,8 @@ orca-dam/
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
 │   ├── tikz.php                       # TikZ Server compiler config
-│   └── two-factor.php                 # 2FA configuration
+│   ├── two-factor.php                 # 2FA configuration
+│   └── webauthn.php                   # Passkey (WebAuthn) configuration
 ├── database/migrations/               # 33 migrations
 ├── resources/
 │   ├── js/
@@ -185,6 +189,7 @@ orca-dam/
 │   │   ├── JwtAuthTest.php            # JWT authentication
 │   │   ├── JwtSecretManagementTest.php# JWT secret management
 │   │   ├── LocaleTest.php             # Language/locale
+│   │   ├── PasskeyTest.php            # Passkey registration, login, admin recovery
 │   │   ├── ProfileTest.php            # User profile & preferences
 │   │   ├── SystemTest.php             # System settings
 │   │   ├── TagTest.php                # Tag management
@@ -200,6 +205,7 @@ orca-dam/
 │       ├── SettingTest.php                # Setting model, caching
 │       ├── TagTest.php                    # Tag model
 │       ├── TwoFactorServiceTest.php       # 2FA service
+│       ├── WebAuthnServiceTest.php        # Passkey service
 │       ├── UserPreferencesTest.php        # User preference helpers
 │       ├── CsvExportServiceTest.php       # CSV export service
 │       ├── CsvImportServiceTest.php       # CSV import service
@@ -251,7 +257,14 @@ POST /import/import            # Execute CSV import (JSON)
 GET  /tags                     # List tags
 GET  /profile                  # User profile & preferences
 PATCH /profile/preferences     # Update preferences (locale, home folder, etc.)
+POST /profile/passkeys/options # Passkey registration challenge (auth)
+POST /profile/passkeys         # Register a new passkey (auth)
+PATCH /profile/passkeys/{id}   # Rename a passkey
+DELETE /profile/passkeys/{id}  # Remove a passkey
+POST /passkey/options          # Passkey login challenge (guest)
+POST /passkey/login            # Passkey assertion (guest)
 GET  /users                    # User management (admin)
+DELETE /users/{user}/passkeys  # Clear all passkeys for a user (admin recovery)
 GET  /system                   # System admin (admin)
 GET  /system/integrity-status  # S3 integrity status JSON (admin)
 POST /system/verify-integrity  # Queue S3 integrity checks (admin)
@@ -313,8 +326,15 @@ POST   /api/chunked-upload/abort     # Cancel upload
 ### users
 - id, name, email, password, role (editor|admin|api)
 - jwt_secret, jwt_secret_generated_at (for JWT auth)
+- last_passkey_used_at (set on every successful passkey login)
 - two_factor_secret, two_factor_recovery_codes, two_factor_confirmed_at (2FA)
 - preferences (encrypted JSON: home_folder, items_per_page, locale, dark_mode)
+
+### webauthn_credentials (passkeys, package-managed)
+- id (credential id, PK), authenticatable_type/id (morph to user), user_id (UUID)
+- alias, counter, rp_id, origin, transports (JSON), aaguid
+- public_key (encrypted), attestation_format, certificates (JSON)
+- disabled_at, last_used_at, created_at, updated_at
 
 ### assets
 - id, s3_key, filename, mime_type, size, etag
@@ -544,6 +564,12 @@ php artisan jwt:revoke user@email.com    # Revoke JWT secret
 # Two-Factor Authentication management
 php artisan two-factor:status            # Check 2FA status for all users
 php artisan two-factor:disable user@email.com  # Disable 2FA for a user
+
+# Passkey (WebAuthn) management
+php artisan passkeys:list                # List all registered passkeys
+php artisan passkeys:list --user=user@email.com  # Filter by user
+php artisan passkeys:revoke <id>         # Revoke a single passkey by ID
+php artisan passkeys:revoke --user=user@email.com  # Revoke all passkeys for a user
 
 # Maintenance
 php artisan uploads:cleanup              # Clean up stale chunked uploads (>24h)

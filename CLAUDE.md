@@ -41,6 +41,10 @@ php artisan jwt:list
 php artisan jwt:generate user@email.com [--force]
 php artisan jwt:revoke user@email.com [--force]
 
+# Passkeys (WebAuthn)
+php artisan passkeys:list [--user=email] [--role=admin|editor|api]
+php artisan passkeys:revoke <id|--user=email> [--force]
+
 # Queue (dev)
 php artisan queue:work --tries=3
 ```
@@ -60,6 +64,8 @@ php artisan queue:work --tries=3
 **SystemService** - Extracted system administration logic from `SystemController`. Handles diagnostics, environment checks, S3 connectivity testing, queue status, and system health reporting.
 
 **TwoFactorService** - Two-factor authentication setup, verification, and recovery code management.
+
+**WebAuthnService** - Passkey (WebAuthn / FIDO2) management on top of `laragear/webauthn`. `listCredentials()`, `renameCredential()`, `deleteCredential()`, `clearAllCredentials()`, `hasReachedLimit()`. Per-user limit `MAX_CREDENTIALS_PER_USER = 10`. Stores credentials in `webauthn_credentials` (package-managed). Successful assertions are stamped via the `TouchPasskeyLastUsed` listener (updates `users.last_passkey_used_at` and `webauthn_credentials.last_used_at`).
 
 **CsvExportService** - Generates CSV rows from assets. `generateHeaders()` returns the 33-column header array; `formatRow(Asset)` formats one row with separated user/ai/reference tag columns.
 
@@ -83,6 +89,11 @@ php artisan queue:work --tries=3
   - Middleware: `app/Http/Middleware/AuthenticateMultiple.php`
   - Required claims: `sub` (user ID), `exp`, `iat`. Optional: `iss`
   - Per-user secrets stored encrypted in `users.jwt_secret`
+- **Passkeys (WebAuthn / FIDO2)** - Phishing-resistant primary auth alongside password + TOTP. Powered by `laragear/webauthn` v5; auth provider is `eloquent-webauthn` with `password_fallback: true` so password login still works.
+  - Login: passwordless "Sign in with passkey" on `/login` (with conditional UI / autofill where supported). Successful passkey login bypasses TOTP.
+  - Profile → Security: register / rename / remove passkeys (max 10 per user). Admins + editors only — API users cannot register passkeys.
+  - Admin recovery: "Clear all passkeys" button on user edit, `passkeys:revoke --user=email`.
+  - Controllers: `app/Http/Controllers/Auth/PasskeyController.php` (registration), `PasskeyLoginController.php` (assertion). Frontend: `resources/js/alpine/passkeys.js` using `@simplewebauthn/browser`. Config: `config/webauthn.php`. Env: `WEBAUTHN_ID`, `WEBAUTHN_ORIGINS` (default falls back to host of `APP_URL`).
 
 ### Authorization (`app/Policies/`)
 
@@ -170,7 +181,9 @@ Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domai
 
 **settings**: `key` (unique), `value`, `type` (string/integer/boolean/json), `group` (general/display/aws), `description`
 
-**users** (extra columns): `jwt_secret` (encrypted), `jwt_secret_generated_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`)
+**users** (extra columns): `jwt_secret` (encrypted), `jwt_secret_generated_at`, `last_passkey_used_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`)
+
+**webauthn_credentials** (package-managed): `id` (credential id, PK), `authenticatable_type`/`authenticatable_id` (morph to User), `user_id` (UUID), `alias` (user-supplied), `counter`, `rp_id`, `origin`, `transports` (JSON), `aaguid`, `public_key` (encrypted), `attestation_format`, `certificates` (JSON), `disabled_at`, `last_used_at`, timestamps.
 
 **Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `embed_allowed_domains`=[], `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `api_upload_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false, `cloudflare_cache_purge`=false
 
@@ -192,6 +205,10 @@ JWT_ALGORITHM=HS256
 JWT_MAX_TTL=36000                     # seconds, default: 10h
 JWT_LEEWAY=60
 JWT_ISSUER=                           # optional issuer validation
+
+# Optional: Passkeys (WebAuthn). Defaults derive from APP_URL host.
+WEBAUTHN_ID=                          # Relying-party host, e.g. orca.example.com
+WEBAUTHN_ORIGINS=                     # Comma-separated extra origins (rarely needed)
 
 # Optional: Cloudflare cache purging on asset replacement
 # Also requires custom_domain + cloudflare_cache_purge toggle in System → Settings
@@ -276,13 +293,14 @@ app/
 ├── Console/Commands/
 │   ├── BackfillEtags.php, CleanupStaleUploads.php, DeduplicateAssets.php
 │   ├── JwtGenerateCommand.php, JwtListCommand.php, JwtRevokeCommand.php
+│   ├── PasskeysListCommand.php, PasskeysRevokeCommand.php
 │   ├── TokenCreateCommand.php, TokenListCommand.php, TokenRevokeCommand.php
 │   ├── TwoFactorDisableCommand.php, TwoFactorStatusCommand.php
 │   └── VerifyAssetIntegrity.php
 ├── Http/
 │   ├── Controllers/
 │   │   ├── Api/ (AssetApiController, HealthController)
-│   │   ├── Auth/ (AuthenticatedSession, Registration, Password*, Email*, TwoFactorAuth)
+│   │   ├── Auth/ (AuthenticatedSession, Registration, Password*, Email*, TwoFactorAuth, Passkey, PasskeyLogin)
 │   │   ├── AssetController, DashboardController, DiscoverController
 │   │   ├── ExportController, ImportController, FolderController, ToolsController
 │   │   ├── ProfileController, SystemController, TagController
@@ -294,11 +312,13 @@ app/
 ├── Jobs/
 │   ├── GenerateAiTags, ProcessDiscoveredAsset
 │   ├── RegenerateResizedImage, VerifyAssetIntegrity
+├── Listeners/ (TouchPasskeyLastUsed)
 ├── Models/ (Asset, Tag, User, Setting, UploadSession)
 ├── Policies/ (AssetPolicy, SystemPolicy, UserPolicy)
 ├── Services/
 │   ├── S3Service, AssetProcessingService, ChunkedUploadService
 │   ├── CloudflareService, RekognitionService, SystemService, TikzCompilerService, TwoFactorService
+│   ├── WebAuthnService
 │   ├── CsvExportService, CsvImportService, ImageProcessingService
 │   ├── QueueService, TestRunnerService
 └── View/Components/ (AppLayout, GuestLayout)
@@ -310,7 +330,7 @@ resources/
 │   └── alpine/
 │       ├── api-docs.js, asset-detail.js, asset-editor.js, asset-grid.js
 │       ├── asset-uploader.js, asset-replacer.js, dashboard.js, discover.js
-│       ├── export.js, import.js, preferences.js, system-admin.js
+│       ├── export.js, import.js, passkeys.js, preferences.js, system-admin.js
 │       ├── tags.js, tools-tikz-server.js, trash.js
 └── views/
     ├── assets/ (index, create, show, edit, replace, trash, embed, partials/grid)
@@ -328,14 +348,14 @@ resources/
 tests/
 ├── Feature/ (Asset, Tag, Export, Import, Api, System, Integrity,
 │             BulkMove, BulkForceDelete, BulkTrash, BulkDownload,
-│             JwtAuth, JwtSecretManagement, Locale, Profile, TwoFactorAuth)
+│             JwtAuth, JwtSecretManagement, Locale, Passkey, Profile, TwoFactorAuth)
 ├── Feature/Auth/ (Authentication, Registration, PasswordReset, etc.)
-└── Unit/ (Asset, Tag, Setting, UserPreferences, TwoFactorService,
+└── Unit/ (Asset, Tag, Setting, UserPreferences, TwoFactorService, WebAuthnService,
            JwtGuard, AssetProcessingService, CloudflareService, S3Service,
            AssetSortScope, CsvExportService, CsvImportService,
            ImageProcessingService, QueueService, TestRunnerService)
 
-config/ (app, auth, cache, cloudflare, database, filesystems, jwt, logging, mail, queue, services, session, tikz, two-factor)
+config/ (app, auth, cache, cloudflare, database, filesystems, jwt, logging, mail, queue, services, session, tikz, two-factor, webauthn)
 database/migrations/ (33 migrations)
 database/factories/ (Asset, Tag, User, Setting)
 database/seeders/ (Database, AdminUser)

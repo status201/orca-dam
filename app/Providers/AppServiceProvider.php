@@ -4,12 +4,15 @@ namespace App\Providers;
 
 use App\Auth\JwtGuard;
 use App\Http\Controllers\SystemController;
+use App\Listeners\TouchPasskeyLastUsed;
 use App\Models\Setting;
 use App\Policies\SystemPolicy;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Laragear\WebAuthn\Events\CredentialAsserted;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -53,5 +56,8 @@ class AppServiceProvider extends ServiceProvider
                 Auth::createUserProvider($config['provider'])
             );
         });
+
+        // Stamp last-used timestamps on successful passkey assertions.
+        Event::listen(CredentialAsserted::class, TouchPasskeyLastUsed::class);
     }
 }

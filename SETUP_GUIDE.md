@@ -308,6 +308,15 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Preferences accessible via Profile page
 - ✅ URL parameters still override user preferences
 
+### 6b. Account Security
+- ✅ Two-factor authentication (TOTP via Google Authenticator etc.) with recovery codes
+- ✅ **Passkeys (WebAuthn / FIDO2)** — passwordless sign-in with Touch ID, Face ID, Windows Hello, or hardware security keys
+  - Enable from Profile → Security → "Add Passkey"
+  - Up to 10 passkeys per user, each with a custom alias
+  - Successful passkey login bypasses the 2FA challenge
+  - Admins can clear a user's passkeys from the user edit page (recovery)
+  - Requires HTTPS (or `localhost`) — set `WEBAUTHN_ID` in `.env` if `APP_URL` host doesn't match the browser host
+
 ### 7. Multi-Language Support
 - ✅ UI available in English and Dutch (Nederlands)
 - ✅ Global language set by admin via System → Settings

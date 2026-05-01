@@ -8,12 +8,21 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 ## [Unreleased]
 
 ### Added
+- **Passkeys (WebAuthn / FIDO2)** — phishing-resistant sign-in alongside the existing password + TOTP flows.
+  - Passwordless "Sign in with passkey" on the login page (with conditional UI / autofill where supported)
+  - Profile → Security: register, rename, and remove passkeys (max 10 per user, admins + editors only)
+  - Successful passkey login bypasses the TOTP challenge (passkey already proves possession + verification)
+  - Per-credential `last_used_at` and per-user `last_passkey_used_at` shown in the profile and admin user views
+  - Admin recovery: "Clear all passkeys" button on user edit when the user loses all their devices
+  - Users index gains a **Passkeys** column (count + last-used tooltip)
+  - Console: `passkeys:list [--user] [--role]` and `passkeys:revoke <id>|--user [--force]`
+  - Built on `laragear/webauthn` v5 + `@simplewebauthn/browser`; auth provider switched to `eloquent-webauthn` with `password_fallback: true`
 - Assets Show cycle navigation now includes the `user` filter in the context summary badge
 - **Asset parent/child relations** — assets can now track a source asset via `parent_id`. TikZ Server renders uploaded from a loaded or saved `.tex` template are automatically linked to it; the Asset detail page shows a **Relations** card with Source and Derived assets.
 
 ---
 
-## [v1.2.1] — 2026-04
+## [v1.2.1] — 2026-04 — Tail Slap
 
 ### Added
 - **Tools: TikZ Server Render** — server-side TikZ/LaTeX compilation via TeX Live

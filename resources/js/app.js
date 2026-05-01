@@ -17,6 +17,7 @@ import './alpine/asset-replacer';
 import './alpine/system-admin';
 import './alpine/api-docs';
 import './alpine/preferences';
+import './alpine/passkeys';
 import './alpine/dashboard';
 import './alpine/tools-latex-mathml';
 import './alpine/tools-tikz-svg';

@@ -45,6 +45,9 @@
                     {{ __('Assets') }}
                 </th>
                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {{ __('Passkeys') }}
+                </th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {{ __('2FA') }}
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -82,6 +85,21 @@
                     <a href="{{ route('assets.index', ['user' => $user->id]) }}" class="text-blue-600 hover:underline">
                         {{ $user->assets_count }}
                     </a>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                    @if($user->web_authn_credentials_count > 0)
+                        @php
+                            $passkeyTitle = $user->last_passkey_used_at
+                                ? __('Last used :date', ['date' => $user->last_passkey_used_at->diffForHumans()])
+                                : __('Never used');
+                        @endphp
+                        <span class="inline-flex items-center gap-1 text-sm text-gray-700" title="{{ $passkeyTitle }}">
+                            <i class="fas fa-key text-green-600"></i>
+                            {{ $user->web_authn_credentials_count }}
+                        </span>
+                    @else
+                        <i class="attention fas fa-times-circle text-red-600"></i>
+                    @endif
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                     @if($user->hasTwoFactorEnabled())

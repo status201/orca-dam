@@ -138,6 +138,8 @@ Route::middleware(['auth'])->group(function () {
 
     // User management routes (admin only)
     Route::resource('users', UserController::class)->except(['show']);
+    Route::delete('users/{user}/passkeys', [UserController::class, 'clearPasskeys'])
+        ->name('users.passkeys.clear');
 
     // Tools (editors + admins)
     Route::get('tools', [ToolsController::class, 'index'])->name('tools.index');

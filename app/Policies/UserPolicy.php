@@ -37,4 +37,12 @@ class UserPolicy
     {
         return $user->isAdmin() && $user->id !== $model->id;
     }
+
+    /**
+     * Determine if the user can clear another user's passkeys (recovery action).
+     */
+    public function clearPasskeys(User $user, User $model): bool
+    {
+        return $user->isAdmin() && $user->id !== $model->id;
+    }
 }

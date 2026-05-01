@@ -36,9 +36,12 @@ class SystemService
         'migrate --force',
         'two-factor:status',
         'two-factor:disable',
+        'passkeys:list',
+        'passkeys:revoke',
         'assets:backfill-etags',
         'assets:deduplicate',
         'assets:deduplicate --force',
+        'assets:verify-integrity',
     ];
 
     /**
@@ -514,6 +517,11 @@ class SystemService
                 'category' => 'Assets',
             ],
             [
+                'command' => 'assets:verify-integrity',
+                'description' => 'Queue S3 integrity checks for every asset (flags missing files)',
+                'category' => 'Assets',
+            ],
+            [
                 'command' => 'cache:clear',
                 'description' => 'Clear application cache',
                 'category' => 'Cache',
@@ -562,6 +570,16 @@ class SystemService
                 'command' => 'reference-tag:create <name>',
                 'description' => 'Pre-create a reference tag (replace <name>) so editors can attach it from the asset edit page',
                 'category' => 'Tags',
+            ],
+            [
+                'command' => 'passkeys:list',
+                'description' => 'List registered passkeys with owners and last-used timestamps',
+                'category' => 'Passkeys',
+            ],
+            [
+                'command' => 'passkeys:revoke <id>',
+                'description' => 'Revoke a passkey by ID, or use --user=email to revoke all',
+                'category' => 'Passkeys',
             ],
             [
                 'command' => 'two-factor:status',

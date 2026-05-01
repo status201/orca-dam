@@ -17,7 +17,8 @@
 9. [Replacing Assets](#replacing-assets)
 10. [The Trash](#the-trash)
 11. [User Preferences](#user-preferences)
-12. [Moving Files (The Long Way)](#moving-files-the-long-way)
+12. [Account Security](#account-security)
+13. [Moving Files (The Long Way)](#moving-files-the-long-way)
 13. [Bulk Trash & Download](#bulk-trash--download)
 14. [Bulk Move (Admin Only)](#bulk-move-admin-only)
 15. [Bulk Permanent Delete (Admin Only)](#bulk-permanent-delete-admin-only)
@@ -284,6 +285,29 @@ Customize ORCA via the **Profile** page (click your name → Profile → Prefere
 - **Language** — English or Nederlands. Select "Use default" to follow the admin's global setting. Changes take effect on the next page load.
 
 Preferences follow a priority: URL parameters > your user preference > global system setting. Your preferences are respected, but navigating freely (clicking folders, changing dropdowns) won't reset until you load a fresh page.
+
+---
+
+## Account Security
+
+ORCA supports three sign-in factors and you're encouraged to use them all:
+
+- **Password** — your primary credential
+- **Two-factor authentication (2FA)** — a 6-digit code from an authenticator app (Google Authenticator, 1Password, Authy). Enable it from **Profile → Security → Enable Two-Factor Authentication**. Save the recovery codes — you need them if you lose your phone.
+- **Passkeys** (recommended) — a phishing-resistant alternative that uses your device's built-in unlock (Touch ID, Face ID, Windows Hello, screen lock) or a hardware security key (YubiKey, etc.).
+
+### Using passkeys
+
+1. Go to **Profile → Security → Add Passkey**
+2. Optionally name it ("MacBook", "iPhone", "YubiKey")
+3. Confirm with your device's unlock method
+4. To sign in next time, click **"Sign in with passkey"** on the login page
+
+You can register up to **10 passkeys** per account (e.g. one per device). Each passkey shows when it was last used. Successful passkey sign-in **skips the 2FA code** — the passkey already proves both possession of your device *and* you're the one using it.
+
+If you lose all your passkey-bearing devices, an admin can clear your passkeys from the user edit page; you'll then sign in with password + 2FA and register new ones.
+
+> Passkeys require HTTPS in your browser. Local development on `localhost` works too, but custom hostnames need TLS.
 
 ---
 
