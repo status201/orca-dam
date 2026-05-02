@@ -87,7 +87,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['can:restore,App\Models\Asset'])->group(function () {
         Route::get('assets/trash/index', [AssetController::class, 'trash'])->name('assets.trash');
         Route::post('assets/{asset}/restore', [AssetController::class, 'restore'])->withTrashed()->name('assets.restore');
-        Route::post('assets/trash/bulk-restore', [AssetController::class, 'bulkRestore'])->name('assets.trash.bulk-restore');
+        Route::post('assets/trash/bulk-restore', [AssetController::class, 'bulkRestore'])
+            ->middleware('can:bulkRestore,App\Models\Asset')
+            ->name('assets.trash.bulk-restore');
     });
 
     // Trash routes — force delete (admins only)

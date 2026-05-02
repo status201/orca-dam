@@ -9,11 +9,22 @@ use App\Models\User;
 class AssetPolicy
 {
     /**
+     * Roles that have any access to assets at all.
+     *
+     * Listing roles explicitly (rather than `return true`) means a future
+     * role addition has to opt in to each ability instead of inheriting it.
+     */
+    private function isKnownRole(User $user): bool
+    {
+        return $user->isAdmin() || $user->isEditor() || $user->isApiUser();
+    }
+
+    /**
      * Determine whether the user can view any assets.
      */
     public function viewAny(User $user): bool
     {
-        return true; // All authenticated users can view assets
+        return $this->isKnownRole($user);
     }
 
     /**
@@ -21,7 +32,7 @@ class AssetPolicy
      */
     public function view(User $user, Asset $asset): bool
     {
-        return true; // All authenticated users can view individual assets
+        return $this->isKnownRole($user);
     }
 
     /**
@@ -29,7 +40,7 @@ class AssetPolicy
      */
     public function create(User $user): bool
     {
-        return true; // All authenticated users can upload
+        return $this->isKnownRole($user);
     }
 
     /**
@@ -37,13 +48,7 @@ class AssetPolicy
      */
     public function replace(User $user): bool
     {
-        // API users cannot replace assets
-        if ($user->isApiUser()) {
-            return false;
-        }
-
-        // All other authenticated users can replace any asset
-        return true;
+        return $user->isAdmin() || $user->isEditor();
     }
 
     /**
@@ -51,8 +56,7 @@ class AssetPolicy
      */
     public function update(User $user, Asset $asset): bool
     {
-        // All authenticated users can update any asset
-        return true;
+        return $this->isKnownRole($user);
     }
 
     /**
@@ -60,13 +64,7 @@ class AssetPolicy
      */
     public function delete(User $user, Asset $asset): bool
     {
-        // API users cannot delete assets
-        if ($user->isApiUser()) {
-            return false;
-        }
-
-        // All other authenticated users can delete any asset
-        return true;
+        return $user->isAdmin() || $user->isEditor();
     }
 
     /**
@@ -122,7 +120,15 @@ class AssetPolicy
      */
     public function bulkTrash(User $user): bool
     {
-        return ! $user->isApiUser();
+        return $user->isAdmin() || $user->isEditor();
+    }
+
+    /**
+     * Determine whether the user can bulk restore assets from trash.
+     */
+    public function bulkRestore(User $user): bool
+    {
+        return $user->isAdmin() || $user->isEditor();
     }
 
     /**
@@ -130,6 +136,6 @@ class AssetPolicy
      */
     public function bulkDownload(User $user): bool
     {
-        return true;
+        return $this->isKnownRole($user);
     }
 }

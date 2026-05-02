@@ -1112,7 +1112,7 @@ class AssetController extends Controller
      */
     public function bulkRestore(Request $request)
     {
-        $this->authorize('restore', Asset::class);
+        $this->authorize('bulkRestore', Asset::class);
 
         $request->validate([
             'asset_ids' => 'required|array|max:500',

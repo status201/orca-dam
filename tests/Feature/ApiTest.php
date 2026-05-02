@@ -99,6 +99,18 @@ test('api can delete asset', function () {
     $this->assertSoftDeleted('assets', ['id' => $assetId]);
 });
 
+test('api role user cannot delete asset (even their own)', function () {
+    $apiUser = User::factory()->create(['role' => 'api']);
+    Sanctum::actingAs($apiUser);
+
+    $asset = Asset::factory()->create(['user_id' => $apiUser->id]);
+
+    $response = $this->deleteJson("/api/assets/{$asset->id}");
+
+    $response->assertForbidden();
+    $this->assertDatabaseHas('assets', ['id' => $asset->id, 'deleted_at' => null]);
+});
+
 test('api tags index requires authentication', function () {
     $response = $this->getJson('/api/tags');
 

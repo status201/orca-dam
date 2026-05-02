@@ -13,50 +13,43 @@ beforeEach(function () {
     $this->asset = Asset::factory()->image()->create();
 });
 
-test('all authenticated roles can view, viewAny, create, update', function () {
-    foreach ([$this->admin, $this->editor, $this->api] as $user) {
-        expect($this->policy->viewAny($user))->toBeTrue();
-        expect($this->policy->view($user, $this->asset))->toBeTrue();
-        expect($this->policy->create($user))->toBeTrue();
-        expect($this->policy->update($user, $this->asset))->toBeTrue();
-    }
-});
+/**
+ * Each row: [ability, admin allowed?, editor allowed?, api allowed?]
+ * Adding a new role means adding one column here, not N new tests.
+ */
+dataset('role_matrix', [
+    'viewAny' => ['viewAny', true, true, true],
+    'view' => ['view', true, true, true],
+    'create' => ['create', true, true, true],
+    'update' => ['update', true, true, true],
+    'replace' => ['replace', true, true, false],
+    'delete' => ['delete', true, true, false],
+    'restore' => ['restore', true, true, false],
+    'forceDelete' => ['forceDelete', true, false, false],
+    'discover' => ['discover', true, false, false],
+    'export' => ['export', true, false, false],
+    'bulkTrash' => ['bulkTrash', true, true, false],
+    'bulkRestore' => ['bulkRestore', true, true, false],
+    'bulkDownload' => ['bulkDownload', true, true, true],
+]);
 
-test('api users cannot replace or delete', function () {
-    expect($this->policy->replace($this->api))->toBeFalse();
-    expect($this->policy->delete($this->api, $this->asset))->toBeFalse();
-});
+test('role matrix is enforced for ability', function (string $ability, bool $admin, bool $editor, bool $api) {
+    $needsAsset = in_array($ability, ['view', 'update', 'delete'], true);
 
-test('admin and editor can replace and delete', function () {
-    foreach ([$this->admin, $this->editor] as $user) {
-        expect($this->policy->replace($user))->toBeTrue();
-        expect($this->policy->delete($user, $this->asset))->toBeTrue();
-    }
-});
+    $call = fn (User $u) => $needsAsset
+        ? $this->policy->$ability($u, $this->asset)
+        : $this->policy->$ability($u);
 
-test('restore allowed only for admin and editor', function () {
-    expect($this->policy->restore($this->admin))->toBeTrue();
-    expect($this->policy->restore($this->editor))->toBeTrue();
-    expect($this->policy->restore($this->api))->toBeFalse();
-});
-
-test('forceDelete allowed only for admin', function () {
-    expect($this->policy->forceDelete($this->admin))->toBeTrue();
-    expect($this->policy->forceDelete($this->editor))->toBeFalse();
-    expect($this->policy->forceDelete($this->api))->toBeFalse();
-});
-
-test('discover and export admin-only', function () {
-    foreach (['discover', 'export'] as $ability) {
-        expect($this->policy->$ability($this->admin))->toBeTrue();
-        expect($this->policy->$ability($this->editor))->toBeFalse();
-        expect($this->policy->$ability($this->api))->toBeFalse();
-    }
-});
+    expect($call($this->admin))->toBe($admin, "admin → $ability");
+    expect($call($this->editor))->toBe($editor, "editor → $ability");
+    expect($call($this->api))->toBe($api, "api → $ability");
+})->with('role_matrix');
 
 test('move requires admin AND maintenance mode', function () {
     Setting::set('maintenance_mode', false);
     expect($this->policy->move($this->admin))->toBeFalse();
+    expect($this->policy->move($this->editor))->toBeFalse();
+    expect($this->policy->move($this->api))->toBeFalse();
 
     Setting::set('maintenance_mode', true);
     expect($this->policy->move($this->admin))->toBeTrue();
@@ -65,22 +58,13 @@ test('move requires admin AND maintenance mode', function () {
 });
 
 test('bulkForceDelete requires admin AND maintenance mode', function () {
+    Setting::set('maintenance_mode', false);
+    expect($this->policy->bulkForceDelete($this->admin))->toBeFalse();
+    expect($this->policy->bulkForceDelete($this->editor))->toBeFalse();
+    expect($this->policy->bulkForceDelete($this->api))->toBeFalse();
+
     Setting::set('maintenance_mode', true);
     expect($this->policy->bulkForceDelete($this->admin))->toBeTrue();
     expect($this->policy->bulkForceDelete($this->editor))->toBeFalse();
-
-    Setting::set('maintenance_mode', false);
-    expect($this->policy->bulkForceDelete($this->admin))->toBeFalse();
-});
-
-test('bulkTrash forbidden for api users, allowed for admin and editor', function () {
-    expect($this->policy->bulkTrash($this->admin))->toBeTrue();
-    expect($this->policy->bulkTrash($this->editor))->toBeTrue();
-    expect($this->policy->bulkTrash($this->api))->toBeFalse();
-});
-
-test('bulkDownload allowed for all authenticated users', function () {
-    foreach ([$this->admin, $this->editor, $this->api] as $user) {
-        expect($this->policy->bulkDownload($user))->toBeTrue();
-    }
+    expect($this->policy->bulkForceDelete($this->api))->toBeFalse();
 });

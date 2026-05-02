@@ -178,9 +178,7 @@ class AssetApiController extends Controller
      */
     public function destroy(Asset $asset)
     {
-        if (! Auth::user()->isAdmin() && $asset->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorize('delete', $asset);
 
         $asset->delete();
 
