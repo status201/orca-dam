@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\ApiDocsController;
+use App\Http\Controllers\AssetBulkController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\AssetReplaceController;
+use App\Http\Controllers\AssetTrashController;
 use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscoverController;
@@ -61,48 +64,49 @@ Route::middleware(['auth'])->group(function () {
     Route::get('game/scores', [GameScoreController::class, 'index'])->name('game.scores');
     Route::post('game/scores', [GameScoreController::class, 'store'])->name('game.scores.store');
 
-    // Bulk asset tag management (must be before resource route)
-    Route::post('assets/bulk/tags', [AssetController::class, 'bulkAddTags'])->name('assets.bulk.tags.add');
-    Route::post('assets/bulk/tags/remove', [AssetController::class, 'bulkRemoveTags'])->name('assets.bulk.tags.remove');
-    Route::post('assets/bulk/tags/list', [AssetController::class, 'bulkGetTags'])->name('assets.bulk.tags.list');
-    Route::post('assets/bulk/move', [AssetController::class, 'bulkMoveAssets'])->name('assets.bulk.move');
-    Route::delete('assets/bulk/force-delete', [AssetController::class, 'bulkForceDelete'])->name('assets.bulk.force-delete');
-    Route::post('assets/bulk/trash', [AssetController::class, 'bulkTrash'])->name('assets.bulk.trash');
-    Route::post('assets/bulk/download', [AssetController::class, 'bulkDownload'])->name('assets.bulk.download');
+    // Bulk asset operations (must be before resource route)
+    Route::post('assets/bulk/tags', [AssetBulkController::class, 'bulkAddTags'])->name('assets.bulk.tags.add');
+    Route::post('assets/bulk/tags/remove', [AssetBulkController::class, 'bulkRemoveTags'])->name('assets.bulk.tags.remove');
+    Route::post('assets/bulk/tags/list', [AssetBulkController::class, 'bulkGetTags'])->name('assets.bulk.tags.list');
+    Route::post('assets/bulk/move', [AssetBulkController::class, 'bulkMove'])->name('assets.bulk.move');
+    Route::delete('assets/bulk/force-delete', [AssetBulkController::class, 'bulkForceDelete'])->name('assets.bulk.force-delete');
+    Route::post('assets/bulk/trash', [AssetTrashController::class, 'bulkTrash'])->name('assets.bulk.trash');
+    Route::post('assets/bulk/download', [AssetBulkController::class, 'bulkDownload'])->name('assets.bulk.download');
 
     // Asset embed (iframe-friendly, no header/footer)
     Route::get('assets/embed', [AssetController::class, 'embed'])->name('assets.embed');
 
-    // Asset routes
-    Route::resource('assets', AssetController::class);
+    // Asset CRUD (destroy moved to AssetTrashController)
+    Route::resource('assets', AssetController::class)->except(['destroy']);
+    Route::delete('assets/{asset}', [AssetTrashController::class, 'destroy'])->name('assets.destroy');
 
     // Asset download
-    Route::get('assets/{asset}/download', [AssetController::class, 'download'])->name('assets.download');
+    Route::get('assets/{asset}/download', [AssetReplaceController::class, 'download'])->name('assets.download');
 
     // Asset replace
-    Route::get('assets/{asset}/replace', [AssetController::class, 'showReplace'])->name('assets.replace');
-    Route::post('assets/{asset}/replace', [AssetController::class, 'replace'])->name('assets.replace.store');
+    Route::get('assets/{asset}/replace', [AssetReplaceController::class, 'showReplace'])->name('assets.replace');
+    Route::post('assets/{asset}/replace', [AssetReplaceController::class, 'replace'])->name('assets.replace.store');
 
     // Trash routes — restore (editors + admins)
     Route::middleware(['can:restore,App\Models\Asset'])->group(function () {
-        Route::get('assets/trash/index', [AssetController::class, 'trash'])->name('assets.trash');
-        Route::post('assets/{asset}/restore', [AssetController::class, 'restore'])->withTrashed()->name('assets.restore');
-        Route::post('assets/trash/bulk-restore', [AssetController::class, 'bulkRestore'])
+        Route::get('assets/trash/index', [AssetTrashController::class, 'index'])->name('assets.trash');
+        Route::post('assets/{asset}/restore', [AssetTrashController::class, 'restore'])->withTrashed()->name('assets.restore');
+        Route::post('assets/trash/bulk-restore', [AssetTrashController::class, 'bulkRestore'])
             ->middleware('can:bulkRestore,App\Models\Asset')
             ->name('assets.trash.bulk-restore');
     });
 
     // Trash routes — force delete (admins only)
     Route::middleware(['can:forceDelete,App\Models\Asset'])->group(function () {
-        Route::delete('assets/{asset}/force-delete', [AssetController::class, 'forceDelete'])->withTrashed()->name('assets.force-delete');
-        Route::delete('assets/trash/bulk-force-delete', [AssetController::class, 'bulkForceDeleteTrashed'])->name('assets.trash.bulk-force-delete');
+        Route::delete('assets/{asset}/force-delete', [AssetTrashController::class, 'forceDelete'])->withTrashed()->name('assets.force-delete');
+        Route::delete('assets/trash/bulk-force-delete', [AssetTrashController::class, 'bulkForceDeleteTrashed'])->name('assets.trash.bulk-force-delete');
     });
 
     // AI tagging
-    Route::post('assets/{asset}/ai-tag', [AssetController::class, 'generateAiTags'])->name('assets.ai-tag');
+    Route::post('assets/{asset}/ai-tag', [AssetReplaceController::class, 'generateAiTags'])->name('assets.ai-tag');
 
     // Video thumbnail
-    Route::post('assets/{asset}/thumbnail', [AssetController::class, 'storeThumbnail'])->name('assets.thumbnail.store');
+    Route::post('assets/{asset}/thumbnail', [AssetReplaceController::class, 'storeThumbnail'])->name('assets.thumbnail.store');
 
     // Asset tag management
     Route::post('assets/{asset}/tags', [AssetController::class, 'addTags'])->name('assets.tags.add');
