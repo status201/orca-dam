@@ -7,6 +7,15 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Security
+- **API role can no longer delete assets.** `AssetApiController::destroy` now routes through the policy (`$this->authorize('delete', $asset)`) instead of the previous inline `! isAdmin() && user_id !== Auth::id()` check, which had let API tokens delete their own assets despite the documented "api: no delete" rule.
+- **`AssetPolicy` hardened.** The `viewAny`, `view`, `create`, `update`, and `bulkDownload` stub abilities (previously `return true`) now enforce explicit role lists, so a future role addition cannot silently inherit access. New `bulkRestore` ability replaces the implicit reuse of `restore` for the bulk-restore route.
+- `UserFactory` now defaults `role` to `editor` (matching the migration default) and exposes `admin()` / `editor()` / `apiUser()` states; previously `User::factory()->create()` left `role` NULL in-memory, masking authorization gaps in feature tests.
+
+### Changed
+- **`AssetController` split into four cohesive controllers** along route seams: `AssetController` (CRUD + tags, ~650 LOC), `AssetTrashController` (destroy / trash / restore / bulk-trash / bulk-restore / bulk-force-delete), `AssetBulkController` (bulk add/remove/list tags, bulk move, bulk force-delete, bulk download), `AssetReplaceController` (replace, thumbnail upload, AI tag, download). Route URIs and names are unchanged; only the action class moved.
+- `Asset` model search-operator parsing extracted to `App\Services\AssetSearchParser`. `Asset::scopeSearch` is now a one-line delegate.
+
 ### Added
 - **Passkeys (WebAuthn / FIDO2)** — phishing-resistant sign-in alongside the existing password + TOTP flows.
   - Passwordless "Sign in with passkey" on the login page (with conditional UI / autofill where supported)

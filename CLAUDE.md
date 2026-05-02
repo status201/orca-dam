@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-ORCA DAM (ORCA Retrieves Cloud Assets) is a Digital Asset Management system built with Laravel 13 with AWS S3 integration, AI-powered tagging via AWS Rekognition, role-based access control, and a RESTful API for Rich Text Editor integration.
+ORCA DAM (ORCA Retrieves Cloud Assets) — Laravel 13 Digital Asset Management with AWS S3, AI tagging via AWS Rekognition, role-based access, and a REST API for Rich Text Editor integration.
 
-**Frontend Stack**: Blade + Alpine.js (modular, 15 components in `resources/js/alpine/`), Tailwind CSS, Font Awesome 6.4.0, Vite, Intervention Image 3.x (GD driver)
+**Frontend**: Blade + Alpine.js (15 modules in `resources/js/alpine/`), Tailwind, Font Awesome 6.4, Vite, Intervention Image 3.x (GD).
 
 ## Common Commands
 
@@ -13,7 +13,7 @@ ORCA DAM (ORCA Retrieves Cloud Assets) is a Digital Asset Management system buil
 php artisan serve                    # Or use Laravel Herd
 npm run dev / npm run build
 
-# Testing (always clear config first)
+# Testing (always clear config first — stale cache can point RefreshDatabase at the dev DB)
 php artisan config:clear && php artisan test
 php artisan config:clear && php artisan test --testsuite=Feature
 php artisan config:clear && php artisan test tests/Feature/AssetTest.php
@@ -27,23 +27,14 @@ php artisan cache:clear / config:clear / route:clear / view:clear
 
 # Maintenance
 php artisan uploads:cleanup [--hours=48]
-php artisan assets:verify-integrity      # Queue S3 integrity checks for all assets
-php artisan assets:backfill-etags        # Fetch etags from S3 for dedup
-php artisan assets:deduplicate [--force] # Find/soft-delete duplicates by etag
+php artisan assets:verify-integrity      # Queue S3 integrity checks
+php artisan assets:backfill-etags        # Fetch etags from S3
+php artisan assets:deduplicate [--force] # Soft-delete duplicates by etag
 
-# API Tokens
-php artisan token:list [--user=email] [--role=api]
-php artisan token:create [user@email.com] [--new] [--name="My App"]
-php artisan token:revoke <id|--user=email> [--force]
-
-# JWT Secrets
-php artisan jwt:list
-php artisan jwt:generate user@email.com [--force]
-php artisan jwt:revoke user@email.com [--force]
-
-# Passkeys (WebAuthn)
-php artisan passkeys:list [--user=email] [--role=admin|editor|api]
-php artisan passkeys:revoke <id|--user=email> [--force]
+# API Tokens / JWT / Passkeys
+php artisan token:list / token:create [user@email] [--new] [--name="…"] / token:revoke <id|--user=email> [--force]
+php artisan jwt:list / jwt:generate <user@email> [--force] / jwt:revoke <user@email> [--force]
+php artisan passkeys:list [--user=email] [--role=admin|editor|api] / passkeys:revoke <id|--user=email> [--force]
 
 # Queue (dev)
 php artisan queue:work --tries=3
@@ -51,141 +42,114 @@ php artisan queue:work --tries=3
 
 ## Architecture
 
-### Core Services (`app/Services/`)
+### Services (`app/Services/`)
 
-**S3Service** - All S3 operations (upload/delete/list/move). Streams files to avoid memory issues. `uploadFile()` supports `keepOriginalFilename` flag (sanitizes via `sanitizeFilename()`). Generates JPEG thumbnails (skips animated GIFs). Thumbnails mirror folder structure (`assets/folder/img.jpg` -> `thumbnails/folder/img_thumb.jpg`). `generateResizedImages()` creates S/M/L presets at configurable dimensions (stored in `thumbnails/S|M|L/`), keeping original format (GIFs→JPEG). `deleteResizedImages()` removes all resize variants. `deleteAssetFiles()` removes all S3 files for an asset (original + thumbnail + resizes). `moveObject()` copies then deletes (non-destructive on delete failure). Discovery finds unmapped S3 objects. Supports custom domain for CDN URLs via `getPublicBaseUrl()`.
+One-line summaries; read the source for detail.
 
-**AssetProcessingService** - Extracted shared asset processing logic used by multiple controllers. Handles thumbnail generation, resized image creation, dimension extraction, and AI tag dispatching. Called from `AssetController`, `AssetApiController`, `ChunkedUploadController`, and `ProcessDiscoveredAsset` job. `applyUploadMetadata()` applies batch metadata (user tags, license type, copyright, copyright source) to a newly created asset — called after `processImageAsset()` from web upload controllers (`AssetController`, `ChunkedUploadController`, `ToolsController` TikZ upload endpoints).
+- **S3Service** — All S3 ops (upload/delete/list/move). Streams files. `uploadFile()` supports `keepOriginalFilename`. JPEG thumbnails (skips animated GIFs). `generateResizedImages()` writes S/M/L variants under `thumbnails/S|M|L/`. `deleteAssetFiles()` clears original + thumbnail + resizes. CDN URL via `getPublicBaseUrl()` honors `custom_domain`.
+- **AssetProcessingService** — Shared post-upload work (thumbnail, resizes, dimensions, AI dispatch). Used by `AssetController`, `AssetApiController`, `ChunkedUploadController`, `ProcessDiscoveredAsset` job. `applyUploadMetadata()` applies batch metadata after `processImageAsset()`.
+- **AssetSearchParser** — Pure parser for asset search input (`+req`, `-excl`, `"phrase"`, mixed). Strips configured S3 / custom-domain URL prefixes. Used by `Asset::scopeSearch`.
+- **ChunkedUploadService** — S3 Multipart for ≥10MB / ≤500MB uploads. 10MB chunks, idempotent retries, sessions in `upload_sessions`. Etag dedup on complete (`DuplicateAssetException`).
+- **RekognitionService** — AI tagging via Rekognition + AWS Translate when `AWS_REKOGNITION_LANGUAGE != 'en'`. Background via `GenerateAiTags` job. Settings read live from DB.
+- **CloudflareService** — Non-blocking CDN purge on asset replace / thumbnail regen. `collectAssetUrls()` then `purgeUrls()`. Requires env + `custom_domain` + `cloudflare_cache_purge` toggle. Logs errors, never throws. Config: `config/cloudflare.php`.
+- **TikzCompilerService** — TeX Live pipeline (LaTeX→DVI→SVG/PNG, optional embedded WOFF2 / paths-only). 17 font packages, configurable border/DPI/libraries, custom preambles. Security: blocks `\write18`/`\openin`, `--no-shell-escape`, paranoid file mode. Config: `config/tikz.php`.
+- **WebAuthnService** — Passkey list/rename/delete/clear on top of `laragear/webauthn`. `MAX_CREDENTIALS_PER_USER = 10`. `TouchPasskeyLastUsed` listener stamps `users.last_passkey_used_at` and `webauthn_credentials.last_used_at` on assertion.
+- **TwoFactorService** — TOTP setup / verification / recovery codes.
+- **CsvExportService** / **CsvImportService** — `generateHeaders()` + `formatRow()` for export (33 columns, separated user/ai/reference tag columns). Import: `parseCsv()`, `calculateChanges()` diff vs existing, `validateRow()` for license + dates.
+- **ImageProcessingService** — Intervention/GD wrapper. `createThumbnailContent()` (300×300 JPEG, null for animated GIFs), `createResizedContent()` (preserves format, GIF→JPEG), `getImageDimensions()`, `isAnimatedGif()`.
+- **QueueService**, **TestRunnerService**, **SystemService** — Backing services for the System admin dashboard.
 
-**ChunkedUploadService** - Large file uploads (>=10MB, up to 500MB) via S3 Multipart Upload API. Splits into 10MB chunks, streams directly to S3. Manages sessions via `upload_sessions` table. Idempotent chunk uploads with retry support. Supports `keepOriginalFilename`. Duplicate detection via etag on complete (throws `DuplicateAssetException`).
+### Asset Controllers (split, post-refactor)
 
-**RekognitionService** - AI tagging via AWS Rekognition. Configurable max labels, min confidence, language. Multilingual via AWS Translate (when language != 'en'). Background processing via `GenerateAiTags` job. Settings read dynamically from database.
-
-**SystemService** - Extracted system administration logic from `SystemController`. Handles diagnostics, environment checks, S3 connectivity testing, queue status, and system health reporting.
-
-**TwoFactorService** - Two-factor authentication setup, verification, and recovery code management.
-
-**WebAuthnService** - Passkey (WebAuthn / FIDO2) management on top of `laragear/webauthn`. `listCredentials()`, `renameCredential()`, `deleteCredential()`, `clearAllCredentials()`, `hasReachedLimit()`. Per-user limit `MAX_CREDENTIALS_PER_USER = 10`. Stores credentials in `webauthn_credentials` (package-managed). Successful assertions are stamped via the `TouchPasskeyLastUsed` listener (updates `users.last_passkey_used_at` and `webauthn_credentials.last_used_at`).
-
-**CsvExportService** - Generates CSV rows from assets. `generateHeaders()` returns the 33-column header array; `formatRow(Asset)` formats one row with separated user/ai/reference tag columns.
-
-**CsvImportService** - CSV parsing and import logic. `parseCsv()` splits raw CSV into associative rows. `calculateChanges()` diffs a row against an existing asset. `validateRow()` checks license type and date format. Constants: `ALLOWED_LICENSE_TYPES`, `UPDATABLE_FIELDS`.
-
-**ImageProcessingService** - Image manipulation via Intervention Image (GD). `createThumbnailContent()` scales to 300×300 JPEG (returns null for animated GIFs). `createResizedContent()` scales preserving format (GIFs→JPEG). `getImageDimensions()` extracts width/height. `isAnimatedGif()` detects multi-frame GIFs by walking block structure.
-
-**QueueService** - Queue dashboard data for SystemController. `getQueueStats()` counts pending/failed/batches. `getFailedJobs()` and `getPendingJobs()` return formatted job lists with optional limit.
-
-**TestRunnerService** - Runs Pest suite in a subprocess for the web test runner. `run()` executes `php artisan test` with correct env variables. Parses output into per-test pass/fail results.
-
-**CloudflareService** - Cloudflare CDN cache purging on asset replacement. `collectAssetUrls(Asset)` gathers up to 5 URLs (original + thumbnail + resize S/M/L). `purgeUrls(array)` calls Cloudflare Cache Purge API. Requires env config + `custom_domain` setting + `cloudflare_cache_purge` toggle in System → Settings. Non-blocking: logs errors but never throws. Config in `config/cloudflare.php`.
-
-**TikzCompilerService** - Server-side TikZ/LaTeX compilation via TeX Live. `compile()` runs the full pipeline: input sanitization → LaTeX→DVI → dvisvgm SVG conversion → optional PNG rasterization. Produces four output variants: SVG (standard), SVG (embedded WOFF2 fonts), SVG (text as paths), PNG. Supports 17 font packages, configurable border padding, PNG DPI, extra TikZ libraries, and custom preambles from full LaTeX documents. Security: blocks `\write18`, `\openin`, file I/O commands; runs with `--no-shell-escape` and paranoid file mode. Config in `config/tikz.php`.
+- `AssetController` — index, embed, show, create, store, edit, update, unlinkParent, addTags, removeTag.
+- `AssetTrashController` — destroy, trash index, restore, forceDelete, bulkTrash, bulkRestore, bulkForceDeleteTrashed.
+- `AssetBulkController` — bulkAddTags, bulkRemoveTags, bulkGetTags, bulkForceDelete, bulkMove, bulkDownload.
+- `AssetReplaceController` — showReplace, replace, storeThumbnail, generateAiTags, download.
 
 ### Authentication
 
-- **Sanctum Tokens** - Long-lived tokens for backend integrations
-- **JWT** - Short-lived tokens for frontend integrations (disabled by default, enable with `JWT_ENABLED=true`)
-  - Guard: `app/Auth/JwtGuard.php`, Config: `config/jwt.php`
-  - Middleware: `app/Http/Middleware/AuthenticateMultiple.php`
-  - Required claims: `sub` (user ID), `exp`, `iat`. Optional: `iss`
-  - Per-user secrets stored encrypted in `users.jwt_secret`
-- **Passkeys (WebAuthn / FIDO2)** - Phishing-resistant primary auth alongside password + TOTP. Powered by `laragear/webauthn` v5; auth provider is `eloquent-webauthn` with `password_fallback: true` so password login still works.
-  - Login: passwordless "Sign in with passkey" on `/login` (with conditional UI / autofill where supported). Successful passkey login bypasses TOTP.
-  - Profile → Security: register / rename / remove passkeys (max 10 per user). Admins + editors only — API users cannot register passkeys.
-  - Admin recovery: "Clear all passkeys" button on user edit, `passkeys:revoke --user=email`.
-  - Controllers: `app/Http/Controllers/Auth/PasskeyController.php` (registration), `PasskeyLoginController.php` (assertion). Frontend: `resources/js/alpine/passkeys.js` using `@simplewebauthn/browser`. Config: `config/webauthn.php`. Env: `WEBAUTHN_ID`, `WEBAUTHN_ORIGINS` (default falls back to host of `APP_URL`).
+- **Sanctum** — long-lived tokens for backend integrations.
+- **JWT** — short-lived (off by default; `JWT_ENABLED=true`). Guard `app/Auth/JwtGuard.php`, config `config/jwt.php`. Required claims: `sub`, `exp`, `iat`. Per-user secret encrypted in `users.jwt_secret`.
+- **Passkeys (WebAuthn / FIDO2)** — `laragear/webauthn` v5, provider `eloquent-webauthn` with `password_fallback: true`. Passwordless login on `/login` (conditional UI). Successful passkey login bypasses TOTP. Profile → Security: register/rename/remove (max 10/user, admins + editors only — API users blocked). Admin recovery: "Clear all passkeys" + `passkeys:revoke --user=email`. Frontend: `resources/js/alpine/passkeys.js` (`@simplewebauthn/browser`). Config: `config/webauthn.php`. Env: `WEBAUTHN_ID`, `WEBAUTHN_ORIGINS` (default = `APP_URL` host).
+- **Multi-auth middleware**: `app/Http/Middleware/AuthenticateMultiple.php` (`auth.multi:web,sanctum,jwt`).
 
 ### Authorization (`app/Policies/`)
 
-**AssetPolicy** (`AssetPolicy.php`): Controls asset CRUD, trash, and discovery operations.
-**SystemPolicy** (`SystemPolicy.php`): Controls access to system admin features.
-**UserPolicy** (`UserPolicy.php`): Controls user management operations.
+`AssetPolicy`, `SystemPolicy`, `UserPolicy`. **All abilities encode role lists explicitly — no `return true` stubs.** Adding a new role requires opting into each ability.
 
-#### Authorization Rules
+**Roles** (`users.role`, default `editor`):
 
-**Roles** (`users.role`):
-- `editor`: View, upload, edit, soft delete all assets, access trash, restore from trash
-- `admin`: Full access + permanent delete, discovery, export, user management, system settings
-- `api`: API-only (view, create, update; no delete, no admin features)
+| Action | admin | editor | api |
+|---|---|---|---|
+| view / viewAny / create / update / bulkDownload | ✓ | ✓ | ✓ |
+| replace / delete (soft) / restore / bulkTrash / bulkRestore | ✓ | ✓ | ✗ |
+| forceDelete / discover / export | ✓ | ✗ | ✗ |
+| move / bulkForceDelete (also requires `maintenance_mode`) | ✓ | ✗ | ✗ |
 
-Editor+Admin: restore from trash, filter assets by own user ID (`?user=`)
-Admin-only: filter assets by any user ID (`?user=`), force delete, discover, export CSV, bulk move (requires `maintenance_mode`), bulk force delete (requires `maintenance_mode`), system page, API docs page
-All authenticated: bulk download (ZIP, max 100 files / 500MB)
+`AssetApiController::destroy` routes through `$this->authorize('delete', $asset)`, so API tokens cannot delete assets via the REST API.
 
-### Locale System
+### Locale
 
-Middleware `SetLocale`: User preference -> Global setting (`settings.locale`) -> `config('app.locale')`. Languages: `en`, `nl`. User preferences in encrypted JSON `users.preferences` column.
+`SetLocale` middleware: user preference → `settings.locale` → `config('app.locale')`. Languages: `en`, `nl`. User prefs in encrypted JSON `users.preferences`.
 
 ### Iframe Embedding
 
-Middleware `AllowEmbedding`: When `embed_allowed_domains` setting contains domains, sets `Content-Security-Policy: frame-ancestors 'self' <domains>` and removes `X-Frame-Options` on all web routes. Empty list preserves server defaults. Configured via System → Settings.
+`AllowEmbedding` middleware: when `embed_allowed_domains` is non-empty, sets `Content-Security-Policy: frame-ancestors 'self' <domains>` and removes `X-Frame-Options` on web routes.
 
 ### Models
 
-**Asset** (`app/Models/Asset.php`): Belongs to User, self-referencing `parent()`/`children()` (derived-from link, e.g. TikZ renders point at their source `.tex`), many-to-many Tags (pivot includes `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` is editable display name; `s3_key` is immutable. `syncTagsWithAttribution()` attaches tags with "last attacher wins" semantics. Scopes: search, filterByTags, type (accepts plural forms like `images`/`videos`), user, `inFolder`, `missing`. Search supports operators: `+term` (required), `-term` (excluded), `"exact phrase"` (quoted phrase, treated as required), `+"phrase"` (required phrase), `-"phrase"` (excluded phrase). License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
-
-**Tag** (`app/Models/Tag.php`): Type `user`, `ai`, or `reference`, many-to-many Assets. Reference tags track external system usage (e.g., RTE integrations). Created via API only, editable/deletable in web UI.
-
-**Setting** (`app/Models/Setting.php`): Key-value store, cached 1 hour. `Setting::get('key', default)`, `Setting::set('key', value)`. Types: string, integer, boolean, json. Groups: general, display, aws, api.
+- **Asset** — Belongs to User. Self-FK `parent()`/`children()` (e.g. TikZ render → source `.tex`). Many-to-many Tags (pivot `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` editable; `s3_key` immutable. `syncTagsWithAttribution()` = "last attacher wins". Scopes: `search` (delegates to `AssetSearchParser`), `withTags`, `ofType` (accepts plurals like `images`), `byUser`, `inFolder`, `missing`, `applySort`. Search operators: `+req`, `-excl`, `"phrase"`, `+"phrase"`, `-"phrase"`. License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
+- **Tag** — Type `user`/`ai`/`reference`, many-to-many Assets. Reference tags created via API only (track external system usage), editable/deletable in web UI.
+- **Setting** — Key-value, cached 1 hour. `Setting::get('key', $default)` / `Setting::set($key, $value)`. Types: string/integer/boolean/json. Groups: general/display/aws/api.
 
 ## API Endpoints
 
-### REST API (`routes/api.php`, auth: Sanctum/JWT)
+### REST API (`routes/api.php`, `auth.multi:sanctum,jwt`)
+
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/assets` | List with pagination, search, filters, sorting |
-| POST | `/api/assets` | Upload (direct, <10MB) |
-| GET | `/api/assets/{id}` | Get single asset |
+|---|---|---|
+| GET | `/api/assets` | List (pagination, search, filters, sort) |
+| POST | `/api/assets` | Upload direct (<10MB) |
+| GET | `/api/assets/{id}` | Single asset |
 | PATCH | `/api/assets/{id}` | Update metadata |
-| DELETE | `/api/assets/{id}` | Delete asset |
-| GET | `/api/assets/search` | Search with filters and sorting |
-| GET | `/api/assets/meta` | **Public** (no auth) - metadata by URL |
-| GET | `/api/health` | **Public** (no auth) - health check (200/503) |
-| GET | `/api/tags` | List tags (optional type filter) |
-| POST | `/api/reference-tags` | Add reference tags to asset(s) (by asset_id/asset_ids/s3_key/s3_keys) |
-| DELETE | `/api/reference-tags/{tag}` | Remove reference tag from asset(s) (by asset_id/asset_ids/s3_key/s3_keys) |
+| DELETE | `/api/assets/{id}` | Delete asset (admin/editor only — API role gets 403) |
+| GET | `/api/assets/search` | Search with filters/sort |
+| GET | `/api/assets/meta` | **Public** — metadata by URL |
+| GET | `/api/health` | **Public** — 200/503 |
+| GET | `/api/tags` | List tags (optional `?type=`) |
+| POST | `/api/reference-tags` | Add ref tags to asset(s) (`asset_id`/`asset_ids`/`s3_key`/`s3_keys`) |
+| DELETE | `/api/reference-tags/{tag}` | Remove ref tag from asset(s) |
 
-**Sort values**: `date_desc` (default), `date_asc`, `upload_desc`, `upload_asc`, `size_desc`, `size_asc`, `name_asc`, `name_desc`, `s3key_asc`, `s3key_desc`
+**Sort values**: `date_desc` (default), `date_asc`, `upload_desc`, `upload_asc`, `size_desc`, `size_asc`, `name_asc`, `name_desc`, `s3key_asc`, `s3key_desc`.
 
-### Chunked Upload (`/api/chunked-upload/*`, rate-limited 100/min)
-`POST .../init` | `POST .../chunk` | `POST .../complete` | `POST .../abort`
+### Chunked Upload (`/api/chunked-upload/*`, throttle 100/min)
 
-### Web Routes (`routes/web.php`, session auth)
-- `GET /assets/embed` - Embeddable asset browser (no nav/footer, for iframes). Supports all index query params
-- `POST/DELETE /assets/{asset}/tags[/{tag}]` - Manage tags
-- `POST /assets/bulk/tags` - Bulk add tags to multiple assets
-- `POST /assets/bulk/tags/remove` - Bulk remove tags from multiple assets
-- `POST /assets/bulk/tags/list` - Get tags for selected assets
-- `POST /assets/bulk/move` - Bulk move assets between folders (admin, maintenance mode)
-- `DELETE /assets/bulk/force-delete` - Bulk permanent delete (admin, maintenance mode)
-- `POST /assets/bulk/trash` - Bulk soft delete (editors + admins)
-- `POST /assets/bulk/download` - Bulk download as ZIP (all authenticated, max 100 files / 500MB)
-- `DELETE /tags/bulk` - Bulk delete tags
-- `PATCH/DELETE /assets/{asset}` - Update/delete asset
-- `POST /assets/{asset}/ai-tag` - Trigger AI tagging
-- `GET /api/folders` | `POST /folders/scan` (admin) | `POST /folders` (admin)
-- `/api-docs/*` - Admin: dashboard, settings, tokens, JWT secrets
-- `GET /system/integrity-status` | `POST /system/verify-integrity` (admin) - S3 integrity check
-- `/system` - Admin: overview, settings, queue, logs, commands, diagnostics, tests
-- `/tools` - Tools index (editor+admin). TikZ Server Render: compile, save/load templates, upload results (SVG/SVG-fonts/PNG endpoints all accept optional batch metadata: `metadata_tags`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source`)
+`POST init` | `POST chunk` | `POST complete` | `POST abort`
+
+### Web (`routes/web.php`, session auth)
+
+- `GET /assets/embed` — embeddable browser (no nav/footer); supports all index query params.
+- `POST/DELETE /assets/{asset}/tags[/{tag}]` — single-asset tag mgmt.
+- `POST /assets/bulk/{tags|tags/remove|tags/list|trash|download}` — bulk ops.
+- `POST /assets/bulk/move`, `DELETE /assets/bulk/force-delete` — admin + `maintenance_mode`.
+- `DELETE /tags/bulk` — bulk tag delete.
+- `POST /assets/{asset}/ai-tag` — trigger Rekognition.
+- `GET /api/folders`, `POST /folders/scan`, `POST /folders` (admin) — folder ops.
+- `/api-docs/*` (admin) — dashboard, settings, tokens, JWT secrets.
+- `/system/*` (admin) — overview, settings, queue, logs, commands, diagnostics, tests, S3 integrity.
+- `/tools` (editor + admin) — TikZ Server Render etc. Upload endpoints accept batch metadata: `metadata_tags`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source`.
 
 ## Database Schema
 
-**assets**: `s3_key` (unique), `etag`, `filename`, `mime_type`, `size`, `width`, `height`, `thumbnail_s3_key`, `resize_s_s3_key`, `resize_m_s3_key`, `resize_l_s3_key`, `alt_text`, `caption`, `license_type` (public_domain, cc_by, cc_by_sa, cc_by_nd, cc_by_nc, cc_by_nc_sa, cc_by_nc_nd, fair_use, all_rights_reserved), `license_expiry_date`, `copyright`, `copyright_source`, `user_id`, `parent_id` (nullable self-FK, nullOnDelete — links a derived asset to its source, e.g. a TikZ render to its `.tex` template), `deleted_at`, `s3_missing_at`
+- **assets** — `s3_key` (unique), `etag`, `filename`, `mime_type`, `size`, `width`, `height`, `thumbnail_s3_key`, `resize_{s,m,l}_s3_key`, `alt_text`, `caption`, `license_type` (public_domain, cc_by, cc_by_sa, cc_by_nd, cc_by_nc, cc_by_nc_sa, cc_by_nc_nd, fair_use, all_rights_reserved), `license_expiry_date`, `copyright`, `copyright_source`, `user_id`, `parent_id` (nullable self-FK, nullOnDelete — derived → source link), `deleted_at`, `s3_missing_at`.
+- **upload_sessions** — `upload_id`, `session_token`, `filename`, `mime_type`, `file_size`, `s3_key`, `chunk_size`, `total_chunks`, `uploaded_chunks`, `part_etags` (JSON), `status`, `user_id`, `last_activity_at`.
+- **tags** — `name` (unique), `type` (user/ai/reference).
+- **asset_tag** — `asset_id`, `tag_id`, `attached_by` (nullable), timestamps.
+- **settings** — `key` (unique), `value`, `type`, `group`, `description`.
+- **users** (extras) — `role` (admin/editor/api, default `editor`), `jwt_secret` (encrypted), `jwt_secret_generated_at`, `last_passkey_used_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`).
+- **webauthn_credentials** (package) — credential id PK, morph to User, alias, counter, rp_id, origin, transports (JSON), aaguid, public_key (encrypted), attestation_format, certificates (JSON), disabled_at, last_used_at.
 
-**upload_sessions**: `upload_id`, `session_token`, `filename`, `mime_type`, `file_size`, `s3_key`, `chunk_size`, `total_chunks`, `uploaded_chunks`, `part_etags` (JSON), `status` (pending/uploading/completed/failed/aborted), `user_id`, `last_activity_at`
-
-**tags**: `name` (unique), `type` (user/ai/reference)
-
-**asset_tag**: `asset_id`, `tag_id`, `attached_by` (nullable: User/AI), timestamps
-
-**settings**: `key` (unique), `value`, `type` (string/integer/boolean/json), `group` (general/display/aws), `description`
-
-**users** (extra columns): `jwt_secret` (encrypted), `jwt_secret_generated_at`, `last_passkey_used_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`)
-
-**webauthn_credentials** (package-managed): `id` (credential id, PK), `authenticatable_type`/`authenticatable_id` (morph to User), `user_id` (UUID), `alias` (user-supplied), `counter`, `rp_id`, `origin`, `transports` (JSON), `aaguid`, `public_key` (encrypted), `attestation_format`, `certificates` (JSON), `disabled_at`, `last_used_at`, timestamps.
-
-**Default Settings**: `items_per_page`=24, `timezone`=UTC, `locale`=en, `s3_root_folder`=assets, `custom_domain`=(empty), `embed_allowed_domains`=[], `rekognition_max_labels`=3, `rekognition_min_confidence`=80, `rekognition_language`=nl, `s3_folders`=["assets"], `jwt_enabled_override`=true, `api_meta_endpoint_enabled`=true, `api_upload_enabled`=true, `resize_s_width`=250, `resize_s_height`=(empty), `resize_m_width`=600, `resize_m_height`=(empty), `resize_l_width`=1200, `resize_l_height`=(empty), `maintenance_mode`=false, `cloudflare_cache_purge`=false
+**Default Settings**: `items_per_page=24`, `timezone=UTC`, `locale=en`, `s3_root_folder=assets`, `custom_domain=""`, `embed_allowed_domains=[]`, `rekognition_max_labels=3`, `rekognition_min_confidence=80`, `rekognition_language=nl`, `s3_folders=["assets"]`, `jwt_enabled_override=true`, `api_meta_endpoint_enabled=true`, `api_upload_enabled=true`, `resize_{s,m,l}_width = 250 / 600 / 1200`, `resize_{s,m,l}_height=""`, `maintenance_mode=false`, `cloudflare_cache_purge=false`.
 
 ## Environment Configuration
 
@@ -195,177 +159,76 @@ AWS_ACCESS_KEY_ID= / AWS_SECRET_ACCESS_KEY= / AWS_DEFAULT_REGION= / AWS_BUCKET= 
 
 # Optional: AI tagging
 AWS_REKOGNITION_ENABLED=false
-AWS_REKOGNITION_MAX_LABELS=3          # default: 3
-AWS_REKOGNITION_MIN_CONFIDENCE=80     # range: 65-99
+AWS_REKOGNITION_MAX_LABELS=3
+AWS_REKOGNITION_MIN_CONFIDENCE=80     # 65-99
 AWS_REKOGNITION_LANGUAGE=nl
 
 # Optional: JWT
 JWT_ENABLED=false
 JWT_ALGORITHM=HS256
-JWT_MAX_TTL=36000                     # seconds, default: 10h
+JWT_MAX_TTL=36000                     # seconds (default 10h)
 JWT_LEEWAY=60
 JWT_ISSUER=                           # optional issuer validation
 
-# Optional: Passkeys (WebAuthn). Defaults derive from APP_URL host.
-WEBAUTHN_ID=                          # Relying-party host, e.g. orca.example.com
-WEBAUTHN_ORIGINS=                     # Comma-separated extra origins (rarely needed)
+# Optional: Passkeys (defaults derive from APP_URL host)
+WEBAUTHN_ID=                          # Relying-party host
+WEBAUTHN_ORIGINS=                     # Comma-separated extras (rare)
 
-# Optional: Cloudflare cache purging on asset replacement
-# Also requires custom_domain + cloudflare_cache_purge toggle in System → Settings
+# Optional: Cloudflare CDN purge (also needs custom_domain + cloudflare_cache_purge toggle)
 CLOUDFLARE_ENABLED=false
-CLOUDFLARE_API_TOKEN=             # Token with Zone.Cache Purge permission
-CLOUDFLARE_ZONE_ID=               # Zone ID from Cloudflare dashboard
+CLOUDFLARE_API_TOKEN=                 # Zone.Cache Purge permission
+CLOUDFLARE_ZONE_ID=
 
-# Optional: PHP CLI path for web test runner
+# Optional: Web test runner
 PHP_CLI_PATH=/usr/bin/php
 
-# Optional: TikZ Server Render (requires TeX Live)
-TIKZ_LATEX_PATH=latex                # Path to latex binary
-TIKZ_DVISVGM_PATH=dvisvgm           # Path to dvisvgm binary
-TIKZ_TIMEOUT=30                      # Compilation timeout (seconds)
-TIKZ_PNG_DPI=300                     # Default PNG DPI (72-600)
+# Optional: TikZ Server (needs TeX Live)
+TIKZ_LATEX_PATH=latex
+TIKZ_DVISVGM_PATH=dvisvgm
+TIKZ_TIMEOUT=30
+TIKZ_PNG_DPI=300                      # 72-600
 ```
 
-**S3 Bucket**: Public read via bucket policy (not ACLs). IAM needs: s3:PutObject/GetObject/DeleteObject/ListBucket. Rekognition: rekognition:DetectLabels/DetectText. Translate: translate:TranslateText (if language != 'en').
+**S3 IAM**: `s3:PutObject/GetObject/DeleteObject/ListBucket`. Public read via bucket policy (not ACLs). Rekognition: `rekognition:DetectLabels/DetectText`. Translate (when language ≠ en): `translate:TranslateText`.
 
-**PHP for large files**: Min `memory_limit=256M`. Chunked mode: `upload_max_filesize=15M`, `post_max_size=16M`. Direct mode: `upload_max_filesize=500M`, `post_max_size=512M`. Auto-selects: <10MB direct, >=10MB chunked.
+**PHP for large files**: `memory_limit≥256M`. Chunked mode: `upload_max_filesize=15M`, `post_max_size=16M`. Direct mode: `upload_max_filesize=500M`, `post_max_size=512M`. Auto-selects: `<10MB` direct, `≥10MB` chunked.
 
-## Key Conventions
+## Conventions
 
-**File organization**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware in `app/Http/Middleware/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console Commands in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g., `DuplicateAssetException`)
-
-**Frontend modules**: Alpine.js components extracted into `resources/js/alpine/` (15 modules: `api-docs`, `asset-detail`, `asset-editor`, `asset-grid`, `asset-uploader`, `asset-replacer`, `dashboard`, `discover`, `export`, `import`, `preferences`, `system-admin`, `tags`, `tools-tikz-server`, `trash`). Shared mixins (not registered as top-level components): `upload-metadata` (batch metadata form state, spread into uploader/TikZ components) and `thumbnail-generator` (client-side PDF/video thumbnailing). Registered in `resources/js/app.js`. Blade views reference these via `x-data` directives. The asset grid markup lives in `resources/views/assets/partials/grid.blade.php` and is shared between the index and embed views.
-
-**Naming**: S3 keys `assets/{folder}/{uuid}.{ext}`, thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG). RESTful routes, snake_case columns.
-
-**Error handling**: Services catch exceptions and return null/empty arrays. Controllers validate and return appropriate HTTP codes. Logs in `storage/logs/laravel.log`.
-
-**Delete behavior**: Soft delete keeps S3 objects. Hard delete (admin) removes S3 objects + DB record. Discovery marks soft-deleted assets to prevent re-import.
-
-**Memory**: Streams uploads to S3. Uses `getimagesize()` for GIFs. Skips GIF thumbnails. Min 256MB PHP memory.
+- **Layout**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware/Requests in `app/Http/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g. `DuplicateAssetException`).
+- **Frontend**: 15 Alpine modules in `resources/js/alpine/` registered in `resources/js/app.js`. Shared mixins (not top-level): `upload-metadata` (batch metadata form), `thumbnail-generator` (client-side PDF/video thumbs). Asset grid markup is `resources/views/assets/partials/grid.blade.php`, shared between index and embed.
+- **S3 keys**: `assets/{folder}/{uuid}.{ext}`; thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG).
+- **Errors**: services swallow + log + return null/[]. Controllers validate + return appropriate codes. Logs in `storage/logs/laravel.log`.
+- **Delete**: soft delete keeps S3 objects; hard delete (admin) clears S3 + DB. Discovery flags soft-deleted to prevent re-import.
 
 ## Testing
 
-**Pest PHP** with in-memory SQLite. ~629 tests. Config in `phpunit.xml` (testing env, sqlite :memory:, array session/cache, sync queue).
+**Pest** with in-memory SQLite (config in `phpunit.xml`: testing env, `:memory:`, array session/cache, sync queue). 907 tests at last count.
 
-**Factories** (`database/factories/`): AssetFactory (`image()`, `pdf()`, `withLicense()`, `withCopyright()`), TagFactory (`ai()`, `user()`, `reference()`), SettingFactory (`integer()`, `boolean()`)
+**Always run `php artisan config:clear &&` first** — a stale `bootstrap/cache/config.php` can point `RefreshDatabase` at the dev DB and wipe it.
 
-```
-tests/Feature/  - AssetTest, TagTest, TagAttributionTest, EmbedTest, ExportTest, ImportTest, ApiTest, SystemTest,
-                  IntegrityTest, BulkMoveTest, BulkForceDeleteTest, BulkTrashTest, BulkDownloadTest,
-                  DuplicatePreventionTest,
-                  JwtAuthTest, JwtSecretManagementTest, LocaleTest, ProfileTest, TwoFactorAuthTest,
-                  Auth/ (Authentication, Registration, PasswordReset, PasswordUpdate, PasswordConfirmation, EmailVerification)
-tests/Unit/     - AssetTest, TagTest, SettingTest, UserPreferencesTest, TwoFactorServiceTest, JwtGuardTest,
-                  AssetProcessingServiceTest, S3ServiceTest, AssetSortScopeTest,
-                  CsvExportServiceTest, CsvImportServiceTest, ImageProcessingServiceTest,
-                  QueueServiceTest, TestRunnerServiceTest
-```
+**Factories** (`database/factories/`):
+- `UserFactory` — defaults `role => 'editor'`. States: `admin()`, `editor()`, `apiUser()`, `unverified()`.
+- `AssetFactory` — `image()`, `pdf()`, `withLicense()`, `withCopyright()`.
+- `TagFactory` — `ai()`, `user()`, `reference()`.
+- `SettingFactory` — `integer()`, `boolean()`.
 
-Web-based test runner at `/system` -> Tests tab (admin only).
+Web test runner at `/system → Tests` (admin only).
 
 ## Key Workflows
 
-**Upload**: Client uploads to `POST /assets` (or chunked via `/api/chunked-upload/*` for >=10MB) -> duplicate check via etag (rejects with link to existing asset) -> S3Service streams to S3 (optional `keepOriginalFilename`) -> dimensions extracted -> thumbnail generated (not GIFs) -> resized images generated (S/M/L) -> Asset record created -> GenerateAiTags job dispatched if Rekognition enabled -> optional batch metadata applied (`metadata_tags[]`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source` — same form fields shared across `/assets/create` and TikZ Server tool uploads; applied to every asset in the batch). When TikZ tool uploads send `parent_asset_id` (set automatically after Load from ORCA / Save as .tex), the new asset's `parent_id` links back to the source `.tex` template — Asset Show surfaces this as a **Relations** card with Source and Derived assets. API upload endpoints can be disabled at runtime via `api_upload_enabled` setting (API Docs → Dashboard); returns 403 when disabled. Web chunked uploads use session auth and are not affected by the API upload toggle.
-
-**Discovery** (admin): S3Service finds unmapped objects -> admin selects to import -> Asset records created -> thumbnails + resized images + AI tags applied. Soft-deleted assets shown with "Deleted" badge to prevent re-import.
-
-**Import Metadata** (admin): Paste/upload CSV -> preview matched assets with change diffs -> import. Matches by `s3_key` or `filename`. Updates metadata fields (alt_text, caption, license, copyright). Tags are lowercased, added via `syncWithoutDetaching` (never removed). Empty CSV fields are skipped. Invalid license types and date formats are rejected.
-
-**Trash** (editors + admins): Soft delete keeps S3 files. Restore returns to active (editors and admins). Force delete (admin only) removes S3 objects (original + thumbnail + resized variants) + DB permanently.
-
-**Bulk Move** (admin, maintenance mode): Select assets on index → pick destination folder → S3 objects moved (copy+delete) for original, thumbnail, and resize variants → DB keys updated. Destination must be within configured S3 folders. Shows copyable summary of old→new keys. Enable via `maintenance_mode` setting in System → Settings.
-
-**Bulk Permanent Delete** (admin, maintenance mode): Select assets on index → click red bulk delete button → confirm → S3 objects (original + thumbnail + resized variants) and DB records permanently removed. Enable via `maintenance_mode` setting in System → Settings.
-
-**Bulk Trash** (editors + admins): Select assets on index → click "Move to Trash" → confirm → assets soft-deleted. S3 objects preserved. Can be restored from trash.
-
-**Bulk Download** (all authenticated): Select assets on index → click "Download" → server fetches files from S3, packages as ZIP, streams to browser. Limits: max 100 files, 500MB total. Duplicate filenames disambiguated with `_1`, `_2` suffixes. Failed S3 fetches skipped.
-
-**S3 Integrity** (admin): `assets:verify-integrity` command dispatches `VerifyAssetIntegrity` jobs for all assets -> each job checks S3 object existence via `getObjectMetadata()` -> sets `s3_missing_at` timestamp if missing, clears if found. System page card shows live status with AJAX refresh. Assets index supports `?missing=1` filter.
-
-## File Structure
-
-```
-app/
-├── Auth/
-│   └── JwtGuard.php
-├── Console/Commands/
-│   ├── BackfillEtags.php, CleanupStaleUploads.php, DeduplicateAssets.php
-│   ├── JwtGenerateCommand.php, JwtListCommand.php, JwtRevokeCommand.php
-│   ├── PasskeysListCommand.php, PasskeysRevokeCommand.php
-│   ├── TokenCreateCommand.php, TokenListCommand.php, TokenRevokeCommand.php
-│   ├── TwoFactorDisableCommand.php, TwoFactorStatusCommand.php
-│   └── VerifyAssetIntegrity.php
-├── Http/
-│   ├── Controllers/
-│   │   ├── Api/ (AssetApiController, HealthController)
-│   │   ├── Auth/ (AuthenticatedSession, Registration, Password*, Email*, TwoFactorAuth, Passkey, PasskeyLogin)
-│   │   ├── AssetController, DashboardController, DiscoverController
-│   │   ├── ExportController, ImportController, FolderController, ToolsController
-│   │   ├── ProfileController, SystemController, TagController
-│   │   ├── UserController, ApiDocsController, TokenController
-│   │   ├── JwtSecretController, ChunkedUploadController
-│   │   └── Controller (base)
-│   ├── Middleware/ (AllowEmbedding, AuthenticateMultiple, SetLocale)
-│   └── Requests/ (StoreAssetRequest, UpdateAssetRequest, ProfileUpdateRequest, Auth/LoginRequest)
-├── Jobs/
-│   ├── GenerateAiTags, ProcessDiscoveredAsset
-│   ├── RegenerateResizedImage, VerifyAssetIntegrity
-├── Listeners/ (TouchPasskeyLastUsed)
-├── Models/ (Asset, Tag, User, Setting, UploadSession)
-├── Policies/ (AssetPolicy, SystemPolicy, UserPolicy)
-├── Services/
-│   ├── S3Service, AssetProcessingService, ChunkedUploadService
-│   ├── CloudflareService, RekognitionService, SystemService, TikzCompilerService, TwoFactorService
-│   ├── WebAuthnService
-│   ├── CsvExportService, CsvImportService, ImageProcessingService
-│   ├── QueueService, TestRunnerService
-└── View/Components/ (AppLayout, GuestLayout)
-
-resources/
-├── css/app.css
-├── js/
-│   ├── app.js, bootstrap.js
-│   └── alpine/
-│       ├── api-docs.js, asset-detail.js, asset-editor.js, asset-grid.js
-│       ├── asset-uploader.js, asset-replacer.js, dashboard.js, discover.js
-│       ├── export.js, import.js, passkeys.js, preferences.js, system-admin.js
-│       ├── tags.js, tools-tikz-server.js, trash.js
-└── views/
-    ├── assets/ (index, create, show, edit, replace, trash, embed, partials/grid)
-    ├── auth/ (login, register, forgot-password, reset-password, confirm-password,
-    │          verify-email, two-factor-setup, two-factor-challenge, two-factor-recovery-codes)
-    ├── profile/ (edit, partials/*)
-    ├── discover/, import/, export/, tags/, users/ (index, create, edit)
-    ├── tools/ (index, tikz-server)
-    ├── system/index, api/index, dashboard
-    ├── layouts/ (app, guest, embed, navigation)
-    ├── components/ (app-layout, modal, dropdown, buttons, inputs, footer, etc.)
-    ├── errors/ (404, 419, 500, 503)
-    └── vendor/pagination/ (tailwind, bootstrap, etc.)
-
-tests/
-├── Feature/ (Asset, Tag, Export, Import, Api, System, Integrity,
-│             BulkMove, BulkForceDelete, BulkTrash, BulkDownload,
-│             JwtAuth, JwtSecretManagement, Locale, Passkey, Profile, TwoFactorAuth)
-├── Feature/Auth/ (Authentication, Registration, PasswordReset, etc.)
-└── Unit/ (Asset, Tag, Setting, UserPreferences, TwoFactorService, WebAuthnService,
-           JwtGuard, AssetProcessingService, CloudflareService, S3Service,
-           AssetSortScope, CsvExportService, CsvImportService,
-           ImageProcessingService, QueueService, TestRunnerService)
-
-config/ (app, auth, cache, cloudflare, database, filesystems, jwt, logging, mail, queue, services, session, tikz, two-factor, webauthn)
-database/migrations/ (33 migrations)
-database/factories/ (Asset, Tag, User, Setting)
-database/seeders/ (Database, AdminUser)
-routes/ (web, api, auth, console)
-```
+- **Upload** — `POST /assets` (or `/api/chunked-upload/*` for ≥10MB) → etag dedup check (rejects with link to existing) → S3 stream upload (optional `keepOriginalFilename`) → dimensions → thumbnail (skips GIFs) → S/M/L resizes → Asset row → `GenerateAiTags` job (if Rekognition enabled) → `applyUploadMetadata()` (`metadata_tags[]`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source`). TikZ tool uploads can pass `parent_asset_id` so the new asset's `parent_id` links back to the source `.tex` (surfaced as a Relations card on Asset Show). API upload toggleable runtime via `api_upload_enabled` (web chunked uploads unaffected).
+- **Discovery** (admin) — `S3Service` lists unmapped objects → admin imports → Asset rows + thumbnails + resizes + AI tags. Soft-deleted assets shown with "Deleted" badge to prevent re-import.
+- **Import metadata** (admin) — paste/upload CSV → preview diffs → import. Match by `s3_key` then `filename`. Updates alt_text/caption/license/copyright. Tags lowercased, `syncWithoutDetaching` (never removed). Empty fields skipped. Invalid license/dates rejected.
+- **Trash** (editor + admin) — soft delete keeps S3. Restore returns to active. Force delete (admin only) clears S3 (original + thumbnail + resizes) + DB.
+- **Bulk move** (admin + `maintenance_mode`) — pick destination → S3 copy+delete for original + thumbnail + resize variants → DB keys updated. Destination must be within configured S3 folders.
+- **Bulk permanent delete** (admin + `maintenance_mode`) — confirm → S3 + DB cleared.
+- **Bulk trash** (editor + admin) — soft-delete; S3 preserved.
+- **Bulk download** (all auth) — fetch from S3 → ZIP → stream. Limits: 100 files / 500MB. Duplicate filenames disambiguated `_1`, `_2`. Failed S3 fetches skipped.
+- **S3 integrity** (admin) — `assets:verify-integrity` dispatches `VerifyAssetIntegrity` jobs → each calls `getObjectMetadata()` → sets `s3_missing_at` if missing, clears if found. System page card with AJAX refresh. Index supports `?missing=1`.
 
 ## Integration & Deployment
 
-**CSV Export**: All asset fields, user info, separate user/AI tag columns, URLs. Filterable by type and tags.
-
-**RTE Integration**: See `RTE_INTEGRATION.md`. Public metadata API: `GET /api/assets/meta?url={url}` (no auth).
-
-**Deployment**: See `DEPLOYMENT.md`. Production queue: use supervisor (`deploy/supervisor/orca-queue-worker.conf`). Do not run `queue:work` from web UI.
+- **CSV export** — all asset fields, user info, separated user/AI/reference tag columns, URLs. Filterable by type and tags.
+- **RTE integration** — see `RTE_INTEGRATION.md`. Public metadata API: `GET /api/assets/meta?url={url}` (no auth).
+- **Deployment** — see `DEPLOYMENT.md`. Production queue: supervisor (`deploy/supervisor/orca-queue-worker.conf`). Do not run `queue:work` from the web UI.

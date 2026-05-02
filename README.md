@@ -358,7 +358,10 @@ orca-dam/
 │   │   │   ├── PasskeyLoginController.php  # Passkey assertion (guest)
 │   │   │   └── TwoFactorAuthController.php # 2FA setup & verification
 │   │   ├── ApiDocsController.php      # OpenAPI docs page
-│   │   ├── AssetController.php        # Asset CRUD & management
+│   │   ├── AssetBulkController.php    # Bulk tag/move/delete/download
+│   │   ├── AssetController.php        # Asset CRUD, tags, embed
+│   │   ├── AssetReplaceController.php # Replace, thumbnail, AI tag, download
+│   │   ├── AssetTrashController.php   # Soft-delete, trash, restore
 │   │   ├── ChunkedUploadController.php# Large file uploads
 │   │   ├── DashboardController.php    # Dashboard stats
 │   │   ├── DiscoverController.php     # S3 discovery (admin)
@@ -393,6 +396,7 @@ orca-dam/
 │   │   └── UserPolicy.php             # User management authorization
 │   └── Services/
 │       ├── AssetProcessingService.php # Shared asset processing logic
+│       ├── AssetSearchParser.php      # Search operator parser (+/-/quoted)
 │       ├── ChunkedUploadService.php   # S3 multipart uploads
 │       ├── CsvExportService.php       # CSV export formatting
 │       ├── CsvImportService.php       # CSV parsing and import logic
