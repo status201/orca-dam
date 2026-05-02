@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AssetSearchParser;
 use App\Services\S3Service;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -446,175 +447,11 @@ class Asset extends Model
     }
 
     /**
-     * Strip known URL prefixes from a search term so it matches S3 keys.
-     */
-    private static function normalizeSearchTerm(string $search): string
-    {
-        // Strip the S3 bucket URL prefix (e.g. "https://bucket.s3.amazonaws.com/")
-        $s3Url = rtrim(config('filesystems.disks.s3.url'), '/').'/';
-        if (str_starts_with($search, $s3Url)) {
-            return substr($search, strlen($s3Url));
-        }
-
-        // Strip the custom domain prefix if configured (e.g. "https://cdn.example.com/")
-        $customDomain = Setting::get('custom_domain', '');
-        if ($customDomain !== '' && $customDomain !== null) {
-            $customUrl = rtrim($customDomain, '/').'/';
-            if (str_starts_with($search, $customUrl)) {
-                return substr($search, strlen($customUrl));
-            }
-        }
-
-        return $search;
-    }
-
-    /**
-     * Parse search string into regular, required (+), and excluded (-) terms.
-     */
-    private static function parseSearchTerms(string $search): array
-    {
-        $terms = ['regular' => [], 'required' => [], 'excluded' => []];
-
-        // Extract quoted phrases first: +"...", -"...", "..."
-        $remaining = preg_replace_callback('/([+-])?"([^"]+)"/', function ($m) use (&$terms) {
-            $phrase = trim($m[2]);
-            if ($phrase === '') {
-                return '';
-            }
-
-            if ($m[1] === '+') {
-                $terms['required'][] = $phrase;
-            } elseif ($m[1] === '-') {
-                $terms['excluded'][] = $phrase;
-            } else {
-                $terms['required'][] = $phrase;
-            }
-
-            return '';
-        }, $search);
-
-        // Then split remaining unquoted tokens
-        foreach (preg_split('/\s+/', $remaining, -1, PREG_SPLIT_NO_EMPTY) as $token) {
-            if (str_starts_with($token, '+') && strlen($token) > 1) {
-                $terms['required'][] = substr($token, 1);
-            } elseif (str_starts_with($token, '-') && strlen($token) > 1) {
-                $terms['excluded'][] = substr($token, 1);
-            } elseif ($token !== '+' && $token !== '-') {
-                $terms['regular'][] = $token;
-            }
-        }
-
-        return $terms;
-    }
-
-    /**
-     * Check if the current DB driver supports FULLTEXT search.
-     */
-    private static function useFulltext(): bool
-    {
-        return in_array(DB::getDriverName(), ['mysql', 'mariadb']);
-    }
-
-    /**
-     * Escape a term for use in FULLTEXT BOOLEAN MODE.
-     *
-     * Wraps the term in double quotes (phrase matching) to prevent FULLTEXT
-     * operators (+, -, *, ~, etc.) from being interpreted. Strips any existing
-     * double quotes from the term to avoid breaking the quoting.
-     */
-    private static function escapeFulltextTerm(string $term): string
-    {
-        return '"'.str_replace('"', '', $term).'"';
-    }
-
-    /**
-     * Add OR search condition across all searchable fields for a single term.
-     *
-     * Uses FULLTEXT index on (alt_text, caption) for MySQL/MariaDB, falls back
-     * to LIKE for SQLite (used in tests).
-     */
-    private static function addSearchCondition($query, string $term): void
-    {
-        $query->where('filename', 'like', "%{$term}%")
-            ->orWhere('s3_key', 'like', "%{$term}%");
-
-        if (self::useFulltext()) {
-            $query->orWhereRaw(
-                'MATCH(alt_text, caption) AGAINST(? IN BOOLEAN MODE)',
-                [self::escapeFulltextTerm($term)]
-            );
-        } else {
-            $query->orWhere('alt_text', 'like', "%{$term}%")
-                ->orWhere('caption', 'like', "%{$term}%");
-        }
-
-        $query->orWhereHas('tags', function ($tagQuery) use ($term) {
-            $tagQuery->where('name', 'like', "%{$term}%");
-        });
-    }
-
-    /**
-     * Add exclusion condition: asset must NOT match term in any field.
-     */
-    private static function addExcludeCondition($query, string $term): void
-    {
-        $query->where('filename', 'not like', "%{$term}%")
-            ->where('s3_key', 'not like', "%{$term}%")
-            ->where(function ($q) use ($term) {
-                $q->whereNull('alt_text')->orWhere('alt_text', 'not like', "%{$term}%");
-            })
-            ->where(function ($q) use ($term) {
-                $q->whereNull('caption')->orWhere('caption', 'not like', "%{$term}%");
-            })
-            ->whereDoesntHave('tags', function ($tagQuery) use ($term) {
-                $tagQuery->where('name', 'like', "%{$term}%");
-            });
-    }
-
-    /**
-     * Scope: Search assets
+     * Scope: Search assets. Operator parsing lives in AssetSearchParser.
      */
     public function scopeSearch($query, ?string $search)
     {
-        if (! $search) {
-            return $query;
-        }
-
-        $normalized = self::normalizeSearchTerm($search);
-
-        // If the search was a URL (normalizeSearchTerm changed it), treat as single literal term
-        if ($normalized !== $search) {
-            return $query->where(function ($q) use ($normalized) {
-                self::addSearchCondition($q, $normalized);
-            });
-        }
-
-        $terms = self::parseSearchTerms($normalized);
-
-        // Regular terms: at least one must match (OR within a single where group)
-        if (! empty($terms['regular'])) {
-            $query->where(function ($q) use ($terms) {
-                foreach ($terms['regular'] as $term) {
-                    $q->orWhere(function ($sub) use ($term) {
-                        self::addSearchCondition($sub, $term);
-                    });
-                }
-            });
-        }
-
-        // Required terms: each must match in at least one field (AND)
-        foreach ($terms['required'] as $term) {
-            $query->where(function ($q) use ($term) {
-                self::addSearchCondition($q, $term);
-            });
-        }
-
-        // Excluded terms: must NOT match in any field
-        foreach ($terms['excluded'] as $term) {
-            $query->where(function ($q) use ($term) {
-                self::addExcludeCondition($q, $term);
-            });
-        }
+        AssetSearchParser::apply($query, $search);
 
         return $query;
     }

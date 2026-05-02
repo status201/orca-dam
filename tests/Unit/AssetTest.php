@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\AssetSearchParser;
 use App\Services\S3Service;
 use Carbon\Carbon;
 
@@ -533,8 +534,8 @@ test('asset search require works on caption', function () {
 });
 
 test('asset search escapeFulltextTerm strips double quotes', function () {
-    // Use reflection to test the private helper
-    $method = new ReflectionMethod(Asset::class, 'escapeFulltextTerm');
+    // The helper moved to AssetSearchParser; reflection still reaches it.
+    $method = new ReflectionMethod(AssetSearchParser::class, 'escapeFulltextTerm');
 
     expect($method->invoke(null, 'hello'))->toBe('"hello"');
     expect($method->invoke(null, 'hello world'))->toBe('"hello world"');
