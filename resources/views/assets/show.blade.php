@@ -285,12 +285,12 @@
                             @foreach($asset->children as $child)
                                 <li class="relative">
                                     <a href="{{ route('assets.show', $child) }}"
-                                       class="flex items-center gap-3 p-2 pr-10 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
+                                       class="flex items-start gap-3 p-2 pr-10 h-full rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
                                         @if($child->thumbnail_url)
-                                            <img src="{{ $child->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
+                                            <img src="{{ $child->thumbnail_url }}" alt="" class="rounded shrink-0" style="width: 150px; height: auto;">
                                         @else
-                                            <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100">
-                                                <x-file-type-icon :asset="$child" class="w-5 h-5" />
+                                            <span class="flex items-center justify-center rounded bg-gray-100 shrink-0" style="width: 150px; height: 150px;">
+                                                <x-file-type-icon :asset="$child" class="w-12 h-12" />
                                             </span>
                                         @endif
                                         <span class="min-w-0 flex-1">
