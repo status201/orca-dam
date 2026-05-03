@@ -3,7 +3,7 @@ import forms from '@tailwindcss/forms';
 import plugin from 'tailwindcss/plugin';
 /* These Tailwind colors have a grayscale effect for our ORCA theme */
 const GRAYSCALE_HUES = [
-    'blue', 'green', 'purple', 'red', 'pink',
+    'blue', 'emerald', 'green', 'purple', 'red', 'pink',
     'teal', 'indigo', 'yellow', 'amber', 'orange', 'cyan',
 ];
 const GRAYSCALE_BG_SHADES = ['500', '600', '700', '800'];

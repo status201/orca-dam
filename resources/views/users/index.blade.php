@@ -94,7 +94,7 @@
                                 : __('Never used');
                         @endphp
                         <span class="inline-flex items-center gap-1 text-sm text-gray-700" title="{{ $passkeyTitle }}">
-                            <i class="fas fa-key text-green-600"></i>
+                            <i class="attention fas fa-key text-green-600"></i>
                             {{ $user->web_authn_credentials_count }}
                         </span>
                     @else
@@ -118,14 +118,17 @@
                     @endif
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <a href="{{ route('users.edit', $user) }}" class="text-orca-black hover:text-orca-black-hover mr-3">
-                        <i class="fas fa-edit"></i> {{ __('Edit') }}
+                    <a href="{{ route('users.edit', $user) }}"
+                       title="{{ __('Edit') }}"
+                       class="text-orca-black hover:text-orca-black-hover pr-2 mr-3">
+                        <i class="fas fa-edit"></i>
                     </a>
                     @if($user->id !== auth()->id())
                         <button type="button"
-                            class="warning text-red-600 hover:text-red-900"
+                            class="warning text-red-600 hover:text-red-900 pr-2"
+                            title="{{ __('Delete') }}"
                             @click="confirmDelete({{ $user->id }}, '{{ addslashes($user->name) }}', {{ $user->assets_count }})">
-                            <i class="fas fa-trash"></i> {{ __('Delete') }}
+                            <i class="fas fa-trash"></i>
                         </button>
                     @endif
                 </td>

@@ -1,4 +1,4 @@
-export function featureTour(isAdmin) {
+export function featureTour(isAdmin, showPasskeyPromo) {
     const pageData = window.__pageData || {};
     const routes = pageData.routes || {};
     const t = pageData.translations || {};
@@ -11,6 +11,15 @@ export function featureTour(isAdmin) {
         isPlaying: true,
         autoPlayInterval: null,
         features: [
+            ...(showPasskeyPromo ? [{
+                icon: 'fas fa-key',
+                bgColor: 'bg-emerald-500',
+                btnColor: 'bg-emerald-600 hover:bg-emerald-700',
+                title: t.addPasskey,
+                description: t.addPasskeyDesc,
+                link: routes.profileEdit + '#passkeys-section',
+                btnText: t.addPasskeyBtn
+            }] : []),
             {
                 icon: 'fas fa-cloud-upload-alt',
                 bgColor: 'bg-blue-500',

@@ -25,7 +25,7 @@
                     @endif
 
                     @if (auth()->user()->canEnablePasskeys())
-                        <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                        <div id="passkeys-section" class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                             @include('profile.partials.passkeys-form')
                         </div>
                     @endif

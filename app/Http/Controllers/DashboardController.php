@@ -38,6 +38,7 @@ class DashboardController extends Controller
         // Get user role
         $user = Auth::user();
         $isAdmin = $user->isAdmin();
+        $showPasskeyPromo = $user->canEnablePasskeys() && ! $user->hasPasskeysEnabled();
 
         // Editor-only stats
         if (! $isAdmin) {
@@ -50,7 +51,7 @@ class DashboardController extends Controller
             $stats['items_per_page_is_default'] = $user->getPreference('items_per_page') === null;
         }
 
-        return view('dashboard', compact('stats', 'isAdmin'));
+        return view('dashboard', compact('stats', 'isAdmin', 'showPasskeyPromo'));
     }
 
     private function formatBytes($bytes, $precision = 2)

@@ -92,7 +92,7 @@
                 <div class="flex flex-col">
                     <!-- <h2 class="text-2xl font-bold text-gray-900 mb-4">Feature Tour</h2>-->
 
-                    <div x-data="featureTour(@js($isAdmin))" class="bg-white overflow-hidden shadow-sm sm:rounded-lg flex-1 flex flex-col">
+                    <div x-data="featureTour(@js($isAdmin), @js($showPasskeyPromo))" class="bg-white overflow-hidden shadow-sm sm:rounded-lg flex-1 flex flex-col">
                         <div class="p-6 flex-1 flex flex-col justify-center">
                             <!-- Slideshow -->
                             <div class="relative min-h-[320px] flex items-center bg-white">
@@ -191,6 +191,9 @@
             importIndex: '{{ route('import.index') }}'
         },
         translations: {
+            addPasskey: @js(__('Sign in with a Passkey')),
+            addPasskeyDesc: @js(__('Skip passwords and two-factor codes. Use your fingerprint, face, or device PIN to sign in — phishing-resistant and faster.')),
+            addPasskeyBtn: @js(__('Add Passkey')),
             uploadAssets: @js(__('Upload Assets')),
             uploadAssetsDesc: @js(__('Upload files up to 500MB with drag & drop. Large files are automatically chunked for reliable uploads.')),
             uploadNow: @js(__('Upload Now')),

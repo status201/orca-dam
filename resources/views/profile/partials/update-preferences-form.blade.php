@@ -73,7 +73,7 @@
                 <option value="force_dark">{{ __('Force Dark Mode') }}</option>
                 <option value="force_light">{{ __('Force Light Mode') }}</option>
             </select>
-            <p class="mt-1 text-xs text-gray-500">{{ __('Experimental dark/light mode override. CSS styling not yet complete.') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ __('Experimental dark/light mode override.') }}</p>
             <p x-show="errors.dark_mode" x-text="errors.dark_mode" class="mt-2 text-sm text-red-600"></p>
         </div>
 
