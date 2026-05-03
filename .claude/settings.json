@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-test-config-clear.cjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
