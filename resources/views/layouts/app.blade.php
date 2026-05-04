@@ -6,6 +6,11 @@
         if ($dm === 'force_dark') $darkModeClass = 'dark-mode';
         elseif ($dm === 'force_light') $darkModeClass = 'light-mode';
     }
+    $envBg = match (app()->environment()) {
+        'local'   => 'bg-sky-50',
+        'staging' => 'bg-amber-50',
+        default   => 'bg-gray-100',
+    };
 @endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ $darkModeClass }}">
     <head>
@@ -39,7 +44,7 @@
         @stack('styles')
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100 flex flex-col">
+        <div class="min-h-screen {{ $envBg }} flex flex-col">
             @include('layouts.navigation')
             <div class="h-16 shrink-0"></div>
 

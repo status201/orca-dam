@@ -34,6 +34,19 @@
                     </a>
                 </div>
 
+                @unless(app()->environment('production'))
+                    @php
+                        $envPill = match (app()->environment()) {
+                            'local'   => 'bg-sky-100 text-sky-800 ring-sky-200',
+                            'staging' => 'bg-amber-100 text-amber-800 ring-amber-200',
+                            default   => 'bg-gray-100 text-gray-700 ring-gray-200',
+                        };
+                    @endphp
+                    <span class="ml-3 self-center inline-flex items-center px-2 py-0.5 text-xs font-semibold uppercase tracking-wide rounded ring-1 ring-inset {{ $envPill }}">
+                        {{ app()->environment() }}
+                    </span>
+                @endunless
+
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 md:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
