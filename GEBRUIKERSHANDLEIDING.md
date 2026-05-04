@@ -294,7 +294,7 @@ ORCA ondersteunt drie inlogfactoren — gebruik ze alle drie:
 
 - **Wachtwoord** — je primaire credential
 - **Tweefactor-authenticatie (2FA)** — een 6-cijferige code uit een authenticator-app (Google Authenticator, 1Password, Authy). Inschakelen via **Profiel → Beveiliging → Tweefactor-authenticatie inschakelen**. Bewaar de recovery codes goed — je hebt ze nodig als je je telefoon kwijtraakt.
-- **Passkeys** (aanbevolen) — phishing-bestendig alternatief dat de ingebouwde ontgrendeling van je apparaat gebruikt (Touch ID, Face ID, Windows Hello, schermvergrendeling) of een hardware-sleutel (YubiKey e.d.).
+- **Passkeys** (aanbevolen) — phishing-bestendig alternatief dat de ingebouwde ontgrendeling van je apparaat gebruikt (Touch ID, Face ID, Windows Hello, schermvergrendeling), een hardware-sleutel (YubiKey e.d.) of wachtwoordmanager (1Password e.d.)
 
 ### Passkeys gebruiken
 

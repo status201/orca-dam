@@ -294,7 +294,7 @@ ORCA supports three sign-in factors and you're encouraged to use them all:
 
 - **Password** — your primary credential
 - **Two-factor authentication (2FA)** — a 6-digit code from an authenticator app (Google Authenticator, 1Password, Authy). Enable it from **Profile → Security → Enable Two-Factor Authentication**. Save the recovery codes — you need them if you lose your phone.
-- **Passkeys** (recommended) — a phishing-resistant alternative that uses your device's built-in unlock (Touch ID, Face ID, Windows Hello, screen lock) or a hardware security key (YubiKey, etc.).
+- **Passkeys** (recommended) — a phishing-resistant alternative that uses your device's built-in unlock (Touch ID, Face ID, Windows Hello, screen lock), a hardware security key (YubiKey, etc.) or password manager (1Password, etc.)
 
 ### Using passkeys
 
