@@ -1,12 +1,13 @@
-<x-app-layout title="Profile">
-    <x-slot name="header">
-        <h2 class="text-3xl font-bold text-gray-900">
-            {{ __('Profile') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
+@section('title', __('Profile'))
+
+@section('content')
     <div class="pb-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="mb-6">
+                <h1 class="text-3xl font-bold text-gray-900">{{ __('Profile') }}</h1>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Left Column -->
                 <div class="space-y-6">
@@ -44,4 +45,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+@endsection

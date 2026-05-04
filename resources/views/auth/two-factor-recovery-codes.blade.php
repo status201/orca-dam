@@ -1,12 +1,13 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Recovery Codes') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
+@section('title', __('Recovery Codes'))
+
+@section('content')
     <div class="py-12">
         <div class="max-w-xl mx-auto sm:px-6 lg:px-8">
+            <div class="mb-6">
+                <h1 class="text-3xl font-bold text-gray-900">{{ __('Recovery Codes') }}</h1>
+            </div>
             @if (session('status'))
                 <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <p class="text-sm text-green-700">{{ session('status') }}</p>
@@ -93,4 +94,4 @@
             });
         }
     </script>
-</x-app-layout>
+@endsection

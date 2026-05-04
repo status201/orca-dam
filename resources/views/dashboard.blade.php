@@ -1,4 +1,8 @@
-<x-app-layout title="{{ __('Dashboard') }}">
+@extends('layouts.app')
+
+@section('title', __('Dashboard'))
+
+@section('content')
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <!-- Welcome Section -->
@@ -174,7 +178,9 @@
         </div>
     </div>
 
-    @push('scripts')
+@endsection
+
+@push('scripts')
     <script>
     window.__pageData = {
         routes: {
@@ -234,4 +240,3 @@
     };
     </script>
     @endpush
-</x-app-layout>
