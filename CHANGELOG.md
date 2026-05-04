@@ -5,7 +5,7 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ---
 
-## [Unreleased]
+## [v1.3.0] — 2026-05 — Belly Roll
 
 ### Security
 - **API role can no longer delete assets.** `AssetApiController::destroy` now routes through the policy (`$this->authorize('delete', $asset)`) instead of the previous inline `! isAdmin() && user_id !== Auth::id()` check, which had let API tokens delete their own assets despite the documented "api: no delete" rule.
