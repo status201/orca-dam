@@ -376,13 +376,14 @@ orca-dam/
 │   │   ├── TokenController.php        # API token management (admin)
 │   │   └── UserController.php         # User management (admin)
 │   ├── Http/Middleware/
-│   │   ├── AllowEmbedding.php        # CSP frame-ancestors for iframe embedding
+│   │   ├── AllowEmbedding.php         # CSP frame-ancestors for iframe embedding
 │   │   ├── AuthenticateMultiple.php   # Sanctum + JWT dual auth
 │   │   └── SetLocale.php              # Locale resolution middleware
 │   ├── Jobs/
 │   │   ├── GenerateAiTags.php         # AI tagging background job
 │   │   ├── ProcessDiscoveredAsset.php # Discovery import job
-│   │   ├── RegenerateResizedImage.php # Bulk image resize regeneration
+│   │   ├── RegenerateResizedImage.php # Bulk image resize regeneration RunTestSuiteJob.php
+│   │   ├── RunTestSuiteJob.php        # Pest Test Runner job
 │   │   └── VerifyAssetIntegrity.php   # S3 object existence check job
 │   ├── Models/
 │   │   ├── Asset.php
