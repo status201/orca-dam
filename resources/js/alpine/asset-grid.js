@@ -12,6 +12,7 @@ export function assetGrid() {
         userName: config.userName || '',
         selectedTags: config.selectedTags || [],
         initialTags: config.initialTags || [],
+        initialIds: config.initialIds || [],
         showTagFilter: false,
         viewMode: localStorage.getItem('orcaAssetViewMode') || 'grid',
         fitMode: localStorage.getItem('orcaAssetFitMode') || 'cover',
@@ -115,9 +116,17 @@ export function assetGrid() {
             if (this.selectedTags.length > 0) {
                 this.selectedTags.forEach(tag => params.append('tags[]', tag));
             }
+            if (this.initialIds && this.initialIds.length > 0) {
+                this.initialIds.forEach(id => params.append('ids[]', id));
+            }
 
             this.navigating = true;
             window.location.href = config.indexRoute + (params.toString() ? '?' + params.toString() : '');
+        },
+
+        clearIdsFilter() {
+            this.initialIds = [];
+            this.applyFilters();
         },
 
         copyUrl(url) {

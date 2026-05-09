@@ -5,6 +5,20 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Duplicate upload results panel.** When an upload batch hits etag collisions, each file row shows an outcome pill (Uploaded / Duplicaat / Failed) and a Duplicates panel surfaces below the list with thumbnails, folder, size, "View existing", "Copy URL", multi-select bulk-copy, "Reveal in library", and a Restore-from-trash action when the existing asset is soft-deleted (admin/editor only). Auto-redirect now only fires on a clean batch; duplicate / failure batches keep the user on the upload page until they explicitly continue. Direct and chunked 409 payloads are now identical (`DuplicateAssetException::formatDuplicate`).
+- **`?ids[]=` filter on the assets index** — bounded at 200, accepts repeated form or comma-separated, bypasses folder scoping. Surfaced as a chip in the active-filters bar and threaded through cycle navigation so prev/next works across an arbitrary asset set (used by the duplicates panel's "Reveal in library").
+- **`local` and `staging` env distinction** using pill and background.
+
+### Changed
+- Assets Show: Child assets display as large thumbnails
+
+### Fixed
+- deduplicate app layout (to app.blade.php)
+---
+
 ## [v1.3.0] — 2026-05 — Belly Roll
 
 ### Security

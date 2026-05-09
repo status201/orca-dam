@@ -10,6 +10,11 @@ export function assetUploader() {
         selectedFiles: [],
         uploading: false,
         uploadProgress: {},
+        // uploadResults[i] = { status: 'uploading'|'uploaded'|'duplicate'|'failed', payload?, error?, copied? }
+        uploadResults: {},
+        batchComplete: false,
+        // selectedDuplicates[i] = true when the user has ticked that duplicate row
+        selectedDuplicates: {},
         fileWarnings: {},
         filePreviews: {},
         fileThumbnails: {},
@@ -241,69 +246,242 @@ export function assetUploader() {
             if (this.selectedFiles.length === 0) return;
 
             this.uploading = true;
-            const duplicates = [];
+            this.batchComplete = false;
+            this.uploadResults = {};
+            this.selectedDuplicates = {};
 
-            try {
-                for (let i = 0; i < this.selectedFiles.length; i++) {
-                    const file = this.selectedFiles[i];
-                    this.uploadProgress[i] = 0;
+            for (let i = 0; i < this.selectedFiles.length; i++) {
+                const file = this.selectedFiles[i];
+                this.uploadProgress[i] = 0;
+                this.uploadResults[i] = { status: 'uploading' };
 
-                    let result;
-                    // Use chunked upload for large files
-                    if (file.size >= this.CHUNKED_THRESHOLD) {
-                        result = await this.uploadFileChunked(file, i);
-                    } else {
-                        result = await this.uploadFileDirect(file, i);
-                    }
+                try {
+                    const result = file.size >= this.CHUNKED_THRESHOLD
+                        ? await this.uploadFileChunked(file, i)
+                        : await this.uploadFileDirect(file, i);
 
                     if (result && result.duplicate) {
-                        duplicates.push(result.duplicate.filename);
-                    } else if (this.fileThumbnails[i]) {
-                        // Upload client-generated thumbnail (fire-and-forget)
-                        const assetId = result?.assets?.[0]?.id || result?.asset?.id;
-                        if (assetId) {
-                            this.uploadThumbnailForAsset(assetId, this.fileThumbnails[i]);
+                        this.uploadResults[i] = { status: 'duplicate', payload: result.duplicate };
+                    } else {
+                        this.uploadResults[i] = { status: 'uploaded', payload: result };
+                        if (this.fileThumbnails[i]) {
+                            const assetId = result?.assets?.[0]?.id || result?.asset?.id;
+                            if (assetId) {
+                                this.uploadThumbnailForAsset(assetId, this.fileThumbnails[i]);
+                            }
                         }
                     }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    this.uploadResults[i] = {
+                        status: 'failed',
+                        error: error.message || pageData.translations.uploadFailed,
+                    };
                 }
-
-                const successCount = this.selectedFiles.length - duplicates.length;
-                const duplicateNames = duplicates.join(', ');
-
-                if (duplicates.length === this.selectedFiles.length) {
-                    // All duplicates
-                    window.showToast(
-                        pageData.translations.skippedDuplicates
-                            .replace(':count', duplicates.length)
-                            .replace(':names', duplicateNames),
-                        'warning'
-                    );
-                    this.uploading = false;
-                } else if (duplicates.length > 0) {
-                    // Mixed: some succeeded, some duplicates
-                    window.showToast(
-                        pageData.translations.uploadedWithDuplicates
-                            .replace(':success', successCount)
-                            .replace(':count', duplicates.length)
-                            .replace(':names', duplicateNames),
-                        'warning'
-                    );
-                    setTimeout(() => {
-                        window.location.href = pageData.routes.assetsIndex + '?folder=' + encodeURIComponent(this.selectedFolder);
-                    }, 3000);
-                } else {
-                    // All success
-                    window.showToast(pageData.translations.allFilesUploaded);
-                    setTimeout(() => {
-                        window.location.href = pageData.routes.assetsIndex + '?folder=' + encodeURIComponent(this.selectedFolder);
-                    }, 1000);
-                }
-
-            } catch (error) {
-                console.error('Upload error:', error);
-                window.showToast(error.message || pageData.translations.uploadFailed, 'error');
-                this.uploading = false;
             }
+
+            this.batchComplete = true;
+            this.uploading = false;
+
+            const counts = this.outcomeCounts();
+            const summary = pageData.translations.uploadSummary
+                .replace(':uploaded', counts.uploaded)
+                .replace(':duplicates', counts.duplicate)
+                .replace(':failed', counts.failed);
+            const level = counts.failed > 0 ? 'error' : counts.duplicate > 0 ? 'warning' : 'success';
+            window.showToast(summary, level);
+
+            // Auto-redirect only when every file uploaded cleanly. Any duplicate
+            // or failure keeps the user on the page so they can act on the panel.
+            if (counts.duplicate === 0 && counts.failed === 0) {
+                setTimeout(() => {
+                    window.location.href = pageData.routes.assetsIndex + '?folder=' + encodeURIComponent(this.selectedFolder);
+                }, 1000);
+            }
+        },
+
+        outcomeCounts() {
+            const counts = { uploaded: 0, duplicate: 0, failed: 0 };
+            Object.values(this.uploadResults).forEach(r => {
+                if (counts[r.status] !== undefined) counts[r.status]++;
+            });
+            return counts;
+        },
+
+        duplicateEntries() {
+            return Object.entries(this.uploadResults)
+                .filter(([, r]) => r.status === 'duplicate')
+                .map(([index, r]) => ({ index: parseInt(index), ...r.payload }));
+        },
+
+        failedEntries() {
+            return Object.entries(this.uploadResults)
+                .filter(([, r]) => r.status === 'failed')
+                .map(([index, r]) => ({ index: parseInt(index), error: r.error }));
+        },
+
+        toggleAllDuplicates() {
+            const dupes = this.duplicateEntries();
+            const allSelected = dupes.every(d => this.selectedDuplicates[d.index]);
+            if (allSelected) {
+                dupes.forEach(d => { delete this.selectedDuplicates[d.index]; });
+            } else {
+                dupes.forEach(d => { this.selectedDuplicates[d.index] = true; });
+            }
+        },
+
+        selectedDuplicateCount() {
+            return Object.values(this.selectedDuplicates).filter(Boolean).length;
+        },
+
+        bulkCopyLabel() {
+            const selected = this.selectedDuplicateCount();
+            const count = selected > 0 ? selected : this.duplicateEntries().length;
+            return (pageData.translations.copyCountUrls || 'Copy :count URL(s)').replace(':count', count);
+        },
+
+        // Append the full set of non-trashed duplicate ids to the show URL so
+        // the asset show page activates its prev/next cycle nav across the batch.
+        duplicateShowUrl(dupe) {
+            if (!dupe.show_url) return null;
+            const ids = this.viewableDuplicateIds();
+            if (ids.length <= 1) return dupe.show_url;
+            return `${dupe.show_url}?${this.buildIdsContextQuery(ids)}`;
+        },
+
+        async copyUrl(index, url) {
+            try {
+                await navigator.clipboard.writeText(url);
+                // Per-row "Copied" affordance — auto-clears after a couple seconds.
+                this.uploadResults[index] = { ...this.uploadResults[index], copied: true };
+                setTimeout(() => {
+                    if (this.uploadResults[index]) {
+                        this.uploadResults[index] = { ...this.uploadResults[index], copied: false };
+                    }
+                }, 2000);
+                window.showToast(pageData.translations.urlCopied, 'success');
+            } catch (e) {
+                window.showToast(pageData.translations.failedToCopy || 'Failed to copy', 'error');
+            }
+        },
+
+        async copySelectedUrls() {
+            const dupes = this.duplicateEntries();
+            const selected = this.selectedDuplicateCount();
+            // If nothing selected, default to copying every duplicate's URL.
+            const target = selected > 0
+                ? dupes.filter(d => this.selectedDuplicates[d.index])
+                : dupes;
+            const urls = target.map(d => d.public_url).filter(Boolean);
+            if (urls.length === 0) return;
+
+            try {
+                await navigator.clipboard.writeText(urls.join('\n'));
+                window.showToast(
+                    pageData.translations.urlsCopied.replace(':count', urls.length),
+                    'success'
+                );
+            } catch (e) {
+                window.showToast(pageData.translations.failedToCopy || 'Failed to copy', 'error');
+            }
+        },
+
+        // Reachable (non-trashed) duplicates with a server-issued asset id.
+        viewableDuplicateIds(filterFn = null) {
+            return this.duplicateEntries()
+                .filter(d => !d.is_trashed && d.existing_asset_id && (!filterFn || filterFn(d)))
+                .map(d => d.existing_asset_id);
+        },
+
+        // Build the `?ids[]=…&folder=` query string used by both Reveal-in-library
+        // and the per-row View-existing link to activate cycle nav across the batch.
+        // Empty folder => "all folders", so duplicates outside the user's home folder
+        // remain visible.
+        buildIdsContextQuery(ids) {
+            const params = new URLSearchParams();
+            ids.forEach(id => params.append('ids[]', id));
+            params.set('folder', '');
+            return params.toString();
+        },
+
+        revealDuplicatesInLibrary() {
+            const selected = this.selectedDuplicateCount();
+            const ids = this.viewableDuplicateIds(
+                selected > 0 ? d => this.selectedDuplicates[d.index] : null
+            );
+            if (ids.length === 0) return;
+            window.open(`${pageData.routes.assetsIndex}?${this.buildIdsContextQuery(ids)}`, '_blank');
+        },
+
+        async restoreDuplicate(index) {
+            const result = this.uploadResults[index];
+            if (!result || result.status !== 'duplicate' || !result.payload?.can_restore) return;
+
+            const assetId = result.payload.existing_asset_id;
+            const url = pageData.routes.assetsRestore.replace(':id', assetId);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(pageData.translations.restoreFailed);
+                }
+
+                // Mutate the row in place: clear trash flags, surface a working show URL.
+                const updatedPayload = {
+                    ...result.payload,
+                    is_trashed: false,
+                    can_restore: false,
+                    show_url: pageData.routes.assetsShow.replace(':id', assetId),
+                };
+                this.uploadResults[index] = { ...result, payload: updatedPayload };
+                window.showToast(pageData.translations.restored, 'success');
+            } catch (error) {
+                console.error('Restore error:', error);
+                window.showToast(error.message || pageData.translations.restoreFailed, 'error');
+            }
+        },
+
+        async retryFailed(index) {
+            const file = this.selectedFiles[index];
+            if (!file) return;
+            this.uploadProgress[index] = 0;
+            this.uploadResults[index] = { status: 'uploading' };
+            try {
+                const result = file.size >= this.CHUNKED_THRESHOLD
+                    ? await this.uploadFileChunked(file, index)
+                    : await this.uploadFileDirect(file, index);
+                if (result && result.duplicate) {
+                    this.uploadResults[index] = { status: 'duplicate', payload: result.duplicate };
+                } else {
+                    this.uploadResults[index] = { status: 'uploaded', payload: result };
+                }
+            } catch (error) {
+                this.uploadResults[index] = {
+                    status: 'failed',
+                    error: error.message || pageData.translations.uploadFailed,
+                };
+            }
+        },
+
+        goToLibrary() {
+            window.location.href = pageData.routes.assetsIndex + '?folder=' + encodeURIComponent(this.selectedFolder);
+        },
+
+        clearAll() {
+            this.revokeAllPreviews();
+            this.selectedFiles = [];
+            this.uploadProgress = {};
+            this.uploadResults = {};
+            this.selectedDuplicates = {};
+            this.batchComplete = false;
+            this.fileWarnings = {};
         },
 
         async uploadFileDirect(file, index) {
@@ -343,7 +521,14 @@ export function assetUploader() {
                             resolve();
                         }
                     } else if (xhr.status === 409) {
-                        resolve({ duplicate: { filename: file.name } });
+                        let payload = { filename: file.name };
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (data.duplicates && data.duplicates.length > 0) {
+                                payload = data.duplicates[0];
+                            }
+                        } catch (e) { /* fall back to filename-only payload */ }
+                        resolve({ duplicate: payload });
                     } else {
                         reject(new Error(this.parseErrorMessage(xhr)));
                     }
@@ -469,7 +654,14 @@ export function assetUploader() {
             });
 
             if (response.status === 409) {
-                return { duplicate: { filename } };
+                let payload = { filename };
+                try {
+                    const data = await response.json();
+                    if (data.duplicates && data.duplicates.length > 0) {
+                        payload = data.duplicates[0];
+                    }
+                } catch (e) { /* fall back to filename-only payload */ }
+                return { duplicate: payload };
             }
 
             if (!response.ok) {

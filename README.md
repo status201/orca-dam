@@ -26,7 +26,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 📥 Bulk metadata import from CSV (paste or upload)
 - 🔗 Easy URL copying for external integration
 - 🔎 Discover unmapped S3 objects
-- 🛡️ **Duplicate prevention** (etag-based deduplication on upload)
+- 🛡️ **Duplicate prevention** with actionable results panel — etag-based detection, per-row status pills, and an inline Duplicates panel showing thumbnails, "View existing", "Copy URL", multi-select bulk-copy, "Reveal in library", and one-click restore for trashed duplicates
 - 📎 **Keep original filename** option during upload
 - 🏷️ **Tag attribution** — shows who last assigned a tag (User or AI)
 - 🗑️ Trash & restore system with soft delete (keeps S3 objects)

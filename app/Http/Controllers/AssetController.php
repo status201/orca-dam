@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DuplicateAssetException;
 use App\Http\Requests\StoreAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
@@ -26,7 +27,7 @@ class AssetController extends Controller
      * whether the show page was reached "in context" (from a filtered index)
      * so we can render prev/next cycle navigation.
      */
-    private const CONTEXT_KEYS = ['search', 'tags', 'type', 'folder', 'user', 'missing', 'sort', 'per_page', 'page'];
+    private const CONTEXT_KEYS = ['search', 'tags', 'type', 'folder', 'user', 'missing', 'ids', 'sort', 'per_page', 'page'];
 
     private const ALLOWED_PER_PAGE = [12, 24, 36, 48, 60, 72, 96];
 
@@ -88,7 +89,9 @@ class AssetController extends Controller
 
         $missingCount = Cache::remember('assets:missing_count', 300, fn () => Asset::missing()->count());
 
-        return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount', 'filterUser');
+        $activeIds = $this->parseIdsParam($request->input('ids')) ?? [];
+
+        return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount', 'filterUser', 'activeIds');
     }
 
     /**
@@ -98,6 +101,14 @@ class AssetController extends Controller
     private function buildFilteredAssetQuery(Request $request): Builder
     {
         $query = Asset::query();
+
+        // Explicit ids filter (e.g. from upload duplicates panel "Reveal in library").
+        // When present, bypass the implicit home-folder restriction so all listed
+        // assets are visible regardless of which folder they live in.
+        $explicitIds = $this->parseIdsParam($request->input('ids'));
+        if ($explicitIds !== null) {
+            $query->whereIn('id', $explicitIds);
+        }
 
         if ($search = $request->input('search')) {
             $query->search($search);
@@ -112,9 +123,10 @@ class AssetController extends Controller
         }
 
         // Folder filter: URL param > user home folder. Empty string means "all folders".
+        // When ids[] is given, callers want exactly those assets — skip folder scoping.
         $userHomeFolder = Auth::user()->getHomeFolder();
         $folder = $request->input('folder', $userHomeFolder);
-        if ($folder !== '') {
+        if ($folder !== '' && $explicitIds === null) {
             $query->inFolder($folder);
         }
 
@@ -131,6 +143,31 @@ class AssetController extends Controller
         $query->applySort($request->input('sort', 'date_desc'));
 
         return $query;
+    }
+
+    /**
+     * Parse the `ids` query parameter into a bounded list of positive integers.
+     * Accepts both `ids[]=1&ids[]=2` and `ids=1,2,3` forms. Caps at 200 to
+     * keep the WHERE IN clause and URL length sane. Returns null when absent
+     * or empty so callers can distinguish "no filter" from "matched nothing".
+     */
+    private function parseIdsParam(mixed $raw): ?array
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        $values = is_array($raw) ? $raw : explode(',', (string) $raw);
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $values),
+            fn ($id) => $id > 0,
+        )));
+
+        if (empty($ids)) {
+            return null;
+        }
+
+        return array_slice($ids, 0, 200);
     }
 
     /**
@@ -191,11 +228,7 @@ class AssetController extends Controller
                                 'etag' => $fileData['etag'],
                             ]);
 
-                            $duplicates[] = [
-                                'filename' => $fileData['filename'],
-                                'existing_asset_id' => $existing->id,
-                                'existing_asset_url' => $existing->trashed() ? null : route('assets.show', $existing),
-                            ];
+                            $duplicates[] = DuplicateAssetException::formatDuplicate($existing, $fileData['filename']);
 
                             continue;
                         }
@@ -348,9 +381,19 @@ class AssetController extends Controller
     {
         $context = [];
         foreach (self::CONTEXT_KEYS as $key) {
-            if ($request->has($key) && $request->input($key) !== '' && $request->input($key) !== null) {
-                $context[$key] = $request->input($key);
+            if (! $request->has($key)) {
+                continue;
             }
+            $value = $request->input($key);
+            if ($value === '' || $value === null) {
+                continue;
+            }
+            // ids[] is an array — drop the key if every entry is empty/zero so
+            // a stray `?ids=` doesn't masquerade as an active filter.
+            if ($key === 'ids' && $this->parseIdsParam($value) === null) {
+                continue;
+            }
+            $context[$key] = $value;
         }
 
         return $context;
@@ -478,6 +521,10 @@ class AssetController extends Controller
 
         if ($request->boolean('missing')) {
             $parts[] = __('Missing');
+        }
+
+        if ($ids = $this->parseIdsParam($request->input('ids'))) {
+            $parts[] = trans_choice(':count selected asset|:count selected assets', count($ids), ['count' => count($ids)]);
         }
 
         $summary = '';

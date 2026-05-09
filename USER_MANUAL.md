@@ -145,7 +145,7 @@ Remember: you can't move files later, so **choose the correct folder before uplo
 
 **File size limit:** Up to 500MB per file. Larger files upload in chunks automatically, so connection hiccups won't lose your progress.
 
-**Duplicate detection:** If you upload a file that already exists in ORCA (same content), the upload will be rejected with a link to the existing asset.
+**Duplicate detection:** When you upload files that already exist in ORCA (same content), each duplicate is flagged inline with a "Duplicaat" badge and a **Duplicates** results panel appears below the file list. For every duplicate you get the existing thumbnail, folder, "View existing" link, "Copy URL" button, and a multi-select footer with **Copy N URLs** and **Reveal in library** (opens all duplicates in the asset index, with prev/next cycle navigation across the set). If the existing asset is in the trash, admins and editors can **Restore from trash** in one click. The page no longer auto-redirects when duplicates or failures are present — review the panel, take action, and click **Continue to library** when you're done.
 
 After upload, your file is stored in S3, a thumbnail is generated (for images), AI tags are added if enabled, and the asset appears in your library.
 

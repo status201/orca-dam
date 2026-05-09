@@ -145,7 +145,7 @@ Onthoud: je kunt bestanden later niet verplaatsen, dus **kies de juiste map vó�
 
 **Bestandslimiet:** Maximaal 500MB per bestand. Grotere bestanden worden automatisch in chunks geüpload, dus verbindingsproblemen kosten je geen voortgang.
 
-**Duplicaatdetectie:** Als je een bestand uploadt dat al in ORCA staat (dezelfde inhoud), wordt de upload geweigerd met een link naar het bestaande asset.
+**Duplicaatdetectie:** Wanneer je bestanden uploadt die al in ORCA staan (dezelfde inhoud), krijgt elk duplicaat een **Duplicaat**-badge in de bestandsregel en verschijnt er onder de lijst een **Duplicaten**-paneel. Per duplicaat zie je de bestaande thumbnail, map, een **Bestaande bekijken**-link en een **URL kopiëren**-knop. Onderaan staan **N URL('s) kopiëren** (met checkboxes om te selecteren) en **Tonen in bibliotheek** — dat opent alle duplicaten in de asset-index, met prev/next cycle navigatie. Staat het bestaande asset in de prullenbak? Dan kunnen admins en editors het in één klik **Herstellen uit prullenbak**. De pagina herlaadt niet meer automatisch wanneer er duplicaten of mislukte uploads zijn — bekijk het paneel, voer eventuele acties uit, en klik op **Door naar bibliotheek** wanneer je klaar bent.
 
 Na het uploaden wordt je bestand opgeslagen in S3, een thumbnail gegenereerd (voor afbeeldingen), AI-tags toegevoegd indien ingeschakeld, en het asset verschijnt in je bibliotheek.
 

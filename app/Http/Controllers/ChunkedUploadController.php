@@ -190,11 +190,7 @@ class ChunkedUploadController extends Controller
         } catch (DuplicateAssetException $e) {
             return response()->json([
                 'message' => 'Duplicate file detected. This file already exists in the library.',
-                'duplicates' => [[
-                    'filename' => $session->filename ?? null,
-                    'existing_asset_id' => $e->existingAsset->id,
-                    'existing_asset_url' => $e->existingAsset->trashed() ? null : $e->existingAsset->url,
-                ]],
+                'duplicates' => [DuplicateAssetException::formatDuplicate($e->existingAsset, $session->filename ?? null)],
             ], 409);
 
         } catch (\Exception $e) {

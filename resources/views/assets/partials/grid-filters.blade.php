@@ -1,5 +1,5 @@
     <!-- Active Filters Bar -->
-    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || user || initialTags.length > 0)" x-cloak class="active-filters mb-4 flex flex-wrap items-center gap-2">
+    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || user || initialTags.length > 0 || initialIds.length > 0)" x-cloak class="active-filters mb-4 flex flex-wrap items-center gap-2">
         <span class="text-sm text-gray-500 font-medium">{{ __('Active filters') }}:</span>
 
         <!-- Search pill -->
@@ -47,8 +47,18 @@
             </span>
         </template>
 
+        <!-- Selected-IDs pill (e.g. from upload duplicates "Reveal in library") -->
+        <template x-if="initialIds.length > 0">
+            <span class="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-900 text-sm rounded-full"
+                  :title="initialIds.join(', ')">
+                <i class="fas fa-list-ul text-xs"></i>
+                <span x-text="initialIds.length + ' ' + (initialIds.length === 1 ? @js(__('selected asset')) : @js(__('selected assets')))"></span>
+                <button @click="clearIdsFilter()" class="ml-1 hover:text-amber-700">&times;</button>
+            </span>
+        </template>
+
         <!-- Clear all -->
-        <button @click="search = ''; folder = ''; type = ''; user = ''; userName = ''; selectedTags = []; applyFilters()"
+        <button @click="search = ''; folder = ''; type = ''; user = ''; userName = ''; selectedTags = []; initialIds = []; applyFilters()"
                 class="text-sm text-gray-500 hover:text-gray-700 underline ml-2">
             {{ __('Clear all filters') }}
         </button>

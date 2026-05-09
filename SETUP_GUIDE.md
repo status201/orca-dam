@@ -259,7 +259,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ **Smart retry logic with exponential backoff**
 - ✅ **Editable filenames** (display name only — S3 key/URL unchanged)
 - ✅ **Keep original filename** option during upload
-- ✅ **Duplicate prevention** — rejects uploads with identical content (etag-based)
+- ✅ **Duplicate prevention** — etag-based detection with an actionable results panel (thumbnails, View existing, Copy URL, bulk-copy, Reveal in library, Restore from trash)
 - ✅ Automatic thumbnail generation
 - ✅ Image dimension detection
 - ✅ File size tracking

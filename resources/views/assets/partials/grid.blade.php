@@ -49,6 +49,7 @@ window.assetGridConfig = {
     userName: @json($filterUser['name'] ?? ''),
     selectedTags: @json(request('tags', [])),
     initialTags: @json(request('tags', [])),
+    initialIds: @json($activeIds ?? []),
     perPage: '{{ $perPage }}',
     indexRoute: '{{ route($indexRoute) }}'
 };
