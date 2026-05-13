@@ -153,7 +153,7 @@ Na het uploaden wordt je bestand opgeslagen in S3, een thumbnail gegenereerd (vo
 
 ## Bladeren & zoeken
 
-Bekijk assets in **Rasterweergave** (visuele thumbnails) of **Lijstweergave** (gedetailleerde tabel) — schakel met de knoppen rechtsboven.
+Bekijk assets in **Rasterweergave** (uniforme vierkante thumbnails), **Mozaïekweergave** (grote thumbnails op hun werkelijke verhoudingen — ideaal voor visueel bladeren), of **Lijstweergave** (gedetailleerde tabel) — schakel met de knoppen rechtsboven.
 
 **Zoeken:** Typ een deel van een bestandsnaam, tag, map, S3 key, alt-tekst of bijschrift. Gebruik zoekoperatoren voor precisie:
 - `+term` — **verplicht** deze term (moet voorkomen in resultaten)

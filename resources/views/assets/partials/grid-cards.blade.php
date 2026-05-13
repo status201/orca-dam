@@ -119,6 +119,117 @@
         @endforeach
     </div>
 
+    <!-- Masonry View — variable-aspect cards in CSS columns; reads top-to-bottom within each column -->
+    <div x-show="viewMode === 'masonry'" x-cloak class="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3">
+        @foreach($assets as $asset)
+        @php
+            $isImageLike = $asset->isImage() || $asset->isSvg();
+            $hasDims = $asset->width && $asset->height;
+        @endphp
+        <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer mb-3 break-inside-avoid"
+             x-data="assetCard({{ $asset->id }})"
+             @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset).$showSuffix }}'; }">
+            <!-- Selection checkbox -->
+            <div class="absolute top-2 left-2 z-20"
+                 :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                 @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
+                <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
+                     class="w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
+                    <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
+                </div>
+            </div>
+
+            @if($asset->is_missing)
+            <div class="absolute top-2 right-2 z-10">
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-600 text-white">
+                    <i class="fas fa-triangle-exclamation mr-1"></i>{{ __('Missing') }}
+                </span>
+            </div>
+            @endif
+
+            <!-- Thumbnail / preview -->
+            @if($isImageLike)
+                @php
+                    // Raster: M → thumbnail → original (GIFs and images without resize fall through).
+                    // SVG: original (vector renders crisply at any size).
+                    $imgSrc = $asset->isImage()
+                        ? ($asset->resize_m_url ?: $asset->thumbnail_url ?: $asset->url)
+                        : $asset->url;
+                @endphp
+                <div class="relative bg-gray-100">
+                    <img src="{{ $imgSrc }}"
+                         alt="{{ $asset->filename }}"
+                         @if($hasDims) width="{{ $asset->width }}" height="{{ $asset->height }}" @endif
+                         class="w-full h-auto block"
+                         loading="lazy"
+                         decoding="async"
+                         @if($asset->isSvg() && !$hasDims) style="aspect-ratio: 1 / 1;" @endif>
+                </div>
+            @elseif($asset->isVideo() && $asset->thumbnail_url)
+                <div class="relative bg-gray-100">
+                    <img src="{{ $asset->resize_m_url ?: $asset->thumbnail_url }}"
+                         alt="{{ $asset->filename }}"
+                         class="w-full h-auto block"
+                         loading="lazy"
+                         decoding="async">
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center">
+                            <i class="fas fa-play text-white text-sm ml-0.5"></i>
+                        </div>
+                    </div>
+                </div>
+            @elseif($asset->isPdf() && $asset->thumbnail_url)
+                <div class="aspect-square bg-gray-100 relative">
+                    <img src="{{ $asset->thumbnail_url }}"
+                         alt="{{ $asset->filename }}"
+                         class="w-full h-full object-contain"
+                         loading="lazy"
+                         decoding="async">
+                    <div class="absolute attention top-0 right-0 w-6 h-6 bg-white/60 rounded-bl-lg flex items-center justify-center pointer-events-none">
+                        <i class="fas fa-file-pdf text-red-600 text-sm"></i>
+                    </div>
+                </div>
+            @elseif($asset->isMathMl())
+                <div class="aspect-square bg-gray-100 relative flex items-center justify-center">
+                    <x-mml-preview :asset="$asset" size="thumb" />
+                </div>
+            @else
+                <div class="aspect-square bg-gray-100 relative flex items-center justify-center">
+                    <x-file-type-icon :asset="$asset" class="text-5xl opacity-60" />
+                </div>
+            @endif
+
+            <!-- Minimal hover overlay: filename + quick actions -->
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 pt-10">
+                <p class="text-xs text-white font-medium truncate mb-2" title="{{ $asset->filename }}">
+                    {{ $asset->filename }}
+                </p>
+                <div class="flex items-center gap-1.5">
+                    <button @click.stop="downloadAsset('{{ route('assets.download', $asset) }}')"
+                            :disabled="downloading"
+                            :class="downloading ? 'bg-green-600 text-white' : 'bg-white/90 hover:bg-white text-gray-900'"
+                            :title="downloading ? @js(__('Downloading...')) : @js(__('Download'))"
+                            class="px-2 py-1 rounded text-xs transition-all">
+                        <i :class="downloading ? 'fas fa-spinner fa-spin' : 'fas fa-download'"></i>
+                    </button>
+                    <button @click.stop="copyAssetUrl('{{ $asset->url }}')"
+                            :class="copied ? 'attention bg-green-600 text-white' : 'bg-white/90 hover:bg-white text-gray-900'"
+                            :title="copied ? @js(__('Copied!')) : @js(__('Copy URL'))"
+                            class="px-2 py-1 rounded text-xs transition-all">
+                        <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
+                    </button>
+                    <a href="{{ route('assets.edit', $asset) }}"
+                       @click.stop
+                       class="bg-white/90 hover:bg-white text-gray-900 px-2 py-1 rounded text-xs transition-colors"
+                       title="{{ __('Edit') }}">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+
     <!-- List/Table View -->
     <div x-show="viewMode === 'list'" x-cloak class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto invert-scrollbar-colors">

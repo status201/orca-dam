@@ -263,7 +263,7 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 - ✅ Automatic thumbnail generation
 - ✅ Image dimension detection
 - ✅ File size tracking
-- ✅ Grid view and list view with pagination
+- ✅ Grid, masonry, and list views with pagination
 - ✅ Multi-select with Shift+click range selection
 - ✅ Quick URL copying
 - ✅ License type and copyright fields

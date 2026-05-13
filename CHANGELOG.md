@@ -8,6 +8,7 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 ## [Unreleased]
 
 ### Added
+- **Masonry view on the Assets index.** Third view mode alongside Grid and List, optimized for visual browsing: images render at native aspect ratio in CSS columns using the M-size resize (~600px) for crisp previews; non-image types render as fixed-aspect tiles. Bottom-gradient hover overlay shows filename + download / copy / edit. View preference persists in localStorage (`orcaAssetViewMode`).
 - **Duplicate upload results panel.** When an upload batch hits etag collisions, each file row shows an outcome pill (Uploaded / Duplicaat / Failed) and a Duplicates panel surfaces below the list with thumbnails, folder, size, "View existing", "Copy URL", multi-select bulk-copy, "Reveal in library", and a Restore-from-trash action when the existing asset is soft-deleted (admin/editor only). Auto-redirect now only fires on a clean batch; duplicate / failure batches keep the user on the upload page until they explicitly continue. Direct and chunked 409 payloads are now identical (`DuplicateAssetException::formatDuplicate`).
 - **`?ids[]=` filter on the assets index** — bounded at 200, accepts repeated form or comma-separated, bypasses folder scoping. Surfaced as a chip in the active-filters bar and threaded through cycle navigation so prev/next works across an arbitrary asset set (used by the duplicates panel's "Reveal in library").
 - **`local` and `staging` env distinction** using pill and background.

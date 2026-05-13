@@ -153,7 +153,7 @@ After upload, your file is stored in S3, a thumbnail is generated (for images), 
 
 ## Browsing & Finding Assets
 
-View assets in **Grid View** (visual thumbnails) or **List View** (detailed table) — toggle with the buttons in the top right.
+View assets in **Grid View** (uniform square thumbnails), **Masonry View** (large thumbnails at native aspect ratio — best for visual browsing), or **List View** (detailed table) — toggle with the buttons in the top right.
 
 **Search:** Type any part of a filename, tag, folder, S3 key, alt text, or caption. Use search operators for precision:
 - `+term` — **require** this term (must appear in results)

@@ -14,7 +14,10 @@ export function assetGrid() {
         initialTags: config.initialTags || [],
         initialIds: config.initialIds || [],
         showTagFilter: false,
-        viewMode: localStorage.getItem('orcaAssetViewMode') || 'grid',
+        viewMode: (() => {
+            const v = localStorage.getItem('orcaAssetViewMode');
+            return ['grid', 'masonry', 'list'].includes(v) ? v : 'grid';
+        })(),
         fitMode: localStorage.getItem('orcaAssetFitMode') || 'cover',
         perPage: config.perPage || '24',
         tagSearch: '',

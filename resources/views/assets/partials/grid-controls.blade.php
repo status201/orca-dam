@@ -1,7 +1,7 @@
     <!-- View Toggle -->
     <div class="mb-4 flex justify-end gap-2">
-        <!-- Select All (grid mode) -->
-        <button x-show="viewMode === 'grid'"
+        <!-- Select All (grid + masonry mode) -->
+        <button x-show="viewMode === 'grid' || viewMode === 'masonry'"
                 @click="$store.bulkSelection.toggleSelectAll()"
                 :class="$store.bulkSelection.allOnPageSelected ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                 class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg transition-colors"
@@ -10,8 +10,8 @@
             <span x-text="$store.bulkSelection.allOnPageSelected ? @js(__('Deselect all')) : @js(__('Select all'))"></span>
         </button>
 
-        <!-- Fit Mode Toggle -->
-        <div class="inline-flex rounded-md shadow-sm" role="group">
+        <!-- Fit Mode Toggle (hidden in masonry — native aspect ratios are the point) -->
+        <div x-show="viewMode !== 'masonry'" class="inline-flex rounded-md shadow-sm" role="group">
             <button @click="fitMode = 'cover'; saveFitMode()"
                     :class="fitMode === 'cover' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors"
@@ -32,9 +32,14 @@
                     class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors">
                 <i class="fas fa-th mr-2"></i> {{ __('Grid') }}
             </button>
+            <button @click="viewMode = 'masonry'; saveViewMode()"
+                    :class="viewMode === 'masonry' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                    class="px-4 py-2 text-xs font-medium border-y border-r border-gray-300 transition-colors">
+                <i class="fas fa-images mr-2"></i> {{ __('Masonry') }}
+            </button>
             <button @click="viewMode = 'list'; saveViewMode()"
                     :class="viewMode === 'list' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
-                    class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-r-lg transition-colors">
+                    class="px-4 py-2 text-xs font-medium border-y border-r border-gray-300 rounded-r-lg transition-colors">
                 <i class="fas fa-list mr-2"></i> {{ __('List') }}
             </button>
         </div>
