@@ -200,7 +200,7 @@
             @endif
 
             <!-- Minimal hover overlay: filename + quick actions -->
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 pt-10">
+            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3">
                 <p class="text-xs text-white font-medium truncate mb-2" title="{{ $asset->filename }}">
                     {{ $asset->filename }}
                 </p>
