@@ -160,7 +160,7 @@
                     <img src="{{ $imgSrc }}"
                          alt="{{ $asset->filename }}"
                          @if($hasDims) width="{{ $asset->width }}" height="{{ $asset->height }}" @endif
-                         class="w-full h-auto block"
+                         class="max-w-full max-h-[70vh] w-auto h-auto mx-auto block"
                          loading="lazy"
                          decoding="async"
                          @if($asset->isSvg() && !$hasDims) style="aspect-ratio: 1 / 1;" @endif>
@@ -169,7 +169,7 @@
                 <div class="relative bg-gray-100">
                     <img src="{{ $asset->resize_m_url ?: $asset->thumbnail_url }}"
                          alt="{{ $asset->filename }}"
-                         class="w-full h-auto block"
+                         class="max-w-full max-h-[70vh] w-auto h-auto mx-auto block"
                          loading="lazy"
                          decoding="async">
                     <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -195,7 +195,7 @@
                 </div>
             @else
                 <div class="aspect-square bg-gray-100 relative flex items-center justify-center">
-                    <x-file-type-icon :asset="$asset" class="text-5xl opacity-60" />
+                    <x-file-type-icon :asset="$asset" class="text-9xl opacity-60" />
                 </div>
             @endif
 
