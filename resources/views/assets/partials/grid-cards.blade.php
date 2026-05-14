@@ -156,7 +156,7 @@
                         ? ($asset->resize_m_url ?: $asset->thumbnail_url ?: $asset->url)
                         : $asset->url;
                 @endphp
-                <div class="relative bg-gray-100">
+                <div class="image-container relative bg-gray-100">
                     <img src="{{ $imgSrc }}"
                          alt="{{ $asset->filename }}"
                          @if($hasDims) width="{{ $asset->width }}" height="{{ $asset->height }}" @endif
@@ -166,7 +166,7 @@
                          @if($asset->isSvg() && !$hasDims) style="aspect-ratio: 1 / 1;" @endif>
                 </div>
             @elseif($asset->isVideo() && $asset->thumbnail_url)
-                <div class="relative bg-gray-100">
+                <div class="image-container relative bg-gray-100">
                     <img src="{{ $asset->resize_m_url ?: $asset->thumbnail_url }}"
                          alt="{{ $asset->filename }}"
                          class="max-w-full max-h-[70vh] w-auto h-auto mx-auto block"
@@ -179,7 +179,7 @@
                     </div>
                 </div>
             @elseif($asset->isPdf() && $asset->thumbnail_url)
-                <div class="aspect-square bg-gray-100 relative">
+                <div class="image-container aspect-square bg-gray-100 relative">
                     <img src="{{ $asset->thumbnail_url }}"
                          alt="{{ $asset->filename }}"
                          class="w-full h-full object-contain"

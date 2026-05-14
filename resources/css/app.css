@@ -59,6 +59,7 @@
 }
 .image-container:hover > img {
     outline: 1px dashed #4b5563;
+    background: transparent;
 }
 
 /* Embed styles */
