@@ -127,7 +127,10 @@
     let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
 
     // DOM refs
-    let gameArea, orcaEl, hudScore, hudLives, footer, footerContent;
+    let gameArea, orcaEl, hudScore, hudLives, hudMute, footer, footerContent;
+
+    // Last danger level reported to the music module (to avoid spamming setDanger)
+    let lastDangerLevel = -1;
 
     // Cached SVGs
     let svgCache = {};
@@ -187,6 +190,16 @@
     // --- Init (called after lazy load) ---
     function init() {
         const basePath = '/games/';
+
+        // Lazy-load chiptune music module in parallel. Fire-and-forget — the
+        // game must still work if the audio module fails to load.
+        if (!window.OrcaMusic && !window.__orcaMusicLoading) {
+            window.__orcaMusicLoading = true;
+            const s = document.createElement('script');
+            s.src = basePath + 'orca-music.js';
+            document.head.appendChild(s);
+        }
+
         Promise.all([
             fetch(basePath + 'fish-silver.svg').then(r => r.text()),
             fetch(basePath + 'fish-gold.svg').then(r => r.text()),
@@ -303,9 +316,48 @@
         updateLivesDisplay();
         hud.appendChild(hudLives);
 
+        // Music mute toggle (top-left)
+        hudMute = document.createElement('button');
+        hudMute.type = 'button';
+        hudMute.className = 'game-mute-toggle';
+        hudMute.setAttribute('aria-label', 'Toggle music');
+        hudMute.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            toggleMute();
+        });
+        // Touch handler: stop the tap from also being interpreted as a "jump"
+        hudMute.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            toggleMute();
+        }, { passive: false });
+        updateMuteButton();
+        hud.appendChild(hudMute);
+
         gameArea.appendChild(hud);
 
+        // Reset danger-level cache for fresh game.
+        lastDangerLevel = -1;
+
         showInstructions();
+    }
+
+    function toggleMute() {
+        if (window.OrcaMusic && window.OrcaMusic.isSupported && window.OrcaMusic.isSupported()) {
+            window.OrcaMusic.setMuted(!window.OrcaMusic.isMuted());
+        }
+        updateMuteButton();
+    }
+
+    function updateMuteButton() {
+        if (!hudMute) return;
+        const supported = window.OrcaMusic && window.OrcaMusic.isSupported && window.OrcaMusic.isSupported();
+        const isMuted = supported ? window.OrcaMusic.isMuted() : true;
+        hudMute.classList.toggle('muted', isMuted);
+        hudMute.innerHTML = isMuted
+            ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.17v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>'
+            : '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77 0-4.28-2.99-7.86-7-8.77z"/></svg>';
     }
 
     // --- Instructions Overlay ---
@@ -349,11 +401,19 @@
         }
         gameArea.appendChild(overlay);
 
+        function bootMusic() {
+            // Must run inside the user gesture to satisfy autoplay policies.
+            if (window.OrcaMusic && window.OrcaMusic.isSupported && window.OrcaMusic.isSupported()) {
+                window.OrcaMusic.init();
+                updateMuteButton();
+            }
+        }
         function onStart(e) {
             if (e.code === 'Space' || e.key === ' ') {
                 e.preventDefault();
                 gameArea.removeEventListener('keydown', onStart);
                 gameArea.removeEventListener('touchstart', onTouchStart);
+                bootMusic();
                 overlay.remove();
                 beginGameLoop();
             }
@@ -362,6 +422,7 @@
             e.preventDefault();
             gameArea.removeEventListener('keydown', onStart);
             gameArea.removeEventListener('touchstart', onTouchStart);
+            bootMusic();
             overlay.remove();
             beginGameLoop();
         }
@@ -373,6 +434,8 @@
     function beginGameLoop() {
         running = true;
         lastTimestamp = 0;
+
+        if (window.OrcaMusic) window.OrcaMusic.start();
 
         gameArea.addEventListener('keydown', onKeyDown);
         gameArea.addEventListener('keyup', onKeyUp);
@@ -438,6 +501,7 @@
             isJumping = true;
             orcaVelocity = JUMP_VELOCITY;
             orcaEl.style.animationPlayState = 'paused';
+            if (window.OrcaMusic) window.OrcaMusic.sfxJump();
         }
 
         // Gravity
@@ -547,12 +611,14 @@
                     score += e.points;
                     showCatchEffect(e.x, e.y, '+' + e.points);
                     showBoneEffect(e.x, e.y, e.fishType === 'salmon' ? 'salmon' : (e.points === FAST_FISH_POINTS ? 'small' : 'large'));
+                    if (window.OrcaMusic) window.OrcaMusic.sfxCatch(e.points);
                     e.el.remove();
                     entities.splice(i, 1);
                 } else if (e.type === 'shark' || e.type === 'swordfish') {
                     // Hit by shark
                     lives--;
                     updateLivesDisplay();
+                    if (window.OrcaMusic) window.OrcaMusic.sfxHit();
 
                     if (lives <= 0) {
                         // Fatal hit: orca becomes herringbone skeleton
@@ -577,6 +643,17 @@
                     }
                 }
             }
+        }
+
+        // Drive the JAWS-style bass tension layer based on threats on screen.
+        let threats = 0;
+        for (const ent of entities) {
+            if (ent.type === 'shark' || ent.type === 'swordfish') threats++;
+        }
+        const danger = threats >= 2 ? 2 : (threats >= 1 ? 1 : 0);
+        if (danger !== lastDangerLevel) {
+            lastDangerLevel = danger;
+            if (window.OrcaMusic) window.OrcaMusic.setDanger(danger);
         }
     }
 
@@ -804,6 +881,10 @@
     function gameOver() {
         running = false;
         if (animFrameId) cancelAnimationFrame(animFrameId);
+        if (window.OrcaMusic) {
+            window.OrcaMusic.stop();
+            window.OrcaMusic.sfxGameOver();
+        }
         gameArea.removeEventListener('keydown', onKeyDown);
         gameArea.removeEventListener('keyup', onKeyUp);
         gameArea.removeEventListener('touchstart', onGameTouchStart);
@@ -893,6 +974,7 @@
         running = false;
         if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
         if (deathTimeoutId) { clearTimeout(deathTimeoutId); deathTimeoutId = null; }
+        if (window.OrcaMusic) window.OrcaMusic.stop();
         if (gameOverKeyHandler) { gameArea.removeEventListener('keydown', gameOverKeyHandler); gameOverKeyHandler = null; }
         gameArea.removeEventListener('keydown', onKeyDown);
         gameArea.removeEventListener('keyup', onKeyUp);
@@ -926,6 +1008,10 @@
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
             e.preventDefault();
             keys[e.code] = true;
+        }
+        if (e.code === 'KeyM') {
+            e.preventDefault();
+            toggleMute();
         }
     }
 

@@ -263,6 +263,48 @@
     border-color: #555;
 }
 
+/* Music mute toggle */
+.game-mute-toggle {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    width: 30px;
+    height: 30px;
+    padding: 4px;
+    border: 1px solid rgba(0, 255, 0, 0.6);
+    background: rgba(0, 0, 0, 0.35);
+    color: #00ff00;
+    cursor: pointer;
+    pointer-events: auto;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 6px rgba(0, 255, 0, 0.3);
+    transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+    font-family: 'Courier New', monospace;
+}
+
+.game-mute-toggle:hover {
+    background: rgba(0, 255, 0, 0.18);
+}
+
+.game-mute-toggle:focus {
+    outline: none;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
+}
+
+.game-mute-toggle.muted {
+    color: #888;
+    border-color: rgba(150, 150, 150, 0.5);
+    box-shadow: none;
+}
+
+.game-mute-toggle svg {
+    display: block;
+    pointer-events: none;
+}
+
 /* Instructions overlay */
 .game-instructions {
     position: absolute;
