@@ -11,8 +11,8 @@
         "firebase/php-jwt": "^7.0",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^3.0",
-        "laragear/webauthn": "5.0.1",
         "laravel/framework": "^13.0",
+        "laravel/passkeys": "~0.2.1",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "pragmarx/google2fa-laravel": "^3.0"

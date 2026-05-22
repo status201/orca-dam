@@ -87,7 +87,7 @@
                     </a>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
-                    @if($user->web_authn_credentials_count > 0)
+                    @if($user->passkeys_count > 0)
                         @php
                             $passkeyTitle = $user->last_passkey_used_at
                                 ? __('Last used :date', ['date' => $user->last_passkey_used_at->diffForHumans()])
@@ -95,7 +95,7 @@
                         @endphp
                         <span class="inline-flex items-center gap-1 text-sm text-gray-700" title="{{ $passkeyTitle }}">
                             <i class="attention fas fa-key text-green-600"></i>
-                            {{ $user->web_authn_credentials_count }}
+                            {{ $user->passkeys_count }}
                         </span>
                     @else
                         <i class="attention fas fa-times-circle text-red-600"></i>

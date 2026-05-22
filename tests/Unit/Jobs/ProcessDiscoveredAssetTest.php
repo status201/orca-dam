@@ -70,8 +70,8 @@ test('job re-throws exception on failure for retry', function () {
     $rekognition = Mockery::mock(RekognitionService::class);
 
     $processing = Mockery::mock(AssetProcessingService::class);
-    $processing->shouldReceive('processImageAsset')->andThrow(new \RuntimeException('boom'));
+    $processing->shouldReceive('processImageAsset')->andThrow(new RuntimeException('boom'));
 
     expect(fn () => (new ProcessDiscoveredAsset($asset->id))->handle($s3, $rekognition, $processing))
-        ->toThrow(\RuntimeException::class, 'boom');
+        ->toThrow(RuntimeException::class, 'boom');
 });

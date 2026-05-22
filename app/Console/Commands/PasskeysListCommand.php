@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Passkey;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use Laragear\WebAuthn\Models\WebAuthnCredential;
 
 class PasskeysListCommand extends Command
 {
@@ -18,8 +18,8 @@ class PasskeysListCommand extends Command
 
     public function handle(): int
     {
-        $query = WebAuthnCredential::query()
-            ->with('authenticatable')
+        $query = Passkey::query()
+            ->with('user')
             ->orderByDesc('created_at');
 
         $userEmail = $this->option('user');
@@ -32,46 +32,44 @@ class PasskeysListCommand extends Command
 
                 return Command::FAILURE;
             }
-            $query->where('authenticatable_type', $user->getMorphClass())
-                ->where('authenticatable_id', $user->getKey());
+            $query->where('user_id', $user->getKey());
         }
 
-        $credentials = $query->get();
+        $passkeys = $query->get();
 
         if ($role) {
-            $credentials = $credentials->filter(function (WebAuthnCredential $credential) use ($role) {
-                return $credential->authenticatable instanceof User
-                    && $credential->authenticatable->role === $role;
-            });
+            $passkeys = $passkeys->filter(
+                fn (Passkey $passkey) => $passkey->user instanceof User
+                    && $passkey->user->role === $role
+            );
         }
 
-        if ($credentials->isEmpty()) {
+        if ($passkeys->isEmpty()) {
             $this->info('No passkeys found.');
 
             return Command::SUCCESS;
         }
 
-        $this->info("Found {$credentials->count()} passkey(s):\n");
+        $this->info("Found {$passkeys->count()} passkey(s):\n");
 
         $fmt = fn ($value) => $value ? Carbon::parse($value)->format('Y-m-d H:i') : null;
 
-        $rows = $credentials->map(function (WebAuthnCredential $credential) use ($fmt) {
-            $user = $credential->authenticatable;
+        $rows = $passkeys->map(function (Passkey $passkey) use ($fmt) {
+            $user = $passkey->user;
 
             return [
-                'ID' => Str::limit($credential->id, 16, '…'),
-                'Alias' => $credential->alias ?: '—',
+                'ID' => Str::limit($passkey->credential_id, 16, '…'),
+                'Name' => $passkey->name ?: '—',
                 'User' => $user?->name ?? 'N/A',
                 'Email' => $user?->email ?? 'N/A',
                 'Role' => $user?->role ?? 'N/A',
-                'Status' => $credential->isEnabled() ? 'Enabled' : 'Disabled',
-                'Created' => $fmt($credential->created_at) ?? '—',
-                'Last Used' => $fmt($credential->last_used_at) ?? 'Never',
+                'Created' => $fmt($passkey->created_at) ?? '—',
+                'Last Used' => $fmt($passkey->last_used_at) ?? 'Never',
             ];
         })->toArray();
 
         $this->table(
-            ['ID', 'Alias', 'User', 'Email', 'Role', 'Status', 'Created', 'Last Used'],
+            ['ID', 'Name', 'User', 'Email', 'Role', 'Created', 'Last Used'],
             $rows
         );
 

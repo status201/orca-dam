@@ -8,13 +8,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
-use Laragear\WebAuthn\WebAuthnAuthentication;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\PasskeyAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements WebAuthnAuthenticatable
+class User extends Authenticatable implements PasskeyUser
 {
-    use HasApiTokens, HasFactory, Notifiable, WebAuthnAuthentication;
+    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -201,14 +201,6 @@ class User extends Authenticatable implements WebAuthnAuthenticatable
     public function canEnableTwoFactor(): bool
     {
         return $this->isAdmin() || $this->isEditor();
-    }
-
-    /**
-     * Check if user has at least one enabled passkey credential
-     */
-    public function hasPasskeysEnabled(): bool
-    {
-        return $this->webAuthnCredentials()->whereEnabled()->exists();
     }
 
     /**

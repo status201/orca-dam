@@ -34,7 +34,7 @@ test('toUtf8 scrubs truncated multi-byte sequence so json_encode succeeds', func
 });
 
 test('toUtf8 preserves valid UTF-8 content', function () {
-    $input = "passed ✓ 日本語";
+    $input = 'passed ✓ 日本語';
 
     expect(invokeToUtf8($input))->toBe($input);
 });

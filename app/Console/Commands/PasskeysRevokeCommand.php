@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Passkey;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use Laragear\WebAuthn\Models\WebAuthnCredential;
 
 class PasskeysRevokeCommand extends Command
 {
@@ -42,27 +42,27 @@ class PasskeysRevokeCommand extends Command
 
     protected function revokeSingle(string $id, bool $force): int
     {
-        $credential = WebAuthnCredential::with('authenticatable')->find($id)
-            ?? WebAuthnCredential::with('authenticatable')->where('id', 'like', $id.'%')->first();
+        $passkey = Passkey::with('user')->where('credential_id', $id)->first()
+            ?? Passkey::with('user')->where('credential_id', 'like', $id.'%')->first();
 
-        if (! $credential) {
+        if (! $passkey) {
             $this->error("Passkey not found: {$id}");
 
             return Command::FAILURE;
         }
 
-        $user = $credential->authenticatable;
+        $user = $passkey->user;
 
         $fmt = fn ($value) => $value ? Carbon::parse($value)->format('Y-m-d H:i') : null;
 
         $this->info('Passkey details:');
         $this->table(['Field', 'Value'], [
-            ['ID', $credential->id],
-            ['Alias', $credential->alias ?: '—'],
+            ['ID', $passkey->credential_id],
+            ['Name', $passkey->name ?: '—'],
             ['User', $user?->name ?? 'N/A'],
             ['Email', $user?->email ?? 'N/A'],
-            ['Created', $fmt($credential->created_at) ?? '—'],
-            ['Last Used', $fmt($credential->last_used_at) ?? 'Never'],
+            ['Created', $fmt($passkey->created_at) ?? '—'],
+            ['Last Used', $fmt($passkey->last_used_at) ?? 'Never'],
         ]);
 
         if (! $force && ! $this->confirm('Are you sure you want to revoke this passkey?')) {
@@ -71,7 +71,7 @@ class PasskeysRevokeCommand extends Command
             return Command::SUCCESS;
         }
 
-        $credential->delete();
+        $passkey->delete();
         $this->info('Passkey revoked successfully.');
 
         return Command::SUCCESS;
@@ -87,36 +87,36 @@ class PasskeysRevokeCommand extends Command
             return Command::FAILURE;
         }
 
-        $credentials = $user->webAuthnCredentials()->get();
+        $passkeys = $user->passkeys()->get();
 
-        if ($credentials->isEmpty()) {
+        if ($passkeys->isEmpty()) {
             $this->info("No passkeys found for user: {$email}");
 
             return Command::SUCCESS;
         }
 
-        $this->info("Found {$credentials->count()} passkey(s) for {$user->name} ({$email}):");
+        $this->info("Found {$passkeys->count()} passkey(s) for {$user->name} ({$email}):");
         $this->newLine();
 
         $fmt = fn ($value) => $value ? Carbon::parse($value)->format('Y-m-d H:i') : null;
 
         $this->table(
-            ['ID', 'Alias', 'Created', 'Last Used'],
-            $credentials->map(fn (WebAuthnCredential $c) => [
-                Str::limit($c->id, 16, '…'),
-                $c->alias ?: '—',
-                $fmt($c->created_at) ?? '—',
-                $fmt($c->last_used_at) ?? 'Never',
+            ['ID', 'Name', 'Created', 'Last Used'],
+            $passkeys->map(fn (Passkey $p) => [
+                Str::limit($p->credential_id, 16, '…'),
+                $p->name ?: '—',
+                $fmt($p->created_at) ?? '—',
+                $fmt($p->last_used_at) ?? 'Never',
             ])->toArray()
         );
 
-        if (! $force && ! $this->confirm("Revoke all {$credentials->count()} passkey(s) for this user?")) {
+        if (! $force && ! $this->confirm("Revoke all {$passkeys->count()} passkey(s) for this user?")) {
             $this->info('Operation cancelled.');
 
             return Command::SUCCESS;
         }
 
-        $count = $user->webAuthnCredentials()->delete();
+        $count = $user->passkeys()->delete();
         $this->info("Revoked {$count} passkey(s) for {$email}.");
 
         return Command::SUCCESS;

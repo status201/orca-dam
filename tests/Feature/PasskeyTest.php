@@ -1,27 +1,23 @@
 <?php
 
+use App\Models\Passkey;
 use App\Models\User;
-use App\Services\WebAuthnService;
-use Illuminate\Support\Str;
-use Laragear\WebAuthn\Events\CredentialAsserted;
-use Laragear\WebAuthn\Models\WebAuthnCredential;
+use App\Services\PasskeyService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Laravel\Passkeys\Events\PasskeyRegistered;
+use Laravel\Passkeys\Events\PasskeyVerified;
+use Laravel\Passkeys\Passkeys;
 
-function attachCredential(User $user, array $overrides = []): WebAuthnCredential
+function attachPasskey(User $user, array $overrides = []): Passkey
 {
-    return WebAuthnCredential::forceCreate(array_merge([
-        'id' => bin2hex(random_bytes(16)),
-        'authenticatable_type' => $user->getMorphClass(),
-        'authenticatable_id' => $user->getKey(),
-        'user_id' => (string) Str::uuid(),
-        'counter' => 0,
-        'rp_id' => 'localhost',
-        'origin' => 'http://localhost',
-        'transports' => null,
-        'aaguid' => '00000000-0000-0000-0000-000000000000',
-        'public_key' => 'fake-public-key',
-        'attestation_format' => 'none',
-        'certificates' => null,
-        'disabled_at' => null,
+    return Passkey::forceCreate(array_merge([
+        'user_id' => $user->getKey(),
+        'name' => 'Test Passkey',
+        'credential_id' => bin2hex(random_bytes(16)),
+        // Real ceremony writes a structured CredentialRecord payload here;
+        // an empty object is enough for tests that don't exercise verification.
+        'credential' => [],
     ], $overrides));
 }
 
@@ -40,19 +36,12 @@ test('api users cannot enable passkeys', function () {
     expect($user->canEnablePasskeys())->toBeFalse();
 });
 
-test('hasPasskeysEnabled is false until a credential is registered', function () {
+test('hasPasskeysEnabled is false until a passkey is registered', function () {
     $user = User::factory()->create(['role' => 'admin']);
     expect($user->hasPasskeysEnabled())->toBeFalse();
 
-    attachCredential($user);
+    attachPasskey($user);
     expect($user->fresh()->hasPasskeysEnabled())->toBeTrue();
-});
-
-test('hasPasskeysEnabled ignores disabled credentials', function () {
-    $user = User::factory()->create(['role' => 'admin']);
-    attachCredential($user, ['disabled_at' => now()]);
-
-    expect($user->fresh()->hasPasskeysEnabled())->toBeFalse();
 });
 
 test('profile edit page shows the passkeys section for admins', function () {
@@ -75,96 +64,97 @@ test('profile edit page hides the passkeys section for api users', function () {
 
 test('user can rename their own passkey', function () {
     $user = User::factory()->create(['role' => 'admin']);
-    $credential = attachCredential($user, ['alias' => 'old']);
+    $passkey = attachPasskey($user, ['name' => 'old']);
 
     $response = $this->actingAs($user)
-        ->patch(route('profile.passkeys.update', $credential->id), [
-            'alias' => 'My MacBook',
+        ->patch(route('profile.passkeys.update', $passkey->credential_id), [
+            'name' => 'My MacBook',
         ]);
 
     $response->assertRedirect();
-    expect($credential->fresh()->alias)->toBe('My MacBook');
+    expect($passkey->fresh()->name)->toBe('My MacBook');
 });
 
 test('user cannot rename someone elses passkey', function () {
     $owner = User::factory()->create(['role' => 'admin']);
     $other = User::factory()->create(['role' => 'admin']);
-    $credential = attachCredential($owner, ['alias' => 'mine']);
+    $passkey = attachPasskey($owner, ['name' => 'mine']);
 
     $response = $this->actingAs($other)
-        ->patch(route('profile.passkeys.update', $credential->id), [
-            'alias' => 'stolen',
+        ->patch(route('profile.passkeys.update', $passkey->credential_id), [
+            'name' => 'stolen',
         ]);
 
     $response->assertSessionHasErrors('passkey');
-    expect($credential->fresh()->alias)->toBe('mine');
+    expect($passkey->fresh()->name)->toBe('mine');
 });
 
 test('user can delete their own passkey', function () {
     $user = User::factory()->create(['role' => 'admin']);
-    $credential = attachCredential($user);
+    $passkey = attachPasskey($user);
 
     $response = $this->actingAs($user)
-        ->delete(route('profile.passkeys.destroy', $credential->id));
+        ->delete(route('profile.passkeys.destroy', $passkey->credential_id));
 
     $response->assertRedirect();
-    expect(WebAuthnCredential::find($credential->id))->toBeNull();
+    expect(Passkey::find($passkey->id))->toBeNull();
 });
 
 test('user cannot delete someone elses passkey', function () {
     $owner = User::factory()->create(['role' => 'admin']);
     $other = User::factory()->create(['role' => 'admin']);
-    $credential = attachCredential($owner);
+    $passkey = attachPasskey($owner);
 
     $response = $this->actingAs($other)
-        ->delete(route('profile.passkeys.destroy', $credential->id));
+        ->delete(route('profile.passkeys.destroy', $passkey->credential_id));
 
     $response->assertSessionHasErrors('passkey');
-    expect(WebAuthnCredential::find($credential->id))->not->toBeNull();
+    expect(Passkey::find($passkey->id))->not->toBeNull();
 });
 
 test('admin can clear another users passkeys', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $target = User::factory()->create(['role' => 'editor']);
-    attachCredential($target);
-    attachCredential($target);
+    attachPasskey($target);
+    attachPasskey($target);
 
     $response = $this->actingAs($admin)
         ->delete(route('users.passkeys.clear', $target));
 
     $response->assertRedirect();
-    expect($target->webAuthnCredentials()->count())->toBe(0);
+    expect($target->passkeys()->count())->toBe(0);
 });
 
 test('admin cannot clear their own passkeys via the recovery action', function () {
     $admin = User::factory()->create(['role' => 'admin']);
-    attachCredential($admin);
+    attachPasskey($admin);
 
     $response = $this->actingAs($admin)
         ->delete(route('users.passkeys.clear', $admin));
 
     $response->assertForbidden();
-    expect($admin->webAuthnCredentials()->count())->toBe(1);
+    expect($admin->passkeys()->count())->toBe(1);
 });
 
 test('non-admin cannot clear other users passkeys', function () {
     $editor = User::factory()->create(['role' => 'editor']);
     $target = User::factory()->create(['role' => 'editor']);
-    attachCredential($target);
+    attachPasskey($target);
 
     $response = $this->actingAs($editor)
         ->delete(route('users.passkeys.clear', $target));
 
     $response->assertForbidden();
-    expect($target->webAuthnCredentials()->count())->toBe(1);
+    expect($target->passkeys()->count())->toBe(1);
 });
 
 test('passkey login options route is reachable as guest', function () {
-    $response = $this->postJson(route('passkey.options'), []);
+    $response = $this->getJson(route('passkey.options'));
 
     // The package returns a JSON challenge on success; we just verify the
     // route is wired and accepts guest traffic.
-    expect($response->status())->toBeIn([200, 422]);
+    $response->assertOk();
+    $response->assertJsonStructure(['options']);
 });
 
 test('passkey login route rejects unauthenticated invalid payloads', function () {
@@ -175,12 +165,12 @@ test('passkey login route rejects unauthenticated invalid payloads', function ()
 
 test('user with reached limit gets 422 on options request', function () {
     $user = User::factory()->create(['role' => 'admin']);
-    for ($i = 0; $i < WebAuthnService::MAX_CREDENTIALS_PER_USER; $i++) {
-        attachCredential($user);
+    for ($i = 0; $i < PasskeyService::MAX_CREDENTIALS_PER_USER; $i++) {
+        attachPasskey($user);
     }
 
     $response = $this->actingAs($user)
-        ->postJson(route('profile.passkeys.options'));
+        ->getJson(route('profile.passkeys.options'));
 
     $response->assertStatus(422);
 });
@@ -189,32 +179,93 @@ test('api user gets 403 on passkey options request', function () {
     $user = User::factory()->create(['role' => 'api']);
 
     $response = $this->actingAs($user)
-        ->postJson(route('profile.passkeys.options'));
+        ->getJson(route('profile.passkeys.options'));
 
     $response->assertStatus(403);
 });
 
-test('logged-in user can list their passkeys via webAuthnCredentials relation', function () {
+test('logged-in user can list their passkeys via passkeys relation', function () {
     $user = User::factory()->create(['role' => 'admin']);
-    attachCredential($user, ['alias' => 'A']);
-    attachCredential($user, ['alias' => 'B']);
+    attachPasskey($user, ['name' => 'A']);
+    attachPasskey($user, ['name' => 'B']);
 
-    expect($user->fresh()->webAuthnCredentials()->count())->toBe(2);
+    expect($user->fresh()->passkeys()->count())->toBe(2);
 });
 
-test('TouchPasskeyLastUsed listener stamps both timestamps on assertion', function () {
+test('TouchPasskeyLastUsed listener stamps last_passkey_used_at on assertion', function () {
     $user = User::factory()->create(['role' => 'admin']);
-    $credential = attachCredential($user);
+    $passkey = attachPasskey($user);
 
-    CredentialAsserted::dispatch($user, $credential);
+    PasskeyVerified::dispatch($user, $passkey);
 
     expect($user->fresh()->last_passkey_used_at)->not->toBeNull();
-    expect($credential->fresh()->last_used_at)->not->toBeNull();
+});
+
+test('EnforcePasskeyLimit deletes a passkey that puts the user over the cap', function () {
+    $user = User::factory()->create(['role' => 'admin']);
+    for ($i = 0; $i < PasskeyService::MAX_CREDENTIALS_PER_USER; $i++) {
+        attachPasskey($user);
+    }
+    $extra = attachPasskey($user);
+
+    PasskeyRegistered::dispatch($user, $extra);
+
+    expect(Passkey::find($extra->id))->toBeNull();
+    expect($user->fresh()->passkeys()->count())->toBe(PasskeyService::MAX_CREDENTIALS_PER_USER);
+});
+
+test('EnforcePasskeyLimit leaves a passkey alone when the user is exactly at the cap', function () {
+    $user = User::factory()->create(['role' => 'admin']);
+    for ($i = 0; $i < PasskeyService::MAX_CREDENTIALS_PER_USER - 1; $i++) {
+        attachPasskey($user);
+    }
+    $last = attachPasskey($user); // exactly the 10th
+
+    PasskeyRegistered::dispatch($user, $last);
+
+    expect(Passkey::find($last->id))->not->toBeNull();
+    expect($user->fresh()->passkeys()->count())->toBe(PasskeyService::MAX_CREDENTIALS_PER_USER);
+});
+
+test('credential blob is encrypted at rest', function () {
+    $user = User::factory()->create();
+    $payload = ['public_key' => 'sensitive-bytes-do-not-leak', 'counter' => 42];
+    $passkey = attachPasskey($user, ['credential' => $payload]);
+
+    // Read the raw column, bypassing the model cast.
+    $raw = DB::table('passkeys')->where('id', $passkey->id)->value('credential');
+
+    expect($raw)->toBeString();
+    // Encrypted blob must not contain the sensitive marker, and must not parse as JSON.
+    expect($raw)->not->toContain('sensitive-bytes-do-not-leak');
+    expect($raw)->not->toContain('public_key');
+    expect(json_decode($raw, true))->toBeNull();
+
+    // And the cast must round-trip the original array on reload.
+    expect($passkey->fresh()->credential)->toBe($payload);
+});
+
+test('Passkeys facade uses the custom App\\Models\\Passkey model', function () {
+    // Locks down AppServiceProvider::register's usePasskeyModel() call —
+    // removing it silently disables the encrypted credential cast.
+    expect(Passkeys::passkeyModel())->toBe(Passkey::class);
+});
+
+test('package-default passkey routes are disabled so ORCA URLs stay authoritative', function () {
+    expect(Passkeys::shouldRegisterRoutes())->toBeFalse();
+
+    // Sanity: the package's default URL is not registered.
+    $this->getJson('/passkeys/login/options')->assertNotFound();
+});
+
+test('passkey event listeners are wired in the application', function () {
+    expect(Event::hasListeners(PasskeyVerified::class))->toBeTrue();
+    expect(Event::hasListeners(PasskeyRegistered::class))->toBeTrue();
 });
 
 test('passkeys:list command shows registered passkeys', function () {
     $user = User::factory()->create(['role' => 'admin', 'email' => 'list@example.com']);
-    attachCredential($user, ['alias' => 'MacBook']);
+    attachPasskey($user, ['name' => 'MacBook']);
 
     $this->artisan('passkeys:list')
         ->expectsOutputToContain('Found 1 passkey')
@@ -225,8 +276,8 @@ test('passkeys:list command shows registered passkeys', function () {
 test('passkeys:list filters by user email', function () {
     $a = User::factory()->create(['role' => 'admin', 'email' => 'a@example.com']);
     $b = User::factory()->create(['role' => 'admin', 'email' => 'b@example.com']);
-    attachCredential($a, ['alias' => 'A-key']);
-    attachCredential($b, ['alias' => 'B-key']);
+    attachPasskey($a, ['name' => 'A-key']);
+    attachPasskey($b, ['name' => 'B-key']);
 
     $this->artisan('passkeys:list', ['--user' => 'a@example.com'])
         ->expectsOutputToContain('A-key')
@@ -236,24 +287,24 @@ test('passkeys:list filters by user email', function () {
 
 test('passkeys:revoke removes the passkey when confirmed', function () {
     $user = User::factory()->create(['role' => 'admin']);
-    $credential = attachCredential($user);
+    $passkey = attachPasskey($user);
 
-    $this->artisan('passkeys:revoke', ['id' => $credential->id, '--force' => true])
+    $this->artisan('passkeys:revoke', ['id' => $passkey->credential_id, '--force' => true])
         ->expectsOutputToContain('revoked successfully')
         ->assertSuccessful();
 
-    expect(WebAuthnCredential::find($credential->id))->toBeNull();
+    expect(Passkey::find($passkey->id))->toBeNull();
 });
 
 test('passkeys:revoke --user removes all of a users passkeys', function () {
     $user = User::factory()->create(['role' => 'admin', 'email' => 'wipe@example.com']);
-    attachCredential($user);
-    attachCredential($user);
+    attachPasskey($user);
+    attachPasskey($user);
 
     $this->artisan('passkeys:revoke', ['--user' => 'wipe@example.com', '--force' => true])
         ->assertSuccessful();
 
-    expect($user->webAuthnCredentials()->count())->toBe(0);
+    expect($user->passkeys()->count())->toBe(0);
 });
 
 test('passkeys:revoke with no arguments fails', function () {
@@ -262,27 +313,46 @@ test('passkeys:revoke with no arguments fails', function () {
         ->assertFailed();
 });
 
-test('passkeys:list works against credentials hydrated from the database', function () {
-    // Regression: the package model does not cast created_at / last_used_at,
-    // so freshly-queried instances return strings. Querying back from the DB
-    // (instead of using the cached forceCreate() instance) exercises the
-    // string-formatting path.
-    $user = User::factory()->create(['role' => 'admin', 'email' => 'rehydrate@example.com']);
-    $created = attachCredential($user, ['alias' => 'Hydrated', 'last_used_at' => now()->subHour()]);
+test('passkeys:revoke matches by credential_id prefix when no exact hit', function () {
+    $user = User::factory()->create(['role' => 'admin']);
+    $passkey = attachPasskey($user, ['credential_id' => 'abcdef0123456789ffff']);
 
-    // Force a fresh DB read so created_at / last_used_at come back as strings.
-    expect(WebAuthnCredential::find($created->id))->not->toBeNull();
-
-    $this->artisan('passkeys:list', ['--user' => 'rehydrate@example.com'])
-        ->expectsOutputToContain('Hydrated')
+    $this->artisan('passkeys:revoke', ['id' => 'abcdef', '--force' => true])
+        ->expectsOutputToContain('revoked successfully')
         ->assertSuccessful();
+
+    expect(Passkey::find($passkey->id))->toBeNull();
+});
+
+test('passkeys:revoke fails when no passkey matches the given id', function () {
+    $this->artisan('passkeys:revoke', ['id' => 'nonexistent-credential'])
+        ->expectsOutputToContain('Passkey not found')
+        ->assertFailed();
+});
+
+test('passkeys:list --role filters by user role', function () {
+    $admin = User::factory()->create(['role' => 'admin', 'email' => 'role-admin@example.com']);
+    $editor = User::factory()->create(['role' => 'editor', 'email' => 'role-editor@example.com']);
+    attachPasskey($admin, ['name' => 'AdminKey']);
+    attachPasskey($editor, ['name' => 'EditorKey']);
+
+    $this->artisan('passkeys:list', ['--role' => 'admin'])
+        ->expectsOutputToContain('AdminKey')
+        ->doesntExpectOutputToContain('EditorKey')
+        ->assertSuccessful();
+});
+
+test('passkeys:list fails when --user does not match any user', function () {
+    $this->artisan('passkeys:list', ['--user' => 'missing@example.com'])
+        ->expectsOutputToContain('User not found')
+        ->assertFailed();
 });
 
 test('profile edit page renders when the user has a passkey with a stamped last_used_at', function () {
     // Regression: blade was calling ->format() on a string column from the
     // package model when last_used_at was set.
     $user = User::factory()->create(['role' => 'admin']);
-    attachCredential($user, ['alias' => 'Hydrated', 'last_used_at' => now()->subDay()]);
+    attachPasskey($user, ['name' => 'Hydrated', 'last_used_at' => now()->subDay()]);
 
     $response = $this->actingAs($user)->get(route('profile.edit'));
 

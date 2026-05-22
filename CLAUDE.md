@@ -53,7 +53,7 @@ One-line summaries; read the source for detail.
 - **RekognitionService** — AI tagging via Rekognition + AWS Translate when `AWS_REKOGNITION_LANGUAGE != 'en'`. Background via `GenerateAiTags` job. Settings read live from DB.
 - **CloudflareService** — Non-blocking CDN purge on asset replace / thumbnail regen. `collectAssetUrls()` then `purgeUrls()`. Requires env + `custom_domain` + `cloudflare_cache_purge` toggle. Logs errors, never throws. Config: `config/cloudflare.php`.
 - **TikzCompilerService** — TeX Live pipeline (LaTeX→DVI→SVG/PNG, optional embedded WOFF2 / paths-only). 17 font packages, configurable border/DPI/libraries, custom preambles. Security: blocks `\write18`/`\openin`, `--no-shell-escape`, paranoid file mode. Config: `config/tikz.php`.
-- **WebAuthnService** — Passkey list/rename/delete/clear on top of `laragear/webauthn`. `MAX_CREDENTIALS_PER_USER = 10`. `TouchPasskeyLastUsed` listener stamps `users.last_passkey_used_at` and `webauthn_credentials.last_used_at` on assertion.
+- **PasskeyService** — Passkey list/rename/delete/clear on top of `laravel/passkeys`. `MAX_CREDENTIALS_PER_USER = 10`. `TouchPasskeyLastUsed` listener (on `PasskeyVerified`) stamps `users.last_passkey_used_at`; the package itself maintains `passkeys.last_used_at`. `EnforcePasskeyLimit` listener (on `PasskeyRegistered`) is the belt-and-braces cap enforcer.
 - **TwoFactorService** — TOTP setup / verification / recovery codes.
 - **CsvExportService** / **CsvImportService** — `generateHeaders()` + `formatRow()` for export (33 columns, separated user/ai/reference tag columns). Import: `parseCsv()`, `calculateChanges()` diff vs existing, `validateRow()` for license + dates.
 - **ImageProcessingService** — Intervention/GD wrapper. `createThumbnailContent()` (300×300 JPEG, null for animated GIFs), `createResizedContent()` (preserves format, GIF→JPEG), `getImageDimensions()`, `isAnimatedGif()`.
@@ -70,7 +70,7 @@ One-line summaries; read the source for detail.
 
 - **Sanctum** — long-lived tokens for backend integrations.
 - **JWT** — short-lived (off by default; `JWT_ENABLED=true`). Guard `app/Auth/JwtGuard.php`, config `config/jwt.php`. Required claims: `sub`, `exp`, `iat`. Per-user secret encrypted in `users.jwt_secret`.
-- **Passkeys (WebAuthn / FIDO2)** — `laragear/webauthn` v5, provider `eloquent-webauthn` with `password_fallback: true`. Passwordless login on `/login` (conditional UI). Successful passkey login bypasses TOTP. Profile → Security: register/rename/remove (max 10/user, admins + editors only — API users blocked). Admin recovery: "Clear all passkeys" + `passkeys:revoke --user=email`. Frontend: `resources/js/alpine/passkeys.js` (`@simplewebauthn/browser`). Config: `config/webauthn.php`. Env: `WEBAUTHN_ID`, `WEBAUTHN_ORIGINS` (default = `APP_URL` host).
+- **Passkeys (WebAuthn / FIDO2)** — `laravel/passkeys` ~0.2.1, default `web` guard. Passwordless login on `/login` (conditional UI via `@laravel/passkeys` autofill). Successful passkey login bypasses TOTP by routing straight to `/dashboard`. Profile → Security: register/rename/remove (max 10/user, admins + editors only — API users blocked). Admin recovery: "Clear all passkeys" + `passkeys:revoke --user=email`. Package routes are disabled via `Passkeys::ignoreRoutes()`; ORCA registers its own at `/passkey/options` (GET), `/passkey/login` (POST), `/profile/passkeys/*`. Custom `App\Models\Passkey` (registered via `Passkeys::usePasskeyModel`) casts the `credential` blob to `encrypted:json`. Config: `config/passkeys.php`. Env: `PASSKEYS_RELYING_PARTY_ID` / `PASSKEYS_ORIGINS` (legacy `WEBAUTHN_ID` / `WEBAUTHN_ORIGINS` honored as fallbacks for one release).
 - **Multi-auth middleware**: `app/Http/Middleware/AuthenticateMultiple.php` (`auth.multi:web,sanctum,jwt`).
 
 ### Authorization (`app/Policies/`)
@@ -147,7 +147,7 @@ One-line summaries; read the source for detail.
 - **asset_tag** — `asset_id`, `tag_id`, `attached_by` (nullable), timestamps.
 - **settings** — `key` (unique), `value`, `type`, `group`, `description`.
 - **users** (extras) — `role` (admin/editor/api, default `editor`), `jwt_secret` (encrypted), `jwt_secret_generated_at`, `last_passkey_used_at`, `two_factor_secret` (encrypted), `two_factor_recovery_codes` (encrypted), `two_factor_confirmed_at`, `preferences` (encrypted JSON: `home_folder`, `items_per_page`, `locale`, `dark_mode`).
-- **webauthn_credentials** (package) — credential id PK, morph to User, alias, counter, rp_id, origin, transports (JSON), aaguid, public_key (encrypted), attestation_format, certificates (JSON), disabled_at, last_used_at.
+- **passkeys** (package) — `id` PK, `user_id` FK (cascade), `name`, `credential_id` (unique), `credential` (longText, cast `encrypted:json` via `App\Models\Passkey`), `last_used_at`, timestamps, index on `user_id`.
 
 **Default Settings**: `items_per_page=24`, `timezone=UTC`, `locale=en`, `s3_root_folder=assets`, `custom_domain=""`, `embed_allowed_domains=[]`, `rekognition_max_labels=3`, `rekognition_min_confidence=80`, `rekognition_language=nl`, `s3_folders=["assets"]`, `jwt_enabled_override=true`, `api_meta_endpoint_enabled=true`, `api_upload_enabled=true`, `resize_{s,m,l}_width = 250 / 600 / 1200`, `resize_{s,m,l}_height=""`, `maintenance_mode=false`, `cloudflare_cache_purge=false`.
 
@@ -171,8 +171,8 @@ JWT_LEEWAY=60
 JWT_ISSUER=                           # optional issuer validation
 
 # Optional: Passkeys (defaults derive from APP_URL host)
-WEBAUTHN_ID=                          # Relying-party host
-WEBAUTHN_ORIGINS=                     # Comma-separated extras (rare)
+PASSKEYS_RELYING_PARTY_ID=            # Relying-party host (legacy WEBAUTHN_ID still honored)
+PASSKEYS_ORIGINS=                     # Comma-separated extras (legacy WEBAUTHN_ORIGINS still honored)
 
 # Optional: Cloudflare CDN purge (also needs custom_domain + cloudflare_cache_purge toggle)
 CLOUDFLARE_ENABLED=false

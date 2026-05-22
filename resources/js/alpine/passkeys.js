@@ -1,27 +1,22 @@
-import {
-    startAuthentication,
-    startRegistration,
-    browserSupportsWebAuthn,
-    browserSupportsWebAuthnAutofill,
-} from '@simplewebauthn/browser';
+import { Passkeys, UserCancelledError } from '@laravel/passkeys';
 
-const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+const readPageData = () => {
+    const data = window.__pageData ?? {};
+    return {
+        routes: data.routes ?? {},
+        t: data.translations ?? {},
+    };
+};
 
-const headers = (extra = {}) => ({
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    'X-CSRF-TOKEN': csrf(),
-    'X-Requested-With': 'XMLHttpRequest',
-    ...extra,
+const overridesFor = (optionsRoute, submitRoute) => ({
+    routes: { options: optionsRoute, submit: submitRoute },
 });
 
 export function passkeyManager() {
-    const pageData = window.__pageData || {};
-    const routes = pageData.routes || {};
-    const t = pageData.translations || {};
+    const { routes, t } = readPageData();
 
     return {
-        supported: browserSupportsWebAuthn(),
+        supported: Passkeys.isSupported(),
         adding: false,
         alias: '',
 
@@ -30,50 +25,21 @@ export function passkeyManager() {
             this.adding = true;
 
             try {
-                const optionsRes = await fetch(routes.passkeyOptions, {
-                    method: 'POST',
-                    headers: headers(),
-                    credentials: 'same-origin',
+                await Passkeys.register({
+                    name: this.alias.trim() || t.defaultPasskeyName || 'Passkey',
+                    ...overridesFor(routes.passkeyOptions, routes.passkeyStore),
                 });
 
-                if (!optionsRes.ok) {
-                    const data = await optionsRes.json().catch(() => ({}));
-                    window.showToast(data.message || t.passkeyAddFailed, 'error');
+                window.showToast(t.passkeyAdded || 'Passkey added.');
+                window.location.reload();
+            } catch (err) {
+                if (err instanceof UserCancelledError) {
+                    window.showToast(t.passkeyCancelled || 'Passkey registration was cancelled.', 'warning');
                     return;
                 }
 
-                const options = await optionsRes.json();
-
-                let attestation;
-                try {
-                    attestation = await startRegistration({ optionsJSON: options });
-                } catch (err) {
-                    if (err && err.name === 'NotAllowedError') {
-                        window.showToast(t.passkeyCancelled || 'Passkey registration was cancelled.', 'warning');
-                    } else {
-                        console.error(err);
-                        window.showToast(t.passkeyAddFailed || 'Failed to add passkey.', 'error');
-                    }
-                    return;
-                }
-
-                const registerRes = await fetch(routes.passkeyStore, {
-                    method: 'POST',
-                    headers: headers(),
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        ...attestation,
-                        alias: this.alias.trim() || null,
-                    }),
-                });
-
-                if (registerRes.ok || registerRes.status === 201) {
-                    window.showToast(t.passkeyAdded || 'Passkey added.');
-                    window.location.reload();
-                } else {
-                    const data = await registerRes.json().catch(() => ({}));
-                    window.showToast(data.message || t.passkeyAddFailed || 'Failed to add passkey.', 'error');
-                }
+                console.error(err);
+                window.showToast(err?.message || t.passkeyAddFailed || 'Failed to add passkey.', 'error');
             } finally {
                 this.adding = false;
             }
@@ -82,63 +48,32 @@ export function passkeyManager() {
 }
 
 export function passkeyLogin() {
-    const pageData = window.__pageData || {};
-    const routes = pageData.routes || {};
-    const t = pageData.translations || {};
+    const { routes, t } = readPageData();
+    const overrides = () => overridesFor(routes.passkeyLoginOptions, routes.passkeyLogin);
 
-    const submit = async ({ mediation = 'optional', email = null } = {}) => {
-        const optionsRes = await fetch(routes.passkeyLoginOptions, {
-            method: 'POST',
-            headers: headers(),
-            credentials: 'same-origin',
-            body: JSON.stringify(email ? { email } : {}),
-        });
-
-        if (!optionsRes.ok) {
-            const data = await optionsRes.json().catch(() => ({}));
-            throw new Error(data.message || 'Failed to start passkey sign-in.');
-        }
-
-        const options = await optionsRes.json();
-
-        const assertion = await startAuthentication({
-            optionsJSON: options,
-            useBrowserAutofill: mediation === 'conditional',
-        });
-
-        const loginRes = await fetch(routes.passkeyLogin, {
-            method: 'POST',
-            headers: headers(),
-            credentials: 'same-origin',
-            body: JSON.stringify(assertion),
-        });
-
-        if (!loginRes.ok) {
-            const data = await loginRes.json().catch(() => ({}));
-            throw new Error(data.message || 'Passkey sign-in failed.');
-        }
-
-        const data = await loginRes.json().catch(() => ({}));
-        window.location.href = data.redirect || '/';
+    const navigate = (result) => {
+        window.location.href = result?.redirect || '/';
     };
 
     return {
-        supported: browserSupportsWebAuthn(),
+        supported: Passkeys.isSupported(),
         loading: false,
         error: '',
 
-        async signIn(email = null) {
+        async signIn() {
             if (!this.supported || this.loading) return;
             this.loading = true;
             this.error = '';
             try {
-                await submit({ mediation: 'optional', email });
+                const result = await Passkeys.verify(overrides());
+                navigate(result);
             } catch (err) {
-                if (!err || err.name !== 'NotAllowedError') {
-                    console.error(err);
-                    this.error = err?.message || (t.passkeyLoginFailed || 'Passkey sign-in failed.');
-                    window.showToast(this.error, 'error');
+                if (err instanceof UserCancelledError) {
+                    return;
                 }
+                console.error(err);
+                this.error = err?.message || (t.passkeyLoginFailed || 'Passkey sign-in failed.');
+                window.showToast(this.error, 'error');
             } finally {
                 this.loading = false;
             }
@@ -147,13 +82,15 @@ export function passkeyLogin() {
         async startConditional() {
             if (!this.supported) return;
             try {
-                const supportsAutofill = await browserSupportsWebAuthnAutofill();
-                if (!supportsAutofill) return;
-                await submit({ mediation: 'conditional' });
-            } catch (err) {
-                if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
-                    console.warn('Conditional passkey UI failed:', err);
+                const result = await Passkeys.autofill(overrides());
+                if (result) {
+                    navigate(result);
                 }
+            } catch (err) {
+                if (err instanceof UserCancelledError) {
+                    return;
+                }
+                console.warn('Conditional passkey UI failed:', err);
             }
         },
     };

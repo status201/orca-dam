@@ -1,7 +1,7 @@
 @php
     $user = auth()->user();
-    $passkeys = $user->webAuthnCredentials()->latest()->get();
-    $maxPasskeys = \App\Services\WebAuthnService::MAX_CREDENTIALS_PER_USER;
+    $passkeys = $user->passkeys()->latest()->get();
+    $maxPasskeys = \App\Services\PasskeyService::MAX_CREDENTIALS_PER_USER;
 @endphp
 
 <section
@@ -52,15 +52,12 @@
                     <li class="flex items-center justify-between p-4 gap-4">
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
-                                <svg class="w-5 h-5 {{ $passkey->isEnabled() ? 'text-green-500' : 'text-gray-400' }}" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z" />
                                 </svg>
                                 <span class="text-sm font-medium text-gray-900 truncate">
-                                    {{ $passkey->alias ?: __('Unnamed passkey') }}
+                                    {{ $passkey->name ?: __('Unnamed passkey') }}
                                 </span>
-                                @if ($passkey->isDisabled())
-                                    <span class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">{{ __('Disabled') }}</span>
-                                @endif
                             </div>
                             <p class="mt-1 text-xs text-gray-500">
                                 {{ __('Added :date', ['date' => \Illuminate\Support\Carbon::parse($passkey->created_at)->format('M j, Y')]) }}
@@ -73,34 +70,34 @@
                             </p>
                         </div>
                         <div class="flex items-center gap-2 shrink-0">
-                            <form method="POST" action="{{ route('profile.passkeys.update', $passkey->id) }}"
+                            <form method="POST" action="{{ route('profile.passkeys.update', $passkey->credential_id) }}"
                                   class="flex items-center gap-2"
-                                  x-data="{ editing: false, alias: @js($passkey->alias) }"
+                                  x-data="{ editing: false, name: @js($passkey->name) }"
                                   @submit="if (!editing) $event.preventDefault()">
                                 @csrf
                                 @method('PATCH')
                                 <template x-if="!editing">
-                                    <x-secondary-button type="button" @click="editing = true; $nextTick(() => $refs.aliasInput.focus())">
+                                    <x-secondary-button type="button" @click="editing = true; $nextTick(() => $refs.nameInput.focus())">
                                         {{ __('Rename') }}
                                     </x-secondary-button>
                                 </template>
                                 <template x-if="editing">
                                     <span class="flex items-center gap-2">
                                         <input
-                                            x-ref="aliasInput"
+                                            x-ref="nameInput"
                                             type="text"
-                                            name="alias"
-                                            x-model="alias"
+                                            name="name"
+                                            x-model="name"
                                             maxlength="100"
                                             class="block w-40 px-2 py-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                             placeholder="{{ __('e.g. MacBook') }}"
                                         />
                                         <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
-                                        <x-secondary-button type="button" @click="editing = false; alias = @js($passkey->alias)">{{ __('Cancel') }}</x-secondary-button>
+                                        <x-secondary-button type="button" @click="editing = false; name = @js($passkey->name)">{{ __('Cancel') }}</x-secondary-button>
                                     </span>
                                 </template>
                             </form>
-                            <form method="POST" action="{{ route('profile.passkeys.destroy', $passkey->id) }}"
+                            <form method="POST" action="{{ route('profile.passkeys.destroy', $passkey->credential_id) }}"
                                   onsubmit="return confirm('{{ __('Remove this passkey? You will not be able to use it to sign in anymore.') }}')">
                                 @csrf
                                 @method('DELETE')
@@ -153,6 +150,7 @@
             passkeyAdded: @json(__('Passkey added.')),
             passkeyAddFailed: @json(__('Failed to add passkey.')),
             passkeyCancelled: @json(__('Passkey registration was cancelled.')),
+            defaultPasskeyName: @json(__('Passkey')),
         });
     </script>
 @endpush

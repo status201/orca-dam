@@ -40,7 +40,7 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
   - Admin recovery: "Clear all passkeys" button on user edit when the user loses all their devices
   - Users index gains a **Passkeys** column (count + last-used tooltip)
   - Console: `passkeys:list [--user] [--role]` and `passkeys:revoke <id>|--user [--force]`
-  - Built on `laragear/webauthn` v5 + `@simplewebauthn/browser`; auth provider switched to `eloquent-webauthn` with `password_fallback: true`
+  - Built on `laravel/passkeys` ~0.2.1 + `@laravel/passkeys` (first-party). Custom `App\Models\Passkey` encrypts the serialized credential blob at rest. Migrated from `laragear/webauthn` v5 on 2026-05-22 — that package was archived; only the single dev passkey re-registered.
 - Assets Show cycle navigation now includes the `user` filter in the context summary badge
 - **Asset parent/child relations** — assets can now track a source asset via `parent_id`. TikZ Server renders uploaded from a loaded or saved `.tex` template are automatically linked to it; the Asset detail page shows a **Relations** card with Source and Derived assets.
 

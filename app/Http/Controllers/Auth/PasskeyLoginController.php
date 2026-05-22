@@ -4,11 +4,18 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
-use Laragear\WebAuthn\Http\Requests\AssertedRequest;
-use Laragear\WebAuthn\Http\Requests\AssertionRequest;
+use Illuminate\Validation\ValidationException;
+use Laravel\Passkeys\Actions\GenerateVerificationOptions;
+use Laravel\Passkeys\Actions\VerifyPasskey;
+use Laravel\Passkeys\Exceptions\InvalidPasskeyException;
+use Laravel\Passkeys\Support\WebAuthn;
+use Throwable;
+use Webauthn\PublicKeyCredential;
+use Webauthn\PublicKeyCredentialRequestOptions;
 
 class PasskeyLoginController extends Controller
 {
@@ -18,23 +25,30 @@ class PasskeyLoginController extends Controller
     protected const RATE_LIMIT = 10;
 
     /**
-     * Return assertion (login) options. Optionally scoped to an email if provided
-     * (so the authenticator can offer matching credentials), but works without
-     * one to support discoverable credentials / conditional UI.
+     * Session key for the in-flight assertion ceremony options.
      */
-    public function options(AssertionRequest $request): Responsable
+    private const SESSION_KEY = 'passkey.verification_options';
+
+    /**
+     * Return assertion (login) options. Always discoverable — the authenticator
+     * surfaces matching credentials via conditional UI without us scoping by email.
+     */
+    public function options(Request $request, GenerateVerificationOptions $generate): JsonResponse
     {
-        return $request->toVerify($request->validate([
-            'email' => 'sometimes|nullable|email',
-        ]));
+        $options = $generate();
+        $request->session()->put(self::SESSION_KEY, WebAuthn::toJson($options));
+
+        return response()->json([
+            'options' => WebAuthn::toBrowserArray($options),
+        ]);
     }
 
     /**
-     * Verify an assertion and log the user in. Marks the session so the existing
-     * 2FA gate in AuthenticatedSessionController is bypassed — the passkey already
-     * provides phishing-resistant possession + verification.
+     * Verify an assertion and log the user in. The user lands at /dashboard,
+     * bypassing the AuthenticatedSessionController 2FA gate by routing — the
+     * passkey already provides phishing-resistant possession + verification.
      */
-    public function login(AssertedRequest $request): JsonResponse
+    public function login(Request $request, VerifyPasskey $verify): JsonResponse
     {
         $key = 'passkey-login:'.$request->ip();
 
@@ -48,7 +62,49 @@ class PasskeyLoginController extends Controller
             ], 429);
         }
 
-        $user = $request->login();
+        $validated = $request->validate([
+            'credential' => ['required', 'array'],
+            'credential.id' => ['required', 'string'],
+            'credential.rawId' => ['required', 'string'],
+            'credential.type' => ['required', 'string', 'in:public-key'],
+            'credential.response' => ['required', 'array'],
+            'remember' => ['boolean'],
+        ]);
+
+        try {
+            $credential = WebAuthn::fromJson(
+                json_encode($validated['credential']) ?: '{}',
+                PublicKeyCredential::class
+            );
+        } catch (Throwable) {
+            throw ValidationException::withMessages([
+                'credential' => __('Invalid credential format.'),
+            ]);
+        }
+
+        $serialized = $request->session()->pull(self::SESSION_KEY);
+
+        if (! is_string($serialized) || $serialized === '') {
+            RateLimiter::hit($key, 60);
+
+            throw ValidationException::withMessages([
+                'credential' => __('Passkey verification session expired. Please try again.'),
+            ]);
+        }
+
+        $options = WebAuthn::fromJson($serialized, PublicKeyCredentialRequestOptions::class);
+
+        try {
+            $passkey = $verify($credential, $options);
+        } catch (InvalidPasskeyException) {
+            RateLimiter::hit($key, 60);
+
+            return response()->json([
+                'message' => __('Passkey authentication failed.'),
+            ], 422);
+        }
+
+        $user = $passkey->user;
 
         if (! $user instanceof User) {
             RateLimiter::hit($key, 60);
@@ -59,6 +115,9 @@ class PasskeyLoginController extends Controller
         }
 
         RateLimiter::clear($key);
+
+        Auth::guard('web')->login($user, (bool) ($validated['remember'] ?? false));
+        $request->session()->regenerate();
 
         $user->last_login_at = now();
         $user->save();

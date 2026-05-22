@@ -44,7 +44,7 @@ Route::middleware('guest')->group(function () {
     Route::post('two-factor-challenge', [TwoFactorAuthController::class, 'verifyChallenge']);
 
     // Passkey login (WebAuthn assertion)
-    Route::post('passkey/options', [PasskeyLoginController::class, 'options'])
+    Route::get('passkey/options', [PasskeyLoginController::class, 'options'])
         ->name('passkey.options');
 
     Route::post('passkey/login', [PasskeyLoginController::class, 'login'])
@@ -92,7 +92,7 @@ Route::middleware('auth')->group(function () {
         ->name('two-factor.recovery-codes.show');
 
     // Passkey management (WebAuthn registration + listing)
-    Route::post('profile/passkeys/options', [PasskeyController::class, 'options'])
+    Route::get('profile/passkeys/options', [PasskeyController::class, 'options'])
         ->name('profile.passkeys.options');
 
     Route::post('profile/passkeys', [PasskeyController::class, 'store'])

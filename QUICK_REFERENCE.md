@@ -140,7 +140,7 @@ orca-dam/
 │       ├── S3Service.php              # S3 operations, thumbnails & URLs
 │       ├── SystemService.php          # System admin utilities
 │       ├── TwoFactorService.php       # 2FA TOTP management
-│       ├── WebAuthnService.php        # Passkey management (list/rename/delete)
+│       ├── PasskeyService.php        # Passkey management (list/rename/delete)
 │       ├── CsvExportService.php       # CSV export row generation
 │       ├── CsvImportService.php       # CSV parsing, diffing & validation
 │       ├── ImageProcessingService.php # Thumbnails, resizing, dimensions
@@ -151,7 +151,7 @@ orca-dam/
 │   ├── jwt.php                        # JWT authentication config
 │   ├── tikz.php                       # TikZ Server compiler config
 │   ├── two-factor.php                 # 2FA configuration
-│   └── webauthn.php                   # Passkey (WebAuthn) configuration
+│   └── passkeys.php                   # Passkey (laravel/passkeys) configuration
 ├── database/migrations/               # 33 migrations
 ├── resources/
 │   ├── js/
@@ -209,7 +209,7 @@ orca-dam/
 │       ├── SettingTest.php                # Setting model, caching
 │       ├── TagTest.php                    # Tag model
 │       ├── TwoFactorServiceTest.php       # 2FA service
-│       ├── WebAuthnServiceTest.php        # Passkey service
+│       ├── PasskeyServiceTest.php         # Passkey service
 │       ├── UserPreferencesTest.php        # User preference helpers
 │       ├── CsvExportServiceTest.php       # CSV export service
 │       ├── CsvImportServiceTest.php       # CSV import service
@@ -334,11 +334,10 @@ POST   /api/chunked-upload/abort     # Cancel upload
 - two_factor_secret, two_factor_recovery_codes, two_factor_confirmed_at (2FA)
 - preferences (encrypted JSON: home_folder, items_per_page, locale, dark_mode)
 
-### webauthn_credentials (passkeys, package-managed)
-- id (credential id, PK), authenticatable_type/id (morph to user), user_id (UUID)
-- alias, counter, rp_id, origin, transports (JSON), aaguid
-- public_key (encrypted), attestation_format, certificates (JSON)
-- disabled_at, last_used_at, created_at, updated_at
+### passkeys (laravel/passkeys, package-managed)
+- id (autoinc, PK), user_id (FK, cascade), name
+- credential_id (unique string), credential (longText, cast `encrypted:json` via `App\Models\Passkey`)
+- last_used_at, created_at, updated_at; index on user_id
 
 ### assets
 - id, s3_key, filename, mime_type, size, etag
@@ -569,7 +568,7 @@ php artisan jwt:revoke user@email.com    # Revoke JWT secret
 php artisan two-factor:status            # Check 2FA status for all users
 php artisan two-factor:disable user@email.com  # Disable 2FA for a user
 
-# Passkey (WebAuthn) management
+# Passkey management
 php artisan passkeys:list                # List all registered passkeys
 php artisan passkeys:list --user=user@email.com  # Filter by user
 php artisan passkeys:revoke <id>         # Revoke a single passkey by ID

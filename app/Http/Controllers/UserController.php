@@ -4,14 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\User;
-use App\Services\WebAuthnService;
+use App\Services\PasskeyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function __construct(protected WebAuthnService $webAuthnService) {}
+    public function __construct(protected PasskeyService $passkeyService) {}
 
     public function index()
     {
@@ -19,7 +19,7 @@ class UserController extends Controller
 
         $users = User::withCount([
             'assets' => fn ($q) => $q->withTrashed(),
-            'webAuthnCredentials',
+            'passkeys',
         ])->orderBy('name')->get();
 
         return view('users.index', compact('users'));
@@ -94,7 +94,7 @@ class UserController extends Controller
     {
         $this->authorize('clearPasskeys', $user);
 
-        $count = $this->webAuthnService->clearAllCredentials($user);
+        $count = $this->passkeyService->clearAllCredentials($user);
 
         return back()->with('success', __(':count passkey(s) cleared for :name.', [
             'count' => $count,

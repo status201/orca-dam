@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Auth\JwtGuard;
 use App\Http\Controllers\SystemController;
+use App\Listeners\EnforcePasskeyLimit;
 use App\Listeners\TouchPasskeyLastUsed;
+use App\Models\Passkey;
 use App\Models\Setting;
 use App\Policies\SystemPolicy;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +14,9 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
-use Laragear\WebAuthn\Events\CredentialAsserted;
+use Laravel\Passkeys\Events\PasskeyRegistered;
+use Laravel\Passkeys\Events\PasskeyVerified;
+use Laravel\Passkeys\Passkeys;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,7 +25,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // ORCA owns the passkey route URLs (see routes/auth.php) — the package's
+        // /passkeys/* defaults are disabled so we can keep /passkey/login etc.
+        Passkeys::ignoreRoutes();
+
+        // Encrypt the serialized credential blob at rest.
+        Passkeys::usePasskeyModel(Passkey::class);
     }
 
     /**
@@ -57,7 +66,10 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
-        // Stamp last-used timestamps on successful passkey assertions.
-        Event::listen(CredentialAsserted::class, TouchPasskeyLastUsed::class);
+        // Stamp last_passkey_used_at on successful passkey assertions.
+        Event::listen(PasskeyVerified::class, TouchPasskeyLastUsed::class);
+
+        // Defense-in-depth: enforce per-user passkey cap after registration.
+        Event::listen(PasskeyRegistered::class, EnforcePasskeyLimit::class);
     }
 }

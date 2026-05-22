@@ -409,12 +409,12 @@ orca-dam/
 │       ├── TestRunnerService.php      # Web-based test runner
 │       ├── TikzCompilerService.php    # Server-side TikZ/LaTeX compilation
 │       ├── TwoFactorService.php       # 2FA TOTP management
-│       └── WebAuthnService.php        # Passkey management (list/rename/delete)
+│       └── PasskeyService.php        # Passkey management (list/rename/delete)
 ├── config/
 │   ├── jwt.php                        # JWT authentication config
+│   ├── passkeys.php                   # Passkey (laravel/passkeys) configuration
 │   ├── tikz.php                       # TikZ Server compiler config
-│   ├── two-factor.php                 # 2FA configuration
-│   └── webauthn.php                   # Passkey (WebAuthn) configuration
+│   └── two-factor.php                 # 2FA configuration
 ├── database/
 │   ├── factories/                     # Test factories
 │   └── migrations/                    # 33 migrations

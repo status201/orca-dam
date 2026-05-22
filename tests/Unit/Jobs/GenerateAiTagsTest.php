@@ -38,7 +38,7 @@ test('job swallows rekognition exceptions (does not throw)', function () {
     $asset = Asset::factory()->image()->create(['mime_type' => 'image/jpeg']);
 
     $rekognition = Mockery::mock(RekognitionService::class);
-    $rekognition->shouldReceive('autoTagAsset')->andThrow(new \RuntimeException('AWS down'));
+    $rekognition->shouldReceive('autoTagAsset')->andThrow(new RuntimeException('AWS down'));
 
     (new GenerateAiTags($asset))->handle($rekognition);
 

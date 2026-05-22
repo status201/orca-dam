@@ -80,7 +80,7 @@
 
     @can('clearPasskeys', $user)
         @php
-            $passkeyCount = $user->webAuthnCredentials()->count();
+            $passkeyCount = $user->passkeys()->count();
         @endphp
         @if ($passkeyCount > 0)
             <div class="mt-6 bg-white rounded-lg shadow p-6 border border-amber-200">

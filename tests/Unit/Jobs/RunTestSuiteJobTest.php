@@ -14,9 +14,9 @@ test('job delegates to TestRunnerService::runStreaming with correct args', funct
 
 test('job marks run as failed and re-throws on exception', function () {
     $service = Mockery::mock(TestRunnerService::class);
-    $service->shouldReceive('runStreaming')->andThrow(new \RuntimeException('pest exploded'));
+    $service->shouldReceive('runStreaming')->andThrow(new RuntimeException('pest exploded'));
     $service->shouldReceive('markFailed')->once()->with('run-xyz', 'pest exploded');
 
     expect(fn () => (new RunTestSuiteJob('run-xyz'))->handle($service))
-        ->toThrow(\RuntimeException::class, 'pest exploded');
+        ->toThrow(RuntimeException::class, 'pest exploded');
 });

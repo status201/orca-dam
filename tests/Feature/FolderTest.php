@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\S3Service;
