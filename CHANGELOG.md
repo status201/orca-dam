@@ -6,7 +6,11 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 ---
 
 ## [Unreleased]
+### Added
 
+---
+
+## [v1.4.0] — 2026-05 — Kelp Crown
 ### Added
 - **Masonry view on the Assets index.** Third view mode alongside Grid and List, optimized for visual browsing: images render at native aspect ratio in CSS columns using the M-size resize (~600px) for crisp previews; non-image types render as fixed-aspect tiles. Bottom-gradient hover overlay shows filename + download / copy / edit. View preference persists in localStorage (`orcaAssetViewMode`).
 - **Duplicate upload results panel.** When an upload batch hits etag collisions, each file row shows an outcome pill (Uploaded / Duplicaat / Failed) and a Duplicates panel surfaces below the list with thumbnails, folder, size, "View existing", "Copy URL", multi-select bulk-copy, "Reveal in library", and a Restore-from-trash action when the existing asset is soft-deleted (admin/editor only). Auto-redirect now only fires on a clean batch; duplicate / failure batches keep the user on the upload page until they explicitly continue. Direct and chunked 409 payloads are now identical (`DuplicateAssetException::formatDuplicate`).
@@ -15,9 +19,14 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ### Changed
 - Assets Show: Child assets display as large thumbnails
+- Migrate passkeys from laragear/webauthn to laravel/passkeys
 
 ### Fixed
 - deduplicate app layout (to app.blade.php)
+
+### Notes for upgrading from v1.3.0 Belly Roll
+- Run composer install, npm ci, artisan migrate
+- Any existing passkeys will be cleared
 ---
 
 ## [v1.3.0] — 2026-05 — Belly Roll
