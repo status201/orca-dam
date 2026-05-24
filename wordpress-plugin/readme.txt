@@ -4,7 +4,7 @@ Tags: media, dam, asset-management, gutenberg
 Requires at least: 6.4
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: MIT
 
 Browse and insert assets from ORCA DAM directly inside WordPress, with automatic usage tracking via reference tags.

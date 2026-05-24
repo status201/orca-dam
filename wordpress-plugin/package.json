@@ -1,6 +1,6 @@
 {
   "name": "orca-dam-picker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Build pipeline for ORCA DAM Picker UI (React + WordPress block editor).",
   "scripts": {
