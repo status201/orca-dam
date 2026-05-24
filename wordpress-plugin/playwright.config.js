@@ -11,7 +11,6 @@ module.exports = defineConfig({
         trace: 'retain-on-failure',
         video: 'retain-on-failure',
         screenshot: 'only-on-failure',
-        storageState: 'tests/e2e/.auth/admin.json',
     },
     projects: [
         {
@@ -20,7 +19,10 @@ module.exports = defineConfig({
         },
         {
             name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
+            use: {
+                ...devices['Desktop Chrome'],
+                storageState: 'tests/e2e/.auth/admin.json',
+            },
             dependencies: ['setup'],
         },
     ],
