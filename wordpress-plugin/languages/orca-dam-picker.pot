@@ -26,16 +26,43 @@ msgstr ""
 msgid "All tags"
 msgstr ""
 
+msgid "All folders"
+msgstr ""
+
 msgid "Newest"
 msgstr ""
 
 msgid "Oldest"
 msgstr ""
 
+msgid "Recently uploaded"
+msgstr ""
+
+msgid "Earliest uploaded"
+msgstr ""
+
 msgid "Name A → Z"
 msgstr ""
 
+msgid "Name Z → A"
+msgstr ""
+
 msgid "Largest first"
+msgstr ""
+
+msgid "Smallest first"
+msgstr ""
+
+msgid "Path A → Z"
+msgstr ""
+
+msgid "Path Z → A"
+msgstr ""
+
+msgid "Load more"
+msgstr ""
+
+msgid "Showing %1$d of %2$d assets"
 msgstr ""
 
 msgid "No assets found."

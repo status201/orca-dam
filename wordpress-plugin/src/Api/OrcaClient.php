@@ -6,6 +6,7 @@ namespace OrcaDam\Api;
 
 use OrcaDam\Api\Endpoints\AddReferenceTag;
 use OrcaDam\Api\Endpoints\GetAsset;
+use OrcaDam\Api\Endpoints\GetFolders;
 use OrcaDam\Api\Endpoints\GetHealth;
 use OrcaDam\Api\Endpoints\GetMeta;
 use OrcaDam\Api\Endpoints\ListTags;
@@ -52,6 +53,11 @@ final class OrcaClient
     public function listTags(array $params = []): TransportResponse
     {
         return (new ListTags($this))->send($params);
+    }
+
+    public function getFolders(): TransportResponse
+    {
+        return (new GetFolders($this))->send();
     }
 
     /**

@@ -18,6 +18,7 @@ use OrcaDam\Maintenance\OrphanScanner;
 use OrcaDam\Rest\AttachmentImportController;
 use OrcaDam\Rest\HealthController;
 use OrcaDam\Rest\MaintenanceController;
+use OrcaDam\Rest\ProxyFoldersController;
 use OrcaDam\Rest\ProxySearchController;
 use OrcaDam\Rest\ProxyTagsController;
 use OrcaDam\Rest\RehydrateController;
@@ -62,6 +63,7 @@ final class Plugin
         add_action('rest_api_init', function (): void {
             $this->get(ProxySearchController::class)->register();
             $this->get(ProxyTagsController::class)->register();
+            $this->get(ProxyFoldersController::class)->register();
             $this->get(AttachmentImportController::class)->register();
             $this->get(HealthController::class)->register();
             $this->get(RehydrateController::class)->register();
@@ -118,6 +120,7 @@ final class Plugin
             SettingsPage::class          => new SettingsPage($this->get(CredentialStore::class)),
             ProxySearchController::class => new ProxySearchController($this->get(OrcaClient::class)),
             ProxyTagsController::class   => new ProxyTagsController($this->get(OrcaClient::class)),
+            ProxyFoldersController::class => new ProxyFoldersController($this->get(OrcaClient::class)),
             AttachmentImportController::class
                                          => new AttachmentImportController($this->get(ShellFactory::class)),
             HealthController::class      => new HealthController($this->get(OrcaClient::class)),

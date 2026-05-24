@@ -27,17 +27,44 @@ msgstr "Zoek ORCA-bestanden…"
 msgid "All tags"
 msgstr "Alle labels"
 
+msgid "All folders"
+msgstr "Alle mappen"
+
 msgid "Newest"
 msgstr "Nieuwste"
 
 msgid "Oldest"
 msgstr "Oudste"
 
+msgid "Recently uploaded"
+msgstr "Recent geüpload"
+
+msgid "Earliest uploaded"
+msgstr "Eerst geüpload"
+
 msgid "Name A → Z"
 msgstr "Naam A → Z"
 
+msgid "Name Z → A"
+msgstr "Naam Z → A"
+
 msgid "Largest first"
 msgstr "Grootste eerst"
+
+msgid "Smallest first"
+msgstr "Kleinste eerst"
+
+msgid "Path A → Z"
+msgstr "Pad A → Z"
+
+msgid "Path Z → A"
+msgstr "Pad Z → A"
+
+msgid "Load more"
+msgstr "Meer laden"
+
+msgid "Showing %1$d of %2$d assets"
+msgstr "%1$d van %2$d bestanden weergegeven"
 
 msgid "No assets found."
 msgstr "Geen bestanden gevonden."
