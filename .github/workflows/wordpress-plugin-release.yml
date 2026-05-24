@@ -18,10 +18,10 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#wp-v}" >> "$GITHUB_OUTPUT"
 
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          tools: composer:v2
+      - name: Verify PHP and Composer
+        run: |
+          php --version
+          composer --version
 
       - uses: actions/setup-node@v4
         with:
@@ -72,7 +72,9 @@ jobs:
           (cd dist && zip -r "orca-dam-picker-${{ steps.version.outputs.version }}.zip" orca-dam-picker)
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/orca-dam-picker-${{ steps.version.outputs.version }}.zip
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            "dist/orca-dam-picker-${{ steps.version.outputs.version }}.zip" \
+            --generate-notes
