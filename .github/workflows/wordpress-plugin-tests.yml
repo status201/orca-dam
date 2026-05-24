@@ -1,0 +1,70 @@
+name: WordPress Plugin Tests
+
+on:
+  pull_request:
+    paths:
+      - 'wordpress-plugin/**'
+      - '.github/workflows/wordpress-plugin-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'wordpress-plugin/**'
+
+jobs:
+  phpunit:
+    name: PHP unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+      - name: Install Composer dependencies
+        working-directory: wordpress-plugin
+        run: composer install --no-progress
+      - name: Run PHPUnit
+        working-directory: wordpress-plugin
+        run: ./vendor/bin/phpunit
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: wordpress-plugin/package-lock.json
+      - name: Install Composer dependencies
+        working-directory: wordpress-plugin
+        run: composer install --no-dev --optimize-autoloader --no-progress
+      - name: Install Node dependencies
+        working-directory: wordpress-plugin
+        run: npm ci
+      - name: Build assets
+        working-directory: wordpress-plugin
+        run: npm run build
+      - name: Install Playwright browsers
+        working-directory: wordpress-plugin
+        run: npx playwright install --with-deps chromium
+      - name: Start wp-env
+        working-directory: wordpress-plugin
+        run: npx wp-env start
+      - name: Run Playwright
+        working-directory: wordpress-plugin
+        env:
+          ORCA_DAM_MOCK: '1'
+        run: npm run test:e2e
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: wordpress-plugin/playwright-report
+          retention-days: 7

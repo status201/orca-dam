@@ -1,0 +1,103 @@
+# Dutch translation of ORCA DAM Picker.
+msgid ""
+msgstr ""
+"Project-Id-Version: ORCA DAM Picker 0.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/status201/orca-dam/issues\n"
+"Last-Translator: Studyflow <dev@studyflow.nl>\n"
+"Language-Team: Dutch <nl@li.org>\n"
+"Language: nl_NL\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: orca-dam-picker\n"
+
+msgid "ORCA DAM"
+msgstr "ORCA DAM"
+
+msgid "Insert from ORCA"
+msgstr "Invoegen vanuit ORCA"
+
+msgid "Insufficient permissions."
+msgstr "Onvoldoende rechten."
+
+msgid "Search ORCA assets…"
+msgstr "Zoek ORCA-bestanden…"
+
+msgid "All tags"
+msgstr "Alle labels"
+
+msgid "Newest"
+msgstr "Nieuwste"
+
+msgid "Oldest"
+msgstr "Oudste"
+
+msgid "Name A → Z"
+msgstr "Naam A → Z"
+
+msgid "Largest first"
+msgstr "Grootste eerst"
+
+msgid "No assets found."
+msgstr "Geen bestanden gevonden."
+
+msgid "ORCA DAM Picker"
+msgstr "ORCA DAM Picker"
+
+msgid "Connection"
+msgstr "Verbinding"
+
+msgid "ORCA base URL"
+msgstr "ORCA-basis-URL"
+
+msgid "API token (Sanctum)"
+msgstr "API-token (Sanctum)"
+
+msgid "A token is configured. Leave empty to keep it."
+msgstr "Een token is ingesteld. Laat leeg om deze te behouden."
+
+msgid "Paste a token created in ORCA → API Tokens."
+msgstr "Plak een token aangemaakt in ORCA → API Tokens."
+
+msgid "Default folder filter (optional)"
+msgstr "Standaard mapfilter (optioneel)"
+
+msgid "Save"
+msgstr "Opslaan"
+
+msgid "Test connection"
+msgstr "Verbinding testen"
+
+msgid "Testing…"
+msgstr "Bezig met testen…"
+
+msgid "Settings saved."
+msgstr "Instellingen opgeslagen."
+
+msgid "Connected to ORCA."
+msgstr "Verbonden met ORCA."
+
+msgid "ORCA returned"
+msgstr "ORCA antwoordde"
+
+msgid "Usage tracking"
+msgstr "Gebruiksregistratie"
+
+msgid "When this site uses an ORCA asset in a post, ORCA records a reference tag of the form"
+msgstr "Wanneer deze site een ORCA-bestand in een bericht gebruikt, registreert ORCA een referentielabel van het type"
+
+msgid "Broken assets"
+msgstr "Verbroken bestanden"
+
+msgid "%d shell(s) reference assets that no longer exist in ORCA."
+msgstr "%d verwijzing(en) wijzen naar bestanden die niet meer in ORCA bestaan."
+
+msgid "Run scan now"
+msgstr "Nu scannen"
+
+msgid "Scan queued — refresh in a minute."
+msgstr "Scan in de wachtrij — vernieuw over een minuut."
+
+msgid "No broken assets detected."
+msgstr "Geen verbroken bestanden gedetecteerd."

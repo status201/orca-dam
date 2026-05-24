@@ -1,0 +1,42 @@
+{
+    "assets": [
+        {
+            "id": 1001,
+            "filename": "logo.png",
+            "s3_key": "assets/branding/logo.png",
+            "mime_type": "image/png",
+            "size": 45678,
+            "width": 1024,
+            "height": 768,
+            "url": "https://mock.orca.test/assets/branding/logo.png",
+            "thumbnail_url": "https://mock.orca.test/thumbnails/branding/logo_thumb.jpg",
+            "resize_s_url": "https://mock.orca.test/assets/branding/logo_s.jpg",
+            "resize_m_url": "https://mock.orca.test/assets/branding/logo_m.jpg",
+            "resize_l_url": "https://mock.orca.test/assets/branding/logo_l.jpg",
+            "alt_text": "Studyflow logo",
+            "caption": "",
+            "tags": [{ "id": 5, "name": "branding", "type": "user" }]
+        },
+        {
+            "id": 1002,
+            "filename": "team-photo.jpg",
+            "s3_key": "assets/team/team-photo.jpg",
+            "mime_type": "image/jpeg",
+            "size": 234567,
+            "width": 1920,
+            "height": 1280,
+            "url": "https://mock.orca.test/assets/team/team-photo.jpg",
+            "thumbnail_url": "https://mock.orca.test/thumbnails/team/team-photo_thumb.jpg",
+            "resize_s_url": "https://mock.orca.test/assets/team/team-photo_s.jpg",
+            "resize_m_url": "https://mock.orca.test/assets/team/team-photo_m.jpg",
+            "resize_l_url": "https://mock.orca.test/assets/team/team-photo_l.jpg",
+            "alt_text": "The team",
+            "caption": "Team retreat, 2026",
+            "tags": [{ "id": 6, "name": "team", "type": "user" }]
+        }
+    ],
+    "tags": [
+        { "id": 5, "name": "branding", "type": "user", "assets_count": 12 },
+        { "id": 6, "name": "team", "type": "user", "assets_count": 7 }
+    ]
+}

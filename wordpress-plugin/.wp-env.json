@@ -1,0 +1,15 @@
+{
+    "core": "WordPress/WordPress#6.7",
+    "phpVersion": "8.2",
+    "plugins": [
+        "."
+    ],
+    "mappings": {
+        "wp-content/mu-plugins/orca-dam-mock.php": "./tests/e2e/setup/orca-dam-mock.php",
+        "wp-content/mu-plugins/orca-fixtures.json": "./tests/e2e/setup/orca-fixtures.json"
+    },
+    "config": {
+        "ORCA_ENCRYPTION_KEY": "dev-only-32-byte-key-not-for-prod-use",
+        "ORCA_DAM_MOCK": true
+    }
+}

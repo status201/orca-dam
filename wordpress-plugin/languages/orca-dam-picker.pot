@@ -1,0 +1,102 @@
+# Copyright (C) 2026 Studyflow
+# This file is distributed under the MIT license.
+msgid ""
+msgstr ""
+"Project-Id-Version: ORCA DAM Picker 0.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/status201/orca-dam/issues\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Domain: orca-dam-picker\n"
+
+msgid "ORCA DAM"
+msgstr ""
+
+msgid "Insert from ORCA"
+msgstr ""
+
+msgid "Insufficient permissions."
+msgstr ""
+
+msgid "Search ORCA assets…"
+msgstr ""
+
+msgid "All tags"
+msgstr ""
+
+msgid "Newest"
+msgstr ""
+
+msgid "Oldest"
+msgstr ""
+
+msgid "Name A → Z"
+msgstr ""
+
+msgid "Largest first"
+msgstr ""
+
+msgid "No assets found."
+msgstr ""
+
+msgid "ORCA DAM Picker"
+msgstr ""
+
+msgid "Connection"
+msgstr ""
+
+msgid "ORCA base URL"
+msgstr ""
+
+msgid "API token (Sanctum)"
+msgstr ""
+
+msgid "A token is configured. Leave empty to keep it."
+msgstr ""
+
+msgid "Paste a token created in ORCA → API Tokens."
+msgstr ""
+
+msgid "Default folder filter (optional)"
+msgstr ""
+
+msgid "Save"
+msgstr ""
+
+msgid "Test connection"
+msgstr ""
+
+msgid "Testing…"
+msgstr ""
+
+msgid "Settings saved."
+msgstr ""
+
+msgid "Connected to ORCA."
+msgstr ""
+
+msgid "ORCA returned"
+msgstr ""
+
+msgid "Usage tracking"
+msgstr ""
+
+msgid "When this site uses an ORCA asset in a post, ORCA records a reference tag of the form"
+msgstr ""
+
+msgid "Broken assets"
+msgstr ""
+
+msgid "%d shell(s) reference assets that no longer exist in ORCA."
+msgstr ""
+
+msgid "Run scan now"
+msgstr ""
+
+msgid "Scan queued — refresh in a minute."
+msgstr ""
+
+msgid "No broken assets detected."
+msgstr ""

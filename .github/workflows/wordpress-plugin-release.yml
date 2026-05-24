@@ -1,0 +1,78 @@
+name: WordPress Plugin Release
+
+on:
+  push:
+    tags:
+      - 'wp-v*'
+
+jobs:
+  build:
+    name: Build and release plugin zip
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#wp-v}" >> "$GITHUB_OUTPUT"
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: wordpress-plugin/package-lock.json
+
+      - name: Install Composer dependencies
+        working-directory: wordpress-plugin
+        run: composer install --no-dev --optimize-autoloader --no-progress
+
+      - name: Install Node dependencies
+        working-directory: wordpress-plugin
+        run: npm ci
+
+      - name: Build assets
+        working-directory: wordpress-plugin
+        run: npm run build
+
+      - name: Install gettext + WP-CLI for i18n
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext
+          curl -sSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+          chmod +x /usr/local/bin/wp
+
+      - name: Compile translations
+        working-directory: wordpress-plugin
+        run: |
+          for po in languages/*.po; do
+            mo="${po%.po}.mo"
+            msgfmt "$po" -o "$mo"
+          done
+          wp i18n make-json languages/ --no-purge --allow-root
+
+      - name: Stamp version in plugin header
+        working-directory: wordpress-plugin
+        run: |
+          sed -i "s/^ \* Version:.*/ * Version:           ${{ steps.version.outputs.version }}/" orca-dam-picker.php
+          sed -i "s/define('ORCA_DAM_PICKER_VERSION', '.*');/define('ORCA_DAM_PICKER_VERSION', '${{ steps.version.outputs.version }}');/" orca-dam-picker.php
+
+      - name: Build release zip
+        run: |
+          mkdir -p dist
+          rsync -av --delete \
+            --exclude-from=wordpress-plugin/.distignore \
+            wordpress-plugin/ dist/orca-dam-picker/
+          (cd dist && zip -r "orca-dam-picker-${{ steps.version.outputs.version }}.zip" orca-dam-picker)
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/orca-dam-picker-${{ steps.version.outputs.version }}.zip
+          generate_release_notes: true

@@ -1,0 +1,10 @@
+/vendor/
+/node_modules/
+/assets/build/
+/languages/*.mo
+/languages/*.json
+/playwright-report/
+/test-results/
+composer.lock
+package-lock.json
+.phpunit.cache/
