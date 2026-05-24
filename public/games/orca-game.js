@@ -411,7 +411,8 @@
         function onStart(e) {
             if (e.code === 'Space' || e.key === ' ') {
                 e.preventDefault();
-                gameArea.removeEventListener('keydown', onStart);
+                e.stopImmediatePropagation();
+                window.removeEventListener('keydown', onStart, true);
                 gameArea.removeEventListener('touchstart', onTouchStart);
                 bootMusic();
                 overlay.remove();
@@ -420,13 +421,13 @@
         }
         function onTouchStart(e) {
             e.preventDefault();
-            gameArea.removeEventListener('keydown', onStart);
+            window.removeEventListener('keydown', onStart, true);
             gameArea.removeEventListener('touchstart', onTouchStart);
             bootMusic();
             overlay.remove();
             beginGameLoop();
         }
-        gameArea.addEventListener('keydown', onStart);
+        window.addEventListener('keydown', onStart, true);
         gameArea.addEventListener('touchstart', onTouchStart);
     }
 
@@ -437,8 +438,8 @@
 
         if (window.OrcaMusic) window.OrcaMusic.start();
 
-        gameArea.addEventListener('keydown', onKeyDown);
-        gameArea.addEventListener('keyup', onKeyUp);
+        window.addEventListener('keydown', onKeyDown, true);
+        window.addEventListener('keyup', onKeyUp, true);
         gameArea.addEventListener('touchstart', onGameTouchStart, { passive: false });
         gameArea.addEventListener('touchmove', onGameTouchMove, { passive: false });
         gameArea.addEventListener('touchend', onGameTouchEnd);
@@ -885,8 +886,8 @@
             window.OrcaMusic.stop();
             window.OrcaMusic.sfxGameOver();
         }
-        gameArea.removeEventListener('keydown', onKeyDown);
-        gameArea.removeEventListener('keyup', onKeyUp);
+        window.removeEventListener('keydown', onKeyDown, true);
+        window.removeEventListener('keyup', onKeyUp, true);
         gameArea.removeEventListener('touchstart', onGameTouchStart);
         gameArea.removeEventListener('touchmove', onGameTouchMove);
         gameArea.removeEventListener('touchend', onGameTouchEnd);
@@ -935,7 +936,7 @@
 
         function removeGameOverKeyHandler() {
             if (gameOverKeyHandler) {
-                gameArea.removeEventListener('keydown', gameOverKeyHandler);
+                window.removeEventListener('keydown', gameOverKeyHandler, true);
                 gameOverKeyHandler = null;
             }
         }
@@ -956,17 +957,21 @@
         // Also allow keyboard: R to retry, Q/Esc to quit
         gameOverKeyHandler = function onGameOverKey(e) {
             if (e.code === 'KeyR') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
                 removeGameOverKeyHandler();
                 overlay.remove();
                 clearEntities();
                 startGame();
             } else if (e.code === 'KeyQ' || e.code === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
                 removeGameOverKeyHandler();
                 overlay.remove();
                 quitGame();
             }
         };
-        gameArea.addEventListener('keydown', gameOverKeyHandler);
+        window.addEventListener('keydown', gameOverKeyHandler, true);
     }
 
     // --- Quit Game ---
@@ -975,9 +980,9 @@
         if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
         if (deathTimeoutId) { clearTimeout(deathTimeoutId); deathTimeoutId = null; }
         if (window.OrcaMusic) window.OrcaMusic.stop();
-        if (gameOverKeyHandler) { gameArea.removeEventListener('keydown', gameOverKeyHandler); gameOverKeyHandler = null; }
-        gameArea.removeEventListener('keydown', onKeyDown);
-        gameArea.removeEventListener('keyup', onKeyUp);
+        if (gameOverKeyHandler) { window.removeEventListener('keydown', gameOverKeyHandler, true); gameOverKeyHandler = null; }
+        window.removeEventListener('keydown', onKeyDown, true);
+        window.removeEventListener('keyup', onKeyUp, true);
         gameArea.removeEventListener('touchstart', onGameTouchStart);
         gameArea.removeEventListener('touchmove', onGameTouchMove);
         gameArea.removeEventListener('touchend', onGameTouchEnd);
@@ -1007,15 +1012,20 @@
     function onKeyDown(e) {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
             e.preventDefault();
+            e.stopImmediatePropagation();
             keys[e.code] = true;
         }
         if (e.code === 'KeyM') {
             e.preventDefault();
+            e.stopImmediatePropagation();
             toggleMute();
         }
     }
 
     function onKeyUp(e) {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyM'].includes(e.code)) {
+            e.stopImmediatePropagation();
+        }
         keys[e.code] = false;
     }
 
