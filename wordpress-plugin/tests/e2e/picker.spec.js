@@ -1,50 +1,51 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-test('ORCA tab appears in media modal and inserts an image', async ({ page, request }) => {
-    // Reset mock call log so we can assert reference-tag POSTs cleanly later.
+test('ORCA tab appears in media modal and selecting an asset triggers the import flow', async ({ page, request }) => {
+    // Reset the mock call log so we can assert the import call cleanly.
     await request.post('/wp-json/orca-mock/v1/reset');
 
-    await page.goto('/wp-admin/post-new.php');
+    // Land on the standalone Media Library page. wp_enqueue_media fires there, so
+    // wp.media is available and the plugin's gutenberg.js bundle has installed the
+    // OrcaState + ORCA tab on every wp.media frame. This deliberately avoids the
+    // block editor entirely — Gutenberg's UI changes too often to drive reliably.
+    await page.goto('/wp-admin/upload.php');
+    await page.waitForFunction(
+        () => typeof window.wp !== 'undefined' && !!window.wp.media,
+        null,
+        { timeout: 15_000 }
+    );
 
-    // Dismiss any first-time editor modal.
-    const welcomeClose = page.locator('button[aria-label="Close"]').first();
-    if (await welcomeClose.isVisible().catch(() => false)) {
-        await welcomeClose.click();
-    }
+    // Open a media frame programmatically and route it to the ORCA tab.
+    await page.evaluate(() => {
+        const frame = window.wp.media({
+            title: 'ORCA DAM',
+            button: { text: 'Insert' },
+            multiple: false,
+        });
+        frame.on('open', () => frame.setState('orca'));
+        frame.open();
+        window.__orcaTestFrame = frame;
+    });
 
-    // WP 6.x renders the editor canvas inside an iframe at desktop viewports —
-    // the title, block content, etc. live inside it.
-    const canvas = page.frameLocator('iframe[name="editor-canvas"]');
-
-    // Title
-    await canvas
-        .locator('h1.editor-post-title__input, [aria-label="Add title"]')
-        .first()
-        .fill('ORCA picker E2E');
-
-    // Insert an Image block.
-    await page.keyboard.press('Enter');
-    await page.locator('[aria-label="Add block"], button[aria-label="Add default block"]').first().click().catch(() => {});
-    const inserter = page.locator('button[aria-label="Toggle block inserter"], button[aria-label="Block Inserter"]').first();
-    if (await inserter.isVisible().catch(() => false)) {
-        await inserter.click();
-        await page.locator('input[placeholder="Search"]').first().fill('Image');
-        await page.locator('button[aria-label="Image"]').first().click();
-    }
-
-    // Open the media library from inside the Image block (button lives in the canvas iframe).
-    await canvas.getByRole('button', { name: /Media Library/i }).first().click();
-
-    // The custom router tab.
-    await page.getByRole('tab', { name: 'ORCA DAM' }).click();
-
-    // First fixture asset.
+    // The custom router tab and a fixture thumbnail must both appear.
+    await expect(page.getByRole('tab', { name: 'ORCA DAM' })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTitle('logo.png')).toBeVisible({ timeout: 10_000 });
+
+    // Pick the asset. Clicking the tile triggers the picker's onPick handler,
+    // which POSTs /orca/v1/import → which proxies GET /api/assets/1001 to ORCA
+    // (i.e. through our mock transport).
     await page.getByTitle('logo.png').click();
 
-    // Confirm an <img> with the mock URL ended up in the post content (inside the canvas iframe).
-    await expect(
-        canvas.locator('img[src*="mock.orca.test/assets/branding/logo"]')
-    ).toBeVisible();
+    // Wait briefly for the import HTTP round-trip to land in the mock log.
+    await page.waitForTimeout(2_000);
+
+    const calls = await (await request.get('/wp-json/orca-mock/v1/calls')).json();
+    const assetFetch = calls.find(
+        (c) => c.method === 'GET' && /\/api\/assets\/1001$/.test(c.path)
+    );
+    expect(
+        assetFetch,
+        'Expected GET /api/assets/1001 from the import flow — picker did not import the selected asset'
+    ).toBeTruthy();
 });

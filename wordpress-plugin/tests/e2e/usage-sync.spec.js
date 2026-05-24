@@ -4,37 +4,33 @@ const { test, expect } = require('@playwright/test');
 test('publishing a post with an ORCA image POSTs a reference tag', async ({ page, request }) => {
     await request.post('/wp-json/orca-mock/v1/reset');
 
-    // Pre-create a post containing the fixture image and the matching attachment shell.
-    // The fastest path is to insert a row via WP-CLI through the mock plugin's REST
-    // helper; in this skeleton we drive the editor directly.
-    await page.goto('/wp-admin/post-new.php');
-    const welcomeClose = page.locator('button[aria-label="Close"]').first();
-    if (await welcomeClose.isVisible().catch(() => false)) {
-        await welcomeClose.click();
-    }
+    // We're already logged in via the setup project's storageState (cookies live
+    // in this page's context). To create a published post via WP REST we need the
+    // REST nonce, which WordPress exposes as window.wpApiSettings.nonce on any
+    // admin page. Skipping the block editor UI entirely avoids the Gutenberg
+    // version-dependent locator dance.
+    await page.goto('/wp-admin/');
+    const nonce = await page.evaluate(() => window.wpApiSettings && window.wpApiSettings.nonce);
+    expect(nonce, 'Could not read wpApiSettings.nonce from /wp-admin/').toBeTruthy();
 
-    // WP 6.x: title and block content render inside the canvas iframe at desktop viewports.
-    const canvas = page.frameLocator('iframe[name="editor-canvas"]');
-    await canvas
-        .locator('h1.editor-post-title__input, [aria-label="Add title"]')
-        .first()
-        .fill('Usage sync test');
+    const create = await page.request.post('/wp-json/wp/v2/posts', {
+        headers: {
+            'X-WP-Nonce': nonce,
+            'Content-Type': 'application/json',
+        },
+        data: {
+            title: 'Usage sync test',
+            status: 'publish',
+            content:
+                '<!-- wp:image {"id":0} -->\n' +
+                '<figure class="wp-block-image"><img src="https://mock.orca.test/assets/branding/logo.png" alt="" data-orca-asset-id="1001" /></figure>\n' +
+                '<!-- /wp:image -->',
+        },
+    });
+    expect(create.status(), `WP REST create failed: ${await create.text()}`).toBe(201);
 
-    // Switch to code-editor mode and paste raw block markup so we don't depend on
-    // the modal flow (which is covered separately by picker.spec.js).
-    await page.keyboard.press('Control+Shift+Alt+M');
-    await page.locator('textarea.editor-post-text-editor').fill(
-        '<!-- wp:image {"id":0} -->\n<figure class="wp-block-image"><img src="https://mock.orca.test/assets/branding/logo.png" alt="" data-orca-asset-id="1001" /></figure>\n<!-- /wp:image -->'
-    );
-    await page.keyboard.press('Control+Shift+Alt+M');
-
-    // Publish.
-    await page.getByRole('button', { name: /^Publish$/i }).click();
-    await page.getByRole('button', { name: /^Publish$/i }).nth(1).click({ trial: false }).catch(() => {});
-
-    // Wait for the async TagSyncJob to run (Action Scheduler runs on shutdown
-    // in wp-env by default).
-    await page.waitForTimeout(3000);
+    // Wait for the async TagSyncJob (Action Scheduler runs on shutdown in wp-env by default).
+    await page.waitForTimeout(3_000);
 
     const calls = await (await request.get('/wp-json/orca-mock/v1/calls')).json();
     const refTagPost = calls.find(
