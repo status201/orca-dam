@@ -125,36 +125,66 @@ git pull
 git log -1     # check the last commit is what you expect
 ```
 
-### B.3 Tag and push
+### B.3 Bump the version files
 
-Plugin tags are prefixed with `wp-v` so they're separate from the Laravel app's own tags.
+The version number lives in four places (plugin header + runtime constant in `orca-dam-picker.php`, `Stable tag:` in `readme.txt`, and `version` in `package.json`). A helper script keeps them in sync — run it from the `wordpress-plugin/` directory:
+
+```bash
+bash bin/bump-version.sh 0.1.1
+```
+
+The script validates the version format, rewrites all four locations, and prints the suggested commit/tag/push commands when it's done. Glance at the diff to make sure nothing surprising changed:
+
+```bash
+git diff orca-dam-picker.php readme.txt package.json package-lock.json
+```
+
+Then commit (still from `wordpress-plugin/`, or use the full paths from repo root):
+
+```bash
+git add orca-dam-picker.php readme.txt package.json package-lock.json
+git commit -m "Bump WP plugin to 0.1.1"
+git push origin main
+```
+
+> Note: the release workflow also re-stamps the PHP file from the tag at build time, so the shipped zip would have the correct version even if you skipped step B.3. The script exists because `readme.txt` and `package.json` are **not** auto-stamped, and because keeping `main` in sync with what's released makes diffing across versions sane.
+
+### B.4 Tag and push
+
+Plugin tags are prefixed with `wp-v` so they're separate from the Laravel app's own tags. The `wp-v*` prefix is also what triggers the release workflow.
 
 ```bash
 git tag wp-v0.1.1
 git push origin wp-v0.1.1
 ```
 
-### B.4 Watch the build
+### B.5 Watch the build
 
 Open <https://github.com/status201/orca-dam/actions> and watch the **WordPress Plugin Release** workflow run. It will:
 
 1. Check out your tag.
-2. Install Composer + npm dependencies.
+2. Install Composer + npm dependencies (`npm ci` — relies on `package-lock.json` being committed).
 3. Build the React assets.
 4. Compile translations (`.po → .mo`) and generate JS translation JSON files.
-5. Write the version number into the plugin header.
+5. Re-stamp the version number into the plugin header (defensive, in case B.3 was skipped).
 6. Zip everything (excluding stuff in `.distignore`).
 7. Create a GitHub Release and attach the zip.
 
-If anything turns red, click into the failed step to see why. The most common failure is a forgotten `npm ci` lockfile bump.
+If anything turns red, click into the failed step to see why. The two most common failures are an out-of-date `package-lock.json` (run `npm install` locally, commit, push, re-tag) and a missing translation file (re-run the `.po → .mo` step from A.6 locally to reproduce).
 
-### B.5 Verify the release exists
+### B.6 Verify the release exists
 
 Go to <https://github.com/status201/orca-dam/releases> — your new release should be there with a file called `orca-dam-picker-0.1.1.zip` attached.
 
-### B.6 Rollback (if needed)
+### B.7 Rollback (if needed)
 
-If the new release is broken, don't try to fix it in place. Just delete the tag and the release on GitHub, fix the code, bump to the next patch number, and tag again. Marketing's WordPress sites will auto-update past the bad version.
+If the new release is broken, don't try to fix it in place. Delete the tag and the release on GitHub, fix the code, bump to the next patch number with the script in B.3, and tag again. Marketing's WordPress sites will auto-update past the bad version.
+
+```bash
+git tag -d wp-v0.1.1                          # delete local tag
+git push origin :refs/tags/wp-v0.1.1          # delete remote tag
+# then delete the matching release in the GitHub UI
+```
 
 ---
 
