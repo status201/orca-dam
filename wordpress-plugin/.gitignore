@@ -6,5 +6,4 @@
 /playwright-report/
 /test-results/
 composer.lock
-package-lock.json
 .phpunit.cache/
