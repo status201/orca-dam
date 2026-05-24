@@ -11,7 +11,7 @@ namespace OrcaDam\Settings;
  * The token never leaves the server — it's used only by the WP-side OrcaClient
  * when proxying browser requests through to ORCA.
  */
-final class CredentialStore
+class CredentialStore
 {
     public const OPTION_BASE_URL = 'orca_dam_base_url';
     public const OPTION_TOKEN_ENC = 'orca_dam_token_encrypted';

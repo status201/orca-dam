@@ -9,7 +9,7 @@ namespace OrcaDam\Api;
  * deliberately uncached because they change too often and the picker already
  * debounces input.
  */
-final class Cache
+class Cache
 {
     private const PREFIX = 'orca_dam_';
 
