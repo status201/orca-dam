@@ -7,7 +7,11 @@ test('settings page shows configured connection and Test connection succeeds', a
     await expect(page.getByLabel('ORCA base URL')).toHaveValue('https://mock.orca.test');
 
     await page.getByRole('button', { name: /Test connection/i }).click();
-    await expect(page.getByText('Connected to ORCA.')).toBeVisible({ timeout: 10_000 });
+    // Scope to the settings root — "Connected to ORCA." also gets announced via
+    // WP's #a11y-speak-polite live region, which would trip strict-mode locators.
+    await expect(
+        page.locator('#orca-dam-settings-root').getByText('Connected to ORCA.')
+    ).toBeVisible({ timeout: 10_000 });
 });
 
 test('Broken assets card renders and Run scan now is callable', async ({ page }) => {

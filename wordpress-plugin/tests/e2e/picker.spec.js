@@ -13,8 +13,15 @@ test('ORCA tab appears in media modal and inserts an image', async ({ page, requ
         await welcomeClose.click();
     }
 
+    // WP 6.x renders the editor canvas inside an iframe at desktop viewports —
+    // the title, block content, etc. live inside it.
+    const canvas = page.frameLocator('iframe[name="editor-canvas"]');
+
     // Title
-    await page.locator('h1.editor-post-title__input, [aria-label="Add title"]').first().fill('ORCA picker E2E');
+    await canvas
+        .locator('h1.editor-post-title__input, [aria-label="Add title"]')
+        .first()
+        .fill('ORCA picker E2E');
 
     // Insert an Image block.
     await page.keyboard.press('Enter');
@@ -26,8 +33,8 @@ test('ORCA tab appears in media modal and inserts an image', async ({ page, requ
         await page.locator('button[aria-label="Image"]').first().click();
     }
 
-    // Open the media library from inside the Image block.
-    await page.getByRole('button', { name: /Media Library/i }).first().click();
+    // Open the media library from inside the Image block (button lives in the canvas iframe).
+    await canvas.getByRole('button', { name: /Media Library/i }).first().click();
 
     // The custom router tab.
     await page.getByRole('tab', { name: 'ORCA DAM' }).click();
@@ -36,6 +43,8 @@ test('ORCA tab appears in media modal and inserts an image', async ({ page, requ
     await expect(page.getByTitle('logo.png')).toBeVisible({ timeout: 10_000 });
     await page.getByTitle('logo.png').click();
 
-    // Confirm an <img> with the mock URL ended up in the post content.
-    await expect(page.locator('img[src*="mock.orca.test/assets/branding/logo"]')).toBeVisible();
+    // Confirm an <img> with the mock URL ended up in the post content (inside the canvas iframe).
+    await expect(
+        canvas.locator('img[src*="mock.orca.test/assets/branding/logo"]')
+    ).toBeVisible();
 });

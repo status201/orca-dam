@@ -13,7 +13,12 @@ test('publishing a post with an ORCA image POSTs a reference tag', async ({ page
         await welcomeClose.click();
     }
 
-    await page.locator('h1.editor-post-title__input, [aria-label="Add title"]').first().fill('Usage sync test');
+    // WP 6.x: title and block content render inside the canvas iframe at desktop viewports.
+    const canvas = page.frameLocator('iframe[name="editor-canvas"]');
+    await canvas
+        .locator('h1.editor-post-title__input, [aria-label="Add title"]')
+        .first()
+        .fill('Usage sync test');
 
     // Switch to code-editor mode and paste raw block markup so we don't depend on
     // the modal flow (which is covered separately by picker.spec.js).
