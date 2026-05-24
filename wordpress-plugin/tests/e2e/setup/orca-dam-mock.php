@@ -91,6 +91,13 @@ add_action('rest_api_init', static function () {
 
 // Seed credentials so the picker thinks ORCA is configured.
 add_action('init', static function () {
+    // The orca-dam-picker plugin may not be loaded yet (e.g. during wp-env's
+    // initial `wp core install` step, which runs before plugin activation).
+    // Without the plugin's autoloader, OrcaDam\Settings\Encryption is missing
+    // and instantiation would fatal — skip and let a later request seed.
+    if (! class_exists(\OrcaDam\Settings\Encryption::class)) {
+        return;
+    }
     if (get_option('orca_dam_base_url') !== 'https://mock.orca.test') {
         update_option('orca_dam_base_url', 'https://mock.orca.test', false);
     }
