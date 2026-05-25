@@ -420,6 +420,10 @@ Control whether external systems can upload files via the API.
 
 When disabled, both direct upload (`POST /api/assets`) and chunked upload endpoints return **403 Forbidden**. Existing assets and other API operations are not affected.
 
+### WordPress plugin
+
+For marketing sites on WordPress, install the **ORCA DAM Picker** plugin (in [`wordpress-plugin/`](wordpress-plugin/), distributed as `.zip` on GitHub Releases under `wp-v*` tags). It adds an **ORCA DAM** tab to the WordPress media-library modal so editors pick from ORCA without copy-pasting URLs. On post save, the plugin tags the chosen asset back in ORCA with a reference tag like `wp:site.com/post/12`, so you can see exactly which posts use each asset. Plugin needs a Sanctum token for a user with the **api** role; full install/update steps live in `wordpress-plugin/README.md`.
+
 ---
 
 ## S3 Integrity Check (Admin Only)

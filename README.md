@@ -39,6 +39,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 📱 Responsive design
 - 🖼️ **Embeddable asset browser** (`/assets/embed`) for iframe integration, with configurable allowed domains
 - 🌐 OpenAPI 3 for Rich Text Editor or System integration
+- 🟦 **WordPress plugin** (`wordpress-plugin/`) — Gutenberg media-library tab to pick ORCA assets directly from WordPress posts; auto-tags assets with reference tags like `wp:site.com/post/N`; auto-updates from GitHub Releases. See `wordpress-plugin/README.md`.
 - 🔓 Public metadata API endpoint (no auth required)
 - 🔒 Long-lived token support (Laravel Sanctum Token) for back-ends
 - 🔑 Short-lived token support (JWT bearer) for front-ends
@@ -452,6 +453,15 @@ orca-dam/
 └── bootstrap/
     └── app.php                        # Scheduled tasks config
 ```
+
+## WordPress Plugin
+
+A companion WordPress plugin (`wordpress-plugin/`) adds an **ORCA DAM** tab to the WordPress media-library modal, so editors can pick assets from ORCA without copy-pasting URLs. Selections insert as `<img>` tags pointing at the ORCA CDN URL, and on save the plugin POSTs to `/api/reference-tags` so ORCA tracks which post on which site uses each asset (e.g. `wp:site.com/post/12`).
+
+- Auth: Sanctum token (long-lived), stored encrypted in `wp_options`
+- Distribution: `.zip` attached to GitHub Releases tagged `wp-v*`; auto-update via plugin-update-checker
+- Local dev: `npx wp-env start` (uses mock ORCA by default)
+- Full setup, release, and install guide: [`wordpress-plugin/README.md`](wordpress-plugin/README.md)
 
 ## License
 

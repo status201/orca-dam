@@ -624,6 +624,7 @@ php artisan policy:make AssetPolicy
 
 - **Documentation**: See README.md, SETUP_GUIDE.md, USER_MANUAL.md
 - **API Integration**: See RTE_INTEGRATION.md
+- **WordPress plugin**: See `wordpress-plugin/README.md` (Gutenberg media-library picker, released separately under `wp-v*` tags)
 - **Deployment**: See DEPLOYMENT.md
 - **Laravel Docs**: https://laravel.com/docs
 - **AWS S3 Docs**: https://docs.aws.amazon.com/s3/

@@ -420,6 +420,10 @@ Bepaal of externe systemen bestanden kunnen uploaden via de API.
 
 Wanneer uitgeschakeld, geven zowel directe upload (`POST /api/assets`) als chunked upload endpoints **403 Forbidden** terug. Bestaande assets en andere API-bewerkingen worden niet beïnvloed.
 
+### WordPress-plugin
+
+Voor marketingsites op WordPress is er de **ORCA DAM Picker**-plugin (in [`wordpress-plugin/`](wordpress-plugin/), gedistribueerd als `.zip` op GitHub Releases onder `wp-v*`-tags). De plugin voegt een **ORCA DAM**-tab toe aan de mediabibliotheek-modal van WordPress, zodat redacteuren assets uit ORCA kiezen zonder URLs te kopiëren/plakken. Bij het opslaan van een bericht plakt de plugin een referentietag als `wp:site.com/post/12` op de gekozen asset in ORCA, zodat je precies kunt zien welke berichten welke assets gebruiken. De plugin heeft een Sanctum-token nodig van een gebruiker met de **api**-rol; de volledige installatie- en update-instructies staan in `wordpress-plugin/README.md`.
+
 ---
 
 ## S3-integriteitscontrole (alleen admin)

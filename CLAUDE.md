@@ -231,4 +231,5 @@ Web test runner at `/system → Tests` (admin only).
 
 - **CSV export** — all asset fields, user info, separated user/AI/reference tag columns, URLs. Filterable by type and tags.
 - **RTE integration** — see `RTE_INTEGRATION.md`. Public metadata API: `GET /api/assets/meta?url={url}` (no auth).
+- **WordPress plugin** — separate release stream in `wordpress-plugin/` (Gutenberg media-library tab; calls `/api/reference-tags` with `wp:<site>/post/<id>` on save). Sanctum token only, AES-256-GCM-encrypted in `wp_options`, all ORCA calls proxied through WP REST. Released as `.zip` on GitHub Releases under `wp-v*` tags; auto-updates via plugin-update-checker. v1 is consume-only (no uploads). See `wordpress-plugin/README.md`.
 - **Deployment** — see `DEPLOYMENT.md`. Production queue: supervisor (`deploy/supervisor/orca-queue-worker.conf`). Do not run `queue:work` from the web UI.

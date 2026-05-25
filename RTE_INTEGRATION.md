@@ -190,7 +190,11 @@ const quill = new Quill('#editor', {
 });
 ```
 
-### WordPress Gutenberg
+### WordPress (official plugin)
+
+For WordPress sites, use the bundled plugin in [`wordpress-plugin/`](wordpress-plugin/) instead of writing your own block. It adds an **ORCA DAM** tab to the standard media-library modal, stores the Sanctum token encrypted server-side, proxies all ORCA calls through WP REST, and writes back `wp:<site>/post/<id>` reference tags on save. Install from the GitHub Release zip (tagged `wp-v*`) — see `wordpress-plugin/README.md`. The custom block below is only for sites that need bespoke behaviour the plugin doesn't cover.
+
+### WordPress Gutenberg (custom block)
 ```javascript
 registerBlockType('orca/image-block', {
     title: 'ORCA Image', icon: 'format-image', category: 'media',

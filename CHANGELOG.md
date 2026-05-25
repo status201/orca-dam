@@ -7,6 +7,7 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 ### Added
+- **WordPress plugin** (`wordpress-plugin/`, released separately under `wp-v*` tags). Adds an **ORCA DAM** tab to the WordPress media-library modal so editors can pick assets straight from ORCA. On post save, the plugin calls `/api/reference-tags` to stamp the asset with `wp:<site>/post/<id>`, so ORCA shows exactly which posts on which sites use it. Sanctum token stored AES-256-GCM-encrypted in `wp_options`, all calls go through a WP REST proxy (token never leaves the server). Auto-updates from GitHub Releases via plugin-update-checker; ships English + Dutch translations. Settings → ORCA DAM exposes base URL, token, default folder filter, **Test connection**, and a **plugin details** modal with screenshots. v1 is consume-only — uploads still happen in ORCA.
 
 ---
 
