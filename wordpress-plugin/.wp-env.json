@@ -11,5 +11,6 @@
     "config": {
         "ORCA_ENCRYPTION_KEY": "dev-only-32-byte-key-not-for-prod-use",
         "ORCA_DAM_MOCK": true
-    }
+    },
+    "testsEnvironment": false
 }
