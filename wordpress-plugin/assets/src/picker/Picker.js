@@ -93,11 +93,12 @@ export function Picker( { onPick } ) {
 				setPages( ( prev ) =>
 					page === 1 ? [ data ] : [ ...prev, data ]
 				);
-				const meta = body?.meta || {};
+				// ORCA returns Laravel's flat Paginator JSON — pagination
+				// fields sit at the root of the body, not under `meta`.
 				setHasMore(
-					( meta.current_page || page ) < ( meta.last_page || page )
+					( body?.current_page || page ) < ( body?.last_page || page )
 				);
-				setTotal( meta.total || 0 );
+				setTotal( body?.total || 0 );
 			} )
 			.catch( () => {
 				setHasMore( false );

@@ -3,7 +3,7 @@
  * Plugin Name:       ORCA DAM Picker
  * Plugin URI:        https://github.com/status201/orca-dam
  * Description:       Browse and insert assets from ORCA DAM directly inside WordPress. Tracks usage automatically via ORCA reference tags.
- * Version:           0.4.0
+ * Version:           0.4.1
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            Studyflow
@@ -19,7 +19,7 @@ defined('ABSPATH') || exit;
 define('ORCA_DAM_PICKER_FILE', __FILE__);
 define('ORCA_DAM_PICKER_DIR', plugin_dir_path(__FILE__));
 define('ORCA_DAM_PICKER_URL', plugin_dir_url(__FILE__));
-define('ORCA_DAM_PICKER_VERSION', '0.4.0');
+define('ORCA_DAM_PICKER_VERSION', '0.4.1');
 
 $autoload = ORCA_DAM_PICKER_DIR . 'vendor/autoload.php';
 if (! file_exists($autoload)) {

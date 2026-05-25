@@ -42,9 +42,13 @@ add_filter('orca_dam_transport', static function ($_default) {
                 return new \OrcaDam\Api\Transport\TransportResponse(200, ['status' => 'ok']);
             }
             if (str_ends_with($path, '/api/assets/search')) {
+                $assets = $this->fixtures['assets'] ?? [];
                 return new \OrcaDam\Api\Transport\TransportResponse(200, [
-                    'data' => $this->fixtures['assets'] ?? [],
-                    'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 24, 'total' => count($this->fixtures['assets'] ?? [])],
+                    'current_page' => 1,
+                    'data'         => $assets,
+                    'last_page'    => 1,
+                    'per_page'     => 24,
+                    'total'        => count($assets),
                 ]);
             }
             if (preg_match('|/api/assets/(\d+)$|', $path, $m)) {
