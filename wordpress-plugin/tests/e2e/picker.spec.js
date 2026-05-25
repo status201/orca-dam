@@ -54,6 +54,6 @@ test('ORCA tab is installed on wp.media frames and picker click triggers ORCA im
     );
     expect(
         assetFetch,
-        'Expected GET /api/assets/{id} from picker import flow — clicking the tile did not trigger the import'
+        `Expected GET /api/assets/{id} from picker import flow — clicking the tile did not trigger the import. Recorded ORCA calls: ${JSON.stringify(calls)}`
     ).toBeTruthy();
 });

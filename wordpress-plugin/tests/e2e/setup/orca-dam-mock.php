@@ -28,10 +28,15 @@ add_filter('orca_dam_transport', static function ($_default) {
         public function request(string $method, string $url, array $query = [], ?array $body = null, array $headers = []): \OrcaDam\Api\Transport\TransportResponse
         {
             $path = parse_url($url, PHP_URL_PATH) ?: '';
-            self::$calls[] = ['method' => $method, 'path' => $path, 'query' => $query, 'body' => $body];
+            $entry = ['method' => $method, 'path' => $path, 'query' => $query, 'body' => $body];
 
-            // Persist call log for the test to read back via /orca-mock/calls.
-            update_option('orca_dam_mock_calls', self::$calls, false);
+            // Append to the persisted log. PHP static state is per-request — if we
+            // only wrote self::$calls we'd overwrite history from prior requests.
+            // Read-modify-write keeps the full call history across the whole test.
+            $persisted = (array) get_option('orca_dam_mock_calls', []);
+            $persisted[] = $entry;
+            update_option('orca_dam_mock_calls', $persisted, false);
+            self::$calls = $persisted;
 
             if (str_ends_with($path, '/api/health')) {
                 return new \OrcaDam\Api\Transport\TransportResponse(200, ['status' => 'ok']);

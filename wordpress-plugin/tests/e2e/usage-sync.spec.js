@@ -42,7 +42,10 @@ test('publishing a post with an ORCA image POSTs a reference tag', async ({ page
     const refTagPost = calls.find(
         (c) => c.method === 'POST' && c.path.endsWith('/api/reference-tags')
     );
-    expect(refTagPost, 'Expected a POST /api/reference-tags call').toBeTruthy();
+    expect(
+        refTagPost,
+        `Expected a POST /api/reference-tags call. Recorded ORCA calls: ${JSON.stringify(calls)}`
+    ).toBeTruthy();
     expect(refTagPost.body.asset_id).toBe(1001);
     expect(refTagPost.body.tags[0]).toMatch(/^wp:.+\/post\/\d+$/);
 });
