@@ -39,6 +39,13 @@ test('ORCA tab is installed on wp.media frames and picker click triggers ORCA im
     ).toBe(true);
     expect(integration.currentStateId).toBe('orca');
 
+    // Diagnostic: confirm wp_localize_script delivered the picker's globals.
+    // If this is missing or wrong, the React picker would mount but its fetches
+    // to `${orcaDam.restUrl}/...` would throw synchronously.
+    const localized = await page.evaluate(() => window.orcaDam || null);
+    expect(localized, 'window.orcaDam was not localized onto the page').toBeTruthy();
+    expect(localized.restUrl, `Bad orcaDam.restUrl: ${JSON.stringify(localized)}`).toMatch(/orca\/v1$/);
+
     // The React picker mounts inside the OrcaView content region. Its root has
     // the `orca-dam-picker` class, which is unique to our React tree (not
     // present in upload.php's own list view).

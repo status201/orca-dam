@@ -29,14 +29,10 @@ test('publishing a post with an ORCA image POSTs a reference tag', async ({ page
     });
     expect(create.status(), `WP REST create failed: ${await create.text()}`).toBe(201);
 
-    // PostObserver enqueued an Action Scheduler async job. AS only runs when WP
-    // cron fires, and WP cron only fires on incoming HTTP requests. The Playwright
-    // request fixture is idle between calls, so we need to *make* a request to
-    // trigger cron — hit /wp-cron.php twice to give AS a chance to dequeue and run.
-    await page.request.get('/wp-cron.php?doing_wp_cron=1');
-    await page.waitForTimeout(1_000);
-    await page.request.get('/wp-cron.php?doing_wp_cron=1');
-    await page.waitForTimeout(2_000);
+    // PostObserver enqueued an Action Scheduler async job. /wp-cron.php only
+    // schedules the AS runner via a deferred loopback request, which is racy
+    // in tests. Use the mock's /run-actions endpoint to drain AS synchronously.
+    await page.request.post('/wp-json/orca-mock/v1/run-actions');
 
     const calls = await (await request.get('/wp-json/orca-mock/v1/calls')).json();
     const refTagPost = calls.find(

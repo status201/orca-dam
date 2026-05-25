@@ -92,6 +92,20 @@ add_action('rest_api_init', static function () {
         },
         'permission_callback' => '__return_true',
     ]);
+    // Run Action Scheduler's pending queue synchronously. Hitting /wp-cron.php
+    // schedules the AS runner but AS often defers to a loopback HTTP request,
+    // which means tests would have to poll. Calling the runner directly here
+    // processes every due action before the response returns.
+    register_rest_route('orca-mock/v1', '/run-actions', [
+        'methods'             => 'POST',
+        'callback'            => static function () {
+            if (class_exists('ActionScheduler_QueueRunner')) {
+                \ActionScheduler_QueueRunner::instance()->run('Async Request');
+            }
+            return new \WP_REST_Response(['ran' => true], 200);
+        },
+        'permission_callback' => '__return_true',
+    ]);
 });
 
 // Seed credentials so the picker thinks ORCA is configured.
