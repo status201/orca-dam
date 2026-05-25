@@ -101,22 +101,27 @@ add_action('rest_api_init', static function () {
         'callback'            => static function () {
             $info = ['as_class_exists' => class_exists('ActionScheduler_QueueRunner')];
 
-            if (function_exists('as_get_scheduled_actions')) {
-                $info['pending_before'] = array_values(array_map(
-                    static fn ($a) => method_exists($a, 'get_hook') ? $a->get_hook() : (string) $a,
-                    as_get_scheduled_actions(['status' => 'pending', 'per_page' => 20], 'OBJECT')
-                ));
-            }
-
+            // Drain AS's queue if AS is loaded.
             if ($info['as_class_exists']) {
                 \ActionScheduler_QueueRunner::instance()->run('Async Request');
             }
 
-            if (function_exists('as_get_scheduled_actions')) {
-                $info['pending_after'] = array_values(array_map(
-                    static fn ($a) => method_exists($a, 'get_hook') ? $a->get_hook() : (string) $a,
-                    as_get_scheduled_actions(['status' => 'pending', 'per_page' => 20], 'OBJECT')
-                ));
+            // Drain WP-Cron synchronously. PostObserver falls back to
+            // wp_schedule_single_event when AS isn't loaded, so the job we care
+            // about may be sitting in _get_cron_array, not in AS.
+            $info['cron_processed'] = [];
+            $crons = _get_cron_array() ?: [];
+            foreach ($crons as $timestamp => $hooks) {
+                if ($timestamp > microtime(true)) {
+                    continue;
+                }
+                foreach ($hooks as $hook => $events) {
+                    foreach ($events as $event) {
+                        $info['cron_processed'][] = $hook;
+                        do_action_ref_array($hook, $event['args']);
+                        wp_unschedule_event($timestamp, $hook, $event['args']);
+                    }
+                }
             }
 
             return new \WP_REST_Response($info, 200);
