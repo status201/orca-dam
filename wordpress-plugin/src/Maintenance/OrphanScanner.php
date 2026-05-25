@@ -52,11 +52,7 @@ final class OrphanScanner
 
                 if ((time() - $startedAt) >= self::BUDGET_SECONDS) {
                     update_option(self::CURSOR_OPTION, $cursor, false);
-                    if (function_exists('as_enqueue_async_action')) {
-                        as_enqueue_async_action(CronScheduler::HOOK, [], 'orca-dam');
-                    } else {
-                        wp_schedule_single_event(time() + 60, CronScheduler::HOOK);
-                    }
+                    wp_schedule_single_event(time() + 60, CronScheduler::HOOK);
                     return;
                 }
             }

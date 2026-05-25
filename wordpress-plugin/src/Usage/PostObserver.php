@@ -86,11 +86,7 @@ final class PostObserver
 
         $tag = $this->tagFor($postId);
 
-        if (function_exists('as_enqueue_async_action')) {
-            as_enqueue_async_action(TagSyncJob::HOOK, [$tag, $added, $removed], 'orca-dam');
-        } else {
-            wp_schedule_single_event(time(), TagSyncJob::HOOK, [$tag, $added, $removed]);
-        }
+        wp_schedule_single_event(time(), TagSyncJob::HOOK, [$tag, $added, $removed]);
     }
 
     private function tagFor(int $postId): string

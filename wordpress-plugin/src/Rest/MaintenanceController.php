@@ -37,11 +37,7 @@ final class MaintenanceController
 
     public function handleScan(): WP_REST_Response
     {
-        if (function_exists('as_enqueue_async_action')) {
-            as_enqueue_async_action(CronScheduler::HOOK, [], 'orca-dam');
-        } else {
-            wp_schedule_single_event(time(), CronScheduler::HOOK);
-        }
+        wp_schedule_single_event(time(), CronScheduler::HOOK);
         return new WP_REST_Response(['queued' => true], 202);
     }
 }
