@@ -10,6 +10,7 @@ import {
 	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
+import { OrcaLogo } from '../components/OrcaLogo';
 
 export function SettingsApp() {
 	const config = window.orcaDamSettings || {};
@@ -63,7 +64,17 @@ export function SettingsApp() {
 
 	return (
 		<VStack spacing={ 4 }>
-			<h1>{ __( 'ORCA DAM Picker', 'orca-dam-picker' ) }</h1>
+			<h1
+				style={ {
+					display: 'flex',
+					alignItems: 'center',
+					gap: 12,
+					margin: 0,
+				} }
+			>
+				<OrcaLogo size={ 36 } />
+				{ __( 'ORCA DAM Picker', 'orca-dam-picker' ) }
+			</h1>
 			{ healthStatus && (
 				<Notice
 					status={ healthStatus.type }

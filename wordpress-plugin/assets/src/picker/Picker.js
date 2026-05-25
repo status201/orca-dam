@@ -10,6 +10,7 @@ import {
 	Button,
 } from '@wordpress/components';
 import { AssetGrid } from './AssetGrid';
+import { OrcaLogo } from '../components/OrcaLogo';
 
 const SORT_OPTIONS = [
 	{ label: __( 'Newest', 'orca-dam-picker' ), value: 'date_desc' },
@@ -128,6 +129,7 @@ export function Picker( { onPick } ) {
 	return (
 		<div className="orca-dam-picker">
 			<Flex align="center" gap={ 3 } style={ { marginBottom: 12 } }>
+				<OrcaLogo size={ 28 } style={ { flexShrink: 0 } } />
 				<FlexBlock>
 					<SearchControl
 						value={ query }
