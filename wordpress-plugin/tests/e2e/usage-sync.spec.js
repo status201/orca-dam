@@ -32,7 +32,9 @@ test('publishing a post with an ORCA image POSTs a reference tag', async ({ page
     // PostObserver enqueued an Action Scheduler async job. /wp-cron.php only
     // schedules the AS runner via a deferred loopback request, which is racy
     // in tests. Use the mock's /run-actions endpoint to drain AS synchronously.
-    await page.request.post('/wp-json/orca-mock/v1/run-actions');
+    const runActions = await (
+        await page.request.post('/wp-json/orca-mock/v1/run-actions')
+    ).json();
 
     const calls = await (await request.get('/wp-json/orca-mock/v1/calls')).json();
     const refTagPost = calls.find(
@@ -40,7 +42,7 @@ test('publishing a post with an ORCA image POSTs a reference tag', async ({ page
     );
     expect(
         refTagPost,
-        `Expected a POST /api/reference-tags call. Recorded ORCA calls: ${JSON.stringify(calls)}`
+        `Expected a POST /api/reference-tags call. Recorded ORCA calls: ${JSON.stringify(calls)}. AS runner: ${JSON.stringify(runActions)}`
     ).toBeTruthy();
     expect(refTagPost.body.asset_id).toBe(1001);
     expect(refTagPost.body.tags[0]).toMatch(/^wp:.+\/post\/\d+$/);

@@ -99,10 +99,27 @@ add_action('rest_api_init', static function () {
     register_rest_route('orca-mock/v1', '/run-actions', [
         'methods'             => 'POST',
         'callback'            => static function () {
-            if (class_exists('ActionScheduler_QueueRunner')) {
+            $info = ['as_class_exists' => class_exists('ActionScheduler_QueueRunner')];
+
+            if (function_exists('as_get_scheduled_actions')) {
+                $info['pending_before'] = array_values(array_map(
+                    static fn ($a) => method_exists($a, 'get_hook') ? $a->get_hook() : (string) $a,
+                    as_get_scheduled_actions(['status' => 'pending', 'per_page' => 20], 'OBJECT')
+                ));
+            }
+
+            if ($info['as_class_exists']) {
                 \ActionScheduler_QueueRunner::instance()->run('Async Request');
             }
-            return new \WP_REST_Response(['ran' => true], 200);
+
+            if (function_exists('as_get_scheduled_actions')) {
+                $info['pending_after'] = array_values(array_map(
+                    static fn ($a) => method_exists($a, 'get_hook') ? $a->get_hook() : (string) $a,
+                    as_get_scheduled_actions(['status' => 'pending', 'per_page' => 20], 'OBJECT')
+                ));
+            }
+
+            return new \WP_REST_Response($info, 200);
         },
         'permission_callback' => '__return_true',
     ]);
