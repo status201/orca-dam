@@ -29,6 +29,9 @@ msgstr ""
 msgid "All folders"
 msgstr ""
 
+msgid "Open ORCA in a new tab"
+msgstr ""
+
 msgid "Newest"
 msgstr ""
 

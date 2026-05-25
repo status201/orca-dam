@@ -130,7 +130,26 @@ export function Picker( { onPick } ) {
 	return (
 		<div className="orca-dam-picker">
 			<Flex align="center" gap={ 3 } style={ { marginBottom: 12 } }>
-				<OrcaLogo size={ 28 } style={ { flexShrink: 0 } } />
+				{ orcaDam.orcaBaseUrl ? (
+					<a
+						href={ orcaDam.orcaBaseUrl }
+						target="_blank"
+						rel="noopener noreferrer"
+						title={ __(
+							'Open ORCA in a new tab',
+							'orca-dam-picker'
+						) }
+						style={ {
+							display: 'inline-flex',
+							flexShrink: 0,
+							lineHeight: 0,
+						} }
+					>
+						<OrcaLogo size={ 28 } />
+					</a>
+				) : (
+					<OrcaLogo size={ 28 } style={ { flexShrink: 0 } } />
+				) }
 				<FlexBlock>
 					<SearchControl
 						value={ query }

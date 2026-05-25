@@ -30,6 +30,9 @@ msgstr "Alle labels"
 msgid "All folders"
 msgstr "Alle mappen"
 
+msgid "Open ORCA in a new tab"
+msgstr "Open ORCA in een nieuw tabblad"
+
 msgid "Newest"
 msgstr "Nieuwste"
 

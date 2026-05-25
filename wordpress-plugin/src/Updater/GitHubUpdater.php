@@ -55,6 +55,10 @@ final class GitHubUpdater
                 '2x'      => plugins_url('assets/icon-256x256.png', ORCA_DAM_PICKER_FILE),
                 'default' => plugins_url('assets/icon-256x256.png', ORCA_DAM_PICKER_FILE),
             ];
+            // Inject rich content for the "View details" modal. Without this
+            // WP shows only the plugin-header one-liner — see image of the
+            // pre-0.4.2 modal for how bare that looked.
+            $info->sections = PluginDetailsContent::sections();
             return $info;
         });
     }

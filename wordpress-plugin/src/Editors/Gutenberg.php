@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrcaDam\Editors;
 
+use OrcaDam\Settings\CredentialStore;
+
 /**
  * Enqueues the JS bundle that extends wp.media to add an "ORCA" tab.
  * The tab is implemented in assets/src/editors/gutenberg.js, but since all four
@@ -52,8 +54,9 @@ final class Gutenberg
         wp_set_script_translations($handle, 'orca-dam-picker');
 
         wp_localize_script($handle, 'orcaDam', [
-            'restUrl' => esc_url_raw(rest_url('orca/v1')),
-            'nonce'   => wp_create_nonce('wp_rest'),
+            'restUrl'     => esc_url_raw(rest_url('orca/v1')),
+            'nonce'       => wp_create_nonce('wp_rest'),
+            'orcaBaseUrl' => esc_url_raw((string) get_option(CredentialStore::OPTION_BASE_URL, '')),
         ]);
     }
 }
