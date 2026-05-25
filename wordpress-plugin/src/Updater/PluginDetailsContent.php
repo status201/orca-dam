@@ -18,16 +18,17 @@ final class PluginDetailsContent
     public static function sections(): array
     {
         $logoUrl = plugins_url('assets/orca-logo.svg', ORCA_DAM_PICKER_FILE);
+        $pickerScreenshot = plugins_url('assets/screenshot-picker.png', ORCA_DAM_PICKER_FILE);
         $settingsScreenshot = plugins_url('assets/screenshot-settings.png', ORCA_DAM_PICKER_FILE);
 
         return [
-            'description'  => self::description($logoUrl, $settingsScreenshot),
-            'installation' => self::installation(),
+            'description'  => self::description($logoUrl, $pickerScreenshot, $settingsScreenshot),
+            'installation' => self::installation($settingsScreenshot),
             'changelog'    => self::changelog(),
         ];
     }
 
-    private static function description(string $logoUrl, string $settingsScreenshot): string
+    private static function description(string $logoUrl, string $pickerScreenshot, string $settingsScreenshot): string
     {
         $card = 'padding:16px;border:1px solid #dcdcde;border-radius:6px;background:#f6f7f7;';
         $featureRow = 'display:flex;align-items:flex-start;gap:10px;margin:0 0 10px 0;';
@@ -86,12 +87,15 @@ final class PluginDetailsContent
 </dl>
 
 <h4>What it looks like</h4>
-<p style="color:#50575e;margin-bottom:8px;">Settings → ORCA DAM:</p>
+<p style="color:#50575e;margin:0 0 8px 0;">The picker, inside the WordPress media frame:</p>
+<img src="{$pickerScreenshot}" alt="ORCA DAM picker inside the WordPress media frame" style="max-width:100%;border:1px solid #dcdcde;border-radius:4px;margin-bottom:20px;" />
+
+<p style="color:#50575e;margin:0 0 8px 0;">Settings → ORCA DAM:</p>
 <img src="{$settingsScreenshot}" alt="ORCA DAM settings page" style="max-width:100%;border:1px solid #dcdcde;border-radius:4px;" />
 HTML;
     }
 
-    private static function installation(): string
+    private static function installation(string $settingsScreenshot): string
     {
         return <<<HTML
 <h4>1. Install the plugin</h4>
@@ -117,6 +121,7 @@ HTML;
     <li>Optional: set a <strong>Default folder filter</strong> to scope the picker to one folder by default.</li>
     <li>Click <strong>Save</strong> → then <strong>Test connection</strong>. A green "Connected to ORCA." banner means you're done.</li>
 </ol>
+<img src="{$settingsScreenshot}" alt="ORCA DAM settings page" style="max-width:100%;border:1px solid #dcdcde;border-radius:4px;margin:8px 0 20px 0;" />
 
 <h4>4. Optional hardening</h4>
 <p>Add the following constant to <code>wp-config.php</code> to derive the credentials-encryption key from a dedicated secret instead of <code>AUTH_KEY</code>:</p>
