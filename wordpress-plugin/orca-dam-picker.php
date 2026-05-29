@@ -4,7 +4,7 @@
  * Plugin URI:        https://github.com/status201/orca-dam
  * Description:       Browse and insert assets from ORCA DAM directly inside WordPress. Tracks usage automatically via ORCA reference tags.
  * Version:           0.4.3
- * Requires at least: 6.4
+ * Requires at least: 6.8
  * Requires PHP:      8.1
  * Author:            Studyflow
  * License:           MIT
