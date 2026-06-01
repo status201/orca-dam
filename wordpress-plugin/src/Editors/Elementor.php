@@ -36,6 +36,7 @@ final class Elementor
             $asset['version'],
             true,
         );
+        wp_set_script_translations($handle, 'orca-dam-picker', ORCA_DAM_PICKER_DIR . 'languages');
 
         wp_localize_script($handle, 'orcaDam', [
             'restUrl'       => esc_url_raw(rest_url('orca/v1')),

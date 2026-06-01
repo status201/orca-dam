@@ -2,7 +2,7 @@
 # This file is distributed under the MIT license.
 msgid ""
 msgstr ""
-"Project-Id-Version: ORCA DAM Picker 0.1.0\n"
+"Project-Id-Version: ORCA DAM Picker 0.4.5\n"
 "Report-Msgid-Bugs-To: https://github.com/status201/orca-dam/issues\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -11,122 +11,179 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Domain: orca-dam-picker\n"
 
+#: src/Settings/SettingsPage.php:28
 msgid "ORCA DAM"
 msgstr ""
 
+#: src/Editors/ClassicEditor.php:26
 msgid "Insert from ORCA"
 msgstr ""
 
+#: src/Settings/SettingsPage.php:39
 msgid "Insufficient permissions."
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Search ORCA assets…"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "All tags"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "All folders"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Open ORCA in a new tab"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Newest"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Oldest"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Recently uploaded"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Earliest uploaded"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Name A → Z"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Name Z → A"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Largest first"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Smallest first"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Path A → Z"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Path Z → A"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Load more"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Showing %1$d of %2$d assets"
 msgstr ""
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "No assets found."
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "ORCA DAM Picker"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Connection"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "ORCA base URL"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "API token (Sanctum)"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "A token is configured. Leave empty to keep it."
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Paste a token created in ORCA → API Tokens."
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Default folder filter (optional)"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Save"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Test connection"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Testing…"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Settings saved."
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Connected to ORCA."
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "ORCA returned"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Usage tracking"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "When this site uses an ORCA asset in a post, ORCA records a reference tag of the form"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Broken assets"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "%d shell(s) reference assets that no longer exist in ORCA."
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Run scan now"
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "Scan queued — refresh in a minute."
 msgstr ""
 
+#: assets/build/settings.js:1
 msgid "No broken assets detected."
 msgstr ""

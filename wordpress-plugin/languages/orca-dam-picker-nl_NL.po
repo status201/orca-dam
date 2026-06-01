@@ -1,7 +1,7 @@
 # Dutch translation of ORCA DAM Picker.
 msgid ""
 msgstr ""
-"Project-Id-Version: ORCA DAM Picker 0.1.0\n"
+"Project-Id-Version: ORCA DAM Picker 0.4.5\n"
 "Report-Msgid-Bugs-To: https://github.com/status201/orca-dam/issues\n"
 "Last-Translator: Studyflow <dev@studyflow.nl>\n"
 "Language-Team: Dutch <nl@li.org>\n"
@@ -12,122 +12,179 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Domain: orca-dam-picker\n"
 
+#: src/Settings/SettingsPage.php:28
 msgid "ORCA DAM"
 msgstr "ORCA DAM"
 
+#: src/Editors/ClassicEditor.php:26
 msgid "Insert from ORCA"
 msgstr "Invoegen vanuit ORCA"
 
+#: src/Settings/SettingsPage.php:39
 msgid "Insufficient permissions."
 msgstr "Onvoldoende rechten."
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Search ORCA assets…"
 msgstr "Zoek ORCA-bestanden…"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "All tags"
 msgstr "Alle labels"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "All folders"
 msgstr "Alle mappen"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Open ORCA in a new tab"
 msgstr "Open ORCA in een nieuw tabblad"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Newest"
 msgstr "Nieuwste"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Oldest"
 msgstr "Oudste"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Recently uploaded"
 msgstr "Recent geüpload"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Earliest uploaded"
 msgstr "Eerst geüpload"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Name A → Z"
 msgstr "Naam A → Z"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Name Z → A"
 msgstr "Naam Z → A"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Largest first"
 msgstr "Grootste eerst"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Smallest first"
 msgstr "Kleinste eerst"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Path A → Z"
 msgstr "Pad A → Z"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Path Z → A"
 msgstr "Pad Z → A"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Load more"
 msgstr "Meer laden"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "Showing %1$d of %2$d assets"
 msgstr "%1$d van %2$d bestanden weergegeven"
 
+#: assets/build/editors/gutenberg.js:1
+#: assets/build/editors/elementor.js:1
 msgid "No assets found."
 msgstr "Geen bestanden gevonden."
 
+#: assets/build/settings.js:1
 msgid "ORCA DAM Picker"
 msgstr "ORCA DAM Picker"
 
+#: assets/build/settings.js:1
 msgid "Connection"
 msgstr "Verbinding"
 
+#: assets/build/settings.js:1
 msgid "ORCA base URL"
 msgstr "ORCA-basis-URL"
 
+#: assets/build/settings.js:1
 msgid "API token (Sanctum)"
 msgstr "API-token (Sanctum)"
 
+#: assets/build/settings.js:1
 msgid "A token is configured. Leave empty to keep it."
 msgstr "Een token is ingesteld. Laat leeg om deze te behouden."
 
+#: assets/build/settings.js:1
 msgid "Paste a token created in ORCA → API Tokens."
 msgstr "Plak een token aangemaakt in ORCA → API Tokens."
 
+#: assets/build/settings.js:1
 msgid "Default folder filter (optional)"
 msgstr "Standaard mapfilter (optioneel)"
 
+#: assets/build/settings.js:1
 msgid "Save"
 msgstr "Opslaan"
 
+#: assets/build/settings.js:1
 msgid "Test connection"
 msgstr "Verbinding testen"
 
+#: assets/build/settings.js:1
 msgid "Testing…"
 msgstr "Bezig met testen…"
 
+#: assets/build/settings.js:1
 msgid "Settings saved."
 msgstr "Instellingen opgeslagen."
 
+#: assets/build/settings.js:1
 msgid "Connected to ORCA."
 msgstr "Verbonden met ORCA."
 
+#: assets/build/settings.js:1
 msgid "ORCA returned"
 msgstr "ORCA antwoordde"
 
+#: assets/build/settings.js:1
 msgid "Usage tracking"
 msgstr "Gebruiksregistratie"
 
+#: assets/build/settings.js:1
 msgid "When this site uses an ORCA asset in a post, ORCA records a reference tag of the form"
 msgstr "Wanneer deze site een ORCA-bestand in een bericht gebruikt, registreert ORCA een referentielabel van het type"
 
+#: assets/build/settings.js:1
 msgid "Broken assets"
 msgstr "Verbroken bestanden"
 
+#: assets/build/settings.js:1
 msgid "%d shell(s) reference assets that no longer exist in ORCA."
 msgstr "%d verwijzing(en) wijzen naar bestanden die niet meer in ORCA bestaan."
 
+#: assets/build/settings.js:1
 msgid "Run scan now"
 msgstr "Nu scannen"
 
+#: assets/build/settings.js:1
 msgid "Scan queued — refresh in a minute."
 msgstr "Scan in de wachtrij — vernieuw over een minuut."
 
+#: assets/build/settings.js:1
 msgid "No broken assets detected."
 msgstr "Geen verbroken bestanden gedetecteerd."
