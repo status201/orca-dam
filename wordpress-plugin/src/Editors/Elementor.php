@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrcaDam\Editors;
 
+use OrcaDam\Settings\CredentialStore;
+
 /**
  * Elementor uses its own copy of wp.media for image controls; same bundle works
  * because Elementor delegates the modal to wp.media.view.MediaFrame.Select.
@@ -11,6 +13,8 @@ namespace OrcaDam\Editors;
  */
 final class Elementor
 {
+    public function __construct(private readonly CredentialStore $credentials) {}
+
     public function register(): void
     {
         add_action('elementor/editor/after_enqueue_scripts', [$this, 'enqueue']);
@@ -34,8 +38,9 @@ final class Elementor
         );
 
         wp_localize_script($handle, 'orcaDam', [
-            'restUrl' => esc_url_raw(rest_url('orca/v1')),
-            'nonce'   => wp_create_nonce('wp_rest'),
+            'restUrl'       => esc_url_raw(rest_url('orca/v1')),
+            'nonce'         => wp_create_nonce('wp_rest'),
+            'defaultFolder' => $this->credentials->defaultFolder(),
         ]);
     }
 }

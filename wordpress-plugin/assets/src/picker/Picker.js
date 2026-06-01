@@ -35,7 +35,7 @@ export function Picker( { onPick } ) {
 	const [ query, setQuery ] = useState( '' );
 	const [ debounced, setDebounced ] = useState( '' );
 	const [ sort, setSort ] = useState( 'date_desc' );
-	const [ folder, setFolder ] = useState( '' );
+	const [ folder, setFolder ] = useState( orcaDam.defaultFolder || '' );
 	const [ folders, setFolders ] = useState( [] );
 	const [ pages, setPages ] = useState( [] );
 	const [ page, setPage ] = useState( 1 );

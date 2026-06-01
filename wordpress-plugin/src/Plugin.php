@@ -128,9 +128,9 @@ final class Plugin
             OrphanScanner::class         => new OrphanScanner($this->get(OrcaClient::class)),
             CronScheduler::class         => new CronScheduler($this->get(OrphanScanner::class)),
             MaintenanceController::class => new MaintenanceController($this->get(OrphanScanner::class)),
-            Gutenberg::class             => new Gutenberg(),
+            Gutenberg::class             => new Gutenberg($this->get(CredentialStore::class)),
             ClassicEditor::class         => new ClassicEditor(),
-            Elementor::class             => new Elementor(),
+            Elementor::class             => new Elementor($this->get(CredentialStore::class)),
             GitHubUpdater::class         => new GitHubUpdater(),
             default                      => throw new \RuntimeException("Unknown service: {$id}"),
         };
