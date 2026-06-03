@@ -135,6 +135,37 @@ HTML;
     private static function changelog(): string
     {
         return <<<HTML
+<h4>0.4.7</h4>
+<ul>
+    <li>This "Changelog" tab now lists every release since 0.4.1 — it had been frozen at 0.4.1, so 0.4.2 through 0.4.6 never showed up here.</li>
+</ul>
+
+<h4>0.4.6</h4>
+<ul>
+    <li>Removed the non-functional "Insert from ORCA" button from the classic editor (Divi, etc.). It never had a click handler and was redundant — the ORCA library is reached via the standard "Add Media" button, whose media frame already contains an "ORCA DAM" tab.</li>
+</ul>
+
+<h4>0.4.5</h4>
+<ul>
+    <li>Dutch (and other) translations now load in the React picker and settings UI. <code>wp_set_script_translations()</code> was missing the <code>/languages</code> path, the Elementor bundle was never registered for translations, and the JS <code>.po</code>/<code>.pot</code> references did not map to the built bundles.</li>
+</ul>
+
+<h4>0.4.4</h4>
+<ul>
+    <li>The "Default folder filter" setting now saves and is applied by the picker.</li>
+</ul>
+
+<h4>0.4.3</h4>
+<ul>
+    <li>Plugin-details modal refresh: updated screenshots, with the picker screenshot now included.</li>
+</ul>
+
+<h4>0.4.2</h4>
+<ul>
+    <li>Rich plugin-details modal (Description / Installation / Changelog tabs) replacing the bare header one-liner.</li>
+    <li>The ORCA logo in the picker now links straight to the ORCA admin in a new tab.</li>
+</ul>
+
 <h4>0.4.1</h4>
 <ul>
     <li>Picker now reads pagination from Laravel's flat Paginator JSON — the asset count is correct against real ORCA, and Load more actually appears.</li>
