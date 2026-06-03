@@ -35,6 +35,16 @@ class S3Service
     }
 
     /**
+     * Swap the underlying S3 client. Primarily a test seam for mocking AWS calls.
+     */
+    public function setS3Client(S3Client $client): static
+    {
+        $this->s3Client = $client;
+
+        return $this;
+    }
+
+    /**
      * Get the configured root folder name (trimmed, no slashes).
      * Returns empty string for bucket root.
      */
@@ -492,26 +502,40 @@ class S3Service
     /**
      * List all objects in the bucket with optional prefix
      */
-    public function listObjects(string $prefix = '', int $maxKeys = 1000): array
+    public function listObjects(string $prefix = '', ?int $maxKeys = null): array
     {
         try {
-            $result = $this->s3Client->listObjectsV2([
-                'Bucket' => $this->bucket,
-                'Prefix' => $prefix,
-                'MaxKeys' => $maxKeys,
-            ]);
+            $objects = [];
+            $continuationToken = null;
 
-            if (! isset($result['Contents'])) {
-                return [];
-            }
-
-            return collect($result['Contents'])->map(function ($object) {
-                return [
-                    'key' => $object['Key'],
-                    'size' => $object['Size'],
-                    'last_modified' => $object['LastModified'],
+            do {
+                $params = [
+                    'Bucket' => $this->bucket,
+                    'Prefix' => $prefix,
+                    'MaxKeys' => $maxKeys ?? 1000,
                 ];
-            })->toArray();
+                if ($continuationToken !== null) {
+                    $params['ContinuationToken'] = $continuationToken;
+                }
+
+                $result = $this->s3Client->listObjectsV2($params);
+
+                foreach ($result['Contents'] ?? [] as $object) {
+                    $objects[] = [
+                        'key' => $object['Key'],
+                        'size' => $object['Size'],
+                        'last_modified' => $object['LastModified'],
+                    ];
+                }
+
+                // A maxKeys cap means "bounded probe" — return just the first page.
+                // Otherwise follow ContinuationToken until the listing is exhausted.
+                $continuationToken = ($maxKeys === null && ($result['IsTruncated'] ?? false))
+                    ? ($result['NextContinuationToken'] ?? null)
+                    : null;
+            } while ($continuationToken !== null);
+
+            return $objects;
         } catch (\Exception $e) {
             \Log::error('S3 list objects failed: '.$e->getMessage());
 
@@ -552,20 +576,28 @@ class S3Service
 
         try {
             $folders = $rootFolder !== '' ? [$rootFolder] : [];
+            $continuationToken = null;
 
-            // Use delimiter to get common prefixes (folders)
-            $result = $this->s3Client->listObjectsV2([
-                'Bucket' => $this->bucket,
-                'Prefix' => $prefix,
-                'Delimiter' => '/',
-            ]);
+            do {
+                // Use delimiter to get common prefixes (folders)
+                $params = [
+                    'Bucket' => $this->bucket,
+                    'Prefix' => $prefix,
+                    'Delimiter' => '/',
+                ];
+                if ($continuationToken !== null) {
+                    $params['ContinuationToken'] = $continuationToken;
+                }
 
-            // Get subfolders from common prefixes
-            if (isset($result['CommonPrefixes'])) {
-                foreach ($result['CommonPrefixes'] as $commonPrefix) {
+                $result = $this->s3Client->listObjectsV2($params);
+
+                // Get subfolders from common prefixes
+                foreach ($result['CommonPrefixes'] ?? [] as $commonPrefix) {
                     $folderPath = rtrim($commonPrefix['Prefix'], '/');
                     if ($folderPath !== $rootFolder && ! empty($folderPath) && $folderPath !== 'thumbnails') {
-                        $folders[] = $folderPath;
+                        if (! in_array($folderPath, $folders)) {
+                            $folders[] = $folderPath;
+                        }
 
                         // Recursively get nested folders
                         $nestedFolders = $this->listFolders($commonPrefix['Prefix']);
@@ -576,7 +608,11 @@ class S3Service
                         }
                     }
                 }
-            }
+
+                $continuationToken = ($result['IsTruncated'] ?? false)
+                    ? ($result['NextContinuationToken'] ?? null)
+                    : null;
+            } while ($continuationToken !== null);
 
             sort($folders);
 
