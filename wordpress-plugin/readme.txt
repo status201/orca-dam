@@ -4,7 +4,7 @@ Tags: media, dam, asset-management, gutenberg
 Requires at least: 6.8
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 0.4.5
+Stable tag: 0.4.6
 License: MIT
 
 Browse and insert assets from ORCA DAM directly inside WordPress, with automatic usage tracking via reference tags.
@@ -21,6 +21,9 @@ ORCA DAM Picker integrates an ORCA DAM library into the WordPress block editor, 
 4. Optional: set `define('ORCA_ENCRYPTION_KEY', '...');` in `wp-config.php` to encrypt stored credentials.
 
 == Changelog ==
+
+= 0.4.6 =
+* Remove the non-functional "Insert from ORCA" toolbar button from the classic editor (Divi, etc.). It never had a click handler and was redundant: the ORCA library is reached via the standard "Add Media" button, whose media modal already contains an "ORCA DAM" tab.
 
 = 0.4.5 =
 * Fix: Dutch (and other) translations now load in the React UI. `wp_set_script_translations()` was missing the plugin `/languages` path, the Elementor bundle was never registered for translations, and the JS `.po`/`.pot` references did not map to the built script bundles, so `wp i18n make-json` produced JSON the editor never loaded.

@@ -10,7 +10,6 @@ use OrcaDam\Api\Transport\WpHttpTransport;
 use OrcaDam\Attachments\ImageDownsizeFilter;
 use OrcaDam\Attachments\MetadataFilter;
 use OrcaDam\Attachments\ShellFactory;
-use OrcaDam\Editors\ClassicEditor;
 use OrcaDam\Editors\Elementor;
 use OrcaDam\Editors\Gutenberg;
 use OrcaDam\Maintenance\CronScheduler;
@@ -55,7 +54,6 @@ final class Plugin
         $this->get(PostObserver::class)->register();
         $this->get(TagSyncJob::class)->register();
         $this->get(Gutenberg::class)->register();
-        $this->get(ClassicEditor::class)->register();
         $this->get(Elementor::class)->register();
         $this->get(CronScheduler::class)->register();
         $this->get(GitHubUpdater::class)->register();
@@ -129,7 +127,6 @@ final class Plugin
             CronScheduler::class         => new CronScheduler($this->get(OrphanScanner::class)),
             MaintenanceController::class => new MaintenanceController($this->get(OrphanScanner::class)),
             Gutenberg::class             => new Gutenberg($this->get(CredentialStore::class)),
-            ClassicEditor::class         => new ClassicEditor(),
             Elementor::class             => new Elementor($this->get(CredentialStore::class)),
             GitHubUpdater::class         => new GitHubUpdater(),
             default                      => throw new \RuntimeException("Unknown service: {$id}"),

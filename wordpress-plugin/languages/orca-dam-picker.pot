@@ -15,10 +15,6 @@ msgstr ""
 msgid "ORCA DAM"
 msgstr ""
 
-#: src/Editors/ClassicEditor.php:26
-msgid "Insert from ORCA"
-msgstr ""
-
 #: src/Settings/SettingsPage.php:39
 msgid "Insufficient permissions."
 msgstr ""
