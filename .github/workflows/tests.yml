@@ -27,6 +27,10 @@ jobs:
       # composer's post-autoload-dump (package:discover) needs it to exist.
       - name: Create runtime directories
         run: mkdir -p bootstrap/cache
+      # package:discover boots the app, which reads AWS_* config; without .env
+      # those are null and S3Service's typed string props fail to construct.
+      - name: Copy environment file
+        run: cp .env.example .env
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
       - name: Check code style
@@ -48,6 +52,10 @@ jobs:
       # storage/logs (logging). Create them before composer install + tests run.
       - name: Create runtime directories
         run: mkdir -p bootstrap/cache storage/framework/{cache,sessions,views,testing} storage/logs
+      # package:discover boots the app, which reads AWS_* config; without .env
+      # those are null and S3Service's typed string props fail to construct.
+      - name: Copy environment file
+        run: cp .env.example .env
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
       - uses: actions/setup-node@v5
@@ -59,10 +67,9 @@ jobs:
       # Feature tests render Blade views containing @vite, which throws without a build manifest.
       - name: Build front-end assets
         run: npm run build
-      - name: Prepare environment
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+      # .env was copied before composer install; key:generate just needs vendor/.
+      - name: Generate application key
+        run: php artisan key:generate
       # Tests use the in-memory SQLite + array drivers configured in phpunit.xml.
       # --coverage prints the per-file summary (pcov). Once a baseline is known,
       # add --min=NN here to enforce a coverage floor.
