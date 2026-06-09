@@ -251,6 +251,8 @@ test('api tags index can filter by type', function () {
 });
 
 test('api asset meta endpoint is public', function () {
+    config(['filesystems.disks.s3.url' => 'https://my-bucket.s3.amazonaws.com']);
+
     $asset = Asset::factory()->create([
         'alt_text' => 'Test alt text',
         'caption' => 'Test caption',
@@ -289,6 +291,8 @@ test('api asset meta works with custom domain url', function () {
 });
 
 test('api asset meta still works with s3 url when custom domain is set', function () {
+    config(['filesystems.disks.s3.url' => 'https://my-bucket.s3.amazonaws.com']);
+
     $asset = Asset::factory()->create([
         's3_key' => 'assets/test-image.jpg',
         'alt_text' => 'S3 fallback test',
