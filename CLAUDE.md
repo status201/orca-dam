@@ -101,6 +101,7 @@ One-line summaries; read the source for detail.
 - **Asset** — Belongs to User. Self-FK `parent()`/`children()` (e.g. TikZ render → source `.tex`). Many-to-many Tags (pivot `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` editable; `s3_key` immutable. `syncTagsWithAttribution()` = "last attacher wins". Scopes: `search` (delegates to `AssetSearchParser`), `withTags`, `ofType` (accepts plurals like `images`), `byUser`, `inFolder`, `missing`, `applySort`. Search operators: `+req`, `-excl`, `"phrase"`, `+"phrase"`, `-"phrase"`. License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
 - **Tag** — Type `user`/`ai`/`reference`, many-to-many Assets. Reference tags created via API only (track external system usage), editable/deletable in web UI.
 - **Setting** — Key-value, cached 1 hour. `Setting::get('key', $default)` / `Setting::set($key, $value)`. Types: string/integer/boolean/json. Groups: general/display/aws/api.
+- **GameScore** — Backs a hidden easter-egg game (double-click the ORCA logo; the game is lazy-loaded from `public/games/`, wired in `resources/js/app.js`). Belongs to User; `leaderboard()` returns the top-5 best-per-user scores. Routes `game/scores` GET/POST (`GameScoreController`, auth-only) read/record high scores.
 
 ## API Endpoints
 

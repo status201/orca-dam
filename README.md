@@ -48,6 +48,7 @@ A Digital Asset Management system for AWS S3 with AI-powered tagging.
 - 🔑 **Passkeys** (WebAuthn / FIDO2) — passwordless sign-in with Touch ID, Face ID, Windows Hello, or hardware keys; bypasses TOTP on successful passkey login
 - 🖊️ **TikZ Server Render** — compile TikZ/LaTeX diagrams server-side via TeX Live, with SVG and PNG output variants, 17 font packages, template management, and direct upload to ORCA (renders are linked back to their source `.tex` template via asset parent/child relations)
 - ☁️ **Cloudflare cache purge** — automatically purges CDN cache when an asset file is replaced (requires custom domain + toggle in Settings)
+- 🐳 **Hidden easter egg** — double-click the ORCA logo to launch a little game; high scores are kept on a per-user leaderboard
 
 ## Installation
 
