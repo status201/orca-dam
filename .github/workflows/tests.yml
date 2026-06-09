@@ -9,6 +9,9 @@ on:
     paths-ignore:
       - 'wordpress-plugin/**'
 
+permissions:
+  contents: read
+
 jobs:
   pint:
     name: Pint (code style)
