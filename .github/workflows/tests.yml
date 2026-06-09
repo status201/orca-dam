@@ -23,6 +23,10 @@ jobs:
           php-version: '8.4'
           tools: composer
           coverage: none
+      # bootstrap/cache is gitignored, so it's absent on a fresh checkout;
+      # composer's post-autoload-dump (package:discover) needs it to exist.
+      - name: Create runtime directories
+        run: mkdir -p bootstrap/cache
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
       - name: Check code style
@@ -39,6 +43,11 @@ jobs:
           extensions: mbstring, gd, exif, zip, bcmath, intl, pdo_sqlite, sqlite3
           coverage: pcov
           tools: composer
+      # These runtime dirs are gitignored, so they're absent on a fresh checkout:
+      # bootstrap/cache (package:discover), storage/framework/views (Blade compile),
+      # storage/logs (logging). Create them before composer install + tests run.
+      - name: Create runtime directories
+        run: mkdir -p bootstrap/cache storage/framework/{cache,sessions,views,testing} storage/logs
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
       - uses: actions/setup-node@v5
