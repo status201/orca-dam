@@ -2,27 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Tools\StoreGifRequest;
+use App\Http\Requests\Tools\StoreMathmlRequest;
+use App\Http\Requests\Tools\StoreTexTemplateRequest;
+use App\Http\Requests\Tools\StoreTikzPngRequest;
+use App\Http\Requests\Tools\StoreTikzSvgFontsRequest;
+use App\Http\Requests\Tools\StoreTikzSvgRequest;
 use App\Models\Asset;
 use App\Models\Setting;
-use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use App\Services\TikzCompilerService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\ToolUploadService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 class ToolsController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(
         protected S3Service $s3Service,
-        protected AssetProcessingService $assetProcessingService,
+        protected ToolUploadService $toolUploadService,
         protected TikzCompilerService $tikzCompilerService
     ) {}
 
@@ -39,63 +41,30 @@ class ToolsController extends Controller
         return view('tools.latex-mathml', compact('folders', 'rootFolder'));
     }
 
-    public function uploadMathml(Request $request)
+    public function uploadMathml(StoreMathmlRequest $request): JsonResponse
     {
-        $this->authorize('create', Asset::class);
-
-        $request->validate([
-            'content' => ['required', 'string', 'max:1000000'],
-            'filename' => ['required', 'string', 'max:255'],
-            'folder' => ['nullable', 'string', 'max:255'],
-            'latex' => ['nullable', 'string', 'max:10000'],
-            'caption' => ['nullable', 'string', 'max:1000'],
-        ]);
-
         $folder = $request->input('folder', S3Service::getRootFolder());
-
-        // Sanitize filename and ensure .mml extension
-        $filename = S3Service::sanitizeFilename($request->input('filename'));
-        if (! str_ends_with(strtolower($filename), '.mml')) {
-            $filename = pathinfo($filename, PATHINFO_FILENAME).'.mml';
-            if ($filename === '.mml') {
-                $filename = 'formula.mml';
-            }
-        }
-
-        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_mml_');
-        file_put_contents($tmpPath, $request->input('content'));
+        $filename = S3Service::ensureExtension($request->input('filename'), 'mml', 'formula.mml');
 
         try {
-            $uploadedFile = new UploadedFile($tmpPath, $filename, 'application/mathml+xml', null, true);
-            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
-
-            $asset = Asset::create([
-                's3_key' => $fileData['s3_key'],
-                'filename' => $filename,
-                'mime_type' => 'application/mathml+xml',
-                'size' => $fileData['size'],
-                'etag' => $fileData['etag'] ?? null,
-                'width' => null,
-                'height' => null,
-                'user_id' => Auth::id(),
-                'alt_text' => $request->input('latex') ?: null,
-                'caption' => $request->input('caption') ?: null,
-            ]);
-
-            $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
-        } catch (\Exception $e) {
+            $asset = $this->toolUploadService->store(
+                content: $request->input('content'),
+                filename: $filename,
+                mimeType: 'application/mathml+xml',
+                folder: $folder,
+                attributes: [
+                    'user_id' => Auth::id(),
+                    'alt_text' => $request->input('latex') ?: null,
+                    'caption' => $request->input('caption') ?: null,
+                ],
+            );
+        } catch (\Throwable $e) {
             Log::error('MathML upload failed: '.$e->getMessage());
 
             return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
-        } finally {
-            @unlink($tmpPath);
         }
 
-        return response()->json([
-            'asset_id' => $asset->id,
-            'asset_url' => route('assets.show', $asset),
-            'filename' => $asset->filename,
-        ]);
+        return $this->assetJson($asset);
     }
 
     public function tikzSvg()
@@ -106,75 +75,31 @@ class ToolsController extends Controller
         return view('tools.tikz-svg', compact('folders', 'rootFolder'));
     }
 
-    public function uploadTikzSvg(Request $request)
+    public function uploadTikzSvg(StoreTikzSvgRequest $request): JsonResponse
     {
-        $this->authorize('create', Asset::class);
-
-        $request->validate([
-            'content' => ['required', 'string', 'max:5242880'],
-            'filename' => ['required', 'string', 'max:255'],
-            'folder' => ['nullable', 'string', 'max:255'],
-            'caption' => ['nullable', 'string', 'max:1000'],
-            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
-            ...$this->metadataValidationRules(),
-        ]);
-
         $folder = $request->input('folder', S3Service::getRootFolder());
-
-        // Sanitize filename and ensure .svg extension
-        $filename = S3Service::sanitizeFilename($request->input('filename'));
-        if (! str_ends_with(strtolower($filename), '.svg')) {
-            $filename = pathinfo($filename, PATHINFO_FILENAME).'.svg';
-            if ($filename === '.svg') {
-                $filename = 'diagram.svg';
-            }
-        }
-
-        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_svg_');
-        file_put_contents($tmpPath, $request->input('content'));
+        $filename = S3Service::ensureExtension($request->input('filename'), 'svg', 'diagram.svg');
 
         try {
-            $uploadedFile = new UploadedFile($tmpPath, $filename, 'image/svg+xml', null, true);
-            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
-
-            $asset = Asset::create([
-                's3_key' => $fileData['s3_key'],
-                'filename' => $filename,
-                'mime_type' => 'image/svg+xml',
-                'size' => $fileData['size'],
-                'etag' => $fileData['etag'] ?? null,
-                'width' => null,
-                'height' => null,
-                'user_id' => Auth::id(),
-                'parent_id' => $request->input('parent_asset_id'),
-                'alt_text' => null,
-                'caption' => $request->input('caption') ?: null,
-            ]);
-
-            $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
-
-            // Apply batch upload metadata
-            $this->assetProcessingService->applyUploadMetadata(
-                $asset,
-                $request->input('metadata_tags'),
-                $request->input('metadata_license_type'),
-                $request->input('metadata_copyright'),
-                $request->input('metadata_copyright_source'),
-                $request->input('metadata_reference_tag_ids'),
+            $asset = $this->toolUploadService->store(
+                content: $request->input('content'),
+                filename: $filename,
+                mimeType: 'image/svg+xml',
+                folder: $folder,
+                attributes: [
+                    'user_id' => Auth::id(),
+                    'parent_id' => $request->input('parent_asset_id'),
+                    'caption' => $request->input('caption') ?: null,
+                ],
+                metadata: $request->uploadMetadata(),
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('TikZ SVG upload failed: '.$e->getMessage());
 
             return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
-        } finally {
-            @unlink($tmpPath);
         }
 
-        return response()->json([
-            'asset_id' => $asset->id,
-            'asset_url' => route('assets.show', $asset),
-            'filename' => $asset->filename,
-        ]);
+        return $this->assetJson($asset);
     }
 
     public function tikzSvgFonts()
@@ -185,75 +110,31 @@ class ToolsController extends Controller
         return view('tools.tikz-svg-fonts', compact('folders', 'rootFolder'));
     }
 
-    public function uploadTikzSvgFonts(Request $request)
+    public function uploadTikzSvgFonts(StoreTikzSvgFontsRequest $request): JsonResponse
     {
-        $this->authorize('create', Asset::class);
-
-        $request->validate([
-            'content' => ['required', 'string', 'max:5242880'],
-            'filename' => ['required', 'string', 'max:255'],
-            'folder' => ['nullable', 'string', 'max:255'],
-            'caption' => ['nullable', 'string', 'max:1000'],
-            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
-            ...$this->metadataValidationRules(),
-        ]);
-
         $folder = $request->input('folder', S3Service::getRootFolder());
-
-        // Sanitize filename and ensure .svg extension
-        $filename = S3Service::sanitizeFilename($request->input('filename'));
-        if (! str_ends_with(strtolower($filename), '.svg')) {
-            $filename = pathinfo($filename, PATHINFO_FILENAME).'.svg';
-            if ($filename === '.svg') {
-                $filename = 'diagram.svg';
-            }
-        }
-
-        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_svg_');
-        file_put_contents($tmpPath, $request->input('content'));
+        $filename = S3Service::ensureExtension($request->input('filename'), 'svg', 'diagram.svg');
 
         try {
-            $uploadedFile = new UploadedFile($tmpPath, $filename, 'image/svg+xml', null, true);
-            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
-
-            $asset = Asset::create([
-                's3_key' => $fileData['s3_key'],
-                'filename' => $filename,
-                'mime_type' => 'image/svg+xml',
-                'size' => $fileData['size'],
-                'etag' => $fileData['etag'] ?? null,
-                'width' => null,
-                'height' => null,
-                'user_id' => Auth::id(),
-                'parent_id' => $request->input('parent_asset_id'),
-                'alt_text' => null,
-                'caption' => $request->input('caption') ?: null,
-            ]);
-
-            $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
-
-            // Apply batch upload metadata
-            $this->assetProcessingService->applyUploadMetadata(
-                $asset,
-                $request->input('metadata_tags'),
-                $request->input('metadata_license_type'),
-                $request->input('metadata_copyright'),
-                $request->input('metadata_copyright_source'),
-                $request->input('metadata_reference_tag_ids'),
+            $asset = $this->toolUploadService->store(
+                content: $request->input('content'),
+                filename: $filename,
+                mimeType: 'image/svg+xml',
+                folder: $folder,
+                attributes: [
+                    'user_id' => Auth::id(),
+                    'parent_id' => $request->input('parent_asset_id'),
+                    'caption' => $request->input('caption') ?: null,
+                ],
+                metadata: $request->uploadMetadata(),
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('TikZ SVG (embedded fonts) upload failed: '.$e->getMessage());
 
             return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
-        } finally {
-            @unlink($tmpPath);
         }
 
-        return response()->json([
-            'asset_id' => $asset->id,
-            'asset_url' => route('assets.show', $asset),
-            'filename' => $asset->filename,
-        ]);
+        return $this->assetJson($asset);
     }
 
     public function bakomaFont(string $name)
@@ -299,87 +180,38 @@ class ToolsController extends Controller
         return view('tools.tikz-png', compact('folders', 'rootFolder'));
     }
 
-    public function uploadTikzPng(Request $request)
+    public function uploadTikzPng(StoreTikzPngRequest $request): JsonResponse
     {
-        $this->authorize('create', Asset::class);
-
-        $request->validate([
-            'content' => ['required', 'string', 'max:10485760'],
-            'filename' => ['required', 'string', 'max:255'],
-            'folder' => ['nullable', 'string', 'max:255'],
-            'width' => ['nullable', 'integer', 'min:1'],
-            'height' => ['nullable', 'integer', 'min:1'],
-            'caption' => ['nullable', 'string', 'max:1000'],
-            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
-            ...$this->metadataValidationRules(),
-        ]);
-
         $folder = $request->input('folder', S3Service::getRootFolder());
+        $filename = S3Service::ensureExtension($request->input('filename'), 'png', 'diagram.png');
 
-        // Sanitize filename and ensure .png extension
-        $filename = S3Service::sanitizeFilename($request->input('filename'));
-        if (! str_ends_with(strtolower($filename), '.png')) {
-            $filename = pathinfo($filename, PATHINFO_FILENAME).'.png';
-            if ($filename === '.png') {
-                $filename = 'diagram.png';
-            }
-        }
-
-        // Decode base64 PNG data (strip data URL prefix if present)
-        $content = $request->input('content');
-        if (str_starts_with($content, 'data:')) {
-            $content = preg_replace('/^data:[^;]+;base64,/', '', $content);
-        }
-        $binaryData = base64_decode($content, true);
-        if ($binaryData === false) {
+        $binaryData = $this->decodeBase64Content($request->input('content'));
+        if ($binaryData === null) {
             return response()->json(['error' => 'Invalid base64 data'], 422);
         }
 
-        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_png_');
-        file_put_contents($tmpPath, $binaryData);
-
         try {
-            $uploadedFile = new UploadedFile($tmpPath, $filename, 'image/png', null, true);
-            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
-
-            $asset = Asset::create([
-                's3_key' => $fileData['s3_key'],
-                'filename' => $filename,
-                'mime_type' => 'image/png',
-                'size' => $fileData['size'],
-                'etag' => $fileData['etag'] ?? null,
-                'width' => $request->input('width'),
-                'height' => $request->input('height'),
-                'user_id' => Auth::id(),
-                'parent_id' => $request->input('parent_asset_id'),
-                'alt_text' => null,
-                'caption' => $request->input('caption') ?: null,
-            ]);
-
-            $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
-
-            // Apply batch upload metadata
-            $this->assetProcessingService->applyUploadMetadata(
-                $asset,
-                $request->input('metadata_tags'),
-                $request->input('metadata_license_type'),
-                $request->input('metadata_copyright'),
-                $request->input('metadata_copyright_source'),
-                $request->input('metadata_reference_tag_ids'),
+            $asset = $this->toolUploadService->store(
+                content: $binaryData,
+                filename: $filename,
+                mimeType: 'image/png',
+                folder: $folder,
+                attributes: [
+                    'user_id' => Auth::id(),
+                    'width' => $request->input('width'),
+                    'height' => $request->input('height'),
+                    'parent_id' => $request->input('parent_asset_id'),
+                    'caption' => $request->input('caption') ?: null,
+                ],
+                metadata: $request->uploadMetadata(),
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('TikZ PNG upload failed: '.$e->getMessage());
 
             return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
-        } finally {
-            @unlink($tmpPath);
         }
 
-        return response()->json([
-            'asset_id' => $asset->id,
-            'asset_url' => route('assets.show', $asset),
-            'filename' => $asset->filename,
-        ]);
+        return $this->assetJson($asset);
     }
 
     public function tikzServer()
@@ -492,59 +324,30 @@ class ToolsController extends Controller
         ]);
     }
 
-    public function uploadTexTemplate(Request $request)
+    public function uploadTexTemplate(StoreTexTemplateRequest $request): JsonResponse
     {
-        $this->authorize('create', Asset::class);
-
-        $request->validate([
-            'content' => ['required', 'string', 'max:1048576'],
-            'filename' => ['required', 'string', 'max:255'],
-            'folder' => ['nullable', 'string', 'max:255'],
-            'caption' => ['nullable', 'string', 'max:1000'],
-        ]);
-
         $folder = $request->input('folder', S3Service::getRootFolder());
-
-        $filename = S3Service::sanitizeFilename($request->input('filename'));
-        if (! str_ends_with(strtolower($filename), '.tex')) {
-            $filename = pathinfo($filename, PATHINFO_FILENAME).'.tex';
-            if ($filename === '.tex') {
-                $filename = 'template.tex';
-            }
-        }
-
-        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_tex_');
-        file_put_contents($tmpPath, $request->input('content'));
+        $filename = S3Service::ensureExtension($request->input('filename'), 'tex', 'template.tex');
 
         try {
-            $uploadedFile = new UploadedFile($tmpPath, $filename, 'application/x-tex', null, true);
-            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
-
-            $asset = Asset::create([
-                's3_key' => $fileData['s3_key'],
-                'filename' => $filename,
-                'mime_type' => 'application/x-tex',
-                'size' => $fileData['size'],
-                'etag' => $fileData['etag'] ?? null,
-                'width' => null,
-                'height' => null,
-                'user_id' => Auth::id(),
-                'alt_text' => null,
-                'caption' => $request->input('caption') ?: null,
-            ]);
-        } catch (\Exception $e) {
+            $asset = $this->toolUploadService->store(
+                content: $request->input('content'),
+                filename: $filename,
+                mimeType: 'application/x-tex',
+                folder: $folder,
+                attributes: [
+                    'user_id' => Auth::id(),
+                    'caption' => $request->input('caption') ?: null,
+                ],
+                process: false,
+            );
+        } catch (\Throwable $e) {
             Log::error('TeX template upload failed: '.$e->getMessage());
 
             return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
-        } finally {
-            @unlink($tmpPath);
         }
 
-        return response()->json([
-            'asset_id' => $asset->id,
-            'asset_url' => route('assets.show', $asset),
-            'filename' => $asset->filename,
-        ]);
+        return $this->assetJson($asset);
     }
 
     public function gifMaker()
@@ -555,102 +358,64 @@ class ToolsController extends Controller
         return view('tools.gif-maker', compact('folders', 'rootFolder'));
     }
 
-    public function uploadGif(Request $request)
+    public function uploadGif(StoreGifRequest $request): JsonResponse
     {
-        $this->authorize('create', Asset::class);
-
-        $request->validate([
-            'content' => ['required', 'string', 'max:15000000'],
-            'filename' => ['required', 'string', 'max:255'],
-            'folder' => ['nullable', 'string', 'max:255'],
-            'width' => ['nullable', 'integer', 'min:1'],
-            'height' => ['nullable', 'integer', 'min:1'],
-            'caption' => ['nullable', 'string', 'max:1000'],
-            'parent_asset_id' => ['nullable', 'integer', 'exists:assets,id'],
-            ...$this->metadataValidationRules(),
-        ]);
-
         $folder = $request->input('folder', S3Service::getRootFolder());
+        $filename = S3Service::ensureExtension($request->input('filename'), 'gif', 'animation.gif');
 
-        // Sanitize filename and ensure .gif extension
-        $filename = S3Service::sanitizeFilename($request->input('filename'));
-        if (! str_ends_with(strtolower($filename), '.gif')) {
-            $filename = pathinfo($filename, PATHINFO_FILENAME).'.gif';
-            if ($filename === '.gif') {
-                $filename = 'animation.gif';
-            }
-        }
-
-        // Decode base64 GIF data (strip data URL prefix if present)
-        $content = $request->input('content');
-        if (str_starts_with($content, 'data:')) {
-            $content = preg_replace('/^data:[^;]+;base64,/', '', $content);
-        }
-        $binaryData = base64_decode($content, true);
-        if ($binaryData === false) {
+        $binaryData = $this->decodeBase64Content($request->input('content'));
+        if ($binaryData === null) {
             return response()->json(['error' => 'Invalid base64 data'], 422);
         }
 
-        $tmpPath = tempnam(sys_get_temp_dir(), 'orca_gif_');
-        file_put_contents($tmpPath, $binaryData);
-
         try {
-            $uploadedFile = new UploadedFile($tmpPath, $filename, 'image/gif', null, true);
-            $fileData = $this->s3Service->uploadFile($uploadedFile, $folder, keepOriginalFilename: false);
-
-            $asset = Asset::create([
-                's3_key' => $fileData['s3_key'],
-                'filename' => $filename,
-                'mime_type' => 'image/gif',
-                'size' => $fileData['size'],
-                'etag' => $fileData['etag'] ?? null,
-                'width' => $request->input('width'),
-                'height' => $request->input('height'),
-                'user_id' => Auth::id(),
-                'parent_id' => $request->input('parent_asset_id'),
-                'alt_text' => null,
-                'caption' => $request->input('caption') ?: null,
-            ]);
-
-            $this->assetProcessingService->processImageAsset($asset, dispatchAiTagging: true);
-
-            // Apply batch upload metadata (shared form with TikZ Server handoff and direct usage)
-            $this->assetProcessingService->applyUploadMetadata(
-                $asset,
-                $request->input('metadata_tags'),
-                $request->input('metadata_license_type'),
-                $request->input('metadata_copyright'),
-                $request->input('metadata_copyright_source'),
-                $request->input('metadata_reference_tag_ids'),
+            $asset = $this->toolUploadService->store(
+                content: $binaryData,
+                filename: $filename,
+                mimeType: 'image/gif',
+                folder: $folder,
+                attributes: [
+                    'user_id' => Auth::id(),
+                    'width' => $request->input('width'),
+                    'height' => $request->input('height'),
+                    'parent_id' => $request->input('parent_asset_id'),
+                    'caption' => $request->input('caption') ?: null,
+                ],
+                metadata: $request->uploadMetadata(),
             );
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('GIF upload failed: '.$e->getMessage());
 
             return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
-        } finally {
-            @unlink($tmpPath);
         }
 
+        return $this->assetJson($asset);
+    }
+
+    /**
+     * Decode base64 content (stripping an optional data: URL prefix).
+     * Returns null when the payload is not valid base64.
+     */
+    private function decodeBase64Content(string $content): ?string
+    {
+        if (str_starts_with($content, 'data:')) {
+            $content = preg_replace('/^data:[^;]+;base64,/', '', $content);
+        }
+
+        $binaryData = base64_decode($content, true);
+
+        return $binaryData === false ? null : $binaryData;
+    }
+
+    /**
+     * The standard JSON payload returned by every tool upload endpoint.
+     */
+    private function assetJson(Asset $asset): JsonResponse
+    {
         return response()->json([
             'asset_id' => $asset->id,
             'asset_url' => route('assets.show', $asset),
             'filename' => $asset->filename,
         ]);
-    }
-
-    private function metadataValidationRules(): array
-    {
-        return [
-            'metadata_tags' => 'nullable|array',
-            'metadata_tags.*' => 'string|max:100',
-            'metadata_reference_tag_ids' => 'nullable|array',
-            'metadata_reference_tag_ids.*' => [
-                'integer',
-                Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
-            ],
-            'metadata_license_type' => ['nullable', 'string', Rule::in(array_keys(Asset::licenseTypes()))],
-            'metadata_copyright' => 'nullable|string|max:500',
-            'metadata_copyright_source' => 'nullable|string|max:500',
-        ];
     }
 }

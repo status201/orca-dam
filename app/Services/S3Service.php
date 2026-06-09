@@ -711,6 +711,25 @@ class S3Service
     }
 
     /**
+     * Sanitise a filename and force it to carry the given extension, falling
+     * back to $fallback when sanitising leaves nothing but the extension.
+     */
+    public static function ensureExtension(string $filename, string $ext, string $fallback): string
+    {
+        $filename = self::sanitizeFilename($filename);
+
+        if (! str_ends_with(strtolower($filename), '.'.$ext)) {
+            $filename = pathinfo($filename, PATHINFO_FILENAME).'.'.$ext;
+
+            if ($filename === '.'.$ext) {
+                $filename = $fallback;
+            }
+        }
+
+        return $filename;
+    }
+
+    /**
      * Get image dimensions — delegates to ImageProcessingService
      */
     protected function getImageDimensions(UploadedFile $file): array
