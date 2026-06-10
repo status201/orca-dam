@@ -6,6 +6,13 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 ---
 
 ## [Unreleased]
+### Security
+- **Upload type allowlist + SVG sanitization.** Uploads (direct, chunked, replace) are now restricted to an extension allowlist (`config/uploads.php`, enforced by `App\Rules\AllowedUploadExtension`); previously any file type was accepted. SVGs are sanitized with `enshrined/svg-sanitize` before storage to strip scripts/handlers/remote refs. Non-inline types are stored with `Content-Disposition: attachment`, and the download endpoint sends `nosniff` + RFC-5987-encoded filenames.
+- **Baseline security headers.** New `SecurityHeaders` middleware on the web group adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN` (relaxed by `AllowEmbedding` when embedding is configured), `Referrer-Policy`, and HSTS over HTTPS. `SESSION_SECURE_COOKIE` now defaults to `true` in production.
+- **CSV export formula-injection** neutralized — `CsvExportService` prefixes cells starting with `= + - @` tab/CR with `'`.
+- **Rate limits** on expensive/public endpoints (TikZ render, AI tagging, bulk download, public `/api/assets/meta` + `/api/health`, the `/api/assets` group).
+- **Reduced info disclosure** — API-role users receive generic error messages (admin/editor still see detail); `embed_allowed_domains` is validated before composing the CSP; `bulkGetTags` now authorizes per asset; the TikZ blocklist rejects all file-inclusion commands.
+
 ### Added
 - **WordPress plugin** (`wordpress-plugin/`, released separately under `wp-v*` tags). Adds an **ORCA DAM** tab to the WordPress media-library modal so editors can pick assets straight from ORCA. On post save, the plugin calls `/api/reference-tags` to stamp the asset with `wp:<site>/post/<id>`, so ORCA shows exactly which posts on which sites use it. Sanctum token stored AES-256-GCM-encrypted in `wp_options`, all calls go through a WP REST proxy (token never leaves the server). Auto-updates from GitHub Releases via plugin-update-checker; ships English + Dutch translations. Settings → ORCA DAM exposes base URL, token, default folder filter, **Test connection**, and a **plugin details** modal with screenshots. v1 is consume-only — uploads still happen in ORCA.
 

@@ -46,7 +46,7 @@ php artisan queue:work --tries=3
 
 One-line summaries; read the source for detail.
 
-- **S3Service** — All S3 ops (upload/delete/list/move). Streams files. `uploadFile()` supports `keepOriginalFilename`. JPEG thumbnails (skips animated GIFs). `generateResizedImages()` writes S/M/L variants under `thumbnails/S|M|L/`. `deleteAssetFiles()` clears original + thumbnail + resizes. CDN URL via `getPublicBaseUrl()` honors `custom_domain`.
+- **S3Service** — All S3 ops (upload/delete/list/move). Streams files via `putUploadedFile()`, which sets server-detected `ContentType`, adds `Content-Disposition: attachment` for non-inline types, and sanitizes SVGs (`sanitizeSvg()`, via `enshrined/svg-sanitize`) before storage. `uploadFile()` supports `keepOriginalFilename`. JPEG thumbnails (skips animated GIFs). `generateResizedImages()` writes S/M/L variants under `thumbnails/S|M|L/`. `deleteAssetFiles()` clears original + thumbnail + resizes. CDN URL via `getPublicBaseUrl()` honors `custom_domain`.
 - **AssetProcessingService** — Shared post-upload work (thumbnail, resizes, dimensions, AI dispatch). Used by `AssetController`, `AssetApiController`, `ChunkedUploadController`, `ProcessDiscoveredAsset` job. `applyUploadMetadata()` applies batch metadata after `processImageAsset()`.
 - **AssetSearchParser** — Pure parser for asset search input (`+req`, `-excl`, `"phrase"`, mixed). Strips configured S3 / custom-domain URL prefixes. Used by `Asset::scopeSearch`.
 - **ChunkedUploadService** — S3 Multipart for ≥10MB / ≤500MB uploads. 10MB chunks, idempotent retries, sessions in `upload_sessions`. Etag dedup on complete (`DuplicateAssetException`).
@@ -94,7 +94,15 @@ One-line summaries; read the source for detail.
 
 ### Iframe Embedding
 
-`AllowEmbedding` middleware: when `embed_allowed_domains` is non-empty, sets `Content-Security-Policy: frame-ancestors 'self' <domains>` and removes `X-Frame-Options` on web routes.
+`AllowEmbedding` middleware: when `embed_allowed_domains` is non-empty, sets `Content-Security-Policy: frame-ancestors 'self' <domains>` and removes `X-Frame-Options` on web routes. Each domain is validated against a host/origin regex before being composed into the directive.
+
+### Security Headers
+
+`SecurityHeaders` middleware (web group, after `AllowEmbedding`): sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, and HSTS when served over HTTPS. Runs before `AllowEmbedding` on the response, so embedding can still relax `X-Frame-Options` into a frame-ancestors CSP. `SESSION_SECURE_COOKIE` defaults to `true` in production.
+
+### Uploads
+
+Allowed file types are restricted by `config/uploads.php` (`allowed_extensions` + `inline_extensions`), enforced via `App\Rules\AllowedUploadExtension` on the direct, chunked, and replace paths; `App\Support\UploadPolicy` is the shared source of truth for type decisions. SVGs are sanitized before storage. Expensive/public routes are rate-limited (TikZ render, AI tagging, bulk download, public API, `/api/assets`).
 
 ### Models
 
@@ -199,12 +207,12 @@ TIKZ_PNG_DPI=300                      # 72-600
 - **Layout**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware/Requests in `app/Http/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g. `DuplicateAssetException`).
 - **Frontend**: 15 Alpine modules in `resources/js/alpine/` registered in `resources/js/app.js`. Shared mixins (not top-level): `upload-metadata` (batch metadata form), `thumbnail-generator` (client-side PDF/video thumbs). Asset grid markup is `resources/views/assets/partials/grid.blade.php`, shared between index and embed.
 - **S3 keys**: `assets/{folder}/{uuid}.{ext}`; thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG).
-- **Errors**: services swallow + log + return null/[]. Controllers validate + return appropriate codes. Logs in `storage/logs/laravel.log`.
+- **Errors**: services swallow + log + return null/[]. Controllers validate + return appropriate codes. API-role users get generic messages (`Controller::clientError()`); admin/editor see exception detail. Logs in `storage/logs/laravel.log`.
 - **Delete**: soft delete keeps S3 objects; hard delete (admin) clears S3 + DB. Discovery flags soft-deleted to prevent re-import.
 
 ## Testing
 
-**Pest** with in-memory SQLite (config in `phpunit.xml`: testing env, `:memory:`, array session/cache, sync queue). 907 tests at last count.
+**Pest** with in-memory SQLite (config in `phpunit.xml`: testing env, `:memory:`, array session/cache, sync queue). 957 tests at last count.
 
 **Always run `php artisan config:clear &&` first** — a stale `bootstrap/cache/config.php` can point `RefreshDatabase` at the dev DB and wipe it.
 
@@ -218,7 +226,7 @@ Web test runner at `/system → Tests` (admin only).
 
 ## Key Workflows
 
-- **Upload** — `POST /assets` (or `/api/chunked-upload/*` for ≥10MB) → etag dedup check → S3 stream upload (optional `keepOriginalFilename`) → dimensions → thumbnail (skips GIFs) → S/M/L resizes → Asset row → `GenerateAiTags` job (if Rekognition enabled) → `applyUploadMetadata()` (`metadata_tags[]`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source`). On etag collision both controllers return 409 with an enriched payload built by `DuplicateAssetException::formatDuplicate(Asset, ?attemptedFilename)` — `existing_filename`, `existing_folder`, `thumbnail_url`, `public_url`, `show_url`, `is_trashed`, `can_restore`, `uploaded_at`. The upload page renders a per-row outcome pill plus a Duplicates results panel (View existing / Copy URL / multi-select bulk-copy / Reveal in library / Restore-from-trash) and only auto-redirects on a clean batch. TikZ tool uploads can pass `parent_asset_id` so the new asset's `parent_id` links back to the source `.tex` (surfaced as a Relations card on Asset Show). API upload toggleable runtime via `api_upload_enabled` (web chunked uploads unaffected).
+- **Upload** — `POST /assets` (or `/api/chunked-upload/*` for ≥10MB) → type-allowlist validation → etag dedup check → S3 stream upload (optional `keepOriginalFilename`, SVGs sanitized) → dimensions → thumbnail (skips GIFs) → S/M/L resizes → Asset row → `GenerateAiTags` job (if Rekognition enabled) → `applyUploadMetadata()` (`metadata_tags[]`, `metadata_license_type`, `metadata_copyright`, `metadata_copyright_source`). On etag collision both controllers return 409 with an enriched payload built by `DuplicateAssetException::formatDuplicate(Asset, ?attemptedFilename)` — `existing_filename`, `existing_folder`, `thumbnail_url`, `public_url`, `show_url`, `is_trashed`, `can_restore`, `uploaded_at`. The upload page renders a per-row outcome pill plus a Duplicates results panel (View existing / Copy URL / multi-select bulk-copy / Reveal in library / Restore-from-trash) and only auto-redirects on a clean batch. TikZ tool uploads can pass `parent_asset_id` so the new asset's `parent_id` links back to the source `.tex` (surfaced as a Relations card on Asset Show). API upload toggleable runtime via `api_upload_enabled` (web chunked uploads unaffected).
 - **Discovery** (admin) — `S3Service` lists unmapped objects → admin imports → Asset rows + thumbnails + resizes + AI tags. Soft-deleted assets shown with "Deleted" badge to prevent re-import.
 - **Import metadata** (admin) — paste/upload CSV → preview diffs → import. Match by `s3_key` then `filename`. Updates alt_text/caption/license/copyright. Tags lowercased, `syncWithoutDetaching` (never removed). Empty fields skipped. Invalid license/dates rejected.
 - **Trash** (editor + admin) — soft delete keeps S3. Restore returns to active. Force delete (admin only) clears S3 (original + thumbnail + resizes) + DB.
