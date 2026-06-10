@@ -136,3 +136,35 @@ test('formatRow url column is a non-empty string', function () {
 
     expect($map['url'])->toBeString()->not->toBeEmpty();
 });
+
+// ─── sanitizeCell() — spreadsheet formula-injection defense ────────────────────
+
+test('formatRow neutralizes formula injection in free-text fields', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create([
+        'user_id' => $user->id,
+        'caption' => '=1+1',
+        'copyright' => '=HYPERLINK("http://evil","click")',
+    ]);
+    $asset->load('tags', 'user');
+
+    $service = new CsvExportService;
+    $map = array_combine($service->generateHeaders(), $service->formatRow($asset));
+
+    expect($map['caption'])->toBe("'=1+1");
+    expect($map['copyright'])->toStartWith("'=");
+});
+
+test('sanitizeCell prefixes every formula trigger and leaves safe values alone', function () {
+    $service = new CsvExportService;
+
+    foreach (['=cmd', '+1', '-1', '@SUM', "\tval", "\rval"] as $dangerous) {
+        expect($service->sanitizeCell($dangerous))->toBe("'".$dangerous);
+    }
+
+    expect($service->sanitizeCell('nature'))->toBe('nature');
+    expect($service->sanitizeCell('https://example.com/x.jpg'))->toBe('https://example.com/x.jpg');
+    expect($service->sanitizeCell(''))->toBe('');
+    expect($service->sanitizeCell(123))->toBe(123);
+    expect($service->sanitizeCell(null))->toBeNull();
+});

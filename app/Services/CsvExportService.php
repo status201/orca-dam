@@ -51,7 +51,7 @@ class CsvExportService
         $aiTagNames = $asset->tags->where('type', 'ai')->pluck('name')->join(', ');
         $referenceTagNames = $asset->tags->where('type', 'reference')->pluck('name')->join(', ');
 
-        return [
+        return array_map([$this, 'sanitizeCell'], [
             $asset->id,
             $asset->s3_key,
             $asset->filename,
@@ -85,6 +85,28 @@ class CsvExportService
             $asset->resize_l_url,
             $asset->created_at?->toDateTimeString(),
             $asset->updated_at?->toDateTimeString(),
-        ];
+        ]);
+    }
+
+    /**
+     * Neutralize spreadsheet formula injection. A string cell whose first
+     * character is one a spreadsheet treats as a formula trigger (=, +, -, @,
+     * tab, or carriage return) is prefixed with a single quote so Excel/Sheets
+     * render it as literal text. Non-string cells pass through unchanged.
+     *
+     * @param  mixed  $value
+     * @return mixed
+     */
+    public function sanitizeCell($value)
+    {
+        if (! is_string($value) || $value === '') {
+            return $value;
+        }
+
+        if (preg_match('/^[=+\-@\t\r]/', $value)) {
+            return "'".$value;
+        }
+
+        return $value;
     }
 }

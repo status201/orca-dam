@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\DuplicateAssetException;
 use App\Models\Asset;
 use App\Models\UploadSession;
+use App\Support\UploadPolicy;
 use Aws\S3\S3Client;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -66,12 +67,18 @@ class ChunkedUploadService
 
         $s3Key = $folder !== '' ? $folder.'/'.$safeName : $safeName;
 
-        // Initiate S3 multipart upload
-        $result = $this->s3Client->createMultipartUpload([
+        // Initiate S3 multipart upload. Force download for non-inline types
+        // (mirrors S3Service::putUploadedFile for the direct-upload path).
+        $createParams = [
             'Bucket' => $this->bucket,
             'Key' => $s3Key,
             'ContentType' => $mimeType,
-        ]);
+        ];
+        if (! UploadPolicy::isInline($s3Key)) {
+            $createParams['ContentDisposition'] = 'attachment';
+        }
+
+        $result = $this->s3Client->createMultipartUpload($createParams);
 
         $uploadId = $result['UploadId'];
 
@@ -190,6 +197,16 @@ class ChunkedUploadService
             ]);
 
             $etag = trim($result['ETag'], '"');
+
+            // SVGs are sanitized after assembly (the >=10MB chunked path; smaller
+            // SVGs take the direct path). Re-puts the cleaned content, which
+            // changes the ETag, so this must run before the dedup check below.
+            if (UploadPolicy::isSvg($session->s3_key)) {
+                $newEtag = $this->s3Service->sanitizeStoredSvg($session->s3_key);
+                if ($newEtag !== null) {
+                    $etag = $newEtag;
+                }
+            }
 
             // Check if an asset with this s3_key already exists (original filename mode)
             $existingByKey = Asset::withTrashed()->where('s3_key', $session->s3_key)->first();

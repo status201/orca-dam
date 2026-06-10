@@ -6,11 +6,13 @@ use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
-// Public API endpoints (no authentication required)
-Route::get('assets/meta', [AssetApiController::class, 'getMeta']);
-Route::get('health', HealthController::class);
+// Public API endpoints (no authentication required) — throttled to curb enumeration/probing.
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('assets/meta', [AssetApiController::class, 'getMeta']);
+    Route::get('health', HealthController::class);
+});
 
-Route::middleware('auth.multi')->group(function () {
+Route::middleware(['auth.multi', 'throttle:120,1'])->group(function () {
     // Asset API
     Route::get('assets', [AssetApiController::class, 'index']);
     Route::post('assets', [AssetApiController::class, 'store']);

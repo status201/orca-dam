@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AllowEmbedding;
 use App\Http\Middleware\AuthenticateMultiple;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Console\Scheduling\Schedule;
@@ -20,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             SetLocale::class,
             AllowEmbedding::class,
+            // After AllowEmbedding so it can still relax X-Frame-Options into a
+            // frame-ancestors CSP on the response when embedding is enabled.
+            SecurityHeaders::class,
         ]);
 
         $middleware->alias([

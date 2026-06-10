@@ -104,6 +104,12 @@ class AssetBulkController extends Controller
 
         $assets = Asset::with('tags')->whereIn('id', $request->asset_ids)->get();
 
+        // Authorize per asset (consistency with bulkAddTags/bulkRemoveTags;
+        // guards against information disclosure if per-asset ownership is ever added).
+        foreach ($assets as $asset) {
+            $this->authorize('view', $asset);
+        }
+
         $tagCounts = [];
         foreach ($assets as $asset) {
             foreach ($asset->tags as $tag) {

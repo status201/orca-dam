@@ -1120,6 +1120,7 @@
     "The S3 URL, all metadata (alt text, caption, tags, license, copyright).": "De S3-URL, alle metadata (alt-tekst, bijschrift, tags, licentie, copyright).",
     "These are harmless — the original TikZJax virtual filesystem only ships 4 files": "Deze zijn onschadelijk — het originele virtuele TikZJax-bestandssysteem bevat slechts 4 bestanden",
     "This file already exists in the library": "Dit bestand bestaat al in de bibliotheek",
+    "This file type is not allowed.": "Dit bestandstype is niet toegestaan.",
     "These are harmless — the original TikZJax virtual filesystem only ships 4 files and does not include AMS font definitions. Standard TikZ diagrams render correctly despite these warnings.": "Deze zijn onschadelijk — het originele virtuele TikZJax-bestandssysteem bevat slechts 4 bestanden en bevat geen AMS-lettertypedefinities. Standaard TikZ-diagrammen worden correct weergegeven ondanks deze waarschuwingen.",
     "These assets are hidden but their S3 objects are still in the bucket.": "Deze assets zijn verborgen maar hun S3-objecten staan nog in de bucket.",
     "The user whose credentials will be used for JWT-authenticated requests": "De gebruiker wiens inloggegevens worden gebruikt voor JWT-geauthenticeerde verzoeken",

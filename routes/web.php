@@ -71,7 +71,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('assets/bulk/move', [AssetBulkController::class, 'bulkMove'])->name('assets.bulk.move');
     Route::delete('assets/bulk/force-delete', [AssetBulkController::class, 'bulkForceDelete'])->name('assets.bulk.force-delete');
     Route::post('assets/bulk/trash', [AssetTrashController::class, 'bulkTrash'])->name('assets.bulk.trash');
-    Route::post('assets/bulk/download', [AssetBulkController::class, 'bulkDownload'])->name('assets.bulk.download');
+    Route::post('assets/bulk/download', [AssetBulkController::class, 'bulkDownload'])
+        ->middleware('throttle:20,1')
+        ->name('assets.bulk.download');
 
     // Asset embed (iframe-friendly, no header/footer)
     Route::get('assets/embed', [AssetController::class, 'embed'])->name('assets.embed');
@@ -103,7 +105,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // AI tagging
-    Route::post('assets/{asset}/ai-tag', [AssetReplaceController::class, 'generateAiTags'])->name('assets.ai-tag');
+    Route::post('assets/{asset}/ai-tag', [AssetReplaceController::class, 'generateAiTags'])
+        ->middleware('throttle:30,1')
+        ->name('assets.ai-tag');
 
     // Video thumbnail
     Route::post('assets/{asset}/thumbnail', [AssetReplaceController::class, 'storeThumbnail'])->name('assets.thumbnail.store');
@@ -161,7 +165,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('tools/gif-maker', [ToolsController::class, 'gifMaker'])->name('tools.gif-maker');
     Route::post('tools/gif-maker/upload', [ToolsController::class, 'uploadGif'])->name('tools.gif-maker.upload');
     Route::get('tools/tikz-server', [ToolsController::class, 'tikzServer'])->name('tools.tikz-server');
-    Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])->name('tools.tikz-server.render');
+    Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])
+        ->middleware('throttle:30,1')
+        ->name('tools.tikz-server.render');
     Route::get('tools/tikz-server/templates', [ToolsController::class, 'searchTexTemplates'])->name('tools.tikz-server.templates');
     Route::get('tools/tikz-server/templates/{asset}', [ToolsController::class, 'loadTexTemplate'])->name('tools.tikz-server.templates.load');
     Route::post('tools/tikz-server/templates/upload', [ToolsController::class, 'uploadTexTemplate'])->name('tools.tikz-server.templates.upload');

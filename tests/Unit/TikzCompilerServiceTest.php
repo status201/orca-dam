@@ -94,11 +94,30 @@ test('sanitizeInput blocks file IO commands', function () {
     expect($service->sanitizeInput('\\read 1 to \\line'))->toBeNull();
 });
 
-test('sanitizeInput allows relative input commands', function () {
+test('sanitizeInput blocks relative input commands', function () {
     $service = app(TikzCompilerService::class);
 
-    // Relative \input (no leading slash) should be allowed
-    expect($service->sanitizeInput('\\input{myfile.tex}'))->not->toBeNull();
+    // Renders are isolated (no sibling files), so all \input is rejected.
+    expect($service->sanitizeInput('\\input{myfile.tex}'))->toBeNull();
+    expect($service->sanitizeInput('\\input myfile.tex'))->toBeNull();
+});
+
+test('sanitizeInput blocks additional file-inclusion commands', function () {
+    $service = app(TikzCompilerService::class);
+
+    expect($service->sanitizeInput('\\include{chapter}'))->toBeNull();
+    expect($service->sanitizeInput('\\InputIfFileExists{x}{}{}'))->toBeNull();
+    expect($service->sanitizeInput('\\lstinputlisting{/etc/passwd}'))->toBeNull();
+    expect($service->sanitizeInput('\\subfile{sub}'))->toBeNull();
+    expect($service->sanitizeInput('\\import{dir/}{file}'))->toBeNull();
+    expect($service->sanitizeInput('\\subimport{dir/}{file}'))->toBeNull();
+});
+
+test('sanitizeInput still allows includegraphics', function () {
+    $service = app(TikzCompilerService::class);
+
+    // \includegraphics is legitimate and must not be caught by the \include rule.
+    expect($service->sanitizeInput('\\includegraphics{image}'))->not->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Rules\AllowedUploadExtension;
 use App\Services\AssetProcessingService;
 use App\Services\CloudflareService;
 use App\Services\RekognitionService;
@@ -11,6 +12,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class AssetReplaceController extends Controller
 {
@@ -30,9 +33,19 @@ class AssetReplaceController extends Controller
     {
         $fileContent = $this->s3Service->getObjectContent($asset->s3_key);
 
+        // Encode the filename safely (RFC 5987) so a crafted filename can't
+        // inject extra response headers. Provide a pure-ASCII fallback.
+        $fallback = str_replace(['/', '\\'], '-', (string) preg_replace('/[^\x20-\x7e]/', '', Str::ascii($asset->filename)));
+        $disposition = HeaderUtils::makeDisposition(
+            HeaderUtils::DISPOSITION_ATTACHMENT,
+            $asset->filename,
+            $fallback !== '' ? $fallback : 'download'
+        );
+
         return response($fileContent)
             ->header('Content-Type', $asset->mime_type)
-            ->header('Content-Disposition', 'attachment; filename="'.$asset->filename.'"');
+            ->header('Content-Disposition', $disposition)
+            ->header('X-Content-Type-Options', 'nosniff');
     }
 
     /**
@@ -60,6 +73,7 @@ class AssetReplaceController extends Controller
                 'required',
                 'file',
                 'max:512000', // 500MB
+                new AllowedUploadExtension,
                 function ($attribute, $value, $fail) use ($originalExtension) {
                     $newExtension = strtolower($value->getClientOriginalExtension());
                     if ($newExtension !== $originalExtension) {
@@ -110,7 +124,7 @@ class AssetReplaceController extends Controller
             Log::error('Asset replacement failed: '.$e->getMessage());
 
             return response()->json([
-                'message' => 'Failed to replace asset: '.$e->getMessage(),
+                'message' => $this->clientError($e, 'Failed to replace asset.'),
             ], 500);
         }
     }
@@ -184,8 +198,10 @@ class AssetReplaceController extends Controller
         } catch (\Exception $e) {
             Log::error("Manual AI tagging failed for {$asset->filename}: ".$e->getMessage());
 
+            $detail = Auth::user()?->isApiUser() ? '' : $e->getMessage();
+
             return redirect()->route('assets.edit', $asset)
-                ->with('error', __('Failed to generate AI tags: ').$e->getMessage());
+                ->with('error', trim(__('Failed to generate AI tags: ').$detail));
         }
     }
 }

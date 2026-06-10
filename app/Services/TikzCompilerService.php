@@ -13,7 +13,17 @@ class TikzCompilerService
     private const DANGEROUS_PATTERNS = [
         '/\\\\write18\b/',
         '/\\\\immediate\s*\\\\write/',
-        '/\\\\input\s*\{?\s*[\/\\\\]/',
+        // File-inclusion commands. Server-side renders run in an isolated temp
+        // dir with no sibling files, so any inclusion is either useless or an
+        // attempt to read outside the sandbox — block them all (defense-in-depth
+        // on top of the engine's paranoid openin/openout mode).
+        '/\\\\input\b/',
+        '/\\\\include\b/',
+        '/\\\\InputIfFileExists\b/',
+        '/\\\\lstinputlisting\b/',
+        '/\\\\subfile\b/',
+        '/\\\\subimport\b/',
+        '/\\\\import\b/',
         '/\\\\openin\b/',
         '/\\\\openout\b/',
         '/\\\\newwrite\b/',

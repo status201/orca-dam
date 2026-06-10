@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\Asset;
 use App\Models\Setting;
+use App\Support\UploadPolicy;
+use Aws\Result;
 use Aws\S3\S3Client;
+use enshrined\svgSanitize\Sanitizer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
@@ -95,25 +98,7 @@ class S3Service
         // Get image dimensions before upload if it's an image (to avoid memory issues later)
         $dimensions = $this->getImageDimensions($file);
 
-        // Upload to S3 using streaming to avoid memory issues
-        $stream = fopen($file->getRealPath(), 'r');
-        if ($stream === false) {
-            throw new \RuntimeException("Failed to open file for upload: {$file->getClientOriginalName()}");
-        }
-
-        try {
-            $result = $this->s3Client->putObject([
-                'Bucket' => $this->bucket,
-                'Key' => $s3Key,
-                'Body' => $stream,
-                'ContentType' => $file->getMimeType(),
-            ]);
-        } finally {
-            // Always close the stream
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }
+        $result = $this->putUploadedFile($s3Key, $file);
 
         return [
             's3_key' => $s3Key,
@@ -127,6 +112,100 @@ class S3Service
     }
 
     /**
+     * Stream an uploaded file to S3, applying security hardening:
+     *   - server-detected Content-Type (not client-declared),
+     *   - Content-Disposition: attachment for non-inline types,
+     *   - in-memory SVG sanitization to strip active content.
+     *
+     * @return Result
+     */
+    protected function putUploadedFile(string $s3Key, UploadedFile $file)
+    {
+        $params = [
+            'Bucket' => $this->bucket,
+            'Key' => $s3Key,
+            'ContentType' => $file->getMimeType(),
+        ];
+
+        // Force download for types that should never render inline in the browser.
+        if (! UploadPolicy::isInline($s3Key)) {
+            $params['ContentDisposition'] = 'attachment';
+        }
+
+        // SVGs are sanitized in-memory before storage. They are small enough to
+        // load fully; large files (>=10MB) take the chunked path instead.
+        if (UploadPolicy::isSvg($s3Key)) {
+            $params['Body'] = $this->sanitizeSvg((string) file_get_contents($file->getRealPath()));
+
+            return $this->s3Client->putObject($params);
+        }
+
+        // Everything else is streamed to avoid memory issues.
+        $stream = fopen($file->getRealPath(), 'r');
+        if ($stream === false) {
+            throw new \RuntimeException("Failed to open file for upload: {$file->getClientOriginalName()}");
+        }
+
+        try {
+            $params['Body'] = $stream;
+
+            return $this->s3Client->putObject($params);
+        } finally {
+            // Always close the stream
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+    }
+
+    /**
+     * Sanitize SVG markup, stripping scripts, event handlers, and remote
+     * references. Throws if the SVG cannot be parsed so the upload fails loudly
+     * rather than storing unsanitized content.
+     */
+    public function sanitizeSvg(string $svg): string
+    {
+        $sanitizer = new Sanitizer;
+        $sanitizer->removeRemoteReferences(true);
+
+        $clean = $sanitizer->sanitize($svg);
+
+        if ($clean === false) {
+            throw new \RuntimeException('SVG could not be sanitized.');
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Download an already-stored SVG, sanitize it, and re-upload it in place.
+     * Used by the chunked-upload path (where the object is assembled in S3
+     * before we can inspect it). Returns the new ETag, or null on failure.
+     */
+    public function sanitizeStoredSvg(string $s3Key): ?string
+    {
+        try {
+            $original = $this->getObjectContent($s3Key);
+            if ($original === null) {
+                return null;
+            }
+
+            $result = $this->s3Client->putObject([
+                'Bucket' => $this->bucket,
+                'Key' => $s3Key,
+                'Body' => $this->sanitizeSvg($original),
+                'ContentType' => 'image/svg+xml',
+            ]);
+
+            return isset($result['ETag']) ? trim($result['ETag'], '"') : null;
+        } catch (\Exception $e) {
+            \Log::error('Stored SVG sanitization failed: '.$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
      * Replace an existing S3 object with a new file (same key, overwrites)
      */
     public function replaceFile(UploadedFile $file, string $existingS3Key): array
@@ -134,24 +213,8 @@ class S3Service
         // Get image dimensions before upload if it's an image
         $dimensions = $this->getImageDimensions($file);
 
-        // Upload to S3 using streaming (overwrites existing object)
-        $stream = fopen($file->getRealPath(), 'r');
-        if ($stream === false) {
-            throw new \RuntimeException("Failed to open file for upload: {$file->getClientOriginalName()}");
-        }
-
-        try {
-            $result = $this->s3Client->putObject([
-                'Bucket' => $this->bucket,
-                'Key' => $existingS3Key,
-                'Body' => $stream,
-                'ContentType' => $file->getMimeType(),
-            ]);
-        } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-        }
+        // Upload to S3 (overwrites existing object), with the same hardening as uploadFile().
+        $result = $this->putUploadedFile($existingS3Key, $file);
 
         return [
             'filename' => $file->getClientOriginalName(),

@@ -6,6 +6,7 @@ use App\Exceptions\DuplicateAssetException;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\UploadSession;
+use App\Rules\AllowedUploadExtension;
 use App\Services\AssetProcessingService;
 use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
@@ -44,7 +45,7 @@ class ChunkedUploadController extends Controller
         $this->authorize('create', Asset::class);
 
         $request->validate([
-            'filename' => 'required|string|max:255',
+            'filename' => ['required', 'string', 'max:255', new AllowedUploadExtension],
             'mime_type' => 'required|string',
             'file_size' => 'required|integer|min:1|max:524288000', // 500MB in bytes
             'folder' => 'nullable|string|max:255',
@@ -78,7 +79,7 @@ class ChunkedUploadController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to initialize upload: '.$e->getMessage(),
+                'message' => $this->clientError($e, 'Failed to initialize upload.'),
             ], 500);
         }
     }
@@ -134,7 +135,7 @@ class ChunkedUploadController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Chunk upload failed: '.$e->getMessage(),
+                'message' => $this->clientError($e, 'Chunk upload failed.'),
             ], 500);
         }
     }
@@ -200,7 +201,7 @@ class ChunkedUploadController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Upload completion failed: '.$e->getMessage(),
+                'message' => $this->clientError($e, 'Upload completion failed.'),
             ], 500);
         }
     }
@@ -235,7 +236,7 @@ class ChunkedUploadController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Failed to abort upload: '.$e->getMessage(),
+                'message' => $this->clientError($e, 'Failed to abort upload.'),
             ], 500);
         }
     }

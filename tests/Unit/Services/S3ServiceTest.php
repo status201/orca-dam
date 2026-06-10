@@ -102,6 +102,35 @@ test('findUnmappedObjects filters out already-mapped, thumbnail and zero-byte ke
     expect($keys)->toBe(['assets/keep.jpg']);
 });
 
+test('sanitizeSvg strips script tags and event handlers', function () {
+    $service = app(S3Service::class);
+
+    $dirty = '<svg xmlns="http://www.w3.org/2000/svg" onload="evil()">'
+        .'<script>alert(document.cookie)</script>'
+        .'<rect x="0" y="0" width="10" height="10" onclick="steal()"/>'
+        .'</svg>';
+
+    $clean = $service->sanitizeSvg($dirty);
+
+    expect($clean)->not->toContain('<script');
+    expect($clean)->not->toContain('alert(');
+    expect(strtolower($clean))->not->toContain('onload');
+    expect(strtolower($clean))->not->toContain('onclick');
+    expect($clean)->toContain('<svg');
+});
+
+test('sanitizeSvg preserves benign vector markup', function () {
+    $service = app(S3Service::class);
+
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        .'<rect x="0" y="0" width="10" height="10" fill="#1B4D8E"/></svg>';
+
+    $clean = $service->sanitizeSvg($svg);
+
+    expect($clean)->toContain('<rect');
+    expect($clean)->toContain('#1B4D8E');
+});
+
 test('listFolders paginates common prefixes across pages', function () {
     Setting::set('s3_root_folder', 'assets', 'string', 'aws');
 
