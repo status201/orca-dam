@@ -35,7 +35,10 @@ Use the prefix style already present in the history:
 ## Translations
 
 When adding user-facing `__('...')` strings, also add the Dutch translation
-to `lang/nl.json`.
+to `lang/nl.json` (a test fails if you forget). Framework strings
+(validation/auth/passwords) live in `lang/nl/*.php`, published by
+laravel-lang. To refresh them, run `php artisan lang:safe-update` — never raw
+`lang:update`, which overwrites project translations in `nl.json`.
 
 ## Security issues
 

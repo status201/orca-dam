@@ -580,6 +580,7 @@ php artisan assets:verify-integrity      # Queue S3 integrity checks for all ass
 php artisan assets:backfill-etags        # Fetch & store etags from S3 for dedup
 php artisan assets:deduplicate           # Dry-run: find duplicate assets by etag
 php artisan assets:deduplicate --force   # Soft-delete duplicates (keeps oldest)
+php artisan lang:safe-update             # Refresh laravel-lang framework translations (never raw lang:update)
 
 # Clear all caches
 php artisan optimize:clear
