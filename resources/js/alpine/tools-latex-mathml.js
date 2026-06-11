@@ -1,5 +1,6 @@
 function latexMathml() {
     const pageData = window.__pageData || {};
+    const t = pageData.translations || {};
 
     return {
         latex: '',
@@ -192,9 +193,9 @@ function latexMathml() {
                 }
 
                 this.uploadedAsset = data;
-                window.showToast('MathML uploaded successfully!');
+                window.showToast(t.mathmlUploaded || 'MathML uploaded successfully!');
             } catch (e) {
-                window.showToast('Upload failed: ' + e.message, 'error');
+                window.showToast((t.uploadFailed || 'Upload failed: :error').replace(':error', e.message), 'error');
             } finally {
                 this.uploading = false;
             }

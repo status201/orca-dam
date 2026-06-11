@@ -27,12 +27,12 @@ class AssetTrashController extends Controller
 
         if (request()->expectsJson()) {
             return response()->json([
-                'message' => 'Asset moved to trash successfully',
+                'message' => __('Asset moved to trash successfully'),
             ]);
         }
 
         return redirect()->route('assets.index')
-            ->with('success', 'Asset moved to trash successfully');
+            ->with('success', __('Asset moved to trash successfully'));
     }
 
     /**
@@ -62,12 +62,12 @@ class AssetTrashController extends Controller
 
         if (request()->expectsJson()) {
             return response()->json([
-                'message' => 'Asset restored successfully',
+                'message' => __('Asset restored successfully'),
             ]);
         }
 
         return redirect()->route('assets.trash')
-            ->with('success', 'Asset restored successfully');
+            ->with('success', __('Asset restored successfully'));
     }
 
     /**
@@ -82,12 +82,12 @@ class AssetTrashController extends Controller
 
         if (request()->expectsJson()) {
             return response()->json([
-                'message' => 'Asset permanently deleted successfully',
+                'message' => __('Asset permanently deleted successfully'),
             ]);
         }
 
         return redirect()->route('assets.trash')
-            ->with('success', 'Asset permanently deleted successfully');
+            ->with('success', __('Asset permanently deleted successfully'));
     }
 
     /**

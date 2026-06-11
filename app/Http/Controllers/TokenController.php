@@ -90,7 +90,7 @@ class TokenController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Token created successfully',
+                'message' => __('Token created successfully'),
                 'token' => [
                     'id' => $token->accessToken->id,
                     'name' => $validated['token_name'],
@@ -104,7 +104,7 @@ class TokenController extends Controller
         } catch (AuthorizationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Authorization failed: '.$e->getMessage(),
+                'message' => __('Authorization failed: :error', ['error' => $e->getMessage()]),
                 'debug' => [
                     'user' => auth()->user()?->email,
                     'role' => auth()->user()?->role,
@@ -113,7 +113,7 @@ class TokenController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error: '.$e->getMessage(),
+                'message' => __('Error: :error', ['error' => $e->getMessage()]),
                 'type' => get_class($e),
             ], 500);
         }
@@ -129,7 +129,7 @@ class TokenController extends Controller
         if (! $token) {
             return response()->json([
                 'success' => false,
-                'message' => 'Token not found',
+                'message' => __('Token not found'),
             ], 404);
         }
 
@@ -137,7 +137,7 @@ class TokenController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Token revoked successfully',
+            'message' => __('Token revoked successfully'),
         ]);
     }
 
@@ -151,7 +151,7 @@ class TokenController extends Controller
         if (! $user) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found',
+                'message' => __('User not found'),
             ], 404);
         }
 
@@ -160,7 +160,7 @@ class TokenController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Revoked {$count} token(s) for {$user->email}",
+            'message' => __('Revoked :count token(s) for :email', ['count' => $count, 'email' => $user->email]),
             'count' => $count,
         ]);
     }

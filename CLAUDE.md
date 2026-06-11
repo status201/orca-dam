@@ -90,7 +90,7 @@ One-line summaries; read the source for detail.
 
 ### Locale
 
-`SetLocale` middleware: user preference → `settings.locale` → `config('app.locale')`. Languages: `en`, `nl`. User prefs in encrypted JSON `users.preferences`.
+`SetLocale` middleware: user preference → `settings.locale` → `config('app.locale')`. Languages: `en`, `nl`. User prefs in encrypted JSON `users.preferences`. App strings in `lang/nl.json` (add a Dutch entry for every new `__()` string); framework strings (validation/auth/passwords) in `lang/nl/*.php`, published via `laravel-lang/common` (dev dep — refresh with `php artisan lang:update`, then diff `nl.json` for overwritten project translations). JS toasts get translations via `@js(__())` injection into `window.__pageData.translations` (tools views), `window.assetTranslations` (asset grid), or `window.appTranslations` (layout); API responses stay English.
 
 ### Iframe Embedding
 

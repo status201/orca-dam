@@ -4,6 +4,7 @@ import { applyFirefoxBgLocalPolyfill } from './firefox-bg-local-polyfill';
 
 function tikzServer() {
     const pageData = window.__pageData || {};
+    const t = pageData.translations || {};
 
     return {
         ...uploadMetadata(),
@@ -260,7 +261,7 @@ function tikzServer() {
                 document.execCommand('copy');
                 ta.remove();
             }
-            window.showToast('Copied: ' + name, 'success');
+            window.showToast((t.copied || 'Copied: :name').replace(':name', name), 'success');
             if (!this.colorPaletteFloating) {
                 this.colorPaletteOpen = false;
                 this.$nextTick(() => {
@@ -273,7 +274,7 @@ function tikzServer() {
             var packageName = (pageData.colorPackageName || '').toString().trim();
             var content = (pageData.colorPackage || '').toString().trim();
             if (!content || !packageName) {
-                window.showToast('No color package configured', 'warning');
+                window.showToast(t.noColorPackage || 'No color package configured', 'warning');
                 return;
             }
             if (this.tikzCode.trim()) {
@@ -727,7 +728,7 @@ function tikzServer() {
                 this.closeTemplateBrowser();
                 window.showToast(data.filename, 'success');
             } catch (e) {
-                window.showToast('Failed to load template: ' + e.message, 'error');
+                window.showToast((t.templateLoadFailed || 'Failed to load template: :error').replace(':error', e.message), 'error');
             } finally {
                 this.templateLoadingId = null;
             }
@@ -774,7 +775,7 @@ function tikzServer() {
                 });
                 var data = await res.json();
                 if (!res.ok) {
-                    window.showToast(data.error || 'Save failed', 'error');
+                    window.showToast(data.error || t.saveFailed || 'Save failed', 'error');
                     return;
                 }
                 this.templateName = data.filename;
@@ -783,7 +784,7 @@ function tikzServer() {
                 window.showToast(data.filename, 'success');
                 this.$dispatch('close-modal', 'save-template');
             } catch (e) {
-                window.showToast('Save failed: ' + e.message, 'error');
+                window.showToast((t.saveFailedError || 'Save failed: :error').replace(':error', e.message), 'error');
             } finally {
                 this.savingTemplate = false;
             }
@@ -955,7 +956,7 @@ function tikzServer() {
         async uploadAnimatedGif() {
             if (!this.animatedGif || this.gifUploading) return;
             if (!pageData.gifUploadUrl) {
-                window.showToast('GIF upload endpoint unavailable', 'error');
+                window.showToast(t.gifEndpointUnavailable || 'GIF upload endpoint unavailable', 'error');
                 return;
             }
 
@@ -995,9 +996,9 @@ function tikzServer() {
                     return;
                 }
                 this.gifUploadedAsset = data;
-                window.showToast('GIF uploaded successfully!');
+                window.showToast(t.gifUploaded || 'GIF uploaded successfully!');
             } catch (e) {
-                window.showToast('GIF upload failed: ' + e.message, 'error');
+                window.showToast((t.gifUploadFailed || 'GIF upload failed: :error').replace(':error', e.message), 'error');
             } finally {
                 this.gifUploading = false;
             }
@@ -1007,11 +1008,11 @@ function tikzServer() {
             if (this.gifHandoffInProgress) return;
             var frames = this.collectPngFrames();
             if (frames.length < 2) {
-                window.showToast('Need at least 2 rendered PNG frames', 'warning');
+                window.showToast(t.needTwoFrames || 'Need at least 2 rendered PNG frames', 'warning');
                 return;
             }
             if (!pageData.gifMakerUrl) {
-                window.showToast('GIF Maker is unavailable', 'error');
+                window.showToast(t.gifMakerUnavailable || 'GIF Maker is unavailable', 'error');
                 return;
             }
 
@@ -1030,14 +1031,14 @@ function tikzServer() {
                 window.location.href = pageData.gifMakerUrl;
             } catch (e) {
                 this.gifHandoffInProgress = false;
-                window.showToast('Handoff failed: ' + e.message, 'error');
+                window.showToast((t.handoffFailed || 'Handoff failed: :error').replace(':error', e.message), 'error');
             }
         },
 
         async render() {
             var snippets = this.parseSnippets();
             if (snippets.length === 0) {
-                window.showToast('No \\begin{tikzpicture} blocks found', 'warning');
+                window.showToast(t.noTikzBlocks || 'No \\begin{tikzpicture} blocks found', 'warning');
                 return;
             }
 
@@ -1139,7 +1140,7 @@ function tikzServer() {
                 try {
                     await this.encodeAnimatedGif();
                 } catch (e) {
-                    window.showToast('GIF encoding failed: ' + e.message, 'error');
+                    window.showToast((t.gifEncodingFailed || 'GIF encoding failed: :error').replace(':error', e.message), 'error');
                     this.gifEncoding = false;
                 }
             }
@@ -1219,7 +1220,7 @@ function tikzServer() {
             });
 
             if (toUpload.length === 0) {
-                window.showToast('No variants selected', 'warning');
+                window.showToast(t.noVariantsSelected || 'No variants selected', 'warning');
                 return;
             }
 
@@ -1278,7 +1279,7 @@ function tikzServer() {
                         successCount++;
                     }
                 } catch (e) {
-                    window.showToast('Upload failed: ' + e.message, 'error');
+                    window.showToast((t.uploadFailed || 'Upload failed: :error').replace(':error', e.message), 'error');
                     failCount++;
                 } finally {
                     v.uploading = false;

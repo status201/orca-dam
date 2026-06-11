@@ -116,7 +116,7 @@ class AssetReplaceController extends Controller
             $this->cloudflareService->purgeUrls($urlsToPurge);
 
             return response()->json([
-                'message' => 'Asset replaced successfully',
+                'message' => __('Asset replaced successfully'),
                 'asset' => $asset->fresh(),
             ]);
 
@@ -142,7 +142,7 @@ class AssetReplaceController extends Controller
 
         $imageData = base64_decode($request->input('thumbnail'), true);
         if ($imageData === false) {
-            return response()->json(['message' => 'Invalid base64 data'], 422);
+            return response()->json(['message' => __('Invalid base64 data')], 422);
         }
 
         $urlsToPurge = $this->cloudflareService->collectAssetUrls($asset);
@@ -153,7 +153,7 @@ class AssetReplaceController extends Controller
 
         $thumbnailKey = $this->s3Service->uploadThumbnail($asset->s3_key, $imageData);
         if (! $thumbnailKey) {
-            return response()->json(['message' => 'Failed to upload thumbnail'], 500);
+            return response()->json(['message' => __('Failed to upload thumbnail')], 500);
         }
 
         $asset->update(['thumbnail_s3_key' => $thumbnailKey]);

@@ -260,7 +260,7 @@ class SystemController extends Controller
         if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Invalid value for setting: '.$key,
+                'error' => __('Invalid value for setting: :key', ['key' => $key]),
             ], 422);
         }
 
@@ -366,7 +366,7 @@ class SystemController extends Controller
         $state = $this->testRunnerService->status($runId);
 
         if (! $state) {
-            return response()->json(['success' => false, 'error' => 'Run not found'], 404);
+            return response()->json(['success' => false, 'error' => __('Run not found')], 404);
         }
 
         return response()->json(['success' => true, 'state' => $state]);
@@ -382,7 +382,7 @@ class SystemController extends Controller
         $aborted = $this->testRunnerService->abort($runId);
 
         if (! $aborted) {
-            return response()->json(['success' => false, 'error' => 'Run not found'], 404);
+            return response()->json(['success' => false, 'error' => __('Run not found')], 404);
         }
 
         return response()->json(['success' => true]);
@@ -412,7 +412,7 @@ class SystemController extends Controller
         if (! in_array($file, $allowedFiles)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Invalid documentation file',
+                'error' => __('Invalid documentation file'),
             ], 400);
         }
 
@@ -421,7 +421,7 @@ class SystemController extends Controller
         if (! file_exists($filePath)) {
             return response()->json([
                 'success' => false,
-                'error' => 'Documentation file not found',
+                'error' => __('Documentation file not found'),
             ], 404);
         }
 
@@ -443,7 +443,7 @@ class SystemController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to parse documentation: '.$e->getMessage(),
+                'error' => __('Failed to parse documentation: :error', ['error' => $e->getMessage()]),
             ], 500);
         }
     }

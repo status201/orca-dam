@@ -896,6 +896,23 @@ window.__pageData = {
     compilerAvailable: @json($compilerAvailable),
     colorPackage: @json($colorPackage),
     colorPackageName: @json($colorPackageName),
+    translations: {
+        copied: @js(__('Copied: :name')),
+        noColorPackage: @js(__('No color package configured')),
+        templateLoadFailed: @js(__('Failed to load template: :error')),
+        saveFailed: @js(__('Save failed')),
+        saveFailedError: @js(__('Save failed: :error')),
+        gifEndpointUnavailable: @js(__('GIF upload endpoint unavailable')),
+        gifUploaded: @js(__('GIF uploaded successfully!')),
+        gifUploadFailed: @js(__('GIF upload failed: :error')),
+        needTwoFrames: @js(__('Need at least 2 rendered PNG frames')),
+        gifMakerUnavailable: @js(__('GIF Maker is unavailable')),
+        handoffFailed: @js(__('Handoff failed: :error')),
+        noTikzBlocks: @js(__('No \\begin{tikzpicture} blocks found')),
+        gifEncodingFailed: @js(__('GIF encoding failed: :error')),
+        noVariantsSelected: @js(__('No variants selected')),
+        uploadFailed: @js(__('Upload failed: :error')),
+    },
 };
 </script>
 @endsection

@@ -269,6 +269,11 @@ window.__pageData = {
     rootFolder: @json($rootFolder),
     uploadUrl: '{{ route('tools.tikz-svg.upload') }}',
     csrfToken: '{{ csrf_token() }}',
+    translations: {
+        noTikzBlocks: @js(__('No \\begin{tikzpicture} blocks found')),
+        noDiagramsSelected: @js(__('No diagrams selected')),
+        uploadFailed: @js(__('Upload failed: :error')),
+    },
 };
 </script>
 @endsection

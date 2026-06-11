@@ -61,7 +61,7 @@ class ToolsController extends Controller
         } catch (\Throwable $e) {
             Log::error('MathML upload failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
         }
 
         return $this->assetJson($asset);
@@ -96,7 +96,7 @@ class ToolsController extends Controller
         } catch (\Throwable $e) {
             Log::error('TikZ SVG upload failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
         }
 
         return $this->assetJson($asset);
@@ -131,7 +131,7 @@ class ToolsController extends Controller
         } catch (\Throwable $e) {
             Log::error('TikZ SVG (embedded fonts) upload failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
         }
 
         return $this->assetJson($asset);
@@ -187,7 +187,7 @@ class ToolsController extends Controller
 
         $binaryData = $this->decodeBase64Content($request->input('content'));
         if ($binaryData === null) {
-            return response()->json(['error' => 'Invalid base64 data'], 422);
+            return response()->json(['error' => __('Invalid base64 data')], 422);
         }
 
         try {
@@ -208,7 +208,7 @@ class ToolsController extends Controller
         } catch (\Throwable $e) {
             Log::error('TikZ PNG upload failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
         }
 
         return $this->assetJson($asset);
@@ -247,7 +247,7 @@ class ToolsController extends Controller
         ]);
 
         if (! $this->tikzCompilerService->isAvailable()) {
-            return response()->json(['error' => 'TeX Live is not installed on this server.'], 503);
+            return response()->json(['error' => __('TeX Live is not installed on this server.')], 503);
         }
 
         $result = $this->tikzCompilerService->compile(
@@ -309,12 +309,12 @@ class ToolsController extends Controller
     {
         $ext = strtolower(pathinfo($asset->filename, PATHINFO_EXTENSION));
         if (! in_array($ext, ['tex', 'txt'])) {
-            return response()->json(['error' => 'Not a .tex or .txt file'], 422);
+            return response()->json(['error' => __('Not a .tex or .txt file')], 422);
         }
 
         $content = $this->s3Service->getObjectContent($asset->s3_key);
         if ($content === null) {
-            return response()->json(['error' => 'Could not retrieve file content'], 500);
+            return response()->json(['error' => __('Could not retrieve file content')], 500);
         }
 
         return response()->json([
@@ -344,7 +344,7 @@ class ToolsController extends Controller
         } catch (\Throwable $e) {
             Log::error('TeX template upload failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
         }
 
         return $this->assetJson($asset);
@@ -365,7 +365,7 @@ class ToolsController extends Controller
 
         $binaryData = $this->decodeBase64Content($request->input('content'));
         if ($binaryData === null) {
-            return response()->json(['error' => 'Invalid base64 data'], 422);
+            return response()->json(['error' => __('Invalid base64 data')], 422);
         }
 
         try {
@@ -386,7 +386,7 @@ class ToolsController extends Controller
         } catch (\Throwable $e) {
             Log::error('GIF upload failed: '.$e->getMessage());
 
-            return response()->json(['error' => 'Upload failed: '.$e->getMessage()], 500);
+            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
         }
 
         return $this->assetJson($asset);

@@ -55,7 +55,7 @@ class FolderController extends Controller
         $folderPath = $parent !== '' ? $parent.'/'.trim($request->name, '/') : trim($request->name, '/');
 
         if (! $this->s3Service->createFolder($folderPath)) {
-            return response()->json(['message' => 'Failed to create folder'], 500);
+            return response()->json(['message' => __('Failed to create folder')], 500);
         }
 
         $folders = Setting::get('s3_folders', []);

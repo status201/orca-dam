@@ -61,6 +61,11 @@
         <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
         <script>
+        window.appTranslations = {
+            urlCopied: @js(__('URL copied to clipboard!')),
+            copyFailed: @js(__('Failed to copy URL')),
+        };
+
         // Toast notification system
         window.showToast = function(message, type = 'success') {
             const container = document.getElementById('toast-container');

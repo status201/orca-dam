@@ -398,6 +398,13 @@ window.__pageData = {
     uploadUrl: '{{ route('tools.gif-maker.upload') }}',
     tagsSearch: '{{ route('tags.search') }}',
     csrfToken: '{{ csrf_token() }}',
+    translations: {
+        framesLoaded: @js(__('Loaded :count frame(s) from TikZ Server')),
+        noImagesSelected: @js(__('No image files selected')),
+        atLeastTwoFrames: @js(__('At least 2 frames required')),
+        gifUploaded: @js(__('GIF uploaded successfully!')),
+        uploadFailed: @js(__('Upload failed: :error')),
+    },
 };
 </script>
 @endsection

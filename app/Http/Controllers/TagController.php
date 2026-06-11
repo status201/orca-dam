@@ -97,7 +97,7 @@ class TagController extends Controller
         $idArray = array_filter(array_map('intval', explode(',', $ids)));
 
         if (empty($idArray) || count($idArray) > 200) {
-            return response()->json(['message' => 'Provide between 1 and 200 valid tag IDs.'], 422);
+            return response()->json(['message' => __('Provide between 1 and 200 valid tag IDs.')], 422);
         }
 
         $tags = Tag::withCount('assets')->whereIn('id', $idArray)->get();
@@ -105,7 +105,7 @@ class TagController extends Controller
         // Single ID: return single object or 404
         if (count($idArray) === 1) {
             if ($tags->isEmpty()) {
-                return response()->json(['message' => 'Tag not found.'], 404);
+                return response()->json(['message' => __('Tag not found.')], 404);
             }
 
             return response()->json($tags->first());
@@ -139,7 +139,7 @@ class TagController extends Controller
         // Only allow updating user and reference tags (not AI tags)
         if ($tag->type === 'ai') {
             return response()->json([
-                'message' => 'AI tags cannot be edited',
+                'message' => __('AI tags cannot be edited'),
             ], 403);
         }
 
@@ -153,12 +153,12 @@ class TagController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Tag updated successfully',
+                'message' => __('Tag updated successfully'),
                 'tag' => $tag,
             ]);
         }
 
-        return redirect()->route('tags.index')->with('success', 'Tag updated successfully');
+        return redirect()->route('tags.index')->with('success', __('Tag updated successfully'));
     }
 
     /**
@@ -190,10 +190,10 @@ class TagController extends Controller
 
         if (request()->expectsJson()) {
             return response()->json([
-                'message' => 'Tag deleted successfully',
+                'message' => __('Tag deleted successfully'),
             ]);
         }
 
-        return redirect()->route('tags.index')->with('success', 'Tag deleted successfully');
+        return redirect()->route('tags.index')->with('success', __('Tag deleted successfully'));
     }
 }

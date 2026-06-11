@@ -4,6 +4,7 @@ import { uploadMetadata } from './upload-metadata';
 
 function gifMaker() {
     const pageData = window.__pageData || {};
+    const t = pageData.translations || {};
 
     let nextId = 0;
 
@@ -119,13 +120,13 @@ function gifMaker() {
             }
 
             this.fitToFrames();
-            window.showToast && window.showToast('Loaded ' + payload.frames.length + ' frame(s) from TikZ Server', 'info');
+            window.showToast && window.showToast((t.framesLoaded || 'Loaded :count frame(s) from TikZ Server').replace(':count', payload.frames.length), 'info');
         },
 
         addImages(fileList) {
             const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
             if (files.length === 0) {
-                window.showToast('No image files selected', 'warning');
+                window.showToast(t.noImagesSelected || 'No image files selected', 'warning');
                 return;
             }
 
@@ -416,7 +417,7 @@ function gifMaker() {
 
         async generateGif() {
             if (this.frames.length < 2) {
-                window.showToast('At least 2 frames required', 'warning');
+                window.showToast(t.atLeastTwoFrames || 'At least 2 frames required', 'warning');
                 return;
             }
 
@@ -543,9 +544,9 @@ function gifMaker() {
                 }
 
                 this.uploadedAsset = data;
-                window.showToast('GIF uploaded successfully!');
+                window.showToast(t.gifUploaded || 'GIF uploaded successfully!');
             } catch (e) {
-                window.showToast('Upload failed: ' + e.message, 'error');
+                window.showToast((t.uploadFailed || 'Upload failed: :error').replace(':error', e.message), 'error');
             } finally {
                 this.uploading = false;
             }

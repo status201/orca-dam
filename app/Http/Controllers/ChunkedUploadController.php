@@ -39,7 +39,7 @@ class ChunkedUploadController extends Controller
     public function initiate(Request $request)
     {
         if (! Auth::guard('web')->check() && ! Setting::get('api_upload_enabled', true)) {
-            return response()->json(['message' => 'Upload endpoints are disabled.'], 403);
+            return response()->json(['message' => __('Upload endpoints are disabled.')], 403);
         }
 
         $this->authorize('create', Asset::class);
@@ -107,7 +107,7 @@ class ChunkedUploadController extends Controller
             $existingParts = collect($session->part_etags ?? []);
             if ($existingParts->where('PartNumber', $request->chunk_number)->isNotEmpty()) {
                 return response()->json([
-                    'message' => 'Chunk already uploaded',
+                    'message' => __('Chunk already uploaded'),
                     'uploaded_chunks' => $session->uploaded_chunks,
                     'total_chunks' => $session->total_chunks,
                 ]);
@@ -120,7 +120,7 @@ class ChunkedUploadController extends Controller
             );
 
             return response()->json([
-                'message' => 'Chunk uploaded successfully',
+                'message' => __('Chunk uploaded successfully'),
                 'part_number' => $result['PartNumber'],
                 'etag' => $result['ETag'],
                 'uploaded_chunks' => $session->fresh()->uploaded_chunks,
@@ -184,13 +184,13 @@ class ChunkedUploadController extends Controller
             );
 
             return response()->json([
-                'message' => 'Upload completed successfully',
+                'message' => __('Upload completed successfully'),
                 'asset' => $asset->load('tags'),
             ]);
 
         } catch (DuplicateAssetException $e) {
             return response()->json([
-                'message' => 'Duplicate file detected. This file already exists in the library.',
+                'message' => __('Duplicate file detected. This file already exists in the library.'),
                 'duplicates' => [DuplicateAssetException::formatDuplicate($e->existingAsset, $session->filename ?? null)],
             ], 409);
 
@@ -226,7 +226,7 @@ class ChunkedUploadController extends Controller
             $this->chunkedUploadService->abortUpload($session);
 
             return response()->json([
-                'message' => 'Upload aborted successfully',
+                'message' => __('Upload aborted successfully'),
             ]);
 
         } catch (\Exception $e) {

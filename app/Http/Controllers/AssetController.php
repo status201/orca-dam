@@ -307,12 +307,12 @@ class AssetController extends Controller
 
                 if ($request->expectsJson()) {
                     return response()->json([
-                        'message' => 'All uploads failed. Please check the logs for details.',
+                        'message' => __('All uploads failed. Please check the logs for details.'),
                     ], 500);
                 }
 
                 return redirect()->back()
-                    ->with('error', 'All uploads failed. Please check the file formats and try again.');
+                    ->with('error', __('All uploads failed. Please check the file formats and try again.'));
             }
 
             if ($request->expectsJson()) {
@@ -321,7 +321,7 @@ class AssetController extends Controller
                 }
 
                 $response = [
-                    'message' => count($uploadedAssets).' file(s) uploaded successfully',
+                    'message' => __(':count file(s) uploaded successfully', ['count' => count($uploadedAssets)]),
                     'assets' => $uploadedAssets,
                 ];
                 if (! empty($duplicates)) {
@@ -331,7 +331,7 @@ class AssetController extends Controller
                 return response()->json($response);
             }
 
-            $successMessage = count($uploadedAssets).' file(s) uploaded successfully';
+            $successMessage = __(':count file(s) uploaded successfully', ['count' => count($uploadedAssets)]);
             if (! empty($duplicates)) {
                 $dupeNames = array_column($duplicates, 'filename');
                 $successMessage .= '. '.__('Skipped :count duplicate(s): :names', [
@@ -347,12 +347,12 @@ class AssetController extends Controller
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Upload failed: '.$e->getMessage(),
+                    'message' => __('Upload failed: :error', ['error' => $e->getMessage()]),
                 ], 500);
             }
 
             return redirect()->back()
-                ->with('error', 'Upload failed: '.$e->getMessage());
+                ->with('error', __('Upload failed: :error', ['error' => $e->getMessage()]));
         }
     }
 
@@ -620,13 +620,13 @@ class AssetController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Asset updated successfully',
+                'message' => __('Asset updated successfully'),
                 'asset' => $asset->fresh(['tags'])->append(Asset::APPEND_FIELDS),
             ]);
         }
 
         return redirect()->route('assets.show', $asset)
-            ->with('success', 'Asset updated successfully');
+            ->with('success', __('Asset updated successfully'));
     }
 
     /**
@@ -678,7 +678,7 @@ class AssetController extends Controller
         $asset->update(['last_modified_by' => Auth::id()]);
 
         return response()->json([
-            'message' => 'Tags added successfully',
+            'message' => __('Tags added successfully'),
             'tags' => $asset->fresh()->tags,
         ]);
     }
@@ -694,7 +694,7 @@ class AssetController extends Controller
         $asset->update(['last_modified_by' => Auth::id()]);
 
         return response()->json([
-            'message' => 'Tag removed successfully',
+            'message' => __('Tag removed successfully'),
         ]);
     }
 }

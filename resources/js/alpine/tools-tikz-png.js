@@ -1,5 +1,6 @@
 function tikzPng() {
     const pageData = window.__pageData || {};
+    const t = pageData.translations || {};
 
     return {
         tikzCode: '',
@@ -91,7 +92,7 @@ function tikzPng() {
         render() {
             const snippets = this.parseSnippets();
             if (snippets.length === 0) {
-                window.showToast('No \\begin{tikzpicture} blocks found', 'warning');
+                window.showToast(t.noTikzBlocks || 'No \\begin{tikzpicture} blocks found', 'warning');
                 return;
             }
 
@@ -356,7 +357,7 @@ ${tikzScriptTags}
 
             const toUpload = this.results.filter(r => r.selected && !r.uploaded);
             if (toUpload.length === 0) {
-                window.showToast('No diagrams selected', 'warning');
+                window.showToast(t.noDiagramsSelected || 'No diagrams selected', 'warning');
                 return;
             }
 
@@ -393,7 +394,7 @@ ${tikzScriptTags}
                         successCount++;
                     }
                 } catch (e) {
-                    window.showToast('Upload failed: ' + e.message, 'error');
+                    window.showToast((t.uploadFailed || 'Upload failed: :error').replace(':error', e.message), 'error');
                     failCount++;
                 } finally {
                     result.uploading = false;

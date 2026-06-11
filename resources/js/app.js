@@ -166,8 +166,8 @@ window.showToast = function(message, type = 'success') {
 
 // Copy to clipboard utility
 window.copyToClipboard = function(text, successMessage, errorMessage) {
-    const success = successMessage || 'URL copied to clipboard!';
-    const error = errorMessage || 'Failed to copy URL';
+    const success = successMessage || window.appTranslations?.urlCopied || 'URL copied to clipboard!';
+    const error = errorMessage || window.appTranslations?.copyFailed || 'Failed to copy URL';
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
             window.showToast(success);

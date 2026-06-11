@@ -87,7 +87,7 @@ class JwtSecretController extends Controller
         if (! $user->hasJwtSecret()) {
             return response()->json([
                 'success' => false,
-                'message' => 'User does not have a JWT secret',
+                'message' => __('User does not have a JWT secret'),
             ], 404);
         }
 
@@ -98,7 +98,7 @@ class JwtSecretController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'JWT secret revoked successfully',
+            'message' => __('JWT secret revoked successfully'),
         ]);
     }
 }

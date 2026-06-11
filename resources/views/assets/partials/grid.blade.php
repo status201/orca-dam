@@ -71,7 +71,8 @@ window.assetTranslations = {
     forceDeleteFailed: @js(__('Failed to permanently delete assets')),
     urlCopied: @js(__('URL copied to clipboard!')),
     copied: @js(__('Copied!')),
-    failedToCopy: @js(__('Failed to copy URL'))
+    failedToCopy: @js(__('Failed to copy URL')),
+    failedLoadTags: @js(__('Failed to load tags'))
 };
 </script>
 @endpush

@@ -346,7 +346,7 @@ export function assetGrid() {
                 this.bulkShowRemovePanel = true;
             } catch (error) {
                 console.error('Bulk load tags failed:', error);
-                window.showToast('Failed to load tags', 'error');
+                window.showToast(window.assetTranslations?.failedLoadTags || 'Failed to load tags', 'error');
             } finally {
                 this.bulkLoading = false;
             }

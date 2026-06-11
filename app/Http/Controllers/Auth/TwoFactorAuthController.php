@@ -97,10 +97,12 @@ class TwoFactorAuthController extends Controller
             $this->twoFactorService->useRecoveryCode($user, $codeIndex);
 
             return $this->completeLogin($request, $user)
-                ->with('status', 'You used a recovery code. You have '.$this->twoFactorService->getRemainingRecoveryCodesCount($user).' recovery codes remaining.');
+                ->with('status', __('You used a recovery code. You have :count recovery codes remaining.', [
+                    'count' => $this->twoFactorService->getRemainingRecoveryCodesCount($user),
+                ]));
         }
 
-        return back()->withErrors(['code' => 'The provided two-factor authentication code is invalid.']);
+        return back()->withErrors(['code' => __('The provided two-factor authentication code is invalid.')]);
     }
 
     /**
@@ -180,11 +182,11 @@ class TwoFactorAuthController extends Controller
 
         if (! $secret) {
             return redirect()->route('two-factor.setup')
-                ->withErrors(['code' => 'Setup session expired. Please try again.']);
+                ->withErrors(['code' => __('Setup session expired. Please try again.')]);
         }
 
         if (! $this->twoFactorService->verifyCode($secret, $request->input('code'))) {
-            return back()->withErrors(['code' => 'The provided code is invalid. Please try again.']);
+            return back()->withErrors(['code' => __('The provided code is invalid. Please try again.')]);
         }
 
         // Enable 2FA and get recovery codes
@@ -197,7 +199,7 @@ class TwoFactorAuthController extends Controller
         $request->session()->put('two_factor_recovery_codes', $recoveryCodes);
 
         return redirect()->route('two-factor.recovery-codes.show')
-            ->with('status', 'Two-factor authentication has been enabled. Please save your recovery codes.');
+            ->with('status', __('Two-factor authentication has been enabled. Please save your recovery codes.'));
     }
 
     /**
@@ -214,7 +216,7 @@ class TwoFactorAuthController extends Controller
         $this->twoFactorService->disableTwoFactor($user);
 
         return redirect()->route('profile.edit')
-            ->with('status', 'Two-factor authentication has been disabled.');
+            ->with('status', __('Two-factor authentication has been disabled.'));
     }
 
     /**
@@ -226,7 +228,7 @@ class TwoFactorAuthController extends Controller
 
         if (! $user->hasTwoFactorEnabled()) {
             return redirect()->route('profile.edit')
-                ->withErrors(['two_factor' => 'Two-factor authentication is not enabled.']);
+                ->withErrors(['two_factor' => __('Two-factor authentication is not enabled.')]);
         }
 
         $recoveryCodes = $this->twoFactorService->regenerateRecoveryCodes($user);
@@ -235,7 +237,7 @@ class TwoFactorAuthController extends Controller
         $request->session()->put('two_factor_recovery_codes', $recoveryCodes);
 
         return redirect()->route('two-factor.recovery-codes.show')
-            ->with('status', 'Recovery codes have been regenerated. Please save your new codes.');
+            ->with('status', __('Recovery codes have been regenerated. Please save your new codes.'));
     }
 
     /**
