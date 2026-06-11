@@ -30,6 +30,7 @@ php artisan uploads:cleanup [--hours=48]
 php artisan assets:verify-integrity      # Queue S3 integrity checks
 php artisan assets:backfill-etags        # Fetch etags from S3
 php artisan assets:deduplicate [--force] # Soft-delete duplicates by etag
+php artisan lang:safe-update             # Refresh laravel-lang files; protects project nl.json (never use raw lang:update)
 
 # API Tokens / JWT / Passkeys
 php artisan token:list / token:create [user@email] [--new] [--name="…"] / token:revoke <id|--user=email> [--force]
@@ -90,7 +91,7 @@ One-line summaries; read the source for detail.
 
 ### Locale
 
-`SetLocale` middleware: user preference → `settings.locale` → `config('app.locale')`. Languages: `en`, `nl`. User prefs in encrypted JSON `users.preferences`. App strings in `lang/nl.json` (add a Dutch entry for every new `__()` string); framework strings (validation/auth/passwords) in `lang/nl/*.php`, published via `laravel-lang/common` (dev dep — refresh with `php artisan lang:update`, then diff `nl.json` for overwritten project translations). JS toasts get translations via `@js(__())` injection into `window.__pageData.translations` (tools views), `window.assetTranslations` (asset grid), or `window.appTranslations` (layout); API responses stay English.
+`SetLocale` middleware: user preference → `settings.locale` → `config('app.locale')`. Languages: `en`, `nl`. User prefs in encrypted JSON `users.preferences`. App strings in `lang/nl.json` (add a Dutch entry for every new `__()` string); framework strings (validation/auth/passwords) in `lang/nl/*.php`, published via `laravel-lang/common` (dev dep — refresh with `php artisan lang:safe-update`; **never raw `lang:update`/`lang:add nl`**, which overwrite project translations in `nl.json` — a PreToolUse hook blocks them and `TranslationIntegrityTest` guards sentinel keys + completeness). JS toasts get translations via `@js(__())` injection into `window.__pageData.translations` (tools views), `window.assetTranslations` (asset grid), or `window.appTranslations` (layout); API responses stay English.
 
 ### Iframe Embedding
 
