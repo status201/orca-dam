@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\GenerateAiTags;
 use App\Models\Asset;
 use App\Models\Tag;
+use App\Support\TagInputParser;
 use Illuminate\Support\Facades\Log;
 
 class AssetProcessingService
@@ -79,6 +80,8 @@ class AssetProcessingService
             $asset->update($updates);
         }
 
+        // Split any comma-separated entries so a single "a,b,c" value still works.
+        $tagNames = TagInputParser::parse($tagNames);
         if (! empty($tagNames)) {
             $tagIds = Tag::resolveUserTagIds($tagNames);
             $asset->syncTagsWithAttribution($tagIds, 'user');

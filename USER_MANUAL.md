@@ -192,7 +192,7 @@ Tags are labels that help you organize and find assets. They come in three types
 
 **Reference tags** are created by external systems (e.g., a Rich Text Editor integration) to track which assets they use. They appear as orange badges with a link icon. You can rename or delete reference tags like user tags, but they can only be created via the API.
 
-**Adding tags:** On the Edit page, type a tag name and press Enter. In List View, click the **+** button in the Tags column.
+**Adding tags:** On the Edit page, type a tag name and press Enter. To add several at once, separate them with commas or paste a comma/newline-separated list. In List View, click the **+** button in the Tags column.
 
 **Removing tags:** Click the **×** next to any tag. This only removes the connection — the tag itself still exists.
 

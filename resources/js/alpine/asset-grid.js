@@ -1,6 +1,16 @@
+import { tagInputCore } from './tag-input-core';
+
 export function assetGrid() {
     const config = window.assetGridConfig || {};
     return {
+        ...tagInputCore({
+            model: 'bulkTagInput',
+            clearOnCommit: false, // bulkPostTags clears on success / keeps input on failure
+            onCommitNames(names) {
+                this.bulkPostTags({ asset_ids: Alpine.store('bulkSelection').selected, tags: names });
+            },
+        }),
+
         search: config.search || '',
         appliedSearch: config.search || '',
         type: config.type || '',
@@ -283,16 +293,24 @@ export function assetGrid() {
         },
 
         async bulkAddTag(suggestion = null) {
+            if (this.bulkLoading) return;
             const tagName = this.bulkTagInput.trim();
-            if (this.bulkLoading || !tagName) return;
+            if (!tagName) return;
 
-            // If a reference suggestion was picked, post its ID; otherwise treat input as a user tag name.
-            const payload = { asset_ids: Alpine.store('bulkSelection').selected };
+            // A picked reference suggestion posts its ID directly; otherwise the input is
+            // treated as one or more comma/newline-separated user tag names.
             if (suggestion && suggestion.type === 'reference' && suggestion.name === tagName) {
-                payload.reference_tag_ids = [suggestion.id];
-            } else {
-                payload.tags = [tagName];
+                this.bulkTagInput = '';
+                this.bulkShowSuggestions = false;
+                await this.bulkPostTags({ asset_ids: Alpine.store('bulkSelection').selected, reference_tag_ids: [suggestion.id] });
+                return;
             }
+
+            this.commitInput();
+        },
+
+        async bulkPostTags(payload) {
+            if (this.bulkLoading) return;
 
             this.bulkLoading = true;
             try {
@@ -633,6 +651,14 @@ window.assetCard = assetCard;
 export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
     const translations = window.assetTranslations || {};
     return {
+        ...tagInputCore({
+            model: 'newTagName',
+            clearOnCommit: false, // postTags clears on success / keeps input on failure
+            onCommitNames(names) {
+                this.postTags(names);
+            },
+        }),
+
         assetId: assetId,
         tags: initialTags,
         license: initialLicense,
@@ -775,7 +801,13 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
         },
 
         async addTag() {
-            if (this.loading || !this.newTagName.trim()) return;
+            if (this.loading) return;
+            // Splits comma/newline lists; posts the whole batch in one request.
+            this.commitInput();
+        },
+
+        async postTags(names) {
+            if (this.loading || !names.length) return;
 
             this.loading = true;
             try {
@@ -786,7 +818,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                         'X-CSRF-TOKEN': this.getCsrfToken(),
                         'Accept': 'application/json',
                     },
-                    body: JSON.stringify({ tags: [this.newTagName.trim()] }),
+                    body: JSON.stringify({ tags: names }),
                 });
 
                 if (!response.ok) {

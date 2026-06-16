@@ -390,6 +390,8 @@ return [
 | `DELETE` | `/api/reference-tags` | Remove reference tag(s) by **name** from asset(s) — use `tag_name` or `tag_names` |
 | `DELETE` | `/api/reference-tags/{tag}` | Remove reference tag by **ID** from asset(s) (supports batch via `asset_ids`/`s3_keys`) |
 
+> The `tags` field on `POST /api/reference-tags` (and `tags`/`tags[]` on `POST`/`PATCH /api/assets`) accepts comma-separated values — `"a,b,c"` sent as one entry is split into separate tags.
+
 ### Query Parameters
 | Parameter | Example |
 |-----------|---------|

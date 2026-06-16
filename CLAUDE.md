@@ -108,7 +108,7 @@ Allowed file types are restricted by `config/uploads.php` (`allowed_extensions` 
 ### Models
 
 - **Asset** — Belongs to User. Self-FK `parent()`/`children()` (e.g. TikZ render → source `.tex`). Many-to-many Tags (pivot `attached_by`). Soft deletes. Computed: `url`, `thumbnail_url`, `formatted_size`, `folder`, `is_missing`. `filename` editable; `s3_key` immutable. `syncTagsWithAttribution()` = "last attacher wins". Scopes: `search` (delegates to `AssetSearchParser`), `withTags`, `ofType` (accepts plurals like `images`), `byUser`, `inFolder`, `missing`, `applySort`. Search operators: `+req`, `-excl`, `"phrase"`, `+"phrase"`, `-"phrase"`. License fields: `license_type`, `license_expiry_date`, `copyright`, `copyright_source`.
-- **Tag** — Type `user`/`ai`/`reference`, many-to-many Assets. Reference tags created via API only (track external system usage), editable/deletable in web UI.
+- **Tag** — Type `user`/`ai`/`reference`, many-to-many Assets. Reference tags created via API only (track external system usage), editable/deletable in web UI. `MAX_NAME_LENGTH = 100` (shared by validation rules). Free-text tag input is normalized by `App\Support\TagInputParser::parse()` (splits comma-separated lists, trims, lowercases, dedups, drops over-length) — reused by the attach controllers, `applyUploadMetadata()`, and CSV import so `"a,b,c"` works as one value everywhere.
 - **Setting** — Key-value, cached 1 hour. `Setting::get('key', $default)` / `Setting::set($key, $value)`. Types: string/integer/boolean/json. Groups: general/display/aws/api.
 - **GameScore** — Backs a hidden easter-egg game (double-click the ORCA logo; the game is lazy-loaded from `public/games/`, wired in `resources/js/app.js`). Belongs to User; `leaderboard()` returns the top-5 best-per-user scores. Routes `game/scores` GET/POST (`GameScoreController`, auth-only) read/record high scores.
 
@@ -206,7 +206,7 @@ TIKZ_PNG_DPI=300                      # 72-600
 ## Conventions
 
 - **Layout**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware/Requests in `app/Http/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g. `DuplicateAssetException`).
-- **Frontend**: 15 Alpine modules in `resources/js/alpine/` registered in `resources/js/app.js`. Shared mixins (not top-level): `upload-metadata` (batch metadata form), `thumbnail-generator` (client-side PDF/video thumbs). Asset grid markup is `resources/views/assets/partials/grid.blade.php`, shared between index and embed.
+- **Frontend**: 15 Alpine modules in `resources/js/alpine/` registered in `resources/js/app.js`. Shared mixins/helpers (not top-level): `upload-metadata` (batch metadata form), `thumbnail-generator` (client-side PDF/video thumbs), `tag-input-core` (`parseTagNames` + `tagInputCore` — comma/paste splitting shared by all four tag inputs: asset edit, upload metadata, grid bulk bar, grid row). Asset grid markup is `resources/views/assets/partials/grid.blade.php`, shared between index and embed.
 - **S3 keys**: `assets/{folder}/{uuid}.{ext}`; thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG).
 - **Errors**: services swallow + log + return null/[]. Controllers validate + return appropriate codes. API-role users get generic messages (`Controller::clientError()`); admin/editor see exception detail. Logs in `storage/logs/laravel.log`.
 - **Delete**: soft delete keeps S3 objects; hard delete (admin) clears S3 + DB. Discovery flags soft-deleted to prevent re-import.

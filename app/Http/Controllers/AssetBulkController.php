@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Services\S3Service;
+use App\Support\TagInputParser;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +28,7 @@ class AssetBulkController extends Controller
             'asset_ids' => 'required|array|max:500',
             'asset_ids.*' => 'integer|exists:assets,id',
             'tags' => 'required_without:reference_tag_ids|array',
-            'tags.*' => 'string|max:50',
+            'tags.*' => 'string|max:'.Tag::MAX_NAME_LENGTH,
             'reference_tag_ids' => 'required_without:tags|array',
             'reference_tag_ids.*' => [
                 'integer',
@@ -35,7 +36,8 @@ class AssetBulkController extends Controller
             ],
         ]);
 
-        $tagNames = (array) $request->input('tags', []);
+        // Split any comma-separated entries so "a,b,c" sent as one value still works.
+        $tagNames = TagInputParser::parse($request->input('tags', []));
         $referenceIds = array_map('intval', (array) $request->input('reference_tag_ids', []));
 
         $tagIds = Tag::resolveUserTagIds($tagNames);

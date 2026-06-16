@@ -1,8 +1,25 @@
+import { tagInputCore } from './tag-input-core';
+
 export function uploadMetadata() {
     var pd = window.__pageData || {};
     var tagsSearchUrl = (pd.routes && pd.routes.tagsSearch) || pd.tagsSearch || '/tags/search';
 
     return {
+        ...tagInputCore({
+            model: 'metadataNewTag',
+            isDuplicate(name) {
+                return this.metadataTags.includes(name) || this.metadataReferenceTags.some(function (t) { return t.name === name; });
+            },
+            onCommitNames(names) {
+                var self = this;
+                names.forEach(function (n) { self.metadataTags.push(n); });
+            },
+            afterCommit() {
+                this.metadataShowSuggestions = false;
+                this.metadataSelectedIndex = -1;
+            },
+        }),
+
         showMetadata: false,
         metadataTags: [],
         metadataReferenceTags: [],
@@ -16,16 +33,8 @@ export function uploadMetadata() {
         metadataCopyrightSource: '',
 
         metadataAddTag() {
-            var tag = this.metadataNewTag.trim().toLowerCase();
-            if (!tag) return;
-            if (this.metadataTags.includes(tag) || this.metadataReferenceTags.some(function (t) { return t.name === tag; })) {
-                this.metadataNewTag = '';
-                return;
-            }
-            this.metadataTags.push(tag);
-            this.metadataNewTag = '';
-            this.metadataShowSuggestions = false;
-            this.metadataSelectedIndex = -1;
+            // Splits comma/newline lists and dedups via the shared tag-input core.
+            this.commitInput();
         },
 
         metadataAddTagOrSelectSuggestion() {

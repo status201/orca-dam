@@ -1,3 +1,5 @@
+import { tagInputCore } from './tag-input-core';
+
 async function refreshPreviewThumbnail(thumbnailUrl) {
     const previewImg = document.getElementById('asset-preview');
     const placeholder = document.getElementById('asset-preview-placeholder');
@@ -43,6 +45,23 @@ async function refreshPreviewThumbnail(thumbnailUrl) {
 export function assetEditor() {
     const pageData = window.__pageData || {};
     return {
+        ...tagInputCore({
+            model: 'newTag',
+            isDuplicate(name) {
+                return this.userTags.includes(name) || this.referenceTags.some(t => t.name === name);
+            },
+            onDuplicate() {
+                window.showToast(pageData.translations.tagAlreadyExists, 'error');
+            },
+            onCommitNames(names) {
+                names.forEach(n => this.userTags.push(n));
+            },
+            afterCommit() {
+                this.showSuggestions = false;
+                this.selectedIndex = -1;
+            },
+        }),
+
         newTag: '',
         userTags: pageData.userTags || [],
         referenceTags: pageData.referenceTags || [],
@@ -52,19 +71,8 @@ export function assetEditor() {
         searchTimeout: null,
 
         addTag() {
-            const tag = this.newTag.trim().toLowerCase();
-
-            if (!tag) return;
-
-            if (this.userTags.includes(tag) || this.referenceTags.some(t => t.name === tag)) {
-                window.showToast(pageData.translations.tagAlreadyExists, 'error');
-                return;
-            }
-
-            this.userTags.push(tag);
-            this.newTag = '';
-            this.showSuggestions = false;
-            this.selectedIndex = -1;
+            // Splits comma/newline lists and dedups via the shared tag-input core.
+            this.commitInput();
         },
 
         addTagOrSelectSuggestion() {

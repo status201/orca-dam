@@ -423,6 +423,8 @@
                                                x-model="newTagName"
                                                @input="filterTagSuggestions()"
                                                @keydown.enter="if(newTagName.trim()) { addTag(); }"
+                                               @keydown.comma.prevent="commitInput()"
+                                               @paste="handleTagPaste($event)"
                                                @keydown.escape="cancelAddTag()"
                                                @keydown.arrow-down.prevent="selectNextSuggestion()"
                                                @keydown.arrow-up.prevent="selectPrevSuggestion()"

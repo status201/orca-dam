@@ -340,11 +340,13 @@
                                    x-model="newTag"
                                    @input="searchTags"
                                    @keydown.enter.prevent="addTagOrSelectSuggestion"
+                                   @keydown.comma.prevent="commitInput()"
+                                   @paste="handleTagPaste($event)"
                                    @keydown.down.prevent="navigateDown"
                                    @keydown.up.prevent="navigateUp"
                                    @keydown.escape="hideSuggestions"
                                    @blur="hideSuggestions"
-                                   placeholder="{{ __('Add a tag...') }}"
+                                   placeholder="{{ __('Add tags (comma-separated)...') }}"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
 
                             <!-- Autocomplete suggestions -->
