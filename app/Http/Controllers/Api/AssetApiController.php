@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Tag;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
+use App\Support\TagInputParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -153,7 +154,7 @@ class AssetApiController extends Controller
 
         // Handle tags only if explicitly included in request
         if ($request->has('tags')) {
-            $tagIds = Tag::resolveUserTagIds($request->input('tags', []));
+            $tagIds = Tag::resolveUserTagIds(TagInputParser::parse($request->input('tags', [])));
 
             // Preserve AI and reference tags with their current attached_by
             $preservedPivotData = [];
@@ -302,7 +303,7 @@ class AssetApiController extends Controller
             return response()->json(['message' => 'No assets found'], 404);
         }
 
-        $tagIds = Tag::resolveReferenceTagIds($request->input('tags'));
+        $tagIds = Tag::resolveReferenceTagIds(TagInputParser::parse($request->input('tags')));
 
         foreach ($assets as $asset) {
             $asset->syncTagsWithAttribution($tagIds, 'reference');

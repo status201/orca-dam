@@ -327,6 +327,37 @@ test('can add tags to asset', function () {
     expect($asset->tags)->toHaveCount(2);
 });
 
+test('add tags splits a comma-joined value into multiple tags', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.tags.add', $asset), [
+            'tags' => ['landscape, mountain, sunset'],
+        ]);
+
+    $response->assertOk();
+
+    $asset->refresh();
+    expect($asset->tags->pluck('name')->sort()->values()->toArray())
+        ->toBe(['landscape', 'mountain', 'sunset']);
+});
+
+test('add tags dedups within a single request', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.tags.add', $asset), [
+            'tags' => ['red', 'red, blue', 'RED'],
+        ]);
+
+    $response->assertOk();
+
+    $asset->refresh();
+    expect($asset->tags->pluck('name')->sort()->values()->toArray())->toBe(['blue', 'red']);
+});
+
 test('can remove tag from asset', function () {
     $user = User::factory()->create();
     $asset = Asset::factory()->create();
@@ -361,6 +392,25 @@ test('can bulk add tags to multiple assets', function () {
         $asset->refresh();
         expect($asset->tags)->toHaveCount(2);
         expect($asset->tags->pluck('name')->toArray())->toContain('bulk-tag-1', 'bulk-tag-2');
+    }
+});
+
+test('bulk add tags splits comma-joined values', function () {
+    $user = User::factory()->create();
+    $assets = Asset::factory()->count(2)->create();
+
+    $response = $this->actingAs($user)
+        ->postJson(route('assets.bulk.tags.add'), [
+            'asset_ids' => $assets->pluck('id')->toArray(),
+            'tags' => ['alpha, beta', 'gamma'],
+        ]);
+
+    $response->assertOk();
+
+    foreach ($assets as $asset) {
+        $asset->refresh();
+        expect($asset->tags->pluck('name')->sort()->values()->toArray())
+            ->toBe(['alpha', 'beta', 'gamma']);
     }
 });
 

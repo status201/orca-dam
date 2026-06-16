@@ -10,6 +10,11 @@ class Tag extends Model
 {
     use HasFactory;
 
+    /**
+     * Maximum length of a tag name, shared by validation rules and TagInputParser.
+     */
+    public const MAX_NAME_LENGTH = 100;
+
     protected $fillable = [
         'name',
         'type',

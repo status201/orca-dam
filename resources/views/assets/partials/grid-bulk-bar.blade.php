@@ -25,6 +25,8 @@
                                x-model="bulkTagInput"
                                @input="bulkFilterTagSuggestions()"
                                @keydown.enter="if(bulkTagInput.trim()) { bulkAddTag(); }"
+                               @keydown.comma.prevent="commitInput()"
+                               @paste="handleTagPaste($event)"
                                @keydown.escape="bulkShowSuggestions = false"
                                @keydown.arrow-down.prevent="bulkSelectNextSuggestion()"
                                @keydown.arrow-up.prevent="bulkSelectPrevSuggestion()"

@@ -26,11 +26,13 @@
                            x-model="metadataNewTag"
                            @input="metadataSearchTags"
                            @keydown.enter.prevent="metadataAddTagOrSelectSuggestion"
+                           @keydown.comma.prevent="commitInput()"
+                           @paste="handleTagPaste($event)"
                            @keydown.down.prevent="metadataNavigateDown"
                            @keydown.up.prevent="metadataNavigateUp"
                            @keydown.escape="metadataHideSuggestions"
                            @blur="metadataHideSuggestions"
-                           placeholder="{{ __('Add a tag...') }}"
+                           placeholder="{{ __('Add tags (comma-separated)...') }}"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent text-sm">
 
                     {{-- Autocomplete dropdown --}}
