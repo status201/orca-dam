@@ -192,7 +192,7 @@ Tags zijn labels waarmee je assets organiseert en vindt. Er zijn drie typen:
 
 **Referentietags** worden aangemaakt door externe systemen (bijv. een Rich Text Editor-integratie) om bij te houden welke assets ze gebruiken. Ze verschijnen als oranje badges met een link-icoon. Je kunt referentietags hernoemen of verwijderen net als gebruikerstags, maar ze kunnen alleen via de API worden aangemaakt.
 
-**Tags toevoegen:** Op de Bewerk-pagina typ je een tagnaam en druk je op Enter. In Lijstweergave klik je op de **+** knop in de Tags-kolom.
+**Tags toevoegen:** Op de Bewerk-pagina typ je een tagnaam en druk je op Enter. Wil je er meerdere tegelijk toevoegen, scheid ze dan met komma's of plak een lijst gescheiden door komma's of regeleindes. In Lijstweergave klik je op de **+** knop in de Tags-kolom.
 
 **Tags verwijderen:** Klik op de **×** naast een tag. Dit verwijdert alleen de koppeling — de tag zelf blijft bestaan.
 
