@@ -27,7 +27,8 @@
     "serialize-javascript": "^7.0.5",
     "minimatch": "^10.0.0",
     "uuid": "^11.1.1",
-    "webpack-dev-server": "^5.2.4",
+    "webpack-dev-server": "^5.2.5",
+    "http-proxy-middleware": "^2.0.10",
     "ws": "^8.21.0",
     "@wp-playground/blueprints": {
       "ajv": "^8.17.2"
