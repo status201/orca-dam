@@ -117,6 +117,20 @@ npm install
 npm run build
 ```
 
+> **⚠️ Web-based test runner & `--no-dev`:** ORCA ships an admin-only, web-based
+> **Pest test runner** at **System → Tests** (`TestRunnerService`, which shells out
+> to `php artisan test`). That command relies on `require-dev` packages —
+> `pestphp/pest`, `phpunit/phpunit`, `nunomaduro/collision`, `fakerphp/faker`.
+> Installing with **`--no-dev` strips those, so the System → Tests runner will fail**
+> on that environment.
+>
+> - **Staging / any environment where you use the test runner:** install **without**
+>   `--no-dev` — i.e. `composer install --optimize-autoloader`. (Dev dependencies
+>   will be present; acceptable for staging.)
+> - **Production:** keep `--no-dev` for a lean, hardened install and accept that the
+>   web test runner is unavailable there — **or** drop `--no-dev` if you deliberately
+>   want the runner in prod.
+
 ### 3. Configure Environment
 
 ```bash
@@ -560,6 +574,8 @@ php artisan down
 git pull origin main
 
 # Update dependencies
+# NOTE: drop --no-dev on environments that use the System → Tests web runner
+# (it needs pest/phpunit). See the warning under "Install Dependencies" above.
 composer install --no-dev --optimize-autoloader
 npm install
 npm run build
@@ -605,6 +621,7 @@ Access the admin panel at: `https://your-domain.com/system`
 - System diagnostics (S3 connection test, PHP config)
 - S3 integrity verification (missing file detection)
 - Bulk metadata import from CSV (via Import page)
+- Web-based Pest test runner (**requires dev dependencies** — unavailable if installed with `--no-dev`; see "Install Dependencies")
 
 ### Important Commands from Admin Panel
 
