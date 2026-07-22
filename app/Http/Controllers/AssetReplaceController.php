@@ -53,7 +53,7 @@ class AssetReplaceController extends Controller
      */
     public function showReplace(Asset $asset)
     {
-        $this->authorize('update', $asset);
+        $this->authorize('replace', $asset);
         $asset->load('tags');
 
         return view('assets.replace', compact('asset'));
@@ -64,7 +64,7 @@ class AssetReplaceController extends Controller
      */
     public function replace(Request $request, Asset $asset)
     {
-        $this->authorize('update', $asset);
+        $this->authorize('replace', $asset);
 
         $originalExtension = strtolower(pathinfo($asset->s3_key, PATHINFO_EXTENSION));
 
@@ -134,7 +134,7 @@ class AssetReplaceController extends Controller
      */
     public function storeThumbnail(Request $request, Asset $asset)
     {
-        $this->authorize('update', $asset);
+        $this->authorize('replace', $asset);
 
         $request->validate([
             'thumbnail' => 'required|string',
