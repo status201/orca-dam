@@ -20,6 +20,53 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/sdd-guard.mjs pretool"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/sdd-guard.mjs remind"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/sdd-guard.mjs stop"
+          },
+          {
+            "type": "command",
+            "command": "node scripts/spec-lint.mjs hook"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/sdd-guard.mjs stop"
+          },
+          {
+            "type": "command",
+            "command": "node scripts/spec-lint.mjs hook"
+          }
+        ]
       }
     ]
   }

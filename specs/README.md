@@ -211,7 +211,6 @@ config files Laravel publishes (`config/app.php`, `auth`, `cache`, `database`,
 specs/
   README.md            ← you are here (the method)
   architecture.md      ← system-wide source of truth (read this first)
-  _backfill-status.md  ← multi-session backfill ledger (removed once the gate is armed)
   features/            ← one spec per feature
     _feature-template.md ·  copy this to start a new feature spec
     # — assets & storage —
