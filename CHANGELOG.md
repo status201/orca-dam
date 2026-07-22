@@ -6,6 +6,9 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 ---
 
 ## [Unreleased]
+### Added
+- **Spec-Driven Development adopted (enforced).** New `specs/` tree is the architectural/behavioural source of truth: a system-wide `architecture.md`, ~39 per-feature behavioural specs (Gherkin scenarios each pinned to a real test), 14 ADRs recording the *why* + rejected alternatives, and repeatable recipes. A zero-dep guard (`scripts/sdd-guard.mjs`) enforces spec-before-code on production paths (`app/`, `routes/`, `database/migrations/`, `config/`, `resources/js/`) via Claude Code hooks (PreToolUse/Stop/SubagentStop) and a CI job (`.github/workflows/sdd.yml`); `scripts/spec-lint.mjs` (`npm run spec:lint`) validates spec structure and index completeness. New `/feature`, `/fix`, `/spec` slash commands drive the flow. Bypass a trivial production tweak with `.sdd-skip` / `[skip-sdd]`. Non-production paths (views, CSS, `lang/`, tests, `public/`, `wordpress-plugin/`, docs) are exempt.
+
 ### Security
 - **Upload type allowlist + SVG sanitization.** Uploads (direct, chunked, replace) are now restricted to an extension allowlist (`config/uploads.php`, enforced by `App\Rules\AllowedUploadExtension`); previously any file type was accepted. SVGs are sanitized with `enshrined/svg-sanitize` before storage to strip scripts/handlers/remote refs. Non-inline types are stored with `Content-Disposition: attachment`, and the download endpoint sends `nosniff` + RFC-5987-encoded filenames.
 - **Baseline security headers.** New `SecurityHeaders` middleware on the web group adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN` (relaxed by `AllowEmbedding` when embedding is configured), `Referrer-Policy`, and HSTS over HTTPS. `SESSION_SECURE_COOKIE` now defaults to `true` in production.

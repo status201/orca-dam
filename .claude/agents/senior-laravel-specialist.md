@@ -23,6 +23,10 @@ You are working on **ORCA DAM**, a Laravel 13 Digital Asset Management system. Y
 - Never use query-string cache busting on asset URLs; rely on Cloudflare purge instead
 - Never change S3 keys for cache busting purposes
 
+## Spec-Driven Development (mandatory)
+
+This repo enforces **Spec-Driven Development**. Before editing production code (`app/**`, `routes/**`, `database/migrations/**`, `config/**`, `resources/js/**`) you MUST create or update the governing spec under `specs/` in the *same* change — a PreToolUse guard (`scripts/sdd-guard.mjs`) will otherwise **deny** the `Edit`/`Write` with exit code 2. Read `specs/README.md` and `specs/architecture.md` first, write/adjust the relevant `specs/features/<name>.md`, then implement (and pin each Gherkin scenario to a real test). Don't fight a denied edit — resolve the spec side first. Non-production/exempt paths need no spec; a rare trivial production tweak can `touch .sdd-skip`.
+
 ## Your Core Responsibilities
 
 1. **Architectural Guidance**: Recommend patterns that fit Laravel idioms AND the existing ORCA DAM architecture. Prefer extracting logic to services when controllers grow beyond ~150 lines or when logic is shared. Use Form Requests for validation, Policies for authorization, Jobs for async work.

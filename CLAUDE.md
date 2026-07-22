@@ -6,6 +6,12 @@ ORCA DAM (ORCA Retrieves Cloud Assets) — Laravel 13 Digital Asset Management w
 
 **Frontend**: Blade + Alpine.js (15 modules in `resources/js/alpine/`), Tailwind, Font Awesome 6.4, Vite, Intervention Image 3.x (GD).
 
+## Specs (Spec-Driven Development)
+
+`specs/` is the architectural/behavioural source of truth — read [`specs/README.md`](specs/README.md) (the method) and [`specs/architecture.md`](specs/architecture.md) (system overview) before non-trivial work. It holds ~39 feature specs, 14 ADRs (the *why*), and recipes. Specs **link** to this file for conventions; they don't restate it.
+
+**The gate is enforced.** A change that edits production code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (except Laravel-published framework configs), `resources/js/**` (except `resources/js/vendor/**`) — **must create/update a spec under `specs/` in the same change**. `scripts/sdd-guard.mjs` enforces it (PreToolUse + Stop hooks in `.claude/settings.json`, plus a CI job). Write the spec first — use `/feature`, `/fix`, `/spec`. Exempt: views, CSS, `lang/**`, factories/seeders, `tests/**`, `public/**`, `wordpress-plugin/**`, all `*.md`. Bypass a genuinely trivial production tweak with `touch .sdd-skip` (local), or `[skip-sdd]` in a commit message / the `skip-sdd` PR label (CI). `scripts/spec-lint.mjs` (`npm run spec:lint`) validates spec structure + index completeness.
+
 ## Common Commands
 
 ```bash
