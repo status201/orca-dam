@@ -201,6 +201,13 @@ config files Laravel publishes (`config/app.php`, `auth`, `cache`, `database`,
 > (`npm run spec:lint`), validates spec *structure*: a metadata block, `id`
 > matching the filename, a valid `status`, that `# pinned by:` paths resolve, and
 > that every spec/ADR is listed in this folder map **and** the `decisions/` index.
+> It also checks documented *facts* don't rot: dependency versions named in
+> `specs/**` or `CLAUDE.md` must match the **constraints** in `composer.json` /
+> `package.json` (never `composer.lock` — a routine `composer update` inside a
+> range must not fail the build, only a real constraint change), and the
+> hand-counted Alpine-module and spec/ADR totals in `CLAUDE.md` must match the
+> tree. A version may be coarser than the constraint (`^13` for `^13.0`) but
+> never contradict it.
 > It runs in CI (PRs **and** pushes to `main`) **and** unconditionally as a local
 > `Stop` hook. Hooks can be disabled by editing `.claude/settings.json`, so CI is
 > the real cross-tool backstop.

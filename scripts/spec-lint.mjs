@@ -19,6 +19,10 @@
 // Plus repo-structure checks (drift prevention):
 //   • every spec / ADR / template file is listed in the specs/README.md folder map
 //   • every ADR is listed in the specs/decisions/README.md index
+// Plus documented-fact checks (see "Version drift" below):
+//   • dependency versions named in specs/**.md + CLAUDE.md match composer.json /
+//     package.json *constraints*
+//   • the hand-counted Alpine-module and spec/ADR totals in CLAUDE.md are right
 // `version` not being a positive integer is a warning, not a failure.
 
 import { execFileSync } from 'node:child_process';
@@ -125,6 +129,155 @@ function pinnedPaths(text) {
   return tokens;
 }
 
+// ── Version drift ────────────────────────────────────────────────────────────
+// The docs state a *supported range*, so we compare against the constraints in
+// composer.json / package.json — deliberately never composer.lock. A routine
+// `composer update` inside an existing range must not trip this; only a real
+// constraint change (an architectural fact) should.
+
+/** Display names used in prose → the manifest package they refer to. */
+const ALIASES = [
+  ['PHP', 'php'],
+  ['Laravel', 'laravel/framework'],
+  ['Alpine', 'alpinejs'],
+  ['Tailwind', 'tailwindcss'],
+  ['Font Awesome', '@fortawesome/fontawesome-free'],
+  ['Vite', 'vite'],
+  ['PHPUnit', 'phpunit/phpunit'],
+  ['Pest', 'pestphp/pest'],
+  ['Intervention Image', 'intervention/image'],
+];
+
+function readJson(file) {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/** package name → { constraint, manifest }, from composer.json + package.json. */
+function manifestConstraints() {
+  const out = new Map();
+  const add = (obj, manifest) => {
+    for (const [name, constraint] of Object.entries(obj || {})) {
+      if (typeof constraint === 'string') out.set(name, { constraint, manifest });
+    }
+  };
+  const composer = readJson(path.join(ROOT, 'composer.json'));
+  add(composer?.require, 'composer.json');
+  add(composer?.['require-dev'], 'composer.json');
+  const pkg = readJson(path.join(ROOT, 'package.json'));
+  add(pkg?.dependencies, 'package.json');
+  add(pkg?.devDependencies, 'package.json');
+  return out;
+}
+
+/** `^8.3` `~0.2.1` `3.x` `8.2+` `v13` `>=1.0` → `8.3` `0.2.1` `3` `8.2` `13` `1.0`. */
+function normalizeVersion(v) {
+  return v.trim().replace(/^(>=|[\^~v])/, '').replace(/(\+|\.x)$/, '').trim();
+}
+
+/**
+ * The docs are deliberately coarser than the manifest (`^13` for `^13.0`), so a
+ * documented version passes when it is the constraint, or a dot-boundary prefix
+ * of it. `3` vs `4.2` and `8.2` vs `8.3` therefore still fail.
+ */
+function versionMatches(documented, constraint) {
+  const d = normalizeVersion(documented);
+  const a = normalizeVersion(constraint);
+  return d !== '' && (d === a || a.startsWith(d + '.'));
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Pre-compiled matchers for every package we could verify. A claim is a package
+ * name (or a prose alias) followed by a version token, optionally separated by
+ * backticks / spaces / a YAML `#` comment marker. Only names that actually exist
+ * in a manifest get a matcher, so unrelated versions already in the docs
+ * (`api.cloudflare.com/client/v4`, `tikzjax.com/v1`, TeX Live) can never produce
+ * a false positive. Matching is case-sensitive: `PHP` is the alias, while the
+ * bare `php` requirement must not match prose like `phpunit.xml`.
+ *
+ * The boundaries are stricter than `\b`, which would let the bare `php`
+ * requirement match the tail of `aws/aws-sdk-php` (a `-` is a word boundary).
+ * The version token is digit-groups only, so a trailing sentence period in
+ * "…via `laravel/passkeys` ~0.2.1." is not swallowed into the version.
+ */
+function versionMatchers(constraints) {
+  const targets = [...[...constraints.keys()].map((n) => [n, n]), ...ALIASES];
+  return targets
+    .filter(([, pkg]) => constraints.has(pkg))
+    .map(([label, pkg]) => ({
+      label,
+      pkg,
+      re: new RegExp(
+        `(?<![\\w/@.-])${escapeRe(label)}(?![\\w/-])`
+        + '[\\s`]*#?[\\s`]*'
+        + '([~^]?\\d+(?:\\.\\d+)*(?:\\+|\\.x)?)'
+      ),
+    }));
+}
+
+/** Every dependency version named in the docs must match the manifests. */
+function checkVersions(errors, docFiles) {
+  const constraints = manifestConstraints();
+  if (!constraints.size) return;
+  const matchers = versionMatchers(constraints);
+
+  for (const file of docFiles) {
+    if (!existsSync(file)) continue;
+    const r = rel(file);
+    readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
+      for (const { label, pkg, re } of matchers) {
+        const m = line.match(re);
+        if (!m) continue;
+        const { constraint, manifest } = constraints.get(pkg);
+        if (!versionMatches(m[1], constraint)) {
+          errors.push(`${r}:${i + 1}: ${label} documented as ${m[1]}, ${manifest} says ${constraint}`);
+        }
+      }
+    });
+  }
+}
+
+/** Hand-counted totals in CLAUDE.md that are cheap to verify against the tree. */
+function checkCounts(errors) {
+  const file = path.join(ROOT, 'CLAUDE.md');
+  if (!existsSync(file)) return;
+
+  const appJs = path.join(ROOT, 'resources', 'js', 'app.js');
+  const modules = existsSync(appJs)
+    ? (readFileSync(appJs, 'utf8').match(/^\s*import\s+['"]\.\/alpine\//gm) || []).length
+    : null;
+
+  const countMd = (dir, keep) => (existsSync(dir)
+    ? readdirSync(dir).filter((f) => f.endsWith('.md') && keep(f)).length
+    : null);
+  const features = countMd(path.join(SPECS, 'features'), (f) => !f.startsWith('_') && f !== 'README.md');
+  const adrs = countMd(path.join(SPECS, 'decisions'), (f) => ADR_FILE.test(f));
+
+  readFileSync(file, 'utf8').split(/\r?\n/).forEach((line, i) => {
+    const at = `CLAUDE.md:${i + 1}`;
+
+    const mod = line.match(/(\d+)\s+(?:Alpine\s+)?modules in `resources\/js\/alpine\/`/);
+    if (mod && modules !== null && Number(mod[1]) !== modules) {
+      errors.push(`${at}: ${mod[1]} Alpine modules documented, resources/js/app.js imports ${modules}`);
+    }
+
+    const spec = line.match(/(\d+)\s+feature specs?,\s*(\d+)\s+ADRs?/);
+    if (spec) {
+      if (features !== null && Number(spec[1]) !== features) {
+        errors.push(`${at}: ${spec[1]} feature specs documented, specs/features/ has ${features}`);
+      }
+      if (adrs !== null && Number(spec[2]) !== adrs) {
+        errors.push(`${at}: ${spec[2]} ADRs documented, specs/decisions/ has ${adrs}`);
+      }
+    }
+  });
+}
+
 function lint(failExit) {
   const errors = [];
   const warnings = [];
@@ -200,6 +353,12 @@ function lint(failExit) {
       }
     }
   }
+
+  // Documented facts: versions named in the docs must match the manifests, and
+  // the hand-counted totals must match the tree. Without this a spec can satisfy
+  // every structural rule above while stating things that are simply untrue.
+  checkVersions(errors, [...allMd, path.join(ROOT, 'CLAUDE.md')]);
+  checkCounts(errors);
 
   if (warnings.length) {
     process.stdout.write(`spec-lint: ${warnings.length} warning(s):\n` +

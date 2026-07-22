@@ -60,14 +60,14 @@ map outcomes to status codes (see
 ## Tech stack
 
 ```yaml
-language: PHP                   # 8.2+ (CI runs 8.4)
+language: PHP                   # 8.3+ (CI runs 8.4)
 framework: laravel/framework    # ^13
 frontend: Blade + Alpine.js     # Alpine 3.4, Tailwind 3.1, Font Awesome 6.4
 build: Vite                     # 8
 tests: pestphp/pest             # 4 (on PHPUnit 12) — in-memory SQLite, sync queue
 style: laravel/pint             # 1.13
 aws: aws/aws-sdk-php            # 3.379 (S3, Rekognition, Translate)
-images: intervention/image      # 3 (GD driver)
+images: intervention/image      # 4 (GD driver)
 auth_passkeys: laravel/passkeys # 0.2.1 (WebAuthn / FIDO2)
 auth_jwt: firebase/php-jwt      # 7
 mfa: pragmarx/google2fa-laravel # 3 ; bacon/bacon-qr-code 3
