@@ -124,6 +124,12 @@ php artisan config:clear && php artisan test tests/Feature/ApiTest.php
   `type`, `folder`, `sort`, `per_page` capped at 100) rather than inventing a
   new one for a new list-shaped endpoint — see `Asset::scopeApplySort` for the
   canonical sort values.
+- **Persist every field you validate.** A Form Request rule with no matching
+  `$request->only([...])` key (or relation-sync branch) is a silent no-op — the
+  `PATCH` passes validation and returns 200 while quietly dropping the field.
+  Keep the API controller's persisted set in lockstep with its web twin
+  (`AssetApiController::update` mirrors `AssetController::update`) so the two
+  don't drift.
 
 ## Scenarios (BDD)
 

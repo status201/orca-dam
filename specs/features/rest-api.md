@@ -61,6 +61,14 @@ responses, and a role split on error verbosity.
   uploader) rather than the `sanctum,jwt`-only guard list used by the rest of
   this file. See [`chunked-upload.md`](chunked-upload.md) for the endpoint
   contract itself; this spec only documents the routing-location quirk.
+- **REQ-8** — `PATCH /api/assets/{asset}` persists **every** metadata field it
+  validates and mirrors the web `AssetController::update`: the scalar columns
+  `filename`, `alt_text`, `caption`, `license_type`, `license_expiry_date`,
+  `copyright`, `copyright_source`, plus `tags` (user tags) and `reference_tag_ids`
+  when present. Tag syncing preserves AI pivots verbatim and preserves the
+  untouched category (user or reference) when only the other is submitted. The API
+  never rewrites `s3_key` (see [ADR-006](../decisions/adr-006-immutable-s3-key.md));
+  `filename` is the editable display name.
 
 ## Technical design
 
@@ -117,10 +125,11 @@ request:
 # 409 when EVERY file in the batch is a duplicate
 { message: 'All files are duplicates of existing assets.', duplicates: [...] }
 
-# PATCH /api/assets/{asset} (UpdateAssetRequest)
+# PATCH /api/assets/{asset} (UpdateAssetRequest) — mirrors web AssetController::update
 request:
-  alt_text / caption / license_type / copyright: string?   # <- the only 4 fields actually persisted
-  filename / license_expiry_date / copyright_source / tags / reference_tag_ids: # validated but see Open Questions
+  filename / alt_text / caption / license_type / license_expiry_date / copyright / copyright_source: string?  # all persisted
+  tags: string[]?              # user tags — full sync, preserving AI + reference pivots
+  reference_tag_ids: int[]?    # existing reference-tag ids — synced when present, else preserved
 response: { message: string, data: Asset }
 
 # GET /api/assets/meta (public)
@@ -201,6 +210,18 @@ Scenario: Any authenticated role can soft-delete their own asset
   Then the response status is 200 and the asset is soft-deleted
 # pinned by: tests/Feature/ApiTest.php
 
+Scenario: Updating an asset persists all documented metadata fields
+  Given an authenticated user who owns an asset
+  When they PATCH /api/assets/{id} with filename, license_expiry_date, and copyright_source
+  Then the response is 200 and all three fields are persisted to the asset
+# pinned by: tests/Feature/ApiTest.php
+
+Scenario: reference_tag_ids syncs reference tags while preserving user and AI tags
+  Given an asset carrying a user tag and an AI tag
+  When they PATCH /api/assets/{id} with reference_tag_ids for an existing reference tag
+  Then the reference tag is attached and the user and AI tags remain
+# pinned by: tests/Feature/ApiTest.php
+
 Scenario: The public meta endpoint resolves an asset by its public URL
   Given an asset with a known s3_key
   When a client (no auth) sends GET /api/assets/meta?url=<the asset's public URL>
@@ -229,15 +250,6 @@ Scenario: The health endpoint is public and reports database connectivity
 
 ## Open questions / future
 
-- `UpdateAssetRequest` validates `filename`, `license_expiry_date`,
-  `copyright_source`, `tags`, and `reference_tag_ids`, but
-  `AssetApiController::update` only persists `alt_text`, `caption`,
-  `license_type`, and `copyright` via `$request->only([...])` (plus `tags` in a
-  separate branch). A `PATCH` with `filename` or `license_expiry_date` passes
-  validation and returns 200 but silently does not change those fields — no
-  test currently pins this either way. Worth confirming whether this is
-  intentional (fields reserved for a future contract) or a gap before another
-  caller depends on it.
 - No test exercises `api_upload_enabled = false` returning 403 on
   `POST /api/assets`, nor `api_meta_endpoint_enabled = false` on
   `GET /api/assets/meta` — both are real branches in `AssetApiController` with
