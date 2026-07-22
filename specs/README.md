@@ -219,6 +219,20 @@ specs/
   decisions/           ← Architecture Decision Records (the "why")
     README.md            ·  the ADR index (number / title / status)
     _adr-template.md     ·  copy this to start a new ADR
+    adr-000-spec-driven-development.md          ·  SDD leads code (enforced)
+    adr-001-service-layer.md                    ·  services over fat controllers
+    adr-002-explicit-policy-roles.md            ·  no `return true` policy stubs
+    adr-003-soft-delete-keeps-s3.md             ·  soft delete keeps S3; hard clears it
+    adr-004-auth-multi.md                       ·  four auth mechanisms behind auth.multi
+    adr-005-chunked-above-10mb.md               ·  chunked >=10MB, direct below
+    adr-006-immutable-s3-key.md                 ·  s3_key immutable; purge not rewrite
+    adr-007-blade-alpine-over-spa.md            ·  Blade + Alpine over an SPA
+    adr-008-sqlite-tests.md                     ·  in-memory SQLite tests vs MariaDB prod
+    adr-009-project-owns-nl-json.md             ·  project owns lang/nl.json
+    adr-010-services-swallow-controllers-map.md ·  services swallow+log; controllers map codes
+    adr-011-settings-in-db.md                   ·  runtime settings in the DB
+    adr-012-reference-tags-api-only.md          ·  reference tags API-created only
+    adr-013-wordpress-plugin-separate-stream.md ·  WP plugin is a separate release stream
 ```
 
 > This map grows as the backfill lands (see `_backfill-status.md` while it exists).

@@ -19,21 +19,21 @@ spec's "Open questions / future", not a fabricated pin.
 - [x] `specs/decisions/README.md`
 - [x] `specs/decisions/_adr-template.md`
 
-## Phase 2 — ADRs (14)
-- [ ] adr-000-spec-driven-development
-- [ ] adr-001-service-layer
-- [ ] adr-002-explicit-policy-roles
-- [ ] adr-003-soft-delete-keeps-s3
-- [ ] adr-004-auth-multi
-- [ ] adr-005-chunked-above-10mb
-- [ ] adr-006-immutable-s3-key
-- [ ] adr-007-blade-alpine-over-spa
-- [ ] adr-008-sqlite-tests
-- [ ] adr-009-project-owns-nl-json
-- [ ] adr-010-services-swallow-controllers-map
-- [ ] adr-011-settings-in-db
-- [ ] adr-012-reference-tags-api-only
-- [ ] adr-013-wordpress-plugin-separate-stream
+## Phase 2 — ADRs (14) ✅
+- [x] adr-000-spec-driven-development
+- [x] adr-001-service-layer
+- [x] adr-002-explicit-policy-roles
+- [x] adr-003-soft-delete-keeps-s3
+- [x] adr-004-auth-multi
+- [x] adr-005-chunked-above-10mb
+- [x] adr-006-immutable-s3-key
+- [x] adr-007-blade-alpine-over-spa
+- [x] adr-008-sqlite-tests
+- [x] adr-009-project-owns-nl-json
+- [x] adr-010-services-swallow-controllers-map
+- [x] adr-011-settings-in-db
+- [x] adr-012-reference-tags-api-only
+- [x] adr-013-wordpress-plugin-separate-stream
 
 ## Phase 3 — Feature specs
 
