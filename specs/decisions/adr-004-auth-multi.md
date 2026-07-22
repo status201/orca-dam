@@ -15,11 +15,16 @@ related:
 
 ## Context / Forces
 
-ORCA serves four genuinely different clients: humans in a browser (session, possibly
+ORCA serves three genuinely different clients: humans in a browser (session, possibly
 with TOTP or a passkey), long-lived backend integrations (WordPress, RTE) that need
 a stable token, and short-lived programmatic callers that prefer a self-contained
 JWT. Each has a different credential lifetime and trust model, but they all hit the
 same asset routes and must resolve to the same `User` and role checks.
+
+Three clients, but **four** mechanisms — the browser client alone accounts for two,
+since a passkey is a distinct credential type that authenticates into the same
+session guard (session/Breeze, Sanctum, JWT, passkeys; TOTP is a second factor on
+the session, not a mechanism of its own).
 
 ## Decision
 
