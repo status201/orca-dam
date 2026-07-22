@@ -4,13 +4,13 @@
 
 ORCA DAM (ORCA Retrieves Cloud Assets) — Laravel 13 Digital Asset Management with AWS S3, AI tagging via AWS Rekognition, role-based access, and a REST API for Rich Text Editor integration.
 
-**Frontend**: Blade + Alpine.js (15 modules in `resources/js/alpine/`), Tailwind, Font Awesome 6.4, Vite, Intervention Image 3.x (GD).
+**Frontend**: Blade + Alpine.js (21 modules in `resources/js/alpine/`), Tailwind, Font Awesome 6.4, Vite, Intervention Image 4.x (GD).
 
 ## Specs (Spec-Driven Development)
 
-`specs/` is the architectural/behavioural source of truth — read [`specs/README.md`](specs/README.md) (the method) and [`specs/architecture.md`](specs/architecture.md) (system overview) before non-trivial work. It holds ~39 feature specs, 14 ADRs (the *why*), and recipes. Specs **link** to this file for conventions; they don't restate it.
+`specs/` is the architectural/behavioural source of truth — read [`specs/README.md`](specs/README.md) (the method) and [`specs/architecture.md`](specs/architecture.md) (system overview) before non-trivial work. It holds 39 feature specs, 14 ADRs (the *why*), and recipes. Specs **link** to this file for conventions; they don't restate it.
 
-**The gate is enforced.** A change that edits production code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (except Laravel-published framework configs), `resources/js/**` (except `resources/js/vendor/**`) — **must create/update a spec under `specs/` in the same change**. `scripts/sdd-guard.mjs` enforces it (PreToolUse + Stop hooks in `.claude/settings.json`, plus a CI job). Write the spec first — use `/feature`, `/fix`, `/spec`. Exempt: views, CSS, `lang/**`, factories/seeders, `tests/**`, `public/**`, `wordpress-plugin/**`, all `*.md`. Bypass a genuinely trivial production tweak with `touch .sdd-skip` (local), or `[skip-sdd]` in a commit message / the `skip-sdd` PR label (CI). `scripts/spec-lint.mjs` (`npm run spec:lint`) validates spec structure + index completeness.
+**The gate is enforced.** A change that edits production code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (except Laravel-published framework configs), `resources/js/**` (except `resources/js/vendor/**`) — **must create/update a spec under `specs/` in the same change**. `scripts/sdd-guard.mjs` enforces it (PreToolUse + Stop hooks in `.claude/settings.json`, plus a CI job). Write the spec first — use `/feature`, `/fix`, `/spec`. Exempt: views, CSS, `lang/**`, factories/seeders, `tests/**`, `public/**`, `wordpress-plugin/**`, all `*.md`. Bypass a genuinely trivial production tweak with `touch .sdd-skip` (local), or `[skip-sdd]` in a commit message / the `skip-sdd` PR label (CI). `scripts/spec-lint.mjs` (`npm run spec:lint`) validates spec structure + index completeness, and checks that dependency versions and the module/spec counts stated in the docs still match `composer.json` / `package.json` and the tree.
 
 ## Common Commands
 
@@ -212,14 +212,14 @@ TIKZ_PNG_DPI=300                      # 72-600
 ## Conventions
 
 - **Layout**: Controllers in `app/Http/Controllers/` (API in `Api/`, Auth in `Auth/`), Services in `app/Services/`, Middleware/Requests in `app/Http/`, Policies in `app/Policies/`, Jobs in `app/Jobs/`, Console in `app/Console/Commands/`, Exceptions in `app/Exceptions/` (e.g. `DuplicateAssetException`).
-- **Frontend**: 15 Alpine modules in `resources/js/alpine/` registered in `resources/js/app.js`. Shared mixins/helpers (not top-level): `upload-metadata` (batch metadata form), `thumbnail-generator` (client-side PDF/video thumbs), `tag-input-core` (`parseTagNames` + `tagInputCore` — comma/paste splitting shared by all four tag inputs: asset edit, upload metadata, grid bulk bar, grid row). Asset grid markup is `resources/views/assets/partials/grid.blade.php`, shared between index and embed.
+- **Frontend**: 21 Alpine modules in `resources/js/alpine/` registered in `resources/js/app.js`. Shared mixins/helpers (not top-level): `upload-metadata` (batch metadata form), `thumbnail-generator` (client-side PDF/video thumbs), `tag-input-core` (`parseTagNames` + `tagInputCore` — comma/paste splitting shared by all four tag inputs: asset edit, upload metadata, grid bulk bar, grid row). Asset grid markup is `resources/views/assets/partials/grid.blade.php`, shared between index and embed.
 - **S3 keys**: `assets/{folder}/{uuid}.{ext}`; thumbnails `thumbnails/{folder}/{uuid}_thumb.{ext}` (JPEG).
 - **Errors**: services swallow + log + return null/[]. Controllers validate + return appropriate codes. API-role users get generic messages (`Controller::clientError()`); admin/editor see exception detail. Logs in `storage/logs/laravel.log`.
 - **Delete**: soft delete keeps S3 objects; hard delete (admin) clears S3 + DB. Discovery flags soft-deleted to prevent re-import.
 
 ## Testing
 
-**Pest** with in-memory SQLite (config in `phpunit.xml`: testing env, `:memory:`, array session/cache, sync queue). 957 tests at last count.
+**Pest** with in-memory SQLite (config in `phpunit.xml`: testing env, `:memory:`, array session/cache, sync queue).
 
 **Always run `php artisan config:clear &&` first** — a stale `bootstrap/cache/config.php` can point `RefreshDatabase` at the dev DB and wipe it.
 
