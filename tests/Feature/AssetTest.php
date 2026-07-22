@@ -477,6 +477,33 @@ test('guests cannot perform replace action', function () {
     $response->assertStatus(401);
 });
 
+test('api-role user cannot access the replace form', function () {
+    $apiUser = User::factory()->create(['role' => 'api']);
+    $asset = Asset::factory()->image()->create();
+
+    $response = $this->actingAs($apiUser)->get(route('assets.replace', $asset));
+
+    $response->assertForbidden();
+});
+
+test('api-role user cannot perform replace action', function () {
+    $apiUser = User::factory()->create(['role' => 'api']);
+    $asset = Asset::factory()->create([
+        'filename' => 'test.jpg',
+        's3_key' => 'assets/test-uuid.jpg',
+    ]);
+    $file = UploadedFile::fake()->image('replacement.jpg');
+
+    // authorize('replace') runs before validation/S3, so this is refused outright.
+    $response = $this->actingAs($apiUser)
+        ->postJson(route('assets.replace.store', $asset), [
+            'file' => $file,
+        ]);
+
+    $response->assertForbidden();
+    expect($asset->fresh()->filename)->toBe('test.jpg');
+});
+
 test('replace accepts file with different case extension', function () {
     $user = User::factory()->create();
     $asset = Asset::factory()->create([

@@ -147,25 +147,51 @@ class AssetApiController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // Persist every metadata field UpdateAssetRequest validates, mirroring the
+        // web AssetController::update so the two contracts don't drift. s3_key is
+        // never touched (ADR-006); filename is the editable display name.
         $asset->update(array_merge(
-            $request->only(['alt_text', 'caption', 'license_type', 'copyright']),
+            $request->only([
+                'filename', 'alt_text', 'caption', 'license_type',
+                'license_expiry_date', 'copyright', 'copyright_source',
+            ]),
             ['last_modified_by' => Auth::id()]
         ));
 
-        // Handle tags only if explicitly included in request
-        if ($request->has('tags')) {
-            $tagIds = Tag::resolveUserTagIds(TagInputParser::parse($request->input('tags', [])));
+        // Handle tags / reference tags only if explicitly included in the request
+        if ($request->has('tags') || $request->has('reference_tag_ids')) {
+            $tagIds = $request->has('tags')
+                ? Tag::resolveUserTagIds(TagInputParser::parse($request->input('tags', [])))
+                : null; // null signals "do not touch user tags"
 
-            // Preserve AI and reference tags with their current attached_by
-            $preservedPivotData = [];
-            foreach ($asset->aiTags as $tag) {
-                $preservedPivotData[$tag->id] = ['attached_by' => $tag->pivot->attached_by];
+            // Always preserve AI pivots verbatim
+            $aiPivotData = [];
+            foreach ($asset->aiTags as $aiTag) {
+                $aiPivotData[$aiTag->id] = ['attached_by' => $aiTag->pivot->attached_by];
             }
-            foreach ($asset->referenceTags as $tag) {
-                $preservedPivotData[$tag->id] = ['attached_by' => $tag->pivot->attached_by];
+
+            // Reference pivots: sync to the submitted list when present, else preserve
+            if ($request->has('reference_tag_ids')) {
+                $referenceIds = array_map('intval', $request->input('reference_tag_ids', []));
+                $referencePivotData = array_fill_keys($referenceIds, ['attached_by' => 'reference']);
+            } else {
+                $referencePivotData = [];
+                foreach ($asset->referenceTags as $refTag) {
+                    $referencePivotData[$refTag->id] = ['attached_by' => $refTag->pivot->attached_by];
+                }
             }
-            $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
-            $asset->tags()->sync($preservedPivotData + $userPivotData);
+
+            // User pivots: sync to the submitted list when present, else preserve
+            if ($tagIds !== null) {
+                $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
+            } else {
+                $userPivotData = [];
+                foreach ($asset->userTags as $userTag) {
+                    $userPivotData[$userTag->id] = ['attached_by' => $userTag->pivot->attached_by];
+                }
+            }
+
+            $asset->tags()->sync($aiPivotData + $referencePivotData + $userPivotData);
         }
 
         return response()->json([

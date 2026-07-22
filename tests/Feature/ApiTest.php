@@ -86,6 +86,55 @@ test('api can update asset', function () {
     expect($asset->caption)->toBe('Updated caption');
 });
 
+test('api update persists filename, license expiry, and copyright source', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create([
+        'user_id' => $user->id,
+        'filename' => 'old.jpg',
+        'copyright_source' => null,
+        'license_expiry_date' => null,
+    ]);
+
+    $response = $this->patchJson("/api/assets/{$asset->id}", [
+        'filename' => 'new-name.jpg',
+        'license_expiry_date' => '2030-01-01',
+        'copyright_source' => 'https://example.com/source',
+    ]);
+
+    $response->assertOk();
+
+    $asset->refresh();
+    expect($asset->filename)->toBe('new-name.jpg');
+    expect($asset->copyright_source)->toBe('https://example.com/source');
+    expect($asset->license_expiry_date->format('Y-m-d'))->toBe('2030-01-01');
+});
+
+test('api update syncs reference_tag_ids while preserving user and AI tags', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['user_id' => $user->id]);
+    $userTag = Tag::factory()->user()->create();
+    $aiTag = Tag::factory()->ai()->create();
+    $referenceTag = Tag::factory()->reference()->create();
+
+    $asset->tags()->attach($userTag->id, ['attached_by' => 'user']);
+    $asset->tags()->attach($aiTag->id, ['attached_by' => 'ai']);
+
+    $response = $this->patchJson("/api/assets/{$asset->id}", [
+        'reference_tag_ids' => [$referenceTag->id],
+    ]);
+
+    $response->assertOk();
+
+    $asset->refresh();
+    expect($asset->tags->pluck('id')->all())
+        ->toContain($userTag->id, $aiTag->id, $referenceTag->id);
+    expect($asset->referenceTags->pluck('id')->all())->toContain($referenceTag->id);
+});
+
 test('api can delete asset', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user);

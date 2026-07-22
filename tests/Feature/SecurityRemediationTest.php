@@ -95,21 +95,22 @@ test('asset download forces attachment and nosniff', function () {
 
 // ─── F3: role-aware error detail ──────────────────────────────────────────────
 
-test('api-role users get a generic replace error while editors see detail', function () {
+test('api-role users cannot replace while editors see detailed replace errors', function () {
     $asset = Asset::factory()->image()->create(['filename' => 'original.jpg']);
 
     $s3Service = Mockery::mock(S3Service::class);
     $s3Service->shouldReceive('replaceFile')->andThrow(new Exception('s3://secret-bucket detail'));
     $this->app->instance(S3Service::class, $s3Service);
 
+    // api-role is blocked from replace entirely (AssetPolicy::replace), so it can
+    // never reach — let alone see the internal detail of — a replace error.
     $apiUser = User::factory()->create(['role' => 'api']);
     $apiResponse = $this->actingAs($apiUser)->postJson(route('assets.replace.store', $asset), [
         'file' => UploadedFile::fake()->image('original.jpg'),
     ]);
-    $apiResponse->assertStatus(500);
-    expect($apiResponse->json('message'))->toBe('Failed to replace asset.');
-    expect($apiResponse->json('message'))->not->toContain('secret-bucket');
+    $apiResponse->assertForbidden();
 
+    // editors can replace and, when it fails, see the underlying detail (clientError).
     $editor = User::factory()->create(['role' => 'editor']);
     $editorResponse = $this->actingAs($editor)->postJson(route('assets.replace.store', $asset), [
         'file' => UploadedFile::fake()->image('original.jpg'),

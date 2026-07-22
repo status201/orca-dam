@@ -33,10 +33,12 @@ the key (see [ADR-006](../decisions/adr-006-immutable-s3-key.md)).
 - **REQ-2** — Replace regenerates the thumbnail and resize variants from
   scratch (old ones are deleted first) — stale derived images must never
   survive a replace.
-- **REQ-3** — Replace is authorized via `AssetPolicy::update` (a looser check
-  than the dedicated `AssetPolicy::replace` ability, which currently exists on
-  the policy but is not the one enforced by this controller — see Open
-  questions).
+- **REQ-3** — The mutating replace operations (`showReplace`, `replace`,
+  `storeThumbnail`) are authorized via the dedicated `AssetPolicy::replace`
+  ability (**admin/editor only**) — an `api`-role principal is refused, matching
+  the role matrix in [`authorization-policies.md`](authorization-policies.md).
+  (`download` streams content with no policy gate; `generateAiTags` keeps its
+  `update` check.)
 - **REQ-4** — CDN URLs for the asset are collected *before* the file is
   swapped and purged *after*, via `CloudflareService`, so a stale Cloudflare
   cache doesn't serve the old binary under the unchanged URL.
@@ -77,7 +79,7 @@ otherwise redirects back with an error flash.
 ### Layer touchpoints & ordering
 
 ```
-replace(): authorize(update)
+replace(): authorize(replace)                       [admin/editor only]
   → validate (same extension as current s3_key)
   → CloudflareService::collectAssetUrls($asset)      [before the swap]
   → S3Service::replaceFile()                          [overwrites s3_key in place]
@@ -126,6 +128,12 @@ Scenario: Guests cannot access or perform replace
   Then it is redirected to login
 # pinned by: tests/Feature/AssetTest.php
 
+Scenario: An api-role user cannot replace an asset
+  Given an authenticated user with role "api"
+  When they submit the replace action for an asset
+  Then the response status is 403 and the asset's file is not swapped
+# pinned by: tests/Feature/AssetTest.php
+
 Scenario: storeThumbnail uploads a base64 thumbnail for a video asset
   Given a video asset and a base64-encoded thumbnail image
   When storeThumbnail is called
@@ -151,15 +159,6 @@ Scenario: storeThumbnail requires authentication and a thumbnail field
 
 ## Open questions / future
 
-- `AssetPolicy` defines a dedicated `replace(User): bool` ability
-  (admin/editor only), but `AssetReplaceController::showReplace`/`replace` call
-  `$this->authorize('update', $asset)` instead of `$this->authorize('replace', ...)`
-  — since `update` is granted to all three roles (including `api`), an
-  API-role token can currently hit the replace endpoints even though the
-  policy's `replace` ability says it shouldn't be able to. Worth confirming
-  whether this is intentional (replace treated as a metadata-adjacent update)
-  or a policy-wiring gap; no test currently asserts API-role behavior on
-  `assets.replace.store` either way.
 - `download()`'s RFC 5987 filename-encoding/header-injection-guard logic has no
   dedicated test asserting the `Content-Disposition` header shape for a
   crafted filename.
