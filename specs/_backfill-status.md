@@ -37,56 +37,56 @@ spec's "Open questions / future", not a fabricated pin.
 
 ## Phase 3 — Feature specs
 
-### Wave A — assets & storage (13)
-- [ ] asset-model
-- [ ] asset-upload
-- [ ] chunked-upload
-- [ ] duplicate-detection
-- [ ] s3-storage
-- [ ] image-processing
-- [ ] asset-replace
-- [ ] asset-trash
-- [ ] bulk-operations
-- [ ] asset-search
-- [ ] s3-integrity
-- [ ] discovery-import
-- [ ] csv-export-import
+### Wave A — assets & storage (13) ✅
+- [x] asset-model
+- [x] asset-upload
+- [x] chunked-upload
+- [x] duplicate-detection
+- [x] s3-storage
+- [x] image-processing
+- [x] asset-replace
+- [x] asset-trash
+- [x] bulk-operations
+- [x] asset-search
+- [x] s3-integrity
+- [x] discovery-import
+- [x] csv-export-import
 
-### Wave B — tags (3)
-- [ ] tags
-- [ ] tag-input
-- [ ] ai-tagging
+### Wave B — tags (3) ✅
+- [x] tags
+- [x] tag-input
+- [x] ai-tagging
 
-### Wave C — auth & access (7)
-- [ ] authentication
-- [ ] authorization-policies
-- [ ] api-tokens-sanctum
-- [ ] jwt-auth
-- [ ] passkeys
-- [ ] two-factor-auth
-- [ ] user-management
+### Wave C — auth & access (7) ✅
+- [x] authentication
+- [x] authorization-policies
+- [x] api-tokens-sanctum
+- [x] jwt-auth
+- [x] passkeys
+- [x] two-factor-auth
+- [x] user-management
 
-### Wave D — API (3)
-- [ ] rest-api
-- [ ] reference-tags-api
-- [ ] api-docs-admin
+### Wave D — API (3) ✅
+- [x] rest-api
+- [x] reference-tags-api
+- [x] api-docs-admin
 
-### Wave E — platform / cross-cutting (8)
-- [ ] settings
-- [ ] localization
-- [ ] security-headers
-- [ ] iframe-embedding
-- [ ] upload-policy
-- [ ] cloudflare-purge
-- [ ] user-preferences
-- [ ] queue-jobs
+### Wave E — platform / cross-cutting (8) ✅
+- [x] settings
+- [x] localization
+- [x] security-headers
+- [x] iframe-embedding
+- [x] upload-policy
+- [x] cloudflare-purge
+- [x] user-preferences
+- [x] queue-jobs
 
-### Wave F — system & tools (5)
-- [ ] system-admin
-- [ ] maintenance-commands
-- [ ] tikz-render
-- [ ] client-side-tools
-- [ ] easter-egg-game
+### Wave F — system & tools (5) ✅
+- [x] system-admin
+- [x] maintenance-commands
+- [x] tikz-render
+- [x] client-side-tools
+- [x] easter-egg-game
 
 ## Phase 4 — Recipes (10)
 - [ ] add-a-service

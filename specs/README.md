@@ -214,6 +214,51 @@ specs/
   _backfill-status.md  ← multi-session backfill ledger (removed once the gate is armed)
   features/            ← one spec per feature
     _feature-template.md ·  copy this to start a new feature spec
+    # — assets & storage —
+    asset-model.md         ·  Asset entity, scopes, computed attrs, license fields
+    asset-upload.md        ·  direct upload pipeline (validate → dedup → S3 → process)
+    chunked-upload.md      ·  S3 multipart >=10MB, upload_sessions, retries, abort
+    duplicate-detection.md ·  etag dedup, DuplicateAssetException, 409 payload
+    s3-storage.md          ·  S3Service: keys, streaming, ContentType, CDN URL
+    image-processing.md    ·  thumbnails + S/M/L resizes, animated-GIF handling
+    asset-replace.md       ·  replace bytes, thumbnail regen, CDN purge
+    asset-trash.md         ·  soft delete / restore / force delete, S3 lifecycle
+    bulk-operations.md     ·  bulk tags/trash/restore/move/download/force-delete
+    asset-search.md        ·  search operators, URL-prefix stripping, sort values
+    s3-integrity.md        ·  verify-integrity command + job, s3_missing_at
+    discovery-import.md    ·  S3 discovery → import → ProcessDiscoveredAsset
+    csv-export-import.md   ·  33-column export; import diff → validate → apply
+    # — tags —
+    tags.md                ·  Tag types, "last attacher wins" attribution
+    tag-input.md           ·  TagInputParser + shared tag-input-core.js
+    ai-tagging.md          ·  Rekognition + Translate, GenerateAiTags job
+    # — auth & access —
+    authentication.md      ·  session login + auth.multi resolution
+    authorization-policies.md · the role × ability matrix (no return true)
+    api-tokens-sanctum.md  ·  long-lived Sanctum tokens + console commands
+    jwt-auth.md            ·  JwtGuard, claims, per-user encrypted secret
+    passkeys.md            ·  WebAuthn/FIDO2, 10/user cap, TOTP bypass
+    two-factor-auth.md     ·  TOTP setup / verify / recovery codes
+    user-management.md     ·  user CRUD + role assignment (admin-only)
+    # — API —
+    rest-api.md            ·  REST endpoint/pagination/filter/sort/error contract
+    reference-tags-api.md  ·  reference-tag add/remove endpoints (API-only create)
+    api-docs-admin.md      ·  /api-docs admin dashboard, tokens, JWT secrets
+    # — platform / cross-cutting —
+    settings.md            ·  Setting key-value model, 1h cache, groups
+    localization.md        ·  SetLocale, nl.json ownership, JS translation channels
+    security-headers.md    ·  SecurityHeaders middleware (nosniff, XFO, HSTS)
+    iframe-embedding.md    ·  AllowEmbedding CSP frame-ancestors + /assets/embed
+    upload-policy.md       ·  allowlist + AllowedUploadExtension + SVG sanitize
+    cloudflare-purge.md    ·  non-blocking CDN purge on replace / thumbnail regen
+    user-preferences.md    ·  encrypted users.preferences + profile settings
+    queue-jobs.md          ·  the 5 queued jobs and their dispatch
+    # — system & tools —
+    system-admin.md        ·  /system dashboard, queue, logs, web test runner
+    maintenance-commands.md ·  the 16 console commands + contracts
+    tikz-render.md         ·  TikzCompilerService pipeline + security posture
+    client-side-tools.md   ·  GIF maker, LaTeX→MathML, client TikZ; ToolUploadService
+    easter-egg-game.md     ·  GameScore, leaderboard, lazy-loaded bundle
   recipes/             ← repeatable how-tos / playbooks
     _recipe-template.md  ·  copy this to start a new recipe
   decisions/           ← Architecture Decision Records (the "why")
