@@ -88,17 +88,17 @@ spec's "Open questions / future", not a fabricated pin.
 - [x] client-side-tools
 - [x] easter-egg-game
 
-## Phase 4 — Recipes (10)
-- [ ] add-a-service
-- [ ] add-an-api-endpoint
-- [ ] add-a-policy-ability
-- [ ] add-a-migration
-- [ ] add-an-alpine-module
-- [ ] add-a-console-command
-- [ ] add-a-queued-job
-- [ ] add-a-setting
-- [ ] add-a-translated-string
-- [ ] write-a-test
+## Phase 4 — Recipes (10) ✅
+- [x] add-a-service
+- [x] add-an-api-endpoint
+- [x] add-a-policy-ability
+- [x] add-a-migration
+- [x] add-an-alpine-module
+- [x] add-a-console-command
+- [x] add-a-queued-job
+- [x] add-a-setting
+- [x] add-a-translated-string
+- [x] write-a-test
 
 ## Phase 5 — Build the gate (unarmed)
 - [ ] scripts/sdd-guard.mjs (isProductionPath + PROCEDURE)

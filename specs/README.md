@@ -260,7 +260,17 @@ specs/
     client-side-tools.md   ·  GIF maker, LaTeX→MathML, client TikZ; ToolUploadService
     easter-egg-game.md     ·  GameScore, leaderboard, lazy-loaded bundle
   recipes/             ← repeatable how-tos / playbooks
-    _recipe-template.md  ·  copy this to start a new recipe
+    _recipe-template.md      ·  copy this to start a new recipe
+    add-a-service.md         ·  a new app/Services/ service (DI, swallow+log)
+    add-an-api-endpoint.md   ·  route → AssetApiController action → policy → JSON
+    add-a-policy-ability.md  ·  a policy ability with explicit role lists
+    add-a-migration.md       ·  the ripple: migration → model → factory → CSV → search → API → tests
+    add-an-alpine-module.md  ·  a resources/js/alpine/ module + app.js registration
+    add-a-console-command.md ·  an artisan command + Feature/Console test
+    add-a-queued-job.md      ·  an app/Jobs/ job (dispatch, tries, sync-in-tests)
+    add-a-setting.md         ·  a runtime Setting (default, get/set, cache)
+    add-a-translated-string.md · a __() string + nl.json entry (lang:safe-update)
+    write-a-test.md          ·  Pest conventions, config:clear, factory states
   decisions/           ← Architecture Decision Records (the "why")
     README.md            ·  the ADR index (number / title / status)
     _adr-template.md     ·  copy this to start a new ADR
