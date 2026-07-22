@@ -4,15 +4,19 @@ namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Encoders\JpegEncoder;
+use Intervention\Image\Encoders\PngEncoder;
+use Intervention\Image\Encoders\WebpEncoder;
 use Intervention\Image\ImageManager;
+use Intervention\Image\Interfaces\ImageManagerInterface;
 
 class ImageProcessingService
 {
-    protected ImageManager $imageManager;
+    protected ImageManagerInterface $imageManager;
 
     public function __construct()
     {
-        $this->imageManager = new ImageManager(new Driver);
+        $this->imageManager = ImageManager::usingDriver(Driver::class);
     }
 
     /**
@@ -25,10 +29,10 @@ class ImageProcessingService
             return null;
         }
 
-        $image = $this->imageManager->read($imageContent);
+        $image = $this->imageManager->decodeBinary($imageContent);
         $image->scale(width: 300, height: 300);
 
-        return (string) $image->toJpeg(quality: 80);
+        return (string) $image->encode(new JpegEncoder(quality: 80));
     }
 
     /**
@@ -37,12 +41,12 @@ class ImageProcessingService
      */
     public function createResizedContent(string $imageContent, string $extension, ?int $width, ?int $height): array
     {
-        $image = $this->imageManager->read($imageContent);
+        $image = $this->imageManager->decodeBinary($imageContent);
         $image->scaleDown(width: $width, height: $height);
 
         if ($extension === 'gif') {
             return [
-                'content' => (string) $image->toJpeg(quality: 85),
+                'content' => (string) $image->encode(new JpegEncoder(quality: 85)),
                 'mime_type' => 'image/jpeg',
                 'extension' => 'jpg',
             ];
@@ -50,7 +54,7 @@ class ImageProcessingService
 
         if ($extension === 'png') {
             return [
-                'content' => (string) $image->toPng(),
+                'content' => (string) $image->encode(new PngEncoder),
                 'mime_type' => 'image/png',
                 'extension' => 'png',
             ];
@@ -58,7 +62,7 @@ class ImageProcessingService
 
         if ($extension === 'webp') {
             return [
-                'content' => (string) $image->toWebp(quality: 85),
+                'content' => (string) $image->encode(new WebpEncoder(quality: 85)),
                 'mime_type' => 'image/webp',
                 'extension' => 'webp',
             ];
@@ -67,7 +71,7 @@ class ImageProcessingService
         $outputExtension = in_array($extension, ['jpg', 'jpeg']) ? $extension : 'jpg';
 
         return [
-            'content' => (string) $image->toJpeg(quality: 85),
+            'content' => (string) $image->encode(new JpegEncoder(quality: 85)),
             'mime_type' => 'image/jpeg',
             'extension' => $outputExtension,
         ];
@@ -109,7 +113,7 @@ class ImageProcessingService
         }
 
         try {
-            $image = $this->imageManager->read($file->getRealPath());
+            $image = $this->imageManager->decodePath($file->getRealPath());
 
             return [
                 'width' => $image->width(),
@@ -127,7 +131,7 @@ class ImageProcessingService
      */
     public function getImageDimensionsFromData(string $imageData): array
     {
-        $image = $this->imageManager->read($imageData);
+        $image = $this->imageManager->decodeBinary($imageData);
 
         return ['width' => $image->width(), 'height' => $image->height()];
     }

@@ -3,7 +3,7 @@
 ```yaml
 id: image-processing
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -59,8 +59,18 @@ Called exclusively from `S3Service` (`generateThumbnail`,
 `generateResizedImages`, `getImageDimensions` inside `uploadFile`,
 `extractImageDimensions`) — this service never touches S3 or the filesystem
 itself, it only transforms in-memory byte strings. `ImageManager` (Intervention
-Image 3.x, GD driver) is instantiated once per `ImageProcessingService`
-instance.
+Image 4.x, GD driver) is built once per `ImageProcessingService` instance via
+`ImageManager::usingDriver(Driver::class)`.
+
+Decoding is explicit about its input kind: raw byte strings go through
+`decodeBinary()`, and the single filesystem path (`getImageDimensions()`) goes
+through `decodePath()` — Intervention 4 dropped the auto-detecting `read()`.
+Encoding likewise goes through explicit encoder objects
+(`Encoders\{JpegEncoder, PngEncoder, WebpEncoder}`) rather than the `toJpeg()` /
+`toPng()` / `toWebp()` shortcuts removed in 4.x; each returns an `EncodedImage`
+that is cast to a byte string. Intervention's own exceptions all extend
+`\Exception`, so the `getImageDimensions()` catch blocks still degrade to `[]`
+on an undecodable file.
 
 ## Scenarios (BDD)
 
