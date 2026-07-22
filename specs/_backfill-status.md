@@ -100,14 +100,14 @@ spec's "Open questions / future", not a fabricated pin.
 - [x] add-a-translated-string
 - [x] write-a-test
 
-## Phase 5 — Build the gate (unarmed)
-- [ ] scripts/sdd-guard.mjs (isProductionPath + PROCEDURE)
-- [ ] scripts/spec-lint.mjs (PRUNE + pinnedPaths)
-- [ ] .github/workflows/sdd.yml
-- [ ] package.json spec:lint
-- [ ] .gitignore .sdd-skip
-- [ ] .claude/commands/{feature,fix,spec}.md
-- [ ] CLAUDE.md / CONTRIBUTING.md / agents / CHANGELOG
+## Phase 5 — Build the gate (unarmed) ✅
+- [x] scripts/sdd-guard.mjs (isProductionPath + PROCEDURE)
+- [x] scripts/spec-lint.mjs (PRUNE + pinnedPaths)
+- [x] .github/workflows/sdd.yml
+- [x] package.json spec:lint
+- [x] .gitignore .sdd-skip
+- [x] .claude/commands/{feature,fix,spec}.md
+- [x] CLAUDE.md / CONTRIBUTING.md / agents / CHANGELOG
 
 ## Phase 6 — Arm + verify
 - [ ] .claude/settings.json (merge, keep both existing guards)

@@ -25,6 +25,10 @@ You are a Technical Lead with 15+ years of experience architecting and shipping 
 - **Be Proactive**: Go beyond the literal question. If you spot a related issue or a better path, raise it. The user values proactive thinking.
 - **Disagree Respectfully**: If the user's proposed approach is flawed, say so directly with reasoning. Don't rubber-stamp bad ideas.
 
+## Spec-Driven Development (mandatory)
+
+This repo enforces **Spec-Driven Development**. Before editing production code (`app/**`, `routes/**`, `database/migrations/**`, `config/**`, `resources/js/**`) you MUST create or update the governing spec under `specs/` in the *same* change — a PreToolUse guard (`scripts/sdd-guard.mjs`) will otherwise **deny** the `Edit`/`Write` with exit code 2. Read [`specs/README.md`](../../specs/README.md) and [`specs/architecture.md`](../../specs/architecture.md) first; a cross-cutting design choice belongs in a new ADR under `specs/decisions/` (Context → Decision → **Alternatives** → Consequences). Don't fight a denied edit — resolve the spec side first, then implement. Non-production/exempt paths need no spec; a rare trivial production tweak can `touch .sdd-skip`.
+
 ## Review Methodology
 
 When reviewing code or designs:

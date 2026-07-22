@@ -16,6 +16,20 @@ open one anyway, please follow the guidelines below.
 3. Run tests and formatting locally (see below).
 4. Open a PR against `main` with a clear description of *why*.
 
+## Specs (Spec-Driven Development)
+
+ORCA uses **Spec-Driven Development**: `specs/` is the architectural/behavioural
+source of truth (see [`specs/README.md`](specs/README.md) and
+[`specs/architecture.md`](specs/architecture.md)). A change that edits production
+code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (non-framework),
+`resources/js/**` — **must create or update a spec in the same change**. A guard
+(`scripts/sdd-guard.mjs`) enforces this via Claude Code hooks and a CI job. Write the
+spec first (`/feature`, `/fix`, `/spec` slash commands). Everything else (views, CSS,
+`lang/**`, factories/seeders, tests, `public/**`, `wordpress-plugin/**`, docs) is
+exempt. For a genuinely trivial production tweak, `touch .sdd-skip` (local) or add
+`[skip-sdd]` to the commit message / the `skip-sdd` PR label (CI). Run
+`npm run spec:lint` to check spec structure.
+
 ## Before committing
 
 ```bash
