@@ -77,3 +77,83 @@ jobs:
         run: |
           php artisan config:clear
           php artisan test --coverage
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, gd, exif, zip, bcmath, intl, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer
+      # Same gitignored runtime dirs as the phpunit job. .env.e2e uses the *file*
+      # session driver (specs/features/e2e-testing.md REQ-5), so
+      # storage/framework/sessions must exist before the app serves a request.
+      - name: Create runtime directories
+        run: mkdir -p bootstrap/cache storage/framework/{cache,sessions,views} storage/logs storage/e2e
+      # package:discover boots the app and reads AWS_* config. The suite itself
+      # runs against .env.e2e (committed); this .env only satisfies composer.
+      - name: Copy environment file
+        run: cp .env.example .env
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install Node dependencies
+        run: npm ci
+      # The Blade layouts use @vite, which throws without a build manifest.
+      - name: Build front-end assets
+        run: npm run build
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      # MinIO stands in for S3 (ADR-014). A service container can't override the
+      # image's command (`server /data`), so it runs as a plain docker step.
+      # Credentials/bucket mirror .env.e2e — nothing here is a secret.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio-e2e \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=orca-e2e \
+            -e MINIO_ROOT_PASSWORD=orca-e2e-secret \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:9000/minio/health/live && break
+            sleep 2
+          done
+      # Public read: the browser fetches asset/thumbnail URLs straight from the
+      # bucket, exactly as it would from S3 behind the CDN.
+      - name: Create the bucket
+        env:
+          AWS_ACCESS_KEY_ID: orca-e2e
+          AWS_SECRET_ACCESS_KEY: orca-e2e-secret
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          aws --endpoint-url http://127.0.0.1:9000 s3 mb s3://orca-e2e
+          aws --endpoint-url http://127.0.0.1:9000 s3api put-bucket-policy \
+            --bucket orca-e2e \
+            --policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::orca-e2e/*"]}]}'
+      # Playwright boots `artisan serve --env=e2e` itself and reseeds the fixtures.
+      - name: Run Playwright
+        run: npm run test:e2e
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+      - name: Laravel log on failure
+        if: failure()
+        run: tail -n 200 storage/logs/laravel.log || true

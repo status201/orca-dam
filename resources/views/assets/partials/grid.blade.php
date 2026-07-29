@@ -1,4 +1,4 @@
-<div x-data="assetGrid()">
+<div x-data="assetGrid()" data-testid="asset-grid">
     @include('assets.partials.grid-header')
 
     @include('assets.partials.grid-filters')
@@ -15,7 +15,7 @@
     @include('assets.partials.grid-bulk-modals')
 
     @else
-    <div class="text-center py-12">
+    <div class="text-center py-12" data-testid="asset-grid-empty">
         <i class="fas fa-images text-6xl text-gray-300 mb-4"></i>
         <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ __('No assets found') }}</h3>
         <p class="text-gray-500 mb-6">

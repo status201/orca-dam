@@ -3,7 +3,7 @@
 @section('title', __('Tags'))
 
 @section('content')
-<div x-data="tagManager()">
+<div x-data="tagManager()" data-testid="tags-page">
     <!-- Header with search -->
     <div class="mb-6">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -108,7 +108,7 @@
         <div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xxl:grid-cols-6 gap-4">
                 <template x-for="tag in tags" :key="tag.id">
-                    <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4 cursor-pointer relative"
+                    <div data-testid="tag-card" :data-tag-name="tag.name" class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4 cursor-pointer relative"
                          :class="isSelected(tag.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''"
                          @click="toggleSelect(tag.id, $event)">
                         <!-- Checkbox -->
@@ -123,7 +123,7 @@
                            :title="tag.name"
                            class="block mb-2 pr-6"
                            @click.stop>
-                            <h3 class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate" x-text="tag.name"></h3>
+                            <h3 data-testid="tag-card-name" class="text-lg font-semibold text-gray-900 hover:text-blue-600 truncate" x-text="tag.name"></h3>
                         </a>
                         <div class="flex items-center justify-between gap-2">
                             <p class="text-sm text-gray-600">
@@ -140,7 +140,7 @@
 
                                 <!-- Edit button (not for AI tags) -->
                                 <template x-if="tag.type !== 'ai'">
-                                    <button @click="editTag(tag.id, tag.name)"
+                                    <button @click="editTag(tag.id, tag.name)" data-testid="tag-card-edit"
                                             class="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded transition"
                                             :title="'{{ __('Edit tag') }}'">
                                         <i class="fas fa-edit text-sm"></i>
@@ -148,7 +148,7 @@
                                 </template>
 
                                 <!-- Delete button -->
-                                <button @click="deleteTag(tag.id, tag.name, tag.type)"
+                                <button @click="deleteTag(tag.id, tag.name, tag.type)" data-testid="tag-card-delete"
                                         class="delete text-gray-500 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition"
                                         :title="'{{ __('Delete tag') }}'">
                                     <i class="fas fa-trash text-sm"></i>
@@ -209,7 +209,7 @@
                         {{ __('Tag Name') }}
                     </label>
                     <input type="text"
-                           id="editTagName"
+                           id="editTagName" data-testid="tag-edit-name"
                            x-model="editingTagName"
                            required
                            maxlength="50"
@@ -222,7 +222,7 @@
                             class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                         {{ __('Cancel') }}
                     </button>
-                    <button type="submit"
+                    <button type="submit" data-testid="tag-edit-save"
                             class="px-4 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
                         <i class="fas fa-save mr-2"></i> {{ __('Save') }}
                     </button>

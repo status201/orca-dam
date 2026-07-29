@@ -9,12 +9,12 @@
         <p class="text-gray-600 mt-2">{{ __('Upload images and files to your S3 bucket') }}</p>
     </div>
 
-    <div x-data="assetUploader()" class="bg-white rounded-lg shadow-lg p-6">
+    <div x-data="assetUploader()" data-testid="upload-page" class="bg-white rounded-lg shadow-lg p-6">
         <!-- Folder selector -->
         <div class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Upload to Folder') }}</label>
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <select x-model="selectedFolder"
+                <select x-model="selectedFolder" data-testid="upload-folder"
                         class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
                     <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                 </select>
@@ -92,7 +92,7 @@
              :class="dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'"
              class="border-2 border-dashed rounded-lg p-12 text-center transition-colors">
 
-            <input type="file"
+            <input type="file" data-testid="upload-input"
                    x-ref="fileInput"
                    @change="handleFiles"
                    multiple
@@ -124,7 +124,7 @@
 
             <div class="invert-scrollbar-colors space-y-2 max-h-96 overflow-y-auto">
                 <template x-for="(file, index) in selectedFiles" :key="index">
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div data-testid="upload-row" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
                             <template x-if="filePreviews[index]">
                                 <img :src="filePreviews[index]" class="w-10 h-10 object-cover rounded flex-shrink-0" alt="">
@@ -155,21 +155,21 @@
                             </div>
                         </template>
 
-                        <template x-if="uploadResults[index]?.status === 'uploaded'">
-                            <span class="mx-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <template data-testid="upload-status-uploaded-wrap" x-if="uploadResults[index]?.status === 'uploaded'">
+                            <span data-testid="upload-status-uploaded" class="mx-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 <i class="fas fa-check mr-1"></i> {{ __('Uploaded') }}
                             </span>
                         </template>
 
                         <template x-if="uploadResults[index]?.status === 'duplicate'">
-                            <span class="mx-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
+                            <span data-testid="upload-status-duplicate" class="mx-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
                                   :title="{{ "'" }}{{ __('Already in library') }}{{ "'" }}">
                                 <i class="fas fa-clone mr-1"></i> {{ __('Duplicate file') }}
                             </span>
                         </template>
 
                         <template x-if="uploadResults[index]?.status === 'failed'">
-                            <span class="mx-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"
+                            <span data-testid="upload-status-failed" class="mx-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"
                                   :title="uploadResults[index].error">
                                 <i class="fas fa-exclamation-triangle mr-1"></i> {{ __('Failed') }}
                             </span>
@@ -187,13 +187,13 @@
 
             <!-- Upload button -->
             <div class="mt-6 flex justify-end space-x-3" x-show="!batchComplete">
-                <button @click="clearAll()"
+                <button @click="clearAll()" data-testid="upload-clear"
                         :disabled="uploading"
                         class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                     {{ __('Clear All') }}
                 </button>
 
-                <button @click="uploadFiles"
+                <button @click="uploadFiles" data-testid="upload-submit"
                         :disabled="uploading || selectedFiles.length === 0"
                         class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
                     <template x-if="!uploading">
@@ -208,7 +208,7 @@
 
         <!-- Duplicates results panel -->
         <div x-show="batchComplete && duplicateEntries().length > 0" x-cloak class="mt-8">
-            <div class="border border-amber-200 bg-amber-50 rounded-lg overflow-hidden">
+            <div data-testid="upload-duplicates" class="border border-amber-200 bg-amber-50 rounded-lg overflow-hidden">
                 <div class="px-4 py-3 bg-amber-100 border-b border-amber-200 flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-amber-900 flex items-center">
                         <i class="fas fa-clone mr-2"></i>
@@ -312,7 +312,7 @@
                         <span x-text="bulkCopyLabel()"></span>
                     </button>
 
-                    <button @click="revealDuplicatesInLibrary()"
+                    <button @click="revealDuplicatesInLibrary()" data-testid="upload-reveal-duplicates"
                             type="button"
                             :title="{{ "'" }}{{ __('Reveal in library') }}{{ "'" }}"
                             class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-amber-700 rounded hover:bg-amber-800">
@@ -357,7 +357,7 @@
         <div x-show="batchComplete && (duplicateEntries().length > 0 || failedEntries().length > 0)"
              x-cloak
              class="mt-6 flex justify-end">
-            <button @click="goToLibrary()"
+            <button @click="goToLibrary()" data-testid="upload-continue"
                     type="button"
                     class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
                 {{ __('Continue to library') }} <i class="fas fa-arrow-right ml-2"></i>

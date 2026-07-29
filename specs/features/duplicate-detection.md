@@ -157,6 +157,7 @@ Scenario: Discovery import skips a duplicate etag without queuing a job
 - Feature: `tests/Feature/DuplicatePreventionTest.php`, `tests/Feature/DuplicatePayloadTest.php`,
   `tests/Feature/DiscoverTest.php`, `tests/Feature/ChunkedUploadTest.php`
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/asset-upload.spec.js` — re-uploading identical bytes through the browser, against real etags from the bucket.
 
 ## Open questions / future
 

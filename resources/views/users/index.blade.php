@@ -22,14 +22,14 @@
             <h1 class="text-3xl font-bold text-gray-900">{{ __('Users') }}</h1>
             <p class="text-gray-600 mt-2">{{ __('Manage system users and their roles') }}</p>
         </div>
-        <a href="{{ route('users.create') }}" class="px-4 py-2 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover flex items-center">
+        <a href="{{ route('users.create') }}" data-testid="users-create" class="px-4 py-2 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover flex items-center">
             <i class="fas fa-plus mr-2"></i> {{ __('Add User') }}
         </a>
     </div>
 </div>
 
 <div class="bg-white rounded-lg shadow overflow-x-auto invert-scrollbar-colors">
-    <table class="min-w-full divide-y divide-gray-200">
+    <table data-testid="users-table" class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
             <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -60,7 +60,7 @@
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             @foreach($users as $user)
-            <tr>
+            <tr data-testid="user-row" data-user-id="{{ $user->id }}">
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
                         <div>
@@ -74,11 +74,11 @@
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-900">{{ $user->email }}</div>
+                    <div data-testid="user-row-email" class="text-sm text-gray-900">{{ $user->email }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2 py-1 text-xs font-semibold rounded-full @if($user->isAdmin()) bg-purple-100 text-purple-700 @elseif($user->isApiUser()) bg-red-100 text-red-700 @else bg-blue-100 text-blue-700 @endif">
-                        {{ ucfirst($user->role) }}
+                        <span data-testid="user-row-role">{{ ucfirst($user->role) }}</span>
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -118,7 +118,7 @@
                     @endif
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <a href="{{ route('users.edit', $user) }}"
+                    <a href="{{ route('users.edit', $user) }}" data-testid="user-row-edit"
                        title="{{ __('Edit') }}"
                        class="text-orca-black hover:text-orca-black-hover pr-2 mr-3">
                         <i class="fas fa-edit"></i>
@@ -127,7 +127,7 @@
                         <button type="button"
                             class="warning text-red-600 hover:text-red-900 pr-2"
                             title="{{ __('Delete') }}"
-                            @click="confirmDelete({{ $user->id }}, '{{ addslashes($user->name) }}', {{ $user->assets_count }})">
+                            data-testid="user-row-delete" @click="confirmDelete({{ $user->id }}, '{{ addslashes($user->name) }}', {{ $user->assets_count }})">
                             <i class="fas fa-trash"></i>
                         </button>
                     @endif
@@ -187,7 +187,7 @@
                 {{ __('Cancel') }}
             </x-secondary-button>
 
-            <x-danger-button class="warning ms-3"
+            <x-danger-button data-testid="user-delete-confirm" class="warning ms-3"
                 :disabled="false"
                 x-bind:disabled="deleteUserAssetCount > 0 && !transferToUserId">
                 {{ __('Delete User') }}

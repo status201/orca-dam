@@ -140,3 +140,4 @@ Scenario: Exclude handles null alt_text and caption gracefully
 - Feature: `tests/Feature/AssetTest.php` (search via the index endpoint,
   including the URL-stripping scenario end-to-end)
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/asset-grid.spec.js` — search, type filter, sort and pagination as the grid actually drives them.

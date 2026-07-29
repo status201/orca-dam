@@ -172,6 +172,7 @@ Scenario: Deleting a user with assets fails without a transfer target
   transfer validation.
 - Unit: `tests/Unit/Policies/UserPolicyTest.php` — the ability matrix in isolation.
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/user-management.spec.js` — create → re-role → delete, plus the transfer-target gate and the self-delete prohibition.
 
 ## Open questions / future
 

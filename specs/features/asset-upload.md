@@ -162,6 +162,7 @@ Scenario: applyUploadMetadata is a no-op when everything is null/empty
   `php artisan config:clear && php artisan test`
 - Unit: `tests/Unit/AssetProcessingServiceTest.php`, `tests/Unit/Jobs/GenerateAiTagsTest.php`
 - Duplicate handling is pinned separately — see [`duplicate-detection.md`](duplicate-detection.md).
+- E2E: `tests/e2e/asset-upload.spec.js` — a real browser upload that round-trips bytes to the MinIO bucket and back as a thumbnail.
 
 ## Open questions / future
 

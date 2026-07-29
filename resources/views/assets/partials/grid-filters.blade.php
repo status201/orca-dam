@@ -1,5 +1,5 @@
     <!-- Active Filters Bar -->
-    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || user || initialTags.length > 0 || initialIds.length > 0)" x-cloak class="active-filters mb-4 flex flex-wrap items-center gap-2">
+    <div x-show="!navigating && (appliedSearch || (folder && folder !== rootFolder && folderCount > 1) || type || user || initialTags.length > 0 || initialIds.length > 0)" x-cloak data-testid="grid-active-filters" class="active-filters mb-4 flex flex-wrap items-center gap-2">
         <span class="text-sm text-gray-500 font-medium">{{ __('Active filters') }}:</span>
 
         <!-- Search pill -->
@@ -59,7 +59,7 @@
 
         <!-- Clear all -->
         <button @click="search = ''; folder = ''; type = ''; user = ''; userName = ''; selectedTags = []; initialIds = []; applyFilters()"
-                class="text-sm text-gray-500 hover:text-gray-700 underline ml-2">
+                data-testid="grid-clear-filters" class="text-sm text-gray-500 hover:text-gray-700 underline ml-2">
             {{ __('Clear all filters') }}
         </button>
     </div>

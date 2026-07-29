@@ -3,7 +3,7 @@
 @section('title', $asset->filename)
 
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="assetDetail({{ Js::from($cycleNav) }})">
+<div class="max-w-7xl mx-auto" data-testid="asset-detail" x-data="assetDetail({{ Js::from($cycleNav) }})">
     <!-- Header: mirrors the body grid so the cycle nav lines up with the image's right edge -->
     <div class="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
         <div class="lg:col-span-2 flex flex-wrap items-center justify-between gap-3">
@@ -324,7 +324,7 @@
         <div class="space-y-6">
             <!-- Details card -->
             <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-bold mb-4 break-words">{{ $asset->filename }}</h2>
+                <h2 data-testid="asset-detail-filename" class="text-2xl font-bold mb-4 break-words">{{ $asset->filename }}</h2>
 
                 <dl class="space-y-3 text-sm">
                     <div>
@@ -465,13 +465,13 @@
 
                 <div class="space-y-3">
                     @can('update', $asset)
-                    <a href="{{ route('assets.edit', $asset) }}"
+                    <a href="{{ route('assets.edit', $asset) }}" data-testid="asset-detail-edit"
                        class="block w-full px-4 py-2 bg-orca-black text-white text-center rounded-lg hover:bg-orca-black-hover">
                         <i class="fas fa-edit mr-2"></i> {{ __('Edit Asset') }}
                     </a>
                     @endcan
 
-                    <button @click="downloadAsset('{{ route('assets.download', $asset) }}')"
+                    <button @click="downloadAsset('{{ route('assets.download', $asset) }}')" data-testid="asset-detail-download"
                             :disabled="downloading"
                             :class="downloading ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'"
                             class="w-full px-4 py-2 text-white rounded-lg transition-all duration-300">
@@ -480,7 +480,7 @@
                     </button>
 
                     @can('replace', $asset)
-                        <a href="{{ route('assets.replace', $asset) }}"
+                        <a href="{{ route('assets.replace', $asset) }}" data-testid="asset-detail-replace"
                            class="block w-full px-4 py-2 bg-amber-600 text-white text-center rounded-lg hover:bg-amber-700">
                             <i class="fas fa-shuffle mr-2"></i> {{ __('Replace Asset') }}
                         </a>
@@ -493,7 +493,7 @@
                         @csrf
                         @method('DELETE')
                         <button type="submit"
-                                class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                data-testid="asset-detail-delete" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
                             <i class="fas fa-trash mr-2"></i> {{ __('Delete Asset') }}
                         </button>
                     </form>

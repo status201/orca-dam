@@ -69,7 +69,7 @@
                 <a href="{{ route('users.index') }}" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                     {{ __('Cancel') }}
                 </a>
-                <button type="submit" class="px-4 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
+                <button type="submit" data-testid="user-form-submit" class="px-4 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
                     <i class="fas fa-save mr-2"></i> {{ __('Create User') }}
                 </button>
             </div>

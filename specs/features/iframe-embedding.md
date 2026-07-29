@@ -134,6 +134,7 @@ Scenario: The embed browser omits nav/footer chrome but honors filters
   (CSP construction, JSON-string domains, X-Frame-Options removal),
   `tests/Feature/SecurityRemediationTest.php` (malformed-domain rejection)
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/embed.spec.js` — the embed view in a real browser (no app nav, `frame-ancestors` header, filters).
 
 ## Open questions / future
 

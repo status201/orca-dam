@@ -161,3 +161,4 @@ Scenario: bulkForceDeleteTrashed only affects assets that are trashed
 - Feature: `tests/Feature/AssetTest.php`, `tests/Feature/BulkTrashTest.php`
 - Unit: `tests/Unit/Policies/AssetPolicyTest.php` (role matrix for delete/restore/forceDelete)
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/asset-trash.spec.js` — delete → trash → restore, and an admin permanent delete, driven through the UI.

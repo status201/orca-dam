@@ -7,6 +7,7 @@ version: 1
 owner: core
 related:
   - architecture
+  - e2e-testing
   - asset-model
   - image-processing
   - asset-upload
@@ -52,6 +53,14 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   naming used by `generateThumbnail()`/`generateResizedImages()` exactly, so
   moving an asset (bulk move) can predict where its thumbnails/resizes will
   land without regenerating them.
+- **REQ-7** — The `S3Client` is built from the `s3` disk config *including*
+  `endpoint` and `use_path_style_endpoint` when they are set, so the service can
+  be pointed at any S3-compatible endpoint (the MinIO bucket the E2E suite runs
+  against — [`e2e-testing.md`](e2e-testing.md) REQ-2 — or an R2/Wasabi-style
+  provider). Both keys already existed in `config/filesystems.php` for the
+  Flysystem disk; the service simply stopped ignoring them. When `endpoint` is
+  unset the client is constructed exactly as before (region + credentials only),
+  so real-AWS behaviour is unchanged.
 
 ## Technical design
 
@@ -81,6 +90,9 @@ getObjectContent(s3Key): ?string
 getPublicBaseUrl(): string                  # static — custom_domain setting > AWS_URL
 getUrl(s3Key): string
 getRootFolder() / getConfiguredFolders() / getRootPrefix(): static helpers over the Setting model
+setS3Client(S3Client): static               # test seam — swap the underlying AWS client
+__construct(ImageProcessingService)         # builds S3Client from the `s3` disk config,
+                                            # incl. endpoint + use_path_style_endpoint (REQ-7)
 sanitizeFilename(filename): string          # static
 ensureExtension(filename, ext, fallback): string   # static
 ```
@@ -175,12 +187,28 @@ Scenario: listFolders paginates common prefixes across pages
   Given folder prefixes spanning multiple ListObjectsV2 pages
   Then listFolders() returns the complete set
 # pinned by: tests/Unit/Services/S3ServiceTest.php
+
+Scenario: A configured endpoint points the client at an S3-compatible service
+  Given filesystems.disks.s3.endpoint is http://127.0.0.1:9000 with path-style enabled
+  When S3Service is constructed
+  Then its S3Client targets that endpoint and uses path-style addressing
+# pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
+
+Scenario: No endpoint config leaves AWS addressing untouched
+  Given filesystems.disks.s3.endpoint is null
+  When S3Service is constructed
+  Then its S3Client resolves the regional AWS endpoint and is not path-style
+# pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 ```
 
 ## Tests & verification
 
-- Unit: `tests/Unit/S3ServiceTest.php`, `tests/Unit/Services/S3ServiceTest.php`
+- Unit: `tests/Unit/S3ServiceTest.php`, `tests/Unit/Services/S3ServiceTest.php`,
+  `tests/Unit/Services/S3ServiceEndpointTest.php`
 - Run: `php artisan config:clear && php artisan test`
+- E2E: the streaming/hardening core the unit tests only reach indirectly is
+  exercised for real against MinIO by `tests/e2e/asset-upload.spec.js`
+  (see [`e2e-testing.md`](e2e-testing.md)).
 
 ## Open questions / future
 

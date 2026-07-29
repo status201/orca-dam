@@ -6,13 +6,13 @@
     @endphp
     <!-- Asset grid -->
     <!-- Grid View -->
-    <div x-show="viewMode === 'grid'" x-cloak class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 xxl:grid-cols-12 gap-4">
+    <div x-show="viewMode === 'grid'" x-cloak data-testid="asset-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 xxl:grid-cols-12 gap-4">
         @foreach($assets as $asset)
-        <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
+        <div data-testid="asset-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
              x-data="assetCard({{ $asset->id }})"
              @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset).$showSuffix }}'; }">
             <!-- Selection checkbox -->
-            <div class="absolute top-2 left-2 z-20"
+            <div data-testid="asset-card-checkbox" class="absolute top-2 left-2 z-20"
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                  @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
                 <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
@@ -72,7 +72,7 @@
                             :disabled="downloading"
                             :class="downloading ? 'bg-green-600' : 'bg-white hover:bg-gray-100'"
                             :title="downloading ? @js(__('Downloading...')) : @js(__('Download'))"
-                            class="text-gray-900 px-3 py-2 rounded-lg transition-all duration-300 mr-2">
+                            data-testid="asset-card-download" class="text-gray-900 px-3 py-2 rounded-lg transition-all duration-300 mr-2">
                         <i :class="downloading ? 'fas fa-spinner fa-spin text-white' : 'fas fa-download'"></i>
                     </button>
                     <button @click.stop="copyAssetUrl('{{ $asset->url }}')"
@@ -81,7 +81,7 @@
                             class="text-gray-900 px-3 py-2 rounded-lg transition-all duration-300 mr-2">
                         <i :class="copied ? 'fas fa-check text-white' : 'fas fa-copy'"></i>
                     </button>
-                    <a href="{{ route('assets.edit', $asset) }}"
+                    <a href="{{ route('assets.edit', $asset) }}" data-testid="asset-card-edit"
                        @click.stop
                        class="bg-white text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                        title="{{ __('Edit') }}">
@@ -92,7 +92,7 @@
 
             <!-- Info -->
             <div class="p-3">
-                <p class="text-sm font-medium text-gray-900 truncate" title="{{ $asset->filename }}">
+                <p data-testid="asset-card-filename" class="text-sm font-medium text-gray-900 truncate" title="{{ $asset->filename }}">
                     {{ $asset->filename }}
                 </p>
                 <div class="text-xs text-gray-500 mt-1 space-y-0.5">
@@ -120,17 +120,17 @@
     </div>
 
     <!-- Masonry View — variable-aspect cards in CSS columns; reads top-to-bottom within each column -->
-    <div x-show="viewMode === 'masonry'" x-cloak class="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3">
+    <div x-show="viewMode === 'masonry'" x-cloak data-testid="asset-masonry-view" class="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-3">
         @foreach($assets as $asset)
         @php
             $isImageLike = $asset->isImage() || $asset->isSvg();
             $hasDims = $asset->width && $asset->height;
         @endphp
-        <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer mb-3 break-inside-avoid"
+        <div data-testid="asset-masonry-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer mb-3 break-inside-avoid"
              x-data="assetCard({{ $asset->id }})"
              @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset).$showSuffix }}'; }">
             <!-- Selection checkbox -->
-            <div class="absolute top-2 left-2 z-20"
+            <div data-testid="asset-masonry-checkbox" class="absolute top-2 left-2 z-20"
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                  @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
                 <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
@@ -231,7 +231,7 @@
     </div>
 
     <!-- List/Table View -->
-    <div x-show="viewMode === 'list'" x-cloak class="bg-white rounded-lg shadow overflow-hidden">
+    <div x-show="viewMode === 'list'" x-cloak data-testid="asset-list-view" class="bg-white rounded-lg shadow overflow-hidden">
         <div class="overflow-x-auto invert-scrollbar-colors">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -268,12 +268,12 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($assets as $asset)
-                    <tr x-data="assetRow({{ $asset->id }}, @js($asset->tags->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'attached_by' => $t->pivot->attached_by ?? $t->type])->toArray()), '{{ $asset->license_type }}', '{{ $asset->url }}')"
+                    <tr data-testid="asset-row" data-asset-id="{{ $asset->id }}" x-data="assetRow({{ $asset->id }}, @js($asset->tags->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'type' => $t->type, 'attached_by' => $t->pivot->attached_by ?? $t->type])->toArray()), '{{ $asset->license_type }}', '{{ $asset->url }}')"
                         class="hover:bg-gray-50 transition-colors">
 
                         <!-- Selection checkbox -->
                         <td class="px-4 py-3 text-center">
-                            <div @click="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)"
+                            <div data-testid="asset-row-checkbox" @click="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)"
                                  :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
                                  class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
                                 <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
@@ -330,7 +330,7 @@
 
                         <!-- Filename -->
                         <td class="px-4 py-3">
-                            <div class="text-sm font-medium text-gray-900">{{ $asset->filename }}</div>
+                            <div data-testid="asset-row-filename" class="text-sm font-medium text-gray-900">{{ $asset->filename }}</div>
                             <div class="text-xs text-gray-500 mt-1">
                                 <span title="{{ __('Last modified') }} {{ $asset->updated_at }}">{{ $asset->updated_at->diffForHumans() }}</span>
                                 <span class="mx-1">•</span>
@@ -343,7 +343,7 @@
                             <div class="flex gap-3">
                                 <a href="{{ route('assets.show', $asset).$showSuffix }}"
                                    class="text-blue-600 hover:text-blue-800"
-                                   title="{{ __('View asset') }}">
+                                   data-testid="asset-row-view" title="{{ __('View asset') }}">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <button @click="copyUrl()"
@@ -353,18 +353,18 @@
                                 </button>
                                 <a href="{{ route('assets.edit', $asset) }}"
                                    class="attention text-yellow-600 hover:text-yellow-800"
-                                   title="{{ __('Edit asset') }}">
+                                   data-testid="asset-row-edit" title="{{ __('Edit asset') }}">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <a href="{{ route('assets.replace', $asset) }}"
                                    class="attention text-amber-600 hover:text-amber-800"
-                                   title="{{ __('Replace asset') }}">
+                                   data-testid="asset-row-replace" title="{{ __('Replace asset') }}">
                                     <i class="fas fa-shuffle"></i>
                                 </a>
                                 <button @click="deleteAsset()"
                                         :disabled="loading"
                                         class="text-red-800 hover:text-red-900 disabled:opacity-50"
-                                        title="{{ __('Delete asset') }}">
+                                        data-testid="asset-row-delete" title="{{ __('Delete asset') }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -409,7 +409,7 @@
 
                                 <!-- Add Tag Button/Input -->
                                 <div x-show="!addingTag">
-                                    <button @click="showAddTagInput()"
+                                    <button @click="showAddTagInput()" data-testid="asset-row-tag-add"
                                             :disabled="loading"
                                             class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">
                                         <i class="fas fa-plus mr-1"></i> {{ __('Add') }}
@@ -431,7 +431,7 @@
                                                @blur="setTimeout(() => showSuggestions = false, 200)"
                                                @focus="filterTagSuggestions()"
                                                class="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                                               placeholder="{{ __('Tag name') }}"
+                                               data-testid="asset-row-tag-input" placeholder="{{ __('Tag name') }}"
                                                style="width: 120px;">
 
                                         <!-- Autocomplete dropdown -->
@@ -464,7 +464,7 @@
 
                         <!-- License with Inline Editing -->
                         <td class="px-4 py-3">
-                            <select x-model="license"
+                            <select x-model="license" data-testid="asset-row-license"
                                     @change="updateLicense()"
                                     :disabled="loading"
                                     class="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50">

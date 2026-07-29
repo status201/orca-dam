@@ -179,14 +179,17 @@ Scenario: Bulk add tags splits comma-joined values across every targeted asset
   ("add tags splits a comma-joined value...", "add tags dedups within a single
   request", "bulk add tags splits comma-joined values").
 - Run: `php artisan config:clear && php artisan test tests/Unit/TagInputParserTest.php tests/Feature/TagTest.php`
-- The JS side (`tag-input-core.js`) has no dedicated JS test suite in this repo
-  (no JS test runner is configured) — see "Open questions" below.
+- The JS side (`tag-input-core.js`) still has no *unit* test (no JS unit-test
+  runner is configured), but it is now exercised in a real browser by
+  `tests/e2e/asset-detail.spec.js` — comma splitting on the edit page and the
+  inline row input — see [`e2e-testing.md`](e2e-testing.md).
 
 ## Open questions / future
 
-- `tag-input-core.js` (`parseTagNames`, `tagInputCore`) has no automated test
-  coverage — the repo has no JS unit-test runner wired up. The four Alpine
-  widgets that consume it (`asset-editor.js`, `upload-metadata.js`,
-  `asset-grid.js` bulk bar + row) are exercised only indirectly, through the
-  Feature tests that hit the backend endpoints they eventually POST to. This is
-  a coverage gap, not a documented behaviour — flagged here rather than pinned.
+- `tag-input-core.js` (`parseTagNames`, `tagInputCore`) has no *unit* coverage —
+  the repo has no JS unit-test runner wired up. Two of the four Alpine widgets
+  that consume it (`asset-editor.js`, `asset-grid.js`'s row input) are now driven
+  in a browser by the E2E suite; the bulk bar's input is covered indirectly by
+  `tests/e2e/bulk-operations.spec.js`, and `upload-metadata.js`'s batch-metadata
+  input is still untested. A `parseTagNames` unit test would still be cheaper
+  than the browser path for the pure-parsing rules.

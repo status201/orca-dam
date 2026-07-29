@@ -161,6 +161,7 @@ Scenario: A valid Sanctum token still authenticates when JWT is disabled
 - Feature: `tests/Feature/Middleware/AuthenticateMultipleTest.php` — guard-order
   resolution, the JWT env/setting double-gate (REQ-3), 401 fallback.
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/auth.spec.js` — real-browser login, bad-password error, logout, guest redirect.
 
 ## Open questions / future
 

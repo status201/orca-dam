@@ -137,6 +137,7 @@ Scenario: Changing the embed allow-list takes effect without a deploy
   settings), `tests/Feature/Middleware/AllowEmbeddingTest.php` (a setting change
   flowing through to request behaviour)
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/system-settings.spec.js` — a setting changed in the UI persisting and changing grid behaviour.
 
 ## Open questions / future
 

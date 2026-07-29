@@ -174,6 +174,7 @@ Scenario: Non-admin cannot generate or revoke a JWT secret
   regenerate/revoke).
 - Run: `php artisan config:clear && php artisan test tests/Feature/JwtSecretManagementTest.php`.
 - Style: `./vendor/bin/pint --test`.
+- E2E: `tests/e2e/api-docs.spec.js` — token create/revoke in the browser, and the issued token authenticating a REST call.
 
 ## Open questions / future
 

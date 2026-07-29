@@ -260,6 +260,7 @@ specs/
     user-preferences.md    ·  encrypted users.preferences + profile settings
     queue-jobs.md          ·  the 5 queued jobs and their dispatch
     # — system & tools —
+    e2e-testing.md         ·  Playwright browser suite: roles, seeding, MinIO, CI
     system-admin.md        ·  /system dashboard, queue, logs, web test runner
     maintenance-commands.md ·  the 16 console commands + contracts
     tikz-render.md         ·  TikzCompilerService pipeline + security posture
@@ -277,6 +278,7 @@ specs/
     add-a-setting.md         ·  a runtime Setting (default, get/set, cache)
     add-a-translated-string.md · a __() string + nl.json entry (lang:safe-update)
     write-a-test.md          ·  Pest conventions, config:clear, factory states
+    write-an-e2e-test.md     ·  Playwright spec: data-testid, role state, reseed
   decisions/           ← Architecture Decision Records (the "why")
     README.md            ·  the ADR index (number / title / status)
     _adr-template.md     ·  copy this to start a new ADR
@@ -294,6 +296,7 @@ specs/
     adr-011-settings-in-db.md                   ·  runtime settings in the DB
     adr-012-reference-tags-api-only.md          ·  reference tags API-created only
     adr-013-wordpress-plugin-separate-stream.md ·  WP plugin is a separate release stream
+    adr-014-playwright-e2e-real-stack.md        ·  Playwright E2E on a real stack (MinIO)
 ```
 
 > This map grows as the backfill lands (see `_backfill-status.md` while it exists).

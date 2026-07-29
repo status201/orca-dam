@@ -211,6 +211,7 @@ Scenario: An API-role user can still reach the tools pages (auth-only, no role g
 - Feature: `tests/Feature/ToolsTest.php` (SVG/SVG-fonts/PNG/tex-template upload
   paths, metadata application, validation) — `php artisan config:clear && php artisan test`
 - Unit: `tests/Unit/Services/ToolUploadServiceTest.php`
+- E2E: `tests/e2e/tools.spec.js` — each tool page loads and boots its JS without a page error.
 
 ## Open questions / future
 
