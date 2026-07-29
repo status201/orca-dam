@@ -114,6 +114,11 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          # Fall back to the previous browser cache when the lockfile changes for
+          # any other reason: `playwright install` then only tops up what's stale
+          # instead of re-downloading Chromium.
+          restore-keys: |
+            playwright-${{ runner.os }}-
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       # MinIO stands in for S3 (ADR-014). A service container can't override the
