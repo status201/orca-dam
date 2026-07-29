@@ -135,6 +135,11 @@ HTML;
     private static function changelog(): string
     {
         return <<<HTML
+<h4>0.4.8</h4>
+<ul>
+    <li>Maintenance release: build-toolchain and dependency security updates. No changes to plugin behaviour.</li>
+</ul>
+
 <h4>0.4.7</h4>
 <ul>
     <li>This "Changelog" tab now lists every release since 0.4.1 — it had been frozen at 0.4.1, so 0.4.2 through 0.4.6 never showed up here.</li>

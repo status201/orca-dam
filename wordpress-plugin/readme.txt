@@ -4,7 +4,7 @@ Tags: media, dam, asset-management, gutenberg
 Requires at least: 6.8
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 0.4.7
+Stable tag: 0.4.8
 License: MIT
 
 Browse and insert assets from ORCA DAM directly inside WordPress, with automatic usage tracking via reference tags.
@@ -21,6 +21,9 @@ ORCA DAM Picker integrates an ORCA DAM library into the WordPress block editor, 
 4. Optional: set `define('ORCA_ENCRYPTION_KEY', '...');` in `wp-config.php` to encrypt stored credentials.
 
 == Changelog ==
+
+= 0.4.8 =
+* Maintenance: build-toolchain and dependency security updates (webpack-dev-server, postcss, svgo, and other build-time dependencies). No changes to plugin behaviour.
 
 = 0.4.7 =
 * The plugin-details "Changelog" tab now lists every release since 0.4.1 — it had been frozen at 0.4.1, so 0.4.2 through 0.4.6 never appeared there.
