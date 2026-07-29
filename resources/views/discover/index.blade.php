@@ -3,7 +3,7 @@
 @section('title', __('Discover Unmapped Objects'))
 
 @section('content')
-<div x-data="discoverObjects()">
+<div x-data="discoverObjects()" data-testid="discover-page">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">{{ __('Discover Unmapped Objects') }}</h1>
         <p class="text-gray-600 mt-2">{{ __('Find and import objects in your S3 bucket that aren\'t yet tracked in ORCA') }}</p>
@@ -14,6 +14,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Scan Folder') }}</label>
         <div class="flex flex-col md:flex-row md:items-center gap-4">
             <select x-model="selectedFolder"
+                    data-testid="discover-folder"
                     class="flex-1 max-w-md rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
                 <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
             </select>
@@ -22,6 +23,7 @@
             <button @click="scanFolders"
                     :disabled="scanningFolders"
                     type="button"
+                    data-testid="discover-refresh-folders"
                     class="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 disabled:opacity-50"
                     title="{{ __('Refresh folder list from S3') }}">
                 <i :class="scanningFolders ? 'fa-spinner fa-spin' : 'fa-sync'" class="fas"></i>
@@ -30,6 +32,7 @@
             <!-- Scan bucket button -->
             <button @click="scanBucket"
                     :disabled="scanning"
+                    data-testid="discover-scan"
                     class="px-6 py-3 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
                 <template x-if="!scanning">
                     <span><i class="fas fa-search mr-2"></i> {{ __('Scan Bucket') }}</span>
@@ -42,7 +45,7 @@
     </div>
 
     <!-- Results -->
-    <div x-show="scanned" x-cloak>
+    <div x-show="scanned" x-cloak data-testid="discover-results">
         <!-- Summary -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
             <div class="flex items-center justify-between">
@@ -62,16 +65,19 @@
 
                 <div class="flex space-x-3" x-show="unmappedObjects.length > 0">
                     <button @click="selectAll"
+                            data-testid="discover-select-all"
                             class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                         <i class="fas fa-check-double mr-2"></i><span class="hidden sm:inline"> {{ __('Select All') }}</span>
                     </button>
 
                     <button @click="deselectAll"
+                            data-testid="discover-deselect-all"
                             class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                         <i class="fas fa-times mr-2"></i><span class="hidden sm:inline"> {{ __('Deselect All') }}</span>
                     </button>
 
                     <button @click="importSelected"
+                            data-testid="discover-import"
                             :disabled="selectedObjects.length === 0 || importing"
                             class="import px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
                         <template x-if="!importing">
@@ -125,9 +131,12 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <template x-for="object in unmappedObjects" :key="object.key">
-                            <tr :class="selectedObjects.includes(object.key) ? 'bg-blue-50' : ''">
+                            <tr :class="selectedObjects.includes(object.key) ? 'bg-blue-50' : ''"
+                                data-testid="discover-row"
+                                :data-object-key="object.key">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <input type="checkbox"
+                                           data-testid="discover-row-select"
                                            :checked="selectedObjects.includes(object.key)"
                                            @click="shiftToggle(object.key, $event)"
                                            class="rounded text-blue-600 focus:ring-blue-500">
@@ -177,7 +186,7 @@
         </div>
 
         <!-- No results -->
-        <div x-show="unmappedObjects.length === 0" class="bg-white rounded-lg shadow-lg p-12 text-center">
+        <div x-show="unmappedObjects.length === 0" data-testid="discover-empty" class="bg-white rounded-lg shadow-lg p-12 text-center">
             <i class="attention fas fa-check-circle text-6xl text-green-500 mb-4"></i>
             <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ __('All Clear!') }}</h3>
             <p class="text-gray-600">{{ __('All objects in your S3 bucket are already tracked in ORCA.') }}</p>

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Asset;
+use App\Models\Passkey;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
@@ -48,6 +49,9 @@ class E2eSeeder extends Seeder
         // AssetApiController::update refuses a non-admin editing someone else's
         // asset, so the api role needs one of its own to exercise the happy path.
         $this->image('e2e-api-owned-01.png', $api);
+        // Passkeys belong to the editor so the admin profile keeps its empty
+        // state — the passkey spec asserts both, and each needs a clean account.
+        $this->passkeys($editor);
         $this->tokens($admin, $editor, $api);
     }
 
@@ -144,6 +148,30 @@ class E2eSeeder extends Seeder
         // Embed fixture + the two non-image types the type filter needs.
         $this->image('e2e-embed-01.png', $editor);
 
+        // CSV import fixtures. alt_text/caption stay null so an import has
+        // something to write; -02 carries a tag to prove import only ever adds
+        // tags, never removes them; -03 is never named in a CSV, so it pins the
+        // "not matched" count.
+        //
+        // That tag is its own, not `e2e-shared`: the grid and tags specs both assert
+        // exactly two assets carry the shared one.
+        $import = $this->imageSet('e2e-import', 3, $editor);
+        $importTag = Tag::updateOrCreate(['name' => 'e2e-import-existing'], ['type' => 'user']);
+        $import->get(1)?->tags()->syncWithoutDetaching([$importTag->id]);
+
+        // CSV export: a tag used by exactly one asset, so a tag-filtered export
+        // has an exact expected row count no matter what else is seeded.
+        $exportTag = Tag::updateOrCreate(['name' => 'e2e-export-only'], ['type' => 'user']);
+        $this->image('e2e-export-01.png', $editor)
+            ->tags()->syncWithoutDetaching([$exportTag->id]);
+
+        // Replace fixtures: -01 is consumed by the successful replace (its
+        // filename/size/etag change), -02 is only ever rejected, so it stays clean.
+        $this->imageSet('e2e-replace', 2, $editor);
+
+        // Discovery needs an object in the bucket with no row here, which no seeder
+        // can arrange — discover.spec.js makes one at runtime.
+
         Asset::create([
             's3_key' => 'assets/e2e/e2e-doc-01.pdf',
             'filename' => 'e2e-doc-01.pdf',
@@ -195,6 +223,26 @@ class E2eSeeder extends Seeder
             'resize_l_s3_key' => "thumbnails/L/e2e/{$base}.png",
             'user_id' => $owner->id,
         ], $attributes));
+    }
+
+    /**
+     * Two passkeys so the management UI can be driven without a WebAuthn
+     * ceremony: one to rename, one to delete, so neither test consumes the
+     * other's fixture. The `credential` payload is deliberately empty — a real
+     * ceremony writes a CredentialRecord there, but nothing short of signing in
+     * reads it, and the suite never signs in with a passkey (it has no virtual
+     * authenticator). Same shape as tests/Feature/PasskeyTest.php's helper.
+     */
+    private function passkeys(User $owner): void
+    {
+        foreach (['e2e-passkey-rename', 'e2e-passkey-delete'] as $name) {
+            Passkey::forceCreate([
+                'user_id' => $owner->getKey(),
+                'name' => $name,
+                'credential_id' => 'e2e-'.hash('sha256', $name.$owner->getKey()),
+                'credential' => [],
+            ]);
+        }
     }
 
     /**

@@ -3,7 +3,7 @@
 @section('title', __('Import Metadata'))
 
 @section('content')
-<div x-data="importMetadata()">
+<div x-data="importMetadata()" data-testid="import-page">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">{{ __('Import Metadata') }}</h1>
         <p class="text-gray-600 mt-2">{{ __('Bulk update asset metadata by pasting CSV data') }}</p>
@@ -23,11 +23,11 @@
                 </label>
                 <div class="flex gap-4">
                     <label class="inline-flex items-center">
-                        <input type="radio" x-model="matchField" value="s3_key" class="text-gray-900 focus:ring-gray-900">
+                        <input type="radio" x-model="matchField" value="s3_key" data-testid="import-match-s3-key" class="text-gray-900 focus:ring-gray-900">
                         <span class="ml-2 text-sm">{{ __('s3_key') }}</span>
                     </label>
                     <label class="inline-flex items-center">
-                        <input type="radio" x-model="matchField" value="filename" class="text-gray-900 focus:ring-gray-900">
+                        <input type="radio" x-model="matchField" value="filename" data-testid="import-match-filename" class="text-gray-900 focus:ring-gray-900">
                         <span class="ml-2 text-sm">{{ __('filename') }}</span>
                     </label>
                 </div>
@@ -68,6 +68,7 @@
                 </div>
 
                 <textarea id="csv_data"
+                          data-testid="import-csv"
                           x-model="csvData"
                           @drop.prevent="handleFileDrop($event)"
                           @dragover.prevent="dragActive = true"
@@ -85,6 +86,7 @@
                     <i class="fas fa-info-circle mr-1"></i>{{ __('First row must be the header row') }}
                 </p>
                 <button @click="previewImport"
+                        data-testid="import-preview"
                         :disabled="loading || !csvData.trim()"
                         class="px-6 py-3 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover text-white transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
                     <template x-if="loading">
@@ -171,7 +173,7 @@
     </div>
 
     <!-- Step 2: Preview -->
-    <div x-show="step === 2" x-cloak>
+    <div x-show="step === 2" x-cloak data-testid="import-preview-panel">
         <!-- Summary -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">
@@ -180,19 +182,19 @@
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-blue-600" x-text="previewData.total"></div>
+                    <div class="text-2xl font-bold text-blue-600" data-testid="import-count-total" x-text="previewData.total"></div>
                     <div class="text-sm text-blue-800">{{ __('Total Rows') }}</div>
                 </div>
                 <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-green-600" x-text="previewData.matched"></div>
+                    <div class="text-2xl font-bold text-green-600" data-testid="import-count-matched" x-text="previewData.matched"></div>
                     <div class="text-sm text-green-800">{{ __('Matched') }}</div>
                 </div>
                 <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-red-600" x-text="previewData.unmatched"></div>
+                    <div class="text-2xl font-bold text-red-600" data-testid="import-count-unmatched" x-text="previewData.unmatched"></div>
                     <div class="text-sm text-red-800">{{ __('Not Found') }}</div>
                 </div>
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                    <div class="text-2xl font-bold text-gray-600" x-text="previewData.skipped"></div>
+                    <div class="text-2xl font-bold text-gray-600" data-testid="import-count-skipped" x-text="previewData.skipped"></div>
                     <div class="text-sm text-gray-800">{{ __('Skipped') }}</div>
                 </div>
             </div>
@@ -205,7 +207,9 @@
                     </h3>
                     <div class="space-y-3">
                         <template x-for="result in matchedResults" :key="result.row">
-                            <div class="import-result attention border border-gray-200 rounded-lg p-4">
+                            <div class="import-result attention border border-gray-200 rounded-lg p-4"
+                                 data-testid="import-result-row"
+                                 :data-filename="result.asset.filename">
                                 <div class="flex items-start gap-4">
                                     <!-- Thumbnail -->
                                     <div class="attention flex-shrink-0">
@@ -275,7 +279,7 @@
                     <div class="attention bg-red-50 border border-red-200 rounded-lg p-4">
                         <ul class="space-y-1">
                             <template x-for="result in unmatchedResults" :key="result.row">
-                                <li class="text-sm text-red-800">
+                                <li class="text-sm text-red-800" data-testid="import-unmatched-row">
                                     <span x-text="'{{ __('Row') }} ' + result.row + ': '"></span>
                                     <span class="font-mono" x-text="result.match_value"></span>
                                 </li>
@@ -288,11 +292,13 @@
             <!-- Action Buttons -->
             <div class="flex items-center justify-between">
                 <button @click="step = 1"
+                        data-testid="import-back"
                         class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                     <i class="fas fa-arrow-left mr-2"></i>{{ __('Back') }}
                 </button>
 
                 <button @click="runImport"
+                        data-testid="import-run"
                         :disabled="loading || matchedResults.length === 0 || hasValidationErrors"
                         class="attention px-6 py-3 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
                     <template x-if="loading">
@@ -308,7 +314,7 @@
     </div>
 
     <!-- Step 3: Results -->
-    <div x-show="step === 3" x-cloak>
+    <div x-show="step === 3" x-cloak data-testid="import-done-panel">
         <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-check-double mr-2"></i>{{ __('Import Complete') }}
@@ -316,15 +322,15 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                    <div class="attention text-2xl font-bold text-green-600" x-text="importResult.updated"></div>
+                    <div class="attention text-2xl font-bold text-green-600" data-testid="import-done-updated" x-text="importResult.updated"></div>
                     <div class="attention text-sm text-green-800">{{ __('Assets Updated') }}</div>
                 </div>
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                    <div class="attention text-2xl font-bold text-gray-600" x-text="importResult.skipped"></div>
+                    <div class="attention text-2xl font-bold text-gray-600" data-testid="import-done-skipped" x-text="importResult.skipped"></div>
                     <div class="attention text-sm text-gray-800">{{ __('Skipped') }}</div>
                 </div>
                 <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                    <div class="attention text-2xl font-bold text-red-600" x-text="importResult.errors.length"></div>
+                    <div class="attention text-2xl font-bold text-red-600" data-testid="import-done-errors" x-text="importResult.errors.length"></div>
                     <div class="attention text-sm text-red-800">{{ __('Errors') }}</div>
                 </div>
             </div>
@@ -353,6 +359,7 @@
             </template>
 
             <button @click="startOver"
+                    data-testid="import-start-over"
                     class="px-6 py-3 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover transition-colors flex items-center">
                 <i class="fas fa-redo mr-2"></i>{{ __('Start Over') }}
             </button>
@@ -361,6 +368,7 @@
 
     <!-- Error Alert -->
     <div x-show="errorMessage" x-cloak
+         data-testid="import-error"
          class="attention fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center">
         <i class="fas fa-exclamation-circle mr-2"></i>
         <span x-text="errorMessage"></span>

@@ -3,7 +3,7 @@
 // Contract: specs/features/e2e-testing.md · How-to: specs/recipes/write-an-e2e-test.md
 import { expect, test as base } from '@playwright/test';
 import { hasS3 } from './s3.js';
-import { reseed, tokens } from './db.js';
+import { reseed, tinker, tokens } from './db.js';
 
 /** Saved sessions produced by global.setup.js — pass to `test.use({ storageState })`. */
 export const asAdmin = 'tests/e2e/.auth/admin.json';
@@ -83,7 +83,7 @@ export const test = base.extend({
     },
 });
 
-export { expect, reseed, tokens, hasS3 };
+export { expect, reseed, tinker, tokens, hasS3 };
 
 /**
  * Skip the enclosing file/describe when no MinIO endpoint answered at startup.

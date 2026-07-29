@@ -96,7 +96,7 @@
                 <div class="flex flex-col">
                     <!-- <h2 class="text-2xl font-bold text-gray-900 mb-4">Feature Tour</h2>-->
 
-                    <div x-data="featureTour(@js($isAdmin), @js($showPasskeyPromo))" class="bg-white overflow-hidden shadow-sm sm:rounded-lg flex-1 flex flex-col">
+                    <div x-data="featureTour(@js($isAdmin), @js($showPasskeyPromo))" data-testid="tour" class="bg-white overflow-hidden shadow-sm sm:rounded-lg flex-1 flex flex-col">
                         <div class="p-6 flex-1 flex flex-col justify-center">
                             <!-- Slideshow -->
                             <div class="relative min-h-[320px] flex items-center bg-white">
@@ -118,7 +118,7 @@
                                         </div>
 
                                         <!-- Title -->
-                                        <h3 class="text-xl font-semibold text-gray-900 text-center" x-text="feature.title"></h3>
+                                        <h3 class="text-xl font-semibold text-gray-900 text-center" data-testid="tour-slide-title" x-text="feature.title"></h3>
 
                                         <!-- Description -->
                                         <p class="text-gray-600 text-center" x-text="feature.description"></p>
@@ -139,6 +139,7 @@
                             <!-- Navigation -->
                             <div class="mt-8 flex items-center justify-between">
                                 <button @click="previousSlide(); pauseAutoPlay()"
+                                        data-testid="tour-prev"
                                         class="p-3 w-12 h-12  rounded-full bg-white hover:bg-gray-100 transition-all shadow-sm hover:shadow-md">
                                     <i class="fas fa-chevron-left text-gray-700 w-4"></i>
                                 </button>
@@ -147,6 +148,8 @@
                                 <div class="flex space-x-2">
                                     <template x-for="(feature, index) in features" :key="index">
                                         <button @click="goToSlide(index); pauseAutoPlay()"
+                                                data-testid="tour-dot"
+                                                :data-slide="index"
                                                 class="w-2.5 h-2.5 rounded-full transition-all hover:scale-125"
                                                 :class="currentSlide === index ? 'bg-blue-600 scale-110' : 'bg-gray-300 hover:bg-gray-400'">
                                         </button>
@@ -154,6 +157,7 @@
                                 </div>
 
                                 <button @click="nextSlide(); pauseAutoPlay()"
+                                        data-testid="tour-next"
                                         class="p-3 w-12 h-12 rounded-full bg-white hover:bg-gray-100 transition-all shadow-sm hover:shadow-md">
                                     <i class="fas fa-chevron-right text-gray-700 w-4"></i>
                                 </button>
@@ -162,9 +166,12 @@
                             <!-- Slide Counter & Auto-play indicator -->
                             <div class="mt-4 flex items-center justify-center gap-4 text-sm text-gray-500">
                                 <span>
-                                    <span x-text="currentSlide + 1"></span> / <span x-text="features.length"></span>
+                                    <span data-testid="tour-current" x-text="currentSlide + 1"></span> / <span data-testid="tour-total" x-text="features.length"></span>
                                 </span>
                                 <button @click="toggleAutoPlay()"
+                                        data-testid="tour-autoplay"
+                                        {{-- A string, not the boolean: Alpine removes an attribute bound to false. --}}
+                                        :data-playing="isPlaying ? 'true' : 'false'"
                                         class="text-gray-400 hover:text-gray-600 transition-colors"
                                         :title="isPlaying ? '{{ __('Pause auto-play') }}' : '{{ __('Resume auto-play') }}'">
                                     <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
