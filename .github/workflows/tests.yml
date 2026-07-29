@@ -60,7 +60,7 @@ jobs:
         run: composer install --prefer-dist --no-progress
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
       - name: Install Node dependencies
         run: npm ci
@@ -102,7 +102,7 @@ jobs:
         run: composer install --prefer-dist --no-progress
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
       - name: Install Node dependencies
         run: npm ci
@@ -110,7 +110,7 @@ jobs:
       - name: Build front-end assets
         run: npm run build
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
