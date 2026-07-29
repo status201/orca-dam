@@ -303,7 +303,7 @@ Scenario: One storageState is saved per role and reused by every spec
     through the real login form
   Then each session is written to tests/e2e/.auth/<role>.json
   And specs adopt one by declaring asAdmin / asEditor / asApi
-# pinned by: tests/e2e/global.setup.js, tests/e2e/support/fixtures.js, tests/e2e/.auth/*.json
+# pinned by: tests/e2e/global.setup.js, tests/e2e/support/fixtures.js
 
 Scenario: The S3-dependent specs skip cleanly when MinIO is absent
   Given no MinIO on :9000
