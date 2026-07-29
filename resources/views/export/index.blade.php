@@ -3,7 +3,7 @@
 @section('title', __('Export Assets'))
 
 @section('content')
-<div x-data="exportAssets()">
+<div x-data="exportAssets()" data-testid="export-page">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">{{ __('Export Assets') }}</h1>
         <p class="text-gray-600 mt-2">{{ __('Export asset metadata to CSV with optional filters') }}</p>
@@ -22,6 +22,7 @@
                     </label>
                     <select id="folder"
                             name="folder"
+                            data-testid="export-folder"
                             x-model="folder"
                             class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black font-mono text-sm">
                         <option value="">{{ __('All Folders') }}</option>
@@ -37,6 +38,7 @@
                     </label>
                     <select id="file_type"
                             name="file_type"
+                            data-testid="export-file-type"
                             x-model="fileType"
                             class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black">
                         <option value="">{{ __('All File Types') }}</option>
@@ -55,7 +57,7 @@
                     </label>
                     <div class="border border-gray-300 rounded-lg">
                         <div class="p-2 border-b border-gray-300 flex items-center gap-2">
-                            <select x-model="tagType" @change="onFilterTagTypeChange()"
+                            <select x-model="tagType" @change="onFilterTagTypeChange()" data-testid="export-tag-type"
                                     class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                                 <option value="">{{ __('All Types') }}</option>
                                 <option value="user">{{ __('User') }}</option>
@@ -66,11 +68,12 @@
                                 <input type="text"
                                        x-model="tagSearch"
                                        @input="onFilterTagSearch()"
+                                       data-testid="export-tag-search"
                                        placeholder="{{ __('Search tags...') }}"
                                        class="w-full text-sm pl-8 pr-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                                 <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                             </div>
-                            <select x-model="tagSort" @change="onFilterTagSortChange()"
+                            <select x-model="tagSort" @change="onFilterTagSortChange()" data-testid="export-tag-sort"
                                     class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                                 <option value="name_asc">{{ __('Name (A-Z)') }}</option>
                                 <option value="name_desc">{{ __('Name (Z-A)') }}</option>
@@ -106,7 +109,7 @@
                             </div>
                         </template>
 
-                        <div class="max-h-48 overflow-y-auto invert-scrollbar-colors" @scroll="onFilterScroll($event)">
+                        <div class="max-h-48 overflow-y-auto invert-scrollbar-colors" @scroll="onFilterScroll($event)" data-testid="export-tag-list">
                             <!-- Loading state -->
                             <div x-show="filterTagsLoading" class="text-center py-6">
                                 <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
@@ -116,7 +119,9 @@
                             <div x-show="!filterTagsLoading" class="p-2">
                                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-1">
                                     <template x-for="tag in displayTags" :key="tag.id">
-                                        <label class="flex items-start space-x-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
+                                        <label class="flex items-start space-x-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer border border-gray-200"
+                                               data-testid="export-tag"
+                                               :data-tag-name="tag.name">
                                             <input type="checkbox"
                                                    :value="tag.id"
                                                    x-model="selectedTags"
@@ -141,7 +146,7 @@
                                 </div>
 
                                 <!-- No tags message -->
-                                <p x-show="!filterTagsLoading && filterTags.length === 0" class="text-gray-500 text-sm py-4 text-center">{{ __('No tags available yet.') }}</p>
+                                <p x-show="!filterTagsLoading && filterTags.length === 0" data-testid="export-tags-empty" class="text-gray-500 text-sm py-4 text-center">{{ __('No tags available yet.') }}</p>
                             </div>
                         </div>
                     </div>
@@ -180,11 +185,13 @@
             <div class="flex items-center justify-between">
                 <button type="button"
                         @click="resetFilters"
+                        data-testid="export-reset"
                         class="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
                     <i class="fas fa-undo mr-2"></i>{{ __('Reset Filters') }}
                 </button>
 
                 <button type="submit"
+                        data-testid="export-download"
                         class="download-export px-6 py-3 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center">
                     <i class="fas fa-download mr-2"></i>{{ __('Download CSV Export') }}
                 </button>

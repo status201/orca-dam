@@ -3,7 +3,7 @@
 @section('title', __('Replace Asset'))
 
 @section('content')
-<div class="max-w-5xl mx-auto" x-data="assetReplacer()">
+<div class="max-w-5xl mx-auto" x-data="assetReplacer()" data-testid="replace-page">
     @php
         $extension = strtolower(pathinfo($asset->s3_key, PATHINFO_EXTENSION));
     @endphp
@@ -21,14 +21,14 @@
         <h1 class="text-3xl font-bold mb-6">{{ __('Replace Asset File') }}</h1>
 
         <!-- Success Message -->
-        <div x-show="success" x-cloak class="attention mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
+        <div x-show="success" x-cloak data-testid="replace-success" class="attention mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg">
             <i class="fas fa-check-circle mr-2"></i>
             <span x-text="successMessage"></span>
             <span class="ml-2 text-green-600">{{ __('Redirecting in') }} <span x-text="redirectCountdown"></span> {{ __('seconds...') }}</span>
         </div>
 
         <!-- Error Message -->
-        <div x-show="error" x-cloak class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
+        <div x-show="error" x-cloak data-testid="replace-error" class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
             <i class="fas fa-exclamation-circle mr-2"></i>
             <span x-text="error"></span>
         </div>
@@ -90,6 +90,7 @@
 
                     <input type="file"
                            x-ref="fileInput"
+                           data-testid="replace-input"
                            @change="handleFiles($event)"
                            accept=".{{ $extension }}"
                            class="hidden">
@@ -104,7 +105,8 @@
                                 </p>
                                 <p class="text-gray-500 mt-1">{{ __('or') }}</p>
                                 <button @click="$refs.fileInput.click()"
-                                        type="attention button"
+                                        type="button"
+                                        data-testid="replace-browse"
                                         class="mt-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
                                     {{ __('Browse Files') }}
                                 </button>
@@ -119,17 +121,19 @@
                         <div class="space-y-4">
                             <i class="attention fas fa-file-check text-5xl text-green-500"></i>
                             <div>
-                                <p class="text-lg font-medium text-gray-700" x-text="selectedFile.name"></p>
+                                <p class="text-lg font-medium text-gray-700" data-testid="replace-selected-name" x-text="selectedFile.name"></p>
                                 <p class="text-sm text-gray-500" x-text="formatFileSize(selectedFile.size)"></p>
                             </div>
                             <div class="flex justify-center space-x-3">
                                 <button @click="clearSelection()"
                                         type="button"
+                                        data-testid="replace-clear"
                                         class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                                     <i class="fas fa-times mr-1"></i> {{ __('Clear') }}
                                 </button>
                                 <button @click="showConfirmation = true"
                                         type="button"
+                                        data-testid="replace-submit"
                                         class="attention px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
                                     <i class="fas fa-shuffle mr-1"></i> {{ __('Replace File') }}
                                 </button>
@@ -236,11 +240,13 @@
                 <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                     <button @click="uploadFile()"
                             type="button"
+                            data-testid="replace-confirm"
                             class="attention w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm">
                         <i class="fas fa-shuffle mr-2"></i> {{ __('Yes, Replace') }}
                     </button>
                     <button @click="showConfirmation = false"
                             type="button"
+                            data-testid="replace-cancel"
                             class="attention mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm">
                         {{ __('Cancel') }}
                     </button>

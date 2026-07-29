@@ -3,7 +3,7 @@
 @section('title', __('TikZ to SVG (Embedded Fonts)'))
 
 @section('content')
-<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="tikzSvgFonts()">
+<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="tikzSvgFonts()" data-testid="tool-tikz-svg-fonts">
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">

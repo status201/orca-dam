@@ -302,6 +302,7 @@ specs/
     upload-policy.md       ·  allowlist + AllowedUploadExtension + SVG sanitize
     cloudflare-purge.md    ·  non-blocking CDN purge on replace / thumbnail regen
     user-preferences.md    ·  encrypted users.preferences + profile settings
+    dashboard.md           ·  post-login stats + the role-built feature tour
     queue-jobs.md          ·  the 5 queued jobs and their dispatch
     # — system & tools —
     e2e-testing.md         ·  Playwright browser suite: roles, seeding, MinIO, CI

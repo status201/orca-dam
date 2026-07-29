@@ -3,7 +3,7 @@
 @section('title', __('TikZ to SVG'))
 
 @section('content')
-<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="tikzSvg()">
+<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="tikzSvg()" data-testid="tool-tikz-svg">
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">

@@ -86,7 +86,8 @@ helpers rather than copying their logic.
 
 ### 2. Register it — `resources/js/app.js`
 
-Add an import alongside the existing ~25; order doesn't matter functionally,
+Add an import alongside the 21 modules registered in `resources/js/app.js`;
+order doesn't matter functionally,
 but the file groups related modules together (asset grid/detail/editor, then
 trash/discover/import/export, then tags/uploader/replacer, then admin, then
 tools):
@@ -108,15 +109,40 @@ Inject any server-side config/translations the module reads via
 established shape) — never fetch translations from the API; API responses
 stay English.
 
-### 4. Verify
+### 4. Verify — build, then a Playwright spec
 
 ```bash
 npm run build   # or npm run dev while iterating
 ```
 
-There is no Pest coverage for Alpine modules (browser-only behavior) — verify
-manually or via the `claude-in-chrome`/`run` tooling if driving the actual
-page.
+A clean build only proves the bundle resolves; it does not prove the module
+registered or that `x-data="myFeatureManager()"` found it. Pest can't reach
+that — but Playwright can, and it is the normal way to verify a module.
+
+**Minimum bar: a boot check.** Put a root `data-testid` on the element
+carrying `x-data`, then copy the idiom from
+[`tools.spec.js`](../../tests/e2e/tools.spec.js) — register the `pageerror`
+listener *before* navigating, assert the root is visible (which waits for
+hydration), then assert nothing threw:
+
+```js
+test('my feature page boots its Alpine component', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+
+    await page.goto('/my-feature');
+
+    await expect(page.locator(testid('my-feature'))).toBeVisible();
+    expect(errors).toEqual([]);
+});
+```
+
+That one test catches the missing-`import` failure mode below, which is
+otherwise silent. Then add behaviour tests for the module's own state and
+`fetch()` calls following
+[`write-an-e2e-test.md`](write-an-e2e-test.md) — `data-testid` selectors,
+reseed per file, and the browser scenario pinned in the feature spec that owns
+the behaviour (never in `e2e-testing.md`, which owns only the harness).
 
 ## Gotchas
 
@@ -135,10 +161,29 @@ page.
 - Genuinely shared logic (used by more than one module) belongs in a mixin
   file, not copy-pasted — see `tag-input-core.js`'s `parseTagNames`/
   `tagInputCore`, reused by all four tag inputs in the app.
+- Registering a 22nd module makes `npm run spec:lint` fail: the module count is
+  hand-written in `CLAUDE.md`, `README.md` and
+  `.claude/agents/senior-laravel-specialist.md`, and the lint counts the
+  `import './alpine/…'` lines in `app.js` and compares. Bump all three. A new
+  *mixin* doesn't count — only a line in `app.js` does.
+- Locating by user-visible copy breaks the moment the page renders in `nl`.
+  The UI ships in two locales, so a new module's controls need `data-testid`
+  hooks before they can be tested at all — add them while you write the view,
+  not after.
 
 ## Tests & verification
 
-- No Pest suite covers Alpine modules directly (client-side, no Blade
-  rendering asserted at this granularity). Verify via `npm run build` (no
-  bundler errors) and a manual/browser-driven check that the module registers
-  and its `fetch()` calls hit the expected route.
+Alpine modules are verified in the browser, by Playwright. No Pest suite
+asserts them (client-side, no Blade rendering asserted at this granularity), so
+`npm run build` proving the bundle resolves is the floor, not the ceiling.
+
+- `tests/e2e/tools.spec.js` — the boot-check pattern to copy: `pageerror`
+  listener, root `data-testid` visible, `expect(errors).toEqual([])`. Its loop
+  covers six tool pages.
+- `tests/e2e/bulk-operations.spec.js` — the behaviour exemplar: Alpine state
+  (selection), a `fetch()` round-trip, and the resulting toast.
+- `tests/e2e/csv-import-export.spec.js` — a module driven end to end through
+  its own multi-step state machine (`import.js`), plus a form-submit module
+  with no success UI (`export.js`).
+- `npm run build`, then `npm run test:e2e -- tests/e2e/<area>.spec.js`, then
+  `npm run test:e2e` before you're done.

@@ -6,6 +6,7 @@
 
 <section
     x-data="passkeyManager()"
+    data-testid="passkeys"
     @passkey-add.window="addPasskey()"
 >
     <header>
@@ -25,13 +26,13 @@
     @endif
 
     @if (session('status') && in_array(session('status'), [__('Passkey renamed.'), __('Passkey removed.')], true))
-        <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg" data-testid="passkeys-status">
             <p class="attention text-sm text-green-700">{{ session('status') }}</p>
         </div>
     @endif
 
     <template x-if="!supported">
-        <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg" data-testid="passkeys-unsupported">
             <p class="attention text-sm text-amber-700">
                 {{ __('Your browser does not support passkeys. Try a recent version of Chrome, Edge, Safari, or Firefox.') }}
             </p>
@@ -40,16 +41,18 @@
 
     <div class="mt-6 space-y-4">
         @if ($passkeys->isEmpty())
-            <div class="flex items-center text-sm text-gray-600">
+            <div class="flex items-center text-sm text-gray-600" data-testid="passkeys-empty">
                 <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a4 4 0 11-8 0 4 4 0 018 0zm6 6a2 2 0 11-4 0 2 2 0 014 0zM3 21h12v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2zm14 0h4v-1a3 3 0 00-3-3h-1" />
                 </svg>
                 <span>{{ __('No passkeys registered yet.') }}</span>
             </div>
         @else
-            <ul class="divide-y divide-gray-200 border border-gray-200 rounded-lg">
+            <ul class="divide-y divide-gray-200 border border-gray-200 rounded-lg" data-testid="passkeys-list">
                 @foreach ($passkeys as $passkey)
-                    <li class="flex items-center justify-between p-4 gap-4">
+                    <li class="flex items-center justify-between p-4 gap-4"
+                        data-testid="passkey-row"
+                        data-passkey-name="{{ $passkey->name }}">
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
                                 <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -72,12 +75,16 @@
                         <div class="flex items-center gap-2 shrink-0">
                             <form method="POST" action="{{ route('profile.passkeys.update', $passkey->credential_id) }}"
                                   class="flex items-center gap-2"
-                                  x-data="{ editing: false, name: @js($passkey->name) }"
+                                  {{-- `original` exists so Cancel can restore the name without an
+                                       @js() call of its own: inside a Blade *component* attribute
+                                       (x-secondary-button) the &quot; entities @js emits get escaped a
+                                       second time, and the Alpine expression stops parsing. --}}
+                                  x-data="{ editing: false, name: @js($passkey->name), original: @js($passkey->name) }"
                                   @submit="if (!editing) $event.preventDefault()">
                                 @csrf
                                 @method('PATCH')
                                 <template x-if="!editing">
-                                    <x-secondary-button type="button" @click="editing = true; $nextTick(() => $refs.nameInput.focus())">
+                                    <x-secondary-button type="button" data-testid="passkey-rename" @click="editing = true; $nextTick(() => $refs.nameInput.focus())">
                                         {{ __('Rename') }}
                                     </x-secondary-button>
                                 </template>
@@ -87,13 +94,14 @@
                                             x-ref="nameInput"
                                             type="text"
                                             name="name"
+                                            data-testid="passkey-name-input"
                                             x-model="name"
                                             maxlength="100"
                                             class="block w-40 px-2 py-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                             placeholder="{{ __('e.g. MacBook') }}"
                                         />
-                                        <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
-                                        <x-secondary-button type="button" @click="editing = false; name = @js($passkey->name)">{{ __('Cancel') }}</x-secondary-button>
+                                        <x-primary-button type="submit" data-testid="passkey-save">{{ __('Save') }}</x-primary-button>
+                                        <x-secondary-button type="button" data-testid="passkey-cancel" @click="editing = false; name = original">{{ __('Cancel') }}</x-secondary-button>
                                     </span>
                                 </template>
                             </form>
@@ -101,7 +109,7 @@
                                   onsubmit="return confirm('{{ __('Remove this passkey? You will not be able to use it to sign in anymore.') }}')">
                                 @csrf
                                 @method('DELETE')
-                                <x-danger-button type="submit" class="warning">{{ __('Remove') }}</x-danger-button>
+                                <x-danger-button type="submit" data-testid="passkey-remove" class="warning">{{ __('Remove') }}</x-danger-button>
                             </form>
                         </div>
                     </li>
@@ -118,6 +126,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                     <input
                         type="text"
+                        data-testid="passkey-alias"
                         x-model="alias"
                         maxlength="100"
                         :disabled="!supported || adding"
@@ -126,6 +135,7 @@
                     />
                     <button
                         type="button"
+                        data-testid="passkey-add"
                         @click="addPasskey()"
                         :disabled="!supported || adding"
                         class="inline-flex items-center justify-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition disabled:opacity-50"

@@ -260,7 +260,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 - `php artisan config:clear && php artisan test` — the full Pest suite (980 tests,
   78 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`). In-memory SQLite, sync queue.
-- `npm run test:e2e` — the Playwright browser suite (74 tests across 14 spec files)
+- `npm run test:e2e` — the Playwright browser suite (106 tests across 20 spec files)
   against a real `artisan serve` + MinIO. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus

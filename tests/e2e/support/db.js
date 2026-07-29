@@ -80,3 +80,18 @@ export async function settingValue(key) {
 
     return out.trim();
 }
+
+/**
+ * Run a PHP snippet against the e2e app and return its output.
+ *
+ * The escape hatch for states no HTTP route can reach. Discovery needs an S3
+ * object with no database row, and every delete path in the app removes the
+ * object along with the row — so the only way to orphan one is to drop the row
+ * behind the controller's back.
+ *
+ * Prefer the UI or a seeder fixture. Reach for this only when the state is
+ * genuinely unreachable otherwise, and keep the snippet a single statement.
+ */
+export async function tinker(php) {
+    return (await artisan(['tinker', '--execute', php])).trim();
+}
