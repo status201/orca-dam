@@ -18,7 +18,14 @@
 import { acceptConfirm, expect, expectToast, requiresS3, reseed, test, testid, tinker } from './support/fixtures.js';
 import { pngFixture, uniqueColor, uniqueName } from './support/files.js';
 
-/** Upload a file, then orphan its object by deleting only the database row. */
+/**
+ * Upload a file, then orphan its object by deleting only the database row.
+ *
+ * Returns the object's S3 key, not the name of the file that was uploaded: ORCA
+ * stores uploads as `assets/{folder}/{uuid}.{ext}`, so the discovered object —
+ * and the asset a re-import creates from it — is named after the uuid. The
+ * original filename survives only in the row this function deletes.
+ */
 async function orphanAnObject(page) {
     const name = uniqueName('e2e-discover');
 
@@ -35,11 +42,14 @@ async function orphanAnObject(page) {
     ]);
     expect(response.ok()).toBeTruthy();
 
+    const key = await tinker(`echo App\\Models\\Asset::where('filename', '${name}')->value('s3_key');`);
+    expect(key, 'the uploaded asset should have an s3_key').toMatch(/^assets\/.+\.png$/);
+
     // forceDelete, not delete(): a soft-deleted row still maps the object, and
     // discovery would rightly skip it.
     await tinker(`App\\Models\\Asset::withTrashed()->where('filename', '${name}')->forceDelete();`);
 
-    return name;
+    return key;
 }
 
 test.describe('s3 discovery', () => {
@@ -48,7 +58,8 @@ test.describe('s3 discovery', () => {
     test.beforeAll(reseed);
 
     test('an object with no database row is found and can be imported', async ({ page }) => {
-        const orphan = await orphanAnObject(page);
+        const key = await orphanAnObject(page);
+        const rowForKey = (p) => p.locator(`${testid('discover-row')}[data-object-key="${key}"]`);
 
         await page.goto('/discover');
         await expect(page.locator(testid('discover-page'))).toBeVisible();
@@ -56,10 +67,10 @@ test.describe('s3 discovery', () => {
         await page.click(testid('discover-scan'));
         await expect(page.locator(testid('discover-results'))).toBeVisible();
 
-        const row = page.locator(testid('discover-row')).filter({ hasText: orphan });
-        await expect(row).toHaveCount(1);
+        // Matched on the object key, which is what the scan actually returns.
+        await expect(rowForKey(page)).toHaveCount(1);
 
-        await row.locator(testid('discover-row-select')).click();
+        await rowForKey(page).locator(testid('discover-row-select')).click();
         acceptConfirm(page);
         await page.click(testid('discover-import'));
 
@@ -67,10 +78,12 @@ test.describe('s3 discovery', () => {
 
         // The object now has a row again, so it is no longer unmapped — and it stays
         // gone through the re-scan the module fires a couple of seconds later.
-        await expect(page.locator(testid('discover-row')).filter({ hasText: orphan })).toHaveCount(0);
+        await expect(rowForKey(page)).toHaveCount(0);
 
-        // And it really became an asset.
-        await page.goto(`/assets?search=${orphan.replace('.png', '')}`);
+        // And it really became an asset — under the object's own name, since that is
+        // all the import has to go on.
+        const objectName = key.split('/').pop();
+        await page.goto(`/assets?search=${objectName.replace(/\.png$/, '')}`);
         await expect(page.locator(testid('asset-card'))).toHaveCount(1);
     });
 
