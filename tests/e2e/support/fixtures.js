@@ -103,10 +103,37 @@ export async function waitForAlpine(page) {
     await page.waitForFunction(() => document.querySelectorAll('[x-cloak]').length === 0);
 }
 
+/**
+ * page.goto() that survives the app navigating out from under it.
+ *
+ * Every bulk action reloads the page ~800ms after its POST resolves
+ * (`setTimeout(() => window.location.reload(), 800)` in asset-grid.js and
+ * trash.js), and the summary panels reload the moment they are dismissed. A spec
+ * that acts and then navigates therefore has a window in which the app's reload
+ * commits first and Chromium cancels the test's navigation with ERR_ABORTED —
+ * which surfaced as bulk-operations and asset-trash failing on a plain page.goto,
+ * more often the slower the machine.
+ *
+ * The abort is benign: nothing is wrong except that two navigations raced. The
+ * reload fires once, so by the time we retry it has already landed and the second
+ * goto wins. Retrying only on ERR_ABORTED keeps real navigation failures loud.
+ */
+export async function gotoStable(page, url) {
+    try {
+        await page.goto(url);
+    } catch (error) {
+        if (!/ERR_ABORTED/.test(String(error?.message))) throw error;
+
+        await page.goto(url);
+    }
+
+    return page;
+}
+
 /** Open the asset library (optionally filtered) and wait for the hydrated grid. */
 export async function gotoAssets(page, params = {}) {
     const query = new URLSearchParams(params).toString();
-    await page.goto(`/assets${query ? `?${query}` : ''}`);
+    await gotoStable(page, `/assets${query ? `?${query}` : ''}`);
     await expect(page.locator(testid('asset-grid'))).toBeVisible();
     await waitForAlpine(page);
 
@@ -115,7 +142,7 @@ export async function gotoAssets(page, params = {}) {
 
 /** Open the trash page and wait for it to hydrate. */
 export async function gotoTrash(page) {
-    await page.goto('/assets/trash/index');
+    await gotoStable(page, '/assets/trash/index');
     await expect(page.locator(testid('trash-page'))).toBeVisible();
     await waitForAlpine(page);
 
