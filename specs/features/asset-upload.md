@@ -154,6 +154,27 @@ Scenario: applyUploadMetadata is a no-op when everything is null/empty
   When applyUploadMetadata runs
   Then the asset is left unchanged
 # pinned by: tests/Unit/AssetProcessingServiceTest.php
+
+# — browser-level (see e2e-testing.md for the harness; these skip without MinIO) —
+
+Scenario: Uploading an image stores it in S3 and it renders in the grid
+  Given the upload page and a MinIO bucket
+  When a PNG is selected and uploaded
+  Then the row reports "Uploaded"
+  And the asset appears in the grid with a generated thumbnail that loads
+# pinned by: tests/e2e/asset-upload.spec.js
+
+Scenario: An upload lands in the folder selected on the upload page
+  Given a folder chosen in the upload form
+  When a PNG is uploaded
+  Then the stored asset's folder matches the selection
+# pinned by: tests/e2e/asset-upload.spec.js
+
+Scenario: A disallowed file type is rejected in the browser
+  Given a file whose extension is not on the allowlist (upload-policy.md)
+  When it is selected for upload
+  Then the upload is refused
+# pinned by: tests/e2e/asset-upload.spec.js
 ```
 
 ## Tests & verification

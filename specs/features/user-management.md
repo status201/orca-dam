@@ -162,7 +162,56 @@ Scenario: Deleting a user with assets fails without a transfer target
   When an admin DELETEs /users/{target} with no transfer_to_user_id
   Then the response has a validation error on transfer_to_user_id
   And the target user still exists
+# pinned by: tests/Feature/UserManagementTest.php, tests/Feature/UserDeletionTest.php
+
+Scenario: Soft-deleted assets are transferred too (REQ-4, withTrashed)
+  Given a target user who owns one active and one soft-deleted asset
+  When an admin DELETEs /users/{target} with transfer_to_user_id set
+  Then both assets belong to the transfer target
+  And no asset row is left pointing at the deleted user
+# pinned by: tests/Feature/UserDeletionTest.php
+
+Scenario: The transfer target cannot be the user being deleted
+  Given a target user who owns assets
+  When an admin DELETEs /users/{target} with transfer_to_user_id = the target's own id
+  Then the response has a validation error on transfer_to_user_id
+  And the target user still exists
+# pinned by: tests/Feature/UserDeletionTest.php
+
+Scenario: The transfer target must exist
+  Given a target user who owns assets
+  When an admin DELETEs /users/{target} with a transfer_to_user_id that matches no user
+  Then the response has a validation error on transfer_to_user_id
+  And the target user still exists
+# pinned by: tests/Feature/UserDeletionTest.php
+
+Scenario: A provisioned user is unverified but fully usable
+  Given an admin creates a user through /users
+  Then the new user's email_verified_at is null — provisioning does not verify, and
+    sends no verification mail
+  And they can still reach /dashboard, the one route carrying `verified` middleware,
+    because User does not implement MustVerifyEmail (authentication.md REQ-7)
 # pinned by: tests/Feature/UserManagementTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: An admin creates, re-roles and deletes a user
+  Given the users page
+  When a new editor is created, promoted to admin and deleted
+  Then each step is reflected in the users table
+# pinned by: tests/e2e/user-management.spec.js
+
+Scenario: The users table lists the seeded accounts with their roles
+  Given the users page as an admin
+  Then each seeded account appears with its role
+# pinned by: tests/e2e/user-management.spec.js
+
+Scenario: Deleting a user who owns assets demands a transfer target in the UI
+  Given a user who owns assets
+  When an admin tries to delete them
+  Then the UI requires a transfer target before proceeding
+  And the current admin is offered no way to delete their own account
+# pinned by: tests/e2e/user-management.spec.js
 ```
 
 ## Tests & verification
@@ -170,12 +219,22 @@ Scenario: Deleting a user with assets fails without a transfer target
 - Feature: `tests/Feature/UserManagementTest.php` — index gating, create (valid/
   invalid role), update role, self-delete prohibition, delete with/without assets,
   transfer validation.
+- Feature: `tests/Feature/UserDeletionTest.php` — the deletion/transfer path in depth:
+  `withTrashed()` coverage, and both `transfer_to_user_id` rules (`Rule::notIn` on the
+  target itself, `exists:users,id`). Overlaps `UserManagementTest.php` on the happy
+  paths by design — that file owns the CRUD surface, this one owns deletion.
 - Unit: `tests/Unit/Policies/UserPolicyTest.php` — the ability matrix in isolation.
 - Run: `php artisan config:clear && php artisan test`
 - E2E: `tests/e2e/user-management.spec.js` — create → re-role → delete, plus the transfer-target gate and the self-delete prohibition.
 
 ## Open questions / future
 
-- None — CRUD, role validation, the self-delete guard, and the asset-transfer path
-  are all directly pinned. See [passkeys.md](passkeys.md) for the
-  `clearPasskeys` recovery action's own scenarios.
+- CRUD, role validation, the self-delete guard, and the asset-transfer path are all
+  directly pinned. See [passkeys.md](passkeys.md) for the `clearPasskeys` recovery
+  action's own scenarios.
+- `UserController::store` does not set `email_verified_at`, and provisioning sends no
+  verification mail. That is harmless today — `User` does not implement
+  `MustVerifyEmail`, so the `verified` middleware on `/dashboard` is inert (see REQ-7 in
+  [authentication.md](authentication.md), pinned by the scenario above). It becomes a
+  lockout the moment that contract is enabled, which is why the behaviour is pinned
+  rather than left implicit.

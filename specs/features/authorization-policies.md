@@ -147,6 +147,40 @@ Scenario: Non-admins cannot delete any user
   When UserPolicy::delete is checked against any target
   Then it is denied
 # pinned by: tests/Unit/Policies/UserPolicyTest.php
+
+# — browser-level: the same matrix as the UI presents it (see e2e-testing.md) —
+
+Scenario: An admin sees every privileged navigation entry and can open each admin page
+  Given a session for admin@e2e.test
+  Then the Users, System, API-docs, Import, Export and Discover entries are present
+  And each of those routes responds 200
+# pinned by: tests/e2e/role-matrix.spec.js
+
+Scenario: An editor sees no admin-only navigation and is refused /system
+  Given a session for editor@e2e.test
+  Then the Users, System and API navigation entries are absent
+  And GET /system responds 403
+  And they can trash and restore but are offered no permanent-delete or move control
+# pinned by: tests/e2e/role-matrix.spec.js
+
+Scenario: An api-role user cannot trash assets from the UI or the API
+  Given a session for api@e2e.test
+  Then the bulk bar offers no "move to trash" control
+  And DELETE /api/assets/{id} responds 403
+  While the same call as an editor succeeds
+# pinned by: tests/e2e/role-matrix.spec.js
+
+Scenario: An api-role user may read any asset but only update its own
+  Given a session for api@e2e.test
+  When it PATCHes an asset owned by the editor
+  Then the response is 403, while PATCHing its own asset succeeds
+# pinned by: tests/e2e/role-matrix.spec.js
+
+Scenario: Every role lands on a dashboard that names them
+  Given a saved session per role
+  When /dashboard is opened
+  Then the user menu shows that role's user name
+# pinned by: tests/e2e/role-matrix.spec.js
 ```
 
 ## Tests & verification

@@ -169,6 +169,20 @@ Scenario: Bulk add tags splits comma-joined values across every targeted asset
   When POST /assets/bulk/tags is sent with tags=["alpha, beta", "gamma"]
   Then both assets end up with tags alpha, beta, gamma
 # pinned by: tests/Feature/TagTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Typing a comma splits one entry into two chips on the edit page
+  Given the asset edit page
+  When "alpha, beta" is typed into the tag input
+  Then two separate tag chips are created
+# pinned by: tests/e2e/asset-detail.spec.js
+
+Scenario: The grid's inline row input and the bulk bar share the same splitting
+  Given the asset grid
+  When a comma-separated list is entered in a row input, and again in the bulk bar
+  Then both produce the same separate tags
+# pinned by: tests/e2e/asset-detail.spec.js, tests/e2e/bulk-operations.spec.js
 ```
 
 ## Tests & verification
@@ -179,10 +193,11 @@ Scenario: Bulk add tags splits comma-joined values across every targeted asset
   ("add tags splits a comma-joined value...", "add tags dedups within a single
   request", "bulk add tags splits comma-joined values").
 - Run: `php artisan config:clear && php artisan test tests/Unit/TagInputParserTest.php tests/Feature/TagTest.php`
-- The JS side (`tag-input-core.js`) still has no *unit* test (no JS unit-test
-  runner is configured), but it is now exercised in a real browser by
-  `tests/e2e/asset-detail.spec.js` — comma splitting on the edit page and the
-  inline row input — see [`e2e-testing.md`](e2e-testing.md).
+- E2E: the JS side (`tag-input-core.js`) has no *unit* test (no JS unit-test runner is
+  configured), but it is exercised in a real browser by
+  `tests/e2e/asset-detail.spec.js` (comma splitting on the edit page and the inline row
+  input) and `tests/e2e/bulk-operations.spec.js` (the bulk bar's input) — harness in
+  [`e2e-testing.md`](e2e-testing.md).
 
 ## Open questions / future
 

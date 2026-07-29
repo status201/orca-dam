@@ -249,6 +249,20 @@ Scenario: Only admins can access SystemController per SystemPolicy
   When SystemPolicy::access is checked for each
   Then only the admin is allowed
 # pinned by: tests/Unit/Policies/SystemPolicyTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: The system page renders for an admin
+  Given a session for admin@e2e.test
+  When /system is opened
+  Then the dashboard renders
+# pinned by: tests/e2e/system-settings.spec.js
+
+Scenario: The queue-status and log-viewer endpoints answer
+  Given the system page as an admin
+  When the queue status and log tail endpoints are called
+  Then each responds with a payload
+# pinned by: tests/e2e/system-settings.spec.js
 ```
 
 ## Tests & verification

@@ -273,178 +273,66 @@ Tools and versions:
 
 ## Scenarios (BDD)
 
+The suite's *own* contract lives here — seeding, saved role sessions, the S3 skip and
+the disposable artefacts. Every scenario about application behaviour is pinned by the
+feature spec that owns it (a browser-level block at the end of that spec's scenarios),
+so no behaviour is specified twice. Feature specs currently carrying browser-level
+scenarios: [authentication](authentication.md), [asset-search](asset-search.md),
+[asset-model](asset-model.md), [asset-upload](asset-upload.md),
+[s3-storage](s3-storage.md), [duplicate-detection](duplicate-detection.md),
+[asset-trash](asset-trash.md), [bulk-operations](bulk-operations.md),
+[tags](tags.md), [tag-input](tag-input.md),
+[authorization-policies](authorization-policies.md),
+[user-management](user-management.md), [settings](settings.md),
+[system-admin](system-admin.md), [api-docs-admin](api-docs-admin.md),
+[localization](localization.md), [user-preferences](user-preferences.md),
+[client-side-tools](client-side-tools.md), [iframe-embedding](iframe-embedding.md).
+
 ```gherkin
-Scenario: A seeded editor logs in through the real form and lands on the asset library
-  Given the login page
-  When they submit editor@e2e.test with the seeded password
-  Then the asset grid is visible
-  And the navigation shows their name
-# pinned by: tests/e2e/auth.spec.js
+Scenario: The suite reseeds before it saves any session (REQ-13)
+  Given a possibly stale database/e2e.sqlite
+  When the setup project runs
+  Then migrate:fresh --seeder=E2eSeeder rebuilds it
+  And this happens before any login, because migrate:fresh drops the users table
+    and would orphan a session saved earlier
+# pinned by: tests/e2e/global.setup.js, tests/e2e/support/db.js
 
-Scenario: A wrong password keeps the user on the login page with an error
-  Given the login page
-  When they submit a bad password
-  Then an email validation error is shown and no session is created
-# pinned by: tests/e2e/auth.spec.js
+Scenario: One storageState is saved per role and reused by every spec
+  Given the reseeded fixtures
+  When setup logs in as admin@e2e.test, editor@e2e.test and api@e2e.test
+    through the real login form
+  Then each session is written to tests/e2e/.auth/<role>.json
+  And specs adopt one by declaring asAdmin / asEditor / asApi
+# pinned by: tests/e2e/global.setup.js, tests/e2e/support/fixtures.js
 
-Scenario: An unauthenticated visitor is redirected to login
-  Given no session
-  When they open /assets
-  Then they land on /login
-# pinned by: tests/e2e/auth.spec.js
+Scenario: The S3-dependent specs skip cleanly when MinIO is absent
+  Given no MinIO on :9000
+  When playwright.config.js probes /minio/health/live before test collection
+  Then E2E_S3 is unset and requiresS3() skips those specs
+  But in CI the missing bucket is a hard failure instead
+# pinned by: tests/e2e/support/s3.js
 
-Scenario: Logging out really ends the session
-  Given a session created by this test (never a shared role session — REQ-13)
-  When they log out from the user menu
-  Then /assets redirects to /login
-# pinned by: tests/e2e/auth.spec.js
+Scenario: A missing .env.e2e fails fast rather than touching the dev database
+  Given no .env.e2e file
+  When the Playwright config loads
+  Then it throws before any artisan command runs
+  And config:clear always precedes artisan serve, so a cached config cannot
+    outrank .env.e2e and point migrate:fresh at the development database
+# pinned by: tests/e2e/support/db.js
 
-Scenario: Searching narrows the grid to matching filenames
-  Given 14 seeded grid assets
-  When "e2e-grid-01" is typed into the grid search and applied
-  Then only that asset's card remains and a search filter pill is shown
-# pinned by: tests/e2e/asset-grid.spec.js
+Scenario: Fixtures are generated, never committed
+  Given a spec needing an image
+  When it calls pngFixture() / uniqueName() / uniqueColor()
+  Then the PNG is synthesised in-process by a hand-rolled CRC32 chunk writer
+  And identical bytes yield an identical etag, which is how the duplicate
+    scenario in duplicate-detection.md forces a collision
+# pinned by: tests/e2e/support/files.js
 
-Scenario: The type filter, sort order and view modes survive a page load
-  Given the asset grid
-  When type=document is chosen
-  Then only the seeded PDF is listed and the URL carries type=document
-# pinned by: tests/e2e/asset-grid.spec.js
-
-Scenario: Clear all filters returns the full library
-  Given a filtered grid
-  When "clear all filters" is clicked
-  Then the grid shows the unfiltered total again
-# pinned by: tests/e2e/asset-grid.spec.js
-
-Scenario: Editing an asset persists the filename and alt text
-  Given the edit page for e2e-detail-alpha.png
-  When the filename and alt text are changed and saved
-  Then the detail page shows the new values
-# pinned by: tests/e2e/asset-detail.spec.js
-
-Scenario: A tag added on the edit page appears on the asset and is removable
-  Given the edit page for a seeded asset
-  When a tag is typed and added, then saved
-  Then the tag badge is listed on the detail page
-# pinned by: tests/e2e/asset-detail.spec.js
-
-Scenario: Uploading an image stores it in S3 and it renders in the grid
-  Given the upload page and a MinIO bucket
-  When a PNG is selected and uploaded
-  Then the row reports "Uploaded"
-  And the asset appears in the grid with a generated thumbnail that loads
-# pinned by: tests/e2e/asset-upload.spec.js
-
-Scenario: Re-uploading identical bytes is reported as a duplicate, not stored twice
-  Given a PNG that was already uploaded
-  When the same bytes are uploaded again
-  Then the row is flagged as a duplicate and the duplicates panel offers the existing asset
-# pinned by: tests/e2e/asset-upload.spec.js
-
-Scenario: Deleting an asset moves it to trash and restoring brings it back
-  Given the list view of the grid
-  When an asset is deleted from its row
-  Then it disappears from the grid and appears in /assets/trash/index
-  And restoring it returns it to the grid
-# pinned by: tests/e2e/asset-trash.spec.js
-
-Scenario: An admin permanently deletes a trashed asset
-  Given a soft-deleted asset in trash
-  When the admin confirms permanent deletion
-  Then the asset is gone from trash entirely
-# pinned by: tests/e2e/asset-trash.spec.js
-
-Scenario: Bulk-adding a tag applies it to every selected asset
-  Given several selected assets in the grid
-  When a tag is added from the bulk bar
-  Then the bar reports success and each asset carries the tag
-# pinned by: tests/e2e/bulk-operations.spec.js
-
-Scenario: Bulk move to trash empties the selection and the assets leave the grid
-  Given a selection of assets
-  When "move to trash" is used from the bulk bar
-  Then the selection clears and the assets are in trash
-# pinned by: tests/e2e/bulk-operations.spec.js
-
-Scenario: Bulk restore reports the filenames it restored before reloading
-  Given a selected asset in trash
-  When bulk restore runs
-  Then a summary lists the restored filename, and dismissing it returns the asset
-# pinned by: tests/e2e/asset-trash.spec.js
-
-Scenario: An editor sees no admin-only navigation and is refused /system
-  Given a session for editor@e2e.test
-  Then the Users, System and API navigation entries are absent
-  And GET /system responds 403
-# pinned by: tests/e2e/role-matrix.spec.js
-
-Scenario: An api-role user cannot trash assets from the UI or the API
-  Given a session for api@e2e.test
-  Then the bulk bar offers no "move to trash" control
-  And DELETE /api/assets/{id} responds 403
-# pinned by: tests/e2e/role-matrix.spec.js
-
-Scenario: An api-role user may read any asset but only update its own
-  Given a session for api@e2e.test
-  When it PATCHes an asset owned by the editor
-  Then the response is 403, while PATCHing its own asset succeeds
-# pinned by: tests/e2e/role-matrix.spec.js
-
-Scenario: Switching the interface language translates the chrome
-  Given an English UI
-  When Dutch is selected in profile preferences
-  Then the navigation renders the Dutch strings and the html lang attribute is nl
-# pinned by: tests/e2e/localization.spec.js
-
-Scenario: An admin creates, re-roles and deletes a user
-  Given the users page
-  When a new editor is created, promoted to admin and deleted
-  Then each step is reflected in the users table
-# pinned by: tests/e2e/user-management.spec.js
-
-Scenario: A runtime setting changed on /system survives a reload
-  Given the system settings page
-  When items_per_page is changed
-  Then the value is persisted and the asset grid honours it
-# pinned by: tests/e2e/system-settings.spec.js
-
-Scenario: An admin issues and revokes an API token from /api-docs
-  Given the API tokens page
-  When a token is created and then revoked
-  Then it is listed once and then gone
-# pinned by: tests/e2e/api-docs.spec.js
-
-Scenario: A token issued in the browser authenticates a REST call
-  Given a token just created on /api-docs
-  When it is sent as a Bearer token to GET /api/assets
-  Then the response is 200 with a paginated payload
-# pinned by: tests/e2e/api-docs.spec.js
-
-Scenario: An admin generates a JWT secret for a user
-  Given the JWT tab
-  When a secret is generated for api@e2e.test
-  Then the secret is shown once and the user appears in the secret list
-# pinned by: tests/e2e/api-docs.spec.js
-
-Scenario: Tags can be renamed and deleted from the tags page
-  Given a seeded tag
-  When it is renamed and then deleted
-  Then the tags table reflects both changes
-# pinned by: tests/e2e/tags.spec.js
-
-Scenario: Every tools page boots its Alpine component
-  Given the tools overview
-  When each tool card is followed
-  Then the tool's own root element renders and no page error is raised
-  # (Alpine's benign "Transition was skipped" rejection is filtered)
-# pinned by: tests/e2e/tools.spec.js
-
-Scenario: The embed view renders the grid without the app chrome
-  Given embedding is enabled with an allowed domain
-  When /assets/embed is opened
-  Then the grid renders and no application navigation is present
-# pinned by: tests/e2e/embed.spec.js
+Scenario: A reseed can be triggered on its own
+  Given a dirty e2e database
+  When npm run e2e:reset is run
+  Then reseed() rebuilds database/e2e.sqlite without starting the suite
+# pinned by: tests/e2e/support/reseed.mjs, tests/e2e/support/db.js
 ```
 
 ## Tests & verification
@@ -458,8 +346,11 @@ npm run test:e2e -- tests/e2e/asset-grid.spec.js   # one file
 npm run e2e:down
 ```
 
-78 tests across 14 spec files, ~3 minutes serialized (the 4 upload tests skip
-without MinIO):
+74 tests across 14 spec files (72 literal `test()` calls plus 2 generated by the
+`tools.spec.js` loop), on top of the 4 in `global.setup.js` — so
+`npx playwright test --list` reports **78 tests in 15 files**. Counting only literal
+`test(` calls understates it; `npm run spec:lint` counts the loop-generated cases too.
+~3 minutes serialized; the 4 upload tests skip without MinIO:
 
 ```
 auth · asset-grid · asset-detail · asset-upload(S3) · asset-trash ·
@@ -472,6 +363,10 @@ tools · embed · localization · role-matrix
   failure).
 - The suite never touches `.env`; a missing `.env.e2e` fails fast in
   `playwright.config.js`.
+- Which behaviour each spec file pins is recorded by the owning feature spec, not
+  here — grep for the spec file name: `git grep -n "pinned by:.*asset-grid.spec.js"`.
+  Every one of the 14 files is pinned by at least one feature spec, and
+  `npm run spec:lint` fails if a pinned path stops existing.
 
 ## Open questions / future
 

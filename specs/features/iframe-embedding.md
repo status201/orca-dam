@@ -125,6 +125,26 @@ Scenario: The embed browser omits nav/footer chrome but honors filters
   When they load /assets/embed with a type or search query param
   Then matching assets are shown, non-matching ones are not, and no footer/nav markup is present
 # pinned by: tests/Feature/EmbedTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: The embed view renders the grid without the app chrome
+  Given embedding is enabled with an allowed domain
+  When /assets/embed is opened
+  Then the grid renders and no application navigation is present
+# pinned by: tests/e2e/embed.spec.js
+
+Scenario: The embed response relaxes X-Frame-Options into a frame-ancestors CSP
+  Given an allowed embed domain
+  When /assets/embed is fetched in a browser
+  Then X-Frame-Options is absent and the CSP names the allowed domain
+# pinned by: tests/e2e/embed.spec.js
+
+Scenario: Search and type filters work inside the embed and keep the embed route
+  Given the embed view
+  When a search term and a non-image type filter are applied
+  Then the results narrow and navigation stays on /assets/embed
+# pinned by: tests/e2e/embed.spec.js
 ```
 
 ## Tests & verification

@@ -4,7 +4,7 @@ This guide covers deploying ORCA DAM to a production environment.
 
 ## Prerequisites
 
-- PHP 8.4+ with required extensions (GD, SQLite/MySQL, curl, mbstring, xml, zip)
+- PHP 8.3+ (8.4 recommended) with required extensions (GD, SQLite/MySQL, curl, mbstring, xml, zip)
 - Composer
 - Node.js & NPM (for asset compilation)
 - Web server (Nginx or Apache)

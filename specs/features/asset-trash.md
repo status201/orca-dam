@@ -154,6 +154,26 @@ Scenario: bulkForceDeleteTrashed only affects assets that are trashed
   When bulkForceDeleteTrashed is called
   Then only the trashed ones are permanently removed
 # pinned by: tests/Feature/BulkTrashTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Deleting an asset moves it to trash and restoring brings it back
+  Given the list view of the grid
+  When an asset is deleted from its row
+  Then it disappears from the grid and appears in /assets/trash/index
+  And restoring it returns it to the grid
+# pinned by: tests/e2e/asset-trash.spec.js
+
+Scenario: A soft-deleted asset shows in trash and not in the library
+  Given a seeded soft-deleted asset
+  Then it is listed in trash and absent from the asset grid
+# pinned by: tests/e2e/asset-trash.spec.js
+
+Scenario: An admin permanently deletes a trashed asset
+  Given a soft-deleted asset in trash
+  When the admin confirms permanent deletion
+  Then the asset is gone from trash entirely
+# pinned by: tests/e2e/asset-trash.spec.js
 ```
 
 ## Tests & verification

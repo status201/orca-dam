@@ -215,6 +215,39 @@ Scenario: An api-role user can bulk-download assets
   Given an api-role user
   Then bulkDownload succeeds (bulkDownload is granted to all three roles)
 # pinned by: tests/Feature/BulkDownloadTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Select-all and clear drive the floating bulk bar
+  Given the asset grid
+  When select-all is used and then cleared
+  Then the bulk bar appears with the full count and then disappears
+# pinned by: tests/e2e/bulk-operations.spec.js
+
+Scenario: Bulk-adding a tag applies it to every selected asset
+  Given several selected assets in the grid
+  When a tag is added from the bulk bar
+  Then the bar reports success and each asset carries the tag
+  And bulk-removing it takes it off each of them again
+# pinned by: tests/e2e/bulk-operations.spec.js
+
+Scenario: Bulk move to trash empties the selection and the assets leave the grid
+  Given a selection of assets
+  When "move to trash" is used from the bulk bar
+  Then the selection clears and the assets are in trash
+# pinned by: tests/e2e/bulk-operations.spec.js
+
+Scenario: Bulk download streams a zip to the browser
+  Given a selection of assets
+  When bulk download runs
+  Then a zip download is delivered
+# pinned by: tests/e2e/bulk-operations.spec.js
+
+Scenario: Bulk restore reports the filenames it restored before reloading
+  Given a selected asset in trash
+  When bulk restore runs
+  Then a summary lists the restored filename, and dismissing it returns the asset
+# pinned by: tests/e2e/asset-trash.spec.js
 ```
 
 ## Tests & verification

@@ -75,6 +75,12 @@ Asset:
 
 ## Scenarios (BDD)
 
+<!-- If this feature is also driven in a browser, put those scenarios in a
+     block at the END of this section, under the marker comment below, and pin
+     them to the tests/e2e/*.spec.js file. The owning feature spec pins its own
+     E2E test — e2e-testing.md owns only the harness (seeding, role sessions,
+     the S3 skip). See ../recipes/write-an-e2e-test.md. -->
+
 ```gherkin
 Scenario: <happy path>
   Given <state>
@@ -87,6 +93,14 @@ Scenario: <failure / edge case>
   When <action>
   Then <outcome>
 # pinned by: tests/Feature/...
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: <what the browser proves that a Feature test cannot>
+  Given <state>
+  When <action>
+  Then <outcome>
+# pinned by: tests/e2e/<area>.spec.js
 ```
 
 ## Tests & verification
@@ -95,6 +109,7 @@ Scenario: <failure / edge case>
 
 - Unit: `tests/Unit/...` — `php artisan config:clear && php artisan test`
 - Feature: `tests/Feature/...` — same
+- E2E: `tests/e2e/<area>.spec.js` — `npm run test:e2e` (delete if not driven in a browser)
 - Style: `./vendor/bin/pint --test`
 - Manual check: exercise the route/HTTP call, or assert state via `php artisan tinker`.
 

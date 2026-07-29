@@ -403,6 +403,99 @@ return [
 | `folder` | `?folder=assets/marketing` |
 | `sort` | `?sort=date_desc` (default), `date_asc`, `upload_desc`, `upload_asc`, `size_desc`, `size_asc`, `name_asc`, `name_desc`, `s3key_asc`, `s3key_desc` |
 
+### Request / response shapes
+
+```
+GET /api/assets?search=keyword&tags[]=1&tags[]=2&type=image&per_page=24
+GET /api/assets/{id}
+GET /api/assets/search?q=keyword&tags=1,2&type=image
+GET /api/tags?type=user            # type: user | ai | reference
+DELETE /api/assets/{id}            # 403 for the api role — see authorization-policies.md
+```
+
+```
+POST /api/assets                   # direct upload, files <10MB
+Content-Type: multipart/form-data
+files[]: File[]
+```
+
+```
+PATCH /api/assets/{id}
+{
+    "alt_text": "Description",
+    "caption": "Caption text",
+    "license_type": "cc_by",
+    "copyright": "© 2026 Company Name",
+    "tags": ["tag1", "tag2"]
+}
+```
+
+```
+GET /api/assets/meta?url=https://bucket.s3.amazonaws.com/assets/abc123.jpg   # public
+{
+    "alt_text": "Description",
+    "caption": "Caption text",
+    "license_type": "cc_by",
+    "copyright": "© 2026 Company Name",
+    "filename": "image.jpg",
+    "url": "https://bucket.s3.amazonaws.com/assets/abc123.jpg"
+}
+```
+
+```
+GET /api/folders
+{ "folders": ["assets", "assets/marketing", "assets/docs"] }
+```
+
+**Reference tags** track which external system uses which asset. Every endpoint accepts
+single or batch targets — provide at least one of `asset_id`, `asset_ids`, `s3_key`,
+`s3_keys`:
+
+```
+POST   /api/reference-tags        { "s3_key": "assets/abc123-uuid.jpg", "tags": ["2F.4.6.2", "REF-001"] }
+POST   /api/reference-tags        { "asset_ids": [1, 2, 3], "tags": ["slideshow-42"] }
+DELETE /api/reference-tags        { "asset_ids": [1, 2, 3], "tag_names": ["slideshow-42"] }
+DELETE /api/reference-tags/{tag}  { "asset_id": 1 }
+```
+
+### Chunked upload (files ≥10MB)
+
+The client picks the mode: files under 10MB go to `POST /api/assets`, larger ones through
+the four-step session below. Contract:
+[specs/features/chunked-upload.md](specs/features/chunked-upload.md).
+
+```
+# 1. Initialize
+POST /api/chunked-upload/init
+{ "filename": "large-file.mp4", "mime_type": "video/mp4", "file_size": 524288000 }
+→ { "session_token": "uuid", "upload_id": "s3-upload-id",
+    "chunk_size": 10485760, "total_chunks": 50 }
+
+# 2. Upload each chunk (rate-limited: 100/min)
+POST /api/chunked-upload/chunk        # multipart/form-data
+session_token: "uuid"
+chunk_number: 1
+chunk: <blob>
+→ { "message": "Chunk uploaded successfully", "part_number": 1,
+    "etag": "s3-etag", "uploaded_chunks": 1, "total_chunks": 50 }
+
+# 3. Complete
+POST /api/chunked-upload/complete
+{ "session_token": "uuid" }
+→ { "message": "Upload completed successfully", "asset": { …asset data with tags } }
+
+# 4. Abort on error (frees the S3 multipart upload)
+POST /api/chunked-upload/abort
+{ "session_token": "uuid" }
+```
+
+Re-uploading identical bytes returns `409` with a duplicates payload rather than storing
+a second copy — see
+[specs/features/duplicate-detection.md](specs/features/duplicate-detection.md).
+
+> Upload endpoints (`POST /api/assets` and the chunked-upload routes) can be switched off
+> at runtime via **API Docs → Dashboard → Upload Endpoints**; they then return `403`.
+
 ---
 
 ## Best Practices

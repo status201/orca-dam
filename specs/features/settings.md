@@ -126,6 +126,14 @@ Scenario: Changing the embed allow-list takes effect without a deploy
   When a subsequent request passes through AllowEmbedding
   Then the new domain list is reflected in the CSP frame-ancestors directive
 # pinned by: tests/Feature/Middleware/AllowEmbeddingTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: A runtime setting changed on /system survives a reload and changes behaviour
+  Given the system settings page
+  When items_per_page is changed
+  Then the value is persisted and the asset grid honours it
+# pinned by: tests/e2e/system-settings.spec.js
 ```
 
 ## Tests & verification

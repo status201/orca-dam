@@ -14,6 +14,7 @@ related:
   - upload-policy
   - tags
   - reference-tags-api
+  - folder-management
 source:
   - app/Http/Controllers/Api/AssetApiController.php
   - app/Http/Controllers/Api/HealthController.php
@@ -89,7 +90,7 @@ DELETE /api/assets/{asset}:  AssetApiController::destroy      # authorize('delet
 GET    /api/tags:            TagController::index             # ?type=
 GET    /api/tags/search:     TagController::search
 GET    /api/tags/{ids}:      TagController::show              # single id or comma-list, max 200
-GET    /api/folders:         FolderController::index
+GET    /api/folders:         FolderController::index           # see folder-management.md
 
 # routes/web.php — chunked upload, auth.multi:web,sanctum,jwt, throttle:100,1
 POST /api/chunked-upload/init | chunk | complete | abort

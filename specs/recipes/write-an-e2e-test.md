@@ -107,8 +107,15 @@ npm run test:e2e                                     # the whole suite before yo
 ```
 
 Then add the Gherkin scenario + `# pinned by: tests/e2e/<area>.spec.js` to the
-feature spec that owns the behaviour, and run `npm run spec:lint` (the path must
-resolve).
+feature spec that owns the behaviour — at the end of its `## Scenarios (BDD)` block,
+after the `# — browser-level —` marker comment — and add an `- E2E:` bullet to that
+spec's `## Tests & verification`. Run `npm run spec:lint`: every path named in a spec
+must resolve, whether it is on a pin line or in a bullet.
+
+**Do not add it to [`e2e-testing.md`](../features/e2e-testing.md).** That spec owns the
+*harness* — reseeding, saved role sessions, the MinIO skip, the disposable artefacts —
+and nothing else. Application behaviour is specified once, by its owning feature spec.
+A behaviour with no owning spec means the spec is missing; write it first (`/feature`).
 
 ## Gotchas
 

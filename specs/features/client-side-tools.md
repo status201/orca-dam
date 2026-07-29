@@ -204,6 +204,25 @@ Scenario: An API-role user can still reach the tools pages (auth-only, no role g
   When they GET tools
   Then the response is 200 — tools routes only require authentication, not a specific role
 # pinned by: tests/Feature/ToolsTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: The tools overview lists every tool card
+  Given the tools page
+  Then a card is present for each tool, including the deprecated tikz-svg/tikz-png entries
+# pinned by: tests/e2e/tools.spec.js
+
+Scenario: Every tools page boots its Alpine component
+  Given the tools overview
+  When each tool card is followed
+  Then the tool's own root element renders and no page error is raised
+  # (Alpine's benign "Transition was skipped" rejection is filtered)
+# pinned by: tests/e2e/tools.spec.js
+
+Scenario: Deprecated tool routes still render
+  Given /tools/tikz-svg, /tools/tikz-svg-fonts and /tools/tikz-png
+  Then each responds 200
+# pinned by: tests/e2e/tools.spec.js
 ```
 
 ## Tests & verification
