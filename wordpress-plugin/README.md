@@ -17,7 +17,7 @@ You only do this once. After this, you can change the code and see the changes i
 | Git | Get the code | `git --version` |
 | PHP 8.1+ | Run the plugin's PHP code locally | `php -v` |
 | Composer | Install PHP dependencies | `composer --version` |
-| Node.js 20+ | Build the React picker | `node --version` |
+| Node.js 20+ (CI builds on 22) | Build the React picker | `node --version` |
 | Docker Desktop | Run a throwaway WordPress site on your laptop | open Docker Desktop, it should say "running" |
 
 If any of those say "command not found", install it from its official site before continuing.

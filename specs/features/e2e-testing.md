@@ -269,7 +269,7 @@ Tools and versions:
   two suites each download their own browser build.
 - MinIO (`minio/minio`, `RELEASE.2025-04-22T22-12-26Z`) + `minio/mc` for bucket
   setup, wired in `docker-compose.e2e.yml`.
-- Node 20 in CI (matching the existing `phpunit` job).
+- Node 22 in CI (matching the `phpunit` and `sdd` jobs).
 
 ## Scenarios (BDD)
 
