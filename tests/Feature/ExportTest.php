@@ -188,3 +188,47 @@ test('export can filter by folder', function () {
     expect($content)->toContain('img1.jpg');
     expect($content)->not->toContain('file.pdf');
 });
+
+test('the file type options are categories the filter understands, not mime prefixes', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Asset::factory()->image()->create();
+    Asset::factory()->pdf()->create();
+
+    $response = $this->actingAs($admin)->get(route('export.index'));
+
+    $response->assertOk();
+    // "application" is a mime prefix, not a category — scopeOfType ignores it and
+    // would export everything, so it must never be offered as an option.
+    $response->assertViewHas('fileTypes', fn ($types) => $types->all() === ['document', 'image']);
+});
+
+test('export filtered by document excludes images and videos', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Asset::factory()->pdf()->create(['filename' => 'paper.pdf']);
+    Asset::factory()->image()->create(['filename' => 'photo.jpg']);
+    Asset::factory()->create(['filename' => 'clip.mp4', 'mime_type' => 'video/mp4']);
+
+    $response = $this->actingAs($admin)->post(route('export.download'), [
+        'file_type' => 'document',
+    ]);
+
+    $content = $response->streamedContent();
+
+    expect($content)->toContain('paper.pdf');
+    expect($content)->not->toContain('photo.jpg');
+    expect($content)->not->toContain('clip.mp4');
+});
+
+test('export rejects a file type outside the known categories', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Asset::factory()->pdf()->create(['filename' => 'paper.pdf']);
+    Asset::factory()->image()->create(['filename' => 'photo.jpg']);
+
+    // The regression: "application" reached scopeOfType, which ignored it, so the
+    // export silently contained every asset instead of only the documents.
+    $response = $this->actingAs($admin)->post(route('export.download'), [
+        'file_type' => 'application',
+    ]);
+
+    $response->assertSessionHasErrors('file_type');
+});

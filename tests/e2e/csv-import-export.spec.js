@@ -142,6 +142,23 @@ test.describe('csv asset export', () => {
         expect(csv).not.toContain('e2e-grid-01.png');
     });
 
+    test('a document-filtered export leaves the images behind', async ({ page }) => {
+        await page.goto('/export');
+        await expect(page.locator(testid('export-page'))).toBeVisible();
+
+        // The options are categories, not mime prefixes: picking one that
+        // scopeOfType does not know would export the whole library.
+        await page.selectOption(testid('export-file-type'), 'document');
+
+        const downloadPromise = page.waitForEvent('download');
+        await page.click(testid('export-download'));
+        const csv = await downloadText(await downloadPromise);
+
+        expect(csv).toContain('e2e-doc-01.pdf');
+        expect(csv).not.toContain('e2e-grid-01.png');
+        expect(csv).not.toContain('e2e-video-01.mp4');
+    });
+
     test('Reset Filters clears an active filter back to exporting everything', async ({ page }) => {
         await page.goto('/export');
         await expect(page.locator(testid('export-page'))).toBeVisible();

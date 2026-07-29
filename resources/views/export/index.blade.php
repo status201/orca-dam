@@ -3,6 +3,15 @@
 @section('title', __('Export Assets'))
 
 @section('content')
+@php
+    // Asset::typeCategories() keys -> the labels the grid's type filter already uses.
+    $typeLabels = [
+        'document' => __('Documents'),
+        'image' => __('Images'),
+        'video' => __('Videos'),
+        'audio' => __('Audio'),
+    ];
+@endphp
 <div x-data="exportAssets()" data-testid="export-page">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">{{ __('Export Assets') }}</h1>
@@ -43,7 +52,8 @@
                             class="w-full rounded-lg border-gray-300 focus:border-transparent focus:ring-orca-black">
                         <option value="">{{ __('All File Types') }}</option>
                         @foreach($fileTypes as $type)
-                            <option value="{{ $type }}">{{ ucfirst($type) }}</option>
+                            {{-- Same labels the grid's type filter uses, so both read alike in nl. --}}
+                            <option value="{{ $type }}">{{ $typeLabels[$type] ?? ucfirst($type) }}</option>
                         @endforeach
                     </select>
                     <p class="text-xs text-gray-500 mt-1">{{ __('Filter by file type (e.g., image, video, document)') }}</p>

@@ -41,6 +41,12 @@ so its contract is documented once here rather than re-derived per feature.
 - **REQ-5** — All computed URLs (`url`, `thumbnail_url`, `resize_*_url`) resolve
   through `S3Service::getPublicBaseUrl()` so a `custom_domain` setting change
   applies everywhere without touching stored data.
+- **REQ-6** — `scopeOfType` is deliberately lenient: an unrecognised value leaves
+  the query untouched rather than erroring, so a stale bookmark or a hand-built API
+  query still returns results. The cost is that a wrong value filters *nothing*,
+  silently — so the valid values are published as `Asset::typeCategories()` and
+  every caller that offers a type filter must both source its options from it and
+  reject anything else at its own boundary.
 
 ## Technical design
 
@@ -55,12 +61,21 @@ user → reference → ai), `userTags()`/`aiTags()`/`referenceTags()` (filtered
 Methods: `syncTagsWithAttribution(array $tagIds, string $attachedBy): void`,
 `wasModified(): bool`, `isImage()`/`isVideo()`/`isPdf()`/`isSvg()`/`isEps()`/
 `isMathMl()`/`isTex()`, `getFileIcon()`/`getIconColorClass()`,
-`licenseTypes(): array` (static), `getLicenseLabel(): string`.
+`licenseTypes(): array` (static), `getLicenseLabel(): string`,
+`typeCategories(): array<string>` (static) and
+`typeCategoryFor(string $mimeType): ?string` (static).
+
+**The type categories are `document`, `image`, `video`, `audio`** — not mime
+prefixes. `application/pdf` is a `document`, so a prefix like `application` is
+*not* a valid filter value, and `scopeOfType` ignores values it does not
+recognise (see REQ-6). Anything building a type filter must therefore source its
+options from `Asset::typeCategories()` and map a mime type with
+`Asset::typeCategoryFor()`, never from `explode('/', $mimeType)[0]`.
 
 Scopes: `scopeSearch($query, ?string $search)` (delegates to
 `AssetSearchParser::apply`), `scopeWithTags($query, array $tagIds)`,
 `scopeOfType($query, ?string $type)` (accepts `images`/`videos`/`documents`
-aliases in addition to raw mime-prefix categories), `scopeByUser($query, ?int $userId)`,
+aliases in addition to the canonical categories), `scopeByUser($query, ?int $userId)`,
 `scopeInFolder($query, ?string $folder)`, `scopeApplySort($query, string $sort)`,
 `scopeMissing($query)`.
 
@@ -161,6 +176,20 @@ Scenario: scopeOfType accepts plural/friendly aliases
   Given assets of various mime types
   When querying ofType('images')
   Then only image/* assets are returned
+# pinned by: tests/Unit/AssetTest.php
+
+Scenario: A mime type maps to its category, not its prefix
+  Given the mime type application/pdf
+  When Asset::typeCategoryFor() is called
+  Then it returns "document", because "application" is not a filter value
+  And Asset::typeCategories() lists document, image, video and audio
+# pinned by: tests/Unit/AssetTest.php
+
+Scenario: An unrecognised type value filters nothing rather than erroring
+  Given assets of various mime types
+  When querying ofType('application')
+  Then every asset is returned, because the value is not a known category
+  And this is why callers must offer only Asset::typeCategories() (REQ-6)
 # pinned by: tests/Unit/AssetTest.php
 
 Scenario: scopeWithTags filters by tag id
