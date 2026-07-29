@@ -58,7 +58,7 @@ Routes (`routes/web.php`, admin-gated): `GET export` / `POST export`
 (`ExportController::index`/`export`); `GET import`, `POST import/preview`,
 `POST import/import` (`ImportController`).
 
-`CsvExportService::generateHeaders(): array` — 34 fixed columns (see Data
+`CsvExportService::generateHeaders(): array` — 33 fixed columns (see Data
 shapes). `CsvExportService::formatRow(Asset $asset): array` — one row per
 asset, tag columns joined with `, `. `CsvExportService::sanitizeCell($value)`
 — formula-injection guard (REQ-2), applied to every cell.
@@ -212,10 +212,60 @@ Scenario: Import handles a batch with mixed matched/unmatched/invalid rows corre
   When import runs
   Then updated/skipped counts and errors[] correctly reflect each row's outcome
 # pinned by: tests/Feature/ImportTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: The preview step reports the diff before anything is written
+  Given a CSV naming one existing s3_key and one that does not exist
+  When Preview Import is clicked
+  Then the totals show one matched and one not found
+  And the matched row names the asset it resolved to, the missing key is listed
+    separately, and no asset has changed yet
+# pinned by: tests/e2e/csv-import-export.spec.js
+
+Scenario: Importing writes the previewed metadata onto the asset
+  Given a previewed CSV with one matched row
+  When Import is clicked
+  Then the result step reports one updated and one skipped, with no errors
+  And the asset's detail page shows the imported value
+# pinned by: tests/e2e/csv-import-export.spec.js
+
+Scenario: Imported tags are added to an asset without removing its existing tags
+  Given an asset that already carries a tag
+  When a CSV imports a different user_tag onto it
+  Then the asset carries both
+# pinned by: tests/e2e/csv-import-export.spec.js
+
+Scenario: A CSV missing the match column is refused rather than importing nothing
+  Given a CSV whose header lacks the selected match field
+  When Preview Import is clicked
+  Then an error is shown and the wizard stays on the paste step
+# pinned by: tests/e2e/csv-import-export.spec.js
+
+Scenario: Start Over resets the wizard
+  Given a completed import
+  When Start Over is clicked
+  Then the pasted CSV is cleared and the paste step is shown again
+# pinned by: tests/e2e/csv-import-export.spec.js
+
+Scenario: A tag-filtered export downloads only the matching assets
+  Given the export page with its tag list loaded from the API
+  When a tag carried by exactly one asset is selected and the export submitted
+  Then a CSV named orca-assets-export-<timestamp>.csv downloads
+  And it contains that asset and not an asset without the tag
+# pinned by: tests/e2e/csv-import-export.spec.js
+
+Scenario: Reset Filters returns the export to exporting everything
+  Given a folder filter chosen on the export page
+  When Reset Filters is clicked
+  Then the filter is cleared
+# pinned by: tests/e2e/csv-import-export.spec.js
 ```
 
 ## Tests & verification
 
 - Feature: `tests/Feature/ExportTest.php`, `tests/Feature/ImportTest.php`
 - Unit: `tests/Unit/CsvExportServiceTest.php`, `tests/Unit/CsvImportServiceTest.php`
-- Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/csv-import-export.spec.js` — the import wizard's three steps and
+  the export download, which is the only place the streamed CSV is read back.
+- Run: `php artisan config:clear && php artisan test`; `npm run test:e2e`

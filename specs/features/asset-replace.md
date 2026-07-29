@@ -150,12 +150,43 @@ Scenario: storeThumbnail requires authentication and a thumbnail field
   Given a guest request, or a request missing the thumbnail field
   Then the request is rejected (redirect to login, or a validation error)
 # pinned by: tests/Feature/AssetTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: A replacement with the wrong extension never reaches the server
+  Given the replace page for a .png asset
+  When a file named .jpg is chosen
+  Then an error is shown in the page and no upload is offered
+# pinned by: tests/e2e/asset-replace.spec.js
+
+Scenario: A staged replacement can be cleared
+  Given a staged replacement file
+  When Clear is clicked
+  Then the drop zone returns to its empty state
+# pinned by: tests/e2e/asset-replace.spec.js
+
+Scenario: Cancelling the confirmation does not replace anything
+  Given a staged replacement file
+  When Replace File is clicked and the confirmation cancelled
+  Then the modal closes, the file stays staged, and nothing was uploaded
+# pinned by: tests/e2e/asset-replace.spec.js
+
+Scenario: Confirming replaces the file and returns to the edit page
+  Given a staged replacement file and a reachable bucket
+  When the replacement is confirmed
+  Then the edit page is shown with the replaced marker in the URL
+  And the transient success panel is not what proves it — the module redirects
+    after ~2 seconds
+# pinned by: tests/e2e/asset-replace.spec.js
 ```
 
 ## Tests & verification
 
 - Feature: `tests/Feature/AssetTest.php` (replace + storeThumbnail scenarios)
-- Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/asset-replace.spec.js` — the client-side extension guard,
+  staging/clearing and the confirmation modal run without a bucket; the successful
+  replace is guarded by `requiresS3()`.
+- Run: `php artisan config:clear && php artisan test`; `npm run test:e2e`
 
 ## Open questions / future
 

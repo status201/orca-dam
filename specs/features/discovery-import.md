@@ -167,10 +167,33 @@ Scenario: ProcessDiscoveredAsset re-throws on failure to trigger a retry
   When the job runs
   Then the exception propagates (so the queue retries per tries=3)
 # pinned by: tests/Unit/Jobs/ProcessDiscoveredAssetTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: An object in the bucket with no database row is found and imported
+  Given an object whose asset row has been force-deleted, leaving the object
+  When the bucket is scanned from the discover page
+  Then that object is listed as unmapped
+  When it is selected and the import confirmed
+  Then the import is reported, the row leaves the unmapped list, and the object is
+    an asset in the library
+# pinned by: tests/e2e/discover.spec.js
+
+Scenario: Select all and deselect all drive the import button
+  Given a scan listing at least one unmapped object
+  When Select All is clicked, then Deselect All
+  Then the import button becomes enabled, then disabled again
+# pinned by: tests/e2e/discover.spec.js
 ```
 
 ## Tests & verification
 
 - Feature: `tests/Feature/DiscoverTest.php`
 - Unit: `tests/Unit/Jobs/ProcessDiscoveredAssetTest.php`
-- Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/discover.spec.js` — scan → select → import against real MinIO,
+  guarded by `requiresS3()`. The guard is load-bearing, not defensive:
+  `S3Service::listObjects` swallows its exceptions and returns `[]`, so without a
+  bucket a scan reports nothing unmapped and the assertions would pass for the
+  wrong reason. The spec orphans its own object (upload, then drop the row via
+  `tinker()`), because no app route leaves an object without a row.
+- Run: `php artisan config:clear && php artisan test`; `npm run e2e:up && npm run test:e2e`

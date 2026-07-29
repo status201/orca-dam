@@ -183,6 +183,26 @@ Scenario: The grid's inline row input and the bulk bar share the same splitting
   When a comma-separated list is entered in a row input, and again in the bulk bar
   Then both produce the same separate tags
 # pinned by: tests/e2e/asset-detail.spec.js, tests/e2e/bulk-operations.spec.js
+
+Scenario: The batch metadata form splits and dedupes like every other tag input
+  Given the collapsed batch metadata form on the upload page
+  When it is opened and a comma-separated list is entered
+  Then one badge per tag is created and the input is consumed
+  And adding a tag that is already staged does not add it twice
+# pinned by: tests/e2e/upload-metadata.spec.js
+
+Scenario: A staged batch tag can be removed again
+  Given two staged batch tags
+  When one is removed
+  Then only the other remains
+# pinned by: tests/e2e/upload-metadata.spec.js
+
+Scenario: A reference tag picked from the batch suggestions stays a reference tag
+  Given the batch metadata tag input
+  When a reference tag is chosen from the suggestion dropdown
+  Then it is staged as a reference tag rather than a user tag, so it can be
+    attributed separately on upload
+# pinned by: tests/e2e/upload-metadata.spec.js
 ```
 
 ## Tests & verification
@@ -194,17 +214,16 @@ Scenario: The grid's inline row input and the bulk bar share the same splitting
   request", "bulk add tags splits comma-joined values").
 - Run: `php artisan config:clear && php artisan test tests/Unit/TagInputParserTest.php tests/Feature/TagTest.php`
 - E2E: the JS side (`tag-input-core.js`) has no *unit* test (no JS unit-test runner is
-  configured), but it is exercised in a real browser by
+  configured), but all four consumers are exercised in a real browser:
   `tests/e2e/asset-detail.spec.js` (comma splitting on the edit page and the inline row
-  input) and `tests/e2e/bulk-operations.spec.js` (the bulk bar's input) — harness in
-  [`e2e-testing.md`](e2e-testing.md).
+  input), `tests/e2e/bulk-operations.spec.js` (the bulk bar's input) and
+  `tests/e2e/upload-metadata.spec.js` (the batch metadata form, including the
+  reference-tag branch) — harness in [`e2e-testing.md`](e2e-testing.md).
 
 ## Open questions / future
 
 - `tag-input-core.js` (`parseTagNames`, `tagInputCore`) has no *unit* coverage —
-  the repo has no JS unit-test runner wired up. Two of the four Alpine widgets
-  that consume it (`asset-editor.js`, `asset-grid.js`'s row input) are now driven
-  in a browser by the E2E suite; the bulk bar's input is covered indirectly by
-  `tests/e2e/bulk-operations.spec.js`, and `upload-metadata.js`'s batch-metadata
-  input is still untested. A `parseTagNames` unit test would still be cheaper
-  than the browser path for the pure-parsing rules.
+  the repo has no JS unit-test runner wired up. All four Alpine widgets that
+  consume it are now driven in a browser by the E2E suite, so the behaviour is
+  pinned, but a `parseTagNames` unit test would still be far cheaper than the
+  browser path for the pure-parsing rules.

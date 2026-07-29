@@ -214,14 +214,13 @@ Scenario: The tools overview lists every tool card
 
 Scenario: Every tools page boots its Alpine component
   Given the tools overview
-  When each tool card is followed
+  When each tool card is followed — including the three deprecated tikz pages
   Then the tool's own root element renders and no page error is raised
   # (Alpine's benign "Transition was skipped" rejection is filtered)
-# pinned by: tests/e2e/tools.spec.js
-
-Scenario: Deprecated tool routes still render
-  Given /tools/tikz-svg, /tools/tikz-svg-fonts and /tools/tikz-png
-  Then each responds 200
+  # The deprecated pages are booted in the browser rather than merely fetched for a
+  # 200: they still register Alpine modules, and a bundle error shows up here first.
+  # Rendering is not driven — with external hosts blocked, TikZJax never loads and
+  # render() would wait out its own 90s deadline.
 # pinned by: tests/e2e/tools.spec.js
 ```
 
@@ -230,7 +229,8 @@ Scenario: Deprecated tool routes still render
 - Feature: `tests/Feature/ToolsTest.php` (SVG/SVG-fonts/PNG/tex-template upload
   paths, metadata application, validation) — `php artisan config:clear && php artisan test`
 - Unit: `tests/Unit/Services/ToolUploadServiceTest.php`
-- E2E: `tests/e2e/tools.spec.js` — each tool page loads and boots its JS without a page error.
+- E2E: `tests/e2e/tools.spec.js` — all six tool pages (three current, three
+  deprecated) load and boot their JS without a page error.
 
 ## Open questions / future
 

@@ -219,6 +219,39 @@ Scenario: passkeys:list and passkeys:revoke manage credentials from the CLI
   When `passkeys:revoke <id>` or `passkeys:revoke --user=<email>` is run with --force
   Then the matching passkey(s) are deleted
 # pinned by: tests/Feature/PasskeyTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: A user with no passkeys is told so and offered a way to add one
+  Given a user without passkeys
+  When they open their profile
+  Then the empty state is shown and the Add Passkey control is enabled
+  And the unsupported-browser warning is absent, because Chromium supports WebAuthn
+# pinned by: tests/e2e/passkeys.spec.js
+
+Scenario: Registered passkeys are listed
+  Given a user with two registered passkeys
+  When they open their profile
+  Then both are listed by name
+# pinned by: tests/e2e/passkeys.spec.js
+
+Scenario: The rename editor can be abandoned without saving
+  Given the inline rename editor opened on a passkey
+  When a new name is typed and Cancel is clicked
+  Then the editor closes and the original name is unchanged
+# pinned by: tests/e2e/passkeys.spec.js
+
+Scenario: A passkey can be renamed
+  Given the inline rename editor opened on a passkey
+  When a new name is saved
+  Then the list shows the new name and the old name is gone
+# pinned by: tests/e2e/passkeys.spec.js
+
+Scenario: Removing a passkey requires confirming
+  Given a registered passkey
+  When Remove is clicked and the confirmation accepted
+  Then the passkey is gone from the list
+# pinned by: tests/e2e/passkeys.spec.js
 ```
 
 ## Tests & verification
@@ -230,7 +263,11 @@ Scenario: passkeys:list and passkeys:revoke manage credentials from the CLI
   `passkeys:list`/`passkeys:revoke` console commands.
 - Unit: `tests/Unit/PasskeyServiceTest.php` — `PasskeyService` methods in isolation
   (list ordering, limit check, rename/delete ownership scoping, clear-all).
-- Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/passkeys.spec.js` — the management UI (empty state, listing,
+  inline rename, remove-with-confirm). It never clicks "Add Passkey": the
+  registration ceremony needs a CDP virtual authenticator the harness does not set
+  up, so registration and passkey sign-in remain browser-untested.
+- Run: `php artisan config:clear && php artisan test`; `npm run test:e2e`
 
 ## Open questions / future
 
