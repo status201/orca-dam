@@ -104,14 +104,34 @@ Scenario: An API-role token cannot delete an asset
   When they send DELETE /api/assets/{id}
   Then the response status is 403
   And the asset is not soft-deleted
-# pinned by: tests/Feature/AssetApiTest.php
+# pinned by: tests/Feature/ApiTest.php
 ```
 
 The `# pinned by:` path must point at a **real** test file. `scripts/spec-lint.mjs`
-fails on a path that does not exist — never invent one. A behaviour with no test is
-a **finding**: write the scenario and list the missing coverage under the spec's
-"Open questions / future"; do not fabricate a pin or write the test just to satisfy
-the lint.
+fails on a path that does not exist — never invent one, and note that the same rule
+applies to paths named in `## Tests & verification`, not just to pin lines. A behaviour
+with no test is a **finding**: write the scenario and list the missing coverage under the
+spec's "Open questions / future"; do not fabricate a pin or write the test just to
+satisfy the lint.
+
+**Browser-level scenarios belong to the feature, not to the suite.** A Playwright spec
+is pinned by the feature spec that owns the behaviour, in a block at the end of that
+spec's scenarios introduced by a `# — browser-level —` marker comment:
+
+```gherkin
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Deleting an asset moves it to trash and restoring brings it back
+  Given the list view of the grid
+  When an asset is deleted from its row
+  Then it disappears from the grid and appears in /assets/trash/index
+# pinned by: tests/e2e/asset-trash.spec.js
+```
+
+[`features/e2e-testing.md`](features/e2e-testing.md) specifies only the **harness** —
+reseeding, saved role sessions, the MinIO skip, the disposable artefacts. It does not
+restate application behaviour, so nothing is specified twice. See
+[`recipes/write-an-e2e-test.md`](recipes/write-an-e2e-test.md).
 
 ## Spec lifecycle
 
@@ -199,15 +219,37 @@ config files Laravel publishes (`config/app.php`, `auth`, `cache`, `database`,
 > The guard checks that a spec *changed*, not that it is *good* — spec quality is
 > the human review gate. A companion check, `scripts/spec-lint.mjs`
 > (`npm run spec:lint`), validates spec *structure*: a metadata block, `id`
-> matching the filename, a valid `status`, that `# pinned by:` paths resolve, and
-> that every spec/ADR is listed in this folder map **and** the `decisions/` index.
-> It also checks documented *facts* don't rot: dependency versions named in
-> `specs/**` or `CLAUDE.md` must match the **constraints** in `composer.json` /
-> `package.json` (never `composer.lock` — a routine `composer update` inside a
-> range must not fail the build, only a real constraint change), and the
-> hand-counted Alpine-module and spec/ADR totals in `CLAUDE.md` must match the
-> tree. A version may be coarser than the constraint (`^13` for `^13.0`) but
-> never contradict it.
+> matching the filename, a valid `status`, a `## Tests & verification` section on
+> every feature/recipe, and that every spec/ADR is listed in this folder map **and**
+> the `decisions/` index.
+>
+> **Test paths.** Every `tests/…` path a spec names must resolve — both on a
+> `# pinned by:` line and in a backticked `## Tests & verification` bullet. The
+> bullets went unchecked for a while, which let a spec keep advertising coverage
+> after the test file was gone. Paths under `## Open questions / future` are
+> exempt: that section is where the method says to record coverage that does *not*
+> exist yet.
+>
+> It also checks documented *facts* don't rot, over `specs/**` **and** the root docs
+> (`README.md`, `CLAUDE.md`, `QUICK_REFERENCE.md`, `SETUP_GUIDE.md`,
+> `DEPLOYMENT.md`, `CHANGELOG.md`, `.claude/agents/*.md`) — the same wrong number
+> used to sit in three files at once:
+> - **Dependency versions** must match the **constraints** in `composer.json` /
+>   `package.json` (never `composer.lock` — a routine `composer update` inside a
+>   range must not fail the build, only a real constraint change). A version may be
+>   coarser than the constraint (`^13` for `^13.0`) but never contradict it.
+> - **Hand-counted totals**: feature specs, ADRs, Alpine modules, services, console
+>   commands, `*Test.php` files, and the Playwright test + spec-file counts. The E2E
+>   total counts loop-generated cases, not just literal `test(` calls.
+> - **The file tree** in `QUICK_REFERENCE.md` — the repo's only one — must name every
+>   `app/Services/` and `app/Console/Commands/` entry and every tracked top-level
+>   directory, and nothing that has been deleted.
+> - **Manual parity**: `GEBRUIKERSHANDLEIDING.md` must mirror `USER_MANUAL.md`'s
+>   heading-level sequence, so the Dutch manual cannot silently fall behind.
+>
+> `CHANGELOG.md` is checked only inside `[Unreleased]`; released entries are a
+> historical record of what shipped then and must not be rewritten.
+>
 > It runs in CI (PRs **and** pushes to `main`) **and** unconditionally as a local
 > `Stop` hook. Hooks can be disabled by editing `.claude/settings.json`, so CI is
 > the real cross-tool backstop.
@@ -231,6 +273,8 @@ specs/
     asset-trash.md         ·  soft delete / restore / force delete, S3 lifecycle
     bulk-operations.md     ·  bulk tags/trash/restore/move/download/force-delete
     asset-search.md        ·  search operators, URL-prefix stripping, sort values
+    asset-cycle-navigation.md · show-page prev/next over the index result set
+    folder-management.md   ·  s3_folders list: read / scan / create endpoints
     s3-integrity.md        ·  verify-integrity command + job, s3_missing_at
     discovery-import.md    ·  S3 discovery → import → ProcessDiscoveredAsset
     csv-export-import.md   ·  33-column export; import diff → validate → apply

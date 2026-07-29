@@ -8,6 +8,7 @@ owner: core
 related:
   - architecture
   - asset-model
+  - asset-cycle-navigation
 source:
   - app/Services/AssetSearchParser.php
   - app/Models/Asset.php
@@ -130,6 +131,36 @@ Scenario: Exclude handles null alt_text and caption gracefully
   When an exclude term is searched
   Then those assets are not incorrectly excluded due to the null comparison
 # pinned by: tests/Unit/AssetTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Searching narrows the grid to matching filenames
+  Given 14 seeded grid assets
+  When "e2e-grid-01" is typed into the grid search and applied
+  Then only that asset's card remains and a search filter pill is shown
+  And a search with no matches shows the empty state
+# pinned by: tests/e2e/asset-grid.spec.js
+
+Scenario: The type filter narrows the grid and is reflected in the URL
+  Given the asset grid
+  When type=document is chosen
+  Then only the seeded PDF is listed and the URL carries type=document
+  And the same holds for the video type
+# pinned by: tests/e2e/asset-grid.spec.js
+
+Scenario: Sort order, view mode and pagination drive the grid as specified
+  Given more seeded assets than one page holds
+  Then sorting by name reorders the cards
+  And each of the three view modes renders, with the choice remembered across loads
+  And pagination splits the library
+  And the tag filter panel lists the seeded tags and filters by them
+# pinned by: tests/e2e/asset-grid.spec.js
+
+Scenario: Clear all filters returns the full library
+  Given a filtered grid
+  When "clear all filters" is clicked
+  Then the grid shows the unfiltered total again
+# pinned by: tests/e2e/asset-grid.spec.js
 ```
 
 ## Tests & verification

@@ -152,6 +152,21 @@ Scenario: Every translatable string has a Dutch entry
   When checked against the nl locale
   Then each one resolves to a translation
 # pinned by: tests/Feature/TranslationIntegrityTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Switching the interface language translates the chrome
+  Given an English UI
+  When Dutch is selected in profile preferences
+  Then the navigation renders the Dutch strings and the html lang attribute is nl
+  And switching back restores the English chrome
+# pinned by: tests/e2e/localization.spec.js
+
+Scenario: The grid keeps working in Dutch and data-testid locators are unaffected
+  Given a Dutch UI
+  When the asset grid is driven by its data-testid hooks
+  Then every interaction behaves as it does in English
+# pinned by: tests/e2e/localization.spec.js
 ```
 
 ## Tests & verification

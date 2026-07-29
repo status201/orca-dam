@@ -16,6 +16,11 @@ source:
   - app/Http/Middleware/AuthenticateMultiple.php
   - app/Http/Controllers/Auth/AuthenticatedSessionController.php
   - app/Http/Controllers/Auth/RegisteredUserController.php
+  - app/Http/Controllers/Auth/PasswordResetLinkController.php
+  - app/Http/Controllers/Auth/NewPasswordController.php
+  - app/Http/Controllers/Auth/PasswordController.php
+  - app/Http/Controllers/Auth/ConfirmablePasswordController.php
+  - app/Http/Controllers/Auth/VerifyEmailController.php
   - app/Http/Requests/Auth/LoginRequest.php
   - routes/auth.php
   - routes/web.php
@@ -48,6 +53,12 @@ contract; the other three mechanisms and 2FA each have their own spec.
 - **REQ-5** — Login is rate-limited per `email|ip` (5 attempts) via
   `LoginRequest::ensureIsNotRateLimited()`, independent of any route-level throttle
   middleware.
+- **REQ-6** — The remaining Breeze scaffold flows (registration, password reset,
+  email verification, password update, password confirmation) ship unmodified and
+  stay behaviourally intact. ORCA provisions users via `/users`
+  ([user-management.md](user-management.md)) and does not link registration from the
+  navigation, but the routes remain mounted, so the contract is pinned rather than
+  left to rot.
 
 ## Technical design
 
@@ -69,6 +80,11 @@ routes (auth-only):
   POST /logout                      AuthenticatedSessionController::destroy
   PUT  /password                    PasswordController::update
   GET  /confirm-password            ConfirmablePasswordController::show
+  POST /confirm-password            ConfirmablePasswordController::store
+  GET  /verify-email                EmailVerificationPromptController
+  GET  /verify-email/{id}/{hash}    VerifyEmailController                 # + signed, throttle:6,1
+  POST /email/verification-notification
+                                    EmailVerificationNotificationController::store
 
 middleware:
   AuthenticateMultiple::handle(Request, Closure, ...$guards)   # app/Http/Middleware/AuthenticateMultiple.php
@@ -152,6 +168,69 @@ Scenario: A valid Sanctum token still authenticates when JWT is disabled
   When they call a route behind auth.multi:sanctum,jwt
   Then the request authenticates as that user
 # pinned by: tests/Feature/Middleware/AuthenticateMultipleTest.php
+
+Scenario: Registration still works, though ORCA does not link to it (REQ-6)
+  Given a guest visitor
+  When they GET /register, then POST /register with a valid name, email and password
+  Then the registration screen renders
+  And the new user is created and authenticated
+# pinned by: tests/Feature/Auth/RegistrationTest.php
+
+Scenario: A password reset completes with a valid token (REQ-6)
+  Given a registered user who requested a reset link
+  When they open /reset-password/{token} and POST /reset-password with a new password
+  And the reset-link screen and reset screen both render
+  Then an App\Notifications\ResetPasswordNotification was sent to them
+  And the password is changed with no validation errors
+# pinned by: tests/Feature/Auth/PasswordResetTest.php
+
+Scenario: Email verification accepts a signed link and rejects a tampered hash (REQ-6)
+  Given an unverified authenticated user
+  When they open the signed verification URL
+  Then users.email_verified_at is set and a Verified event fires
+  But an invalid hash leaves the address unverified
+# pinned by: tests/Feature/Auth/EmailVerificationTest.php
+
+Scenario: Updating a password requires the current one (REQ-6)
+  Given an authenticated user
+  When they PUT /password with the correct current password and a new one
+  Then the password is updated
+  But a wrong current_password returns a validation error on current_password
+# pinned by: tests/Feature/Auth/PasswordUpdateTest.php
+
+Scenario: Password confirmation gates sensitive screens (REQ-6)
+  Given an authenticated user
+  When they GET /confirm-password, then POST it with their password
+  Then the screen renders and the confirmation is accepted
+  But a wrong password returns a validation error on password
+# pinned by: tests/Feature/Auth/PasswordConfirmationTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: A seeded editor logs in through the real form and lands on the asset library
+  Given the login page in a real browser
+  When they submit editor@e2e.test with the seeded password
+  Then the asset grid is visible
+  And the navigation shows their name
+# pinned by: tests/e2e/auth.spec.js
+
+Scenario: A wrong password keeps the user on the login page with an error
+  Given the login page
+  When they submit a bad password
+  Then an email validation error is shown and no session is created
+# pinned by: tests/e2e/auth.spec.js
+
+Scenario: An unauthenticated visitor is redirected to login
+  Given no session
+  When they open /assets
+  Then they land on /login
+# pinned by: tests/e2e/auth.spec.js
+
+Scenario: Logging out really ends the session
+  Given a session created by this test (never a shared role session — e2e-testing.md REQ-13)
+  When they log out from the user menu
+  Then /assets redirects to /login
+# pinned by: tests/e2e/auth.spec.js
 ```
 
 ## Tests & verification
@@ -160,13 +239,30 @@ Scenario: A valid Sanctum token still authenticates when JWT is disabled
   reject bad password, logout.
 - Feature: `tests/Feature/Middleware/AuthenticateMultipleTest.php` — guard-order
   resolution, the JWT env/setting double-gate (REQ-3), 401 fallback.
+- Feature (Breeze scaffold, REQ-6): `tests/Feature/Auth/RegistrationTest.php`,
+  `tests/Feature/Auth/PasswordResetTest.php`,
+  `tests/Feature/Auth/EmailVerificationTest.php`,
+  `tests/Feature/Auth/PasswordUpdateTest.php`,
+  `tests/Feature/Auth/PasswordConfirmationTest.php` — these came with the scaffold and
+  are PHPUnit-style (`test_*` methods) rather than Pest, as is
+  `AuthenticationTest.php` above; together with `tests/Feature/ProfileTest.php` they
+  are the only seven such files in the suite.
 - Run: `php artisan config:clear && php artisan test`
 - E2E: `tests/e2e/auth.spec.js` — real-browser login, bad-password error, logout, guest redirect.
 
 ## Open questions / future
 
-- Registration (`RegisteredUserController`) has no dedicated feature test in the
-  suite grepped for this spec; it ships as standard Breeze scaffolding and is not
-  linked from the app's navigation (users are provisioned via `/users`, see
-  [user-management.md](user-management.md)), so it is documented here without a
-  pinned scenario.
+- The Breeze flows in REQ-6 are pinned but not exercised end-to-end; `auth.spec.js`
+  drives only login/logout. Registration in particular is unreachable from the UI, so
+  a browser test would have to navigate to `/register` directly — low value while
+  provisioning goes through `/users`.
+- **Found while reconciling this spec, not fixed here**: `verified` middleware guards
+  exactly one route, `GET /dashboard` (`routes/web.php:41`), while `/assets` and the
+  rest sit behind plain `auth`. `UserController::store` does not set
+  `email_verified_at` and the column is nullable with no default, so a user
+  provisioned through `/users` ([user-management.md](user-management.md)) cannot reach
+  the dashboard until something verifies them — they can still use the whole asset
+  library. Tests and `E2eSeeder` never hit this because `UserFactory` and the seeder
+  both stamp `email_verified_at`. Either provisioning should mark users verified or
+  `/dashboard` should drop `verified`; both are behaviour changes needing their own
+  spec revision.

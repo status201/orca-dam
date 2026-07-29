@@ -165,6 +165,32 @@ Scenario: Non-admin cannot generate or revoke a JWT secret
   When they send POST or DELETE /api-docs/jwt-secrets/{user}
   Then the response status is 403
 # pinned by: tests/Feature/JwtSecretManagementTest.php
+
+# — browser-level: these are the only coverage TokenController has (see Open questions) —
+
+Scenario: An admin issues and revokes an API token from /api-docs
+  Given the API tokens page
+  When a token is created and then revoked
+  Then it is listed once and then gone
+# pinned by: tests/e2e/api-docs.spec.js
+
+Scenario: A token issued in the browser authenticates a REST call
+  Given a token just created on /api-docs
+  When it is sent as a Bearer token to GET /api/assets
+  Then the response is 200 with a paginated payload
+# pinned by: tests/e2e/api-docs.spec.js
+
+Scenario: An admin generates a JWT secret for a user
+  Given the JWT tab
+  When a secret is generated for api@e2e.test
+  Then the secret is shown once and the user appears in the secret list
+# pinned by: tests/e2e/api-docs.spec.js
+
+Scenario: The public health endpoint needs no authentication
+  Given no session and no token
+  When GET /api/health is called
+  Then the response is 200
+# pinned by: tests/e2e/api-docs.spec.js
 ```
 
 ## Tests & verification

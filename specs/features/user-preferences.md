@@ -149,6 +149,14 @@ Scenario: An invalid locale preference is rejected at the request level
   When PATCH /profile/preferences submits an unsupported locale value
   Then the response has a validation error
 # pinned by: tests/Feature/ProfileTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: A locale preference saved in the profile takes effect immediately
+  Given the profile preferences form
+  When the locale is switched to Dutch and saved
+  Then the next page render is Dutch, with no logout required
+# pinned by: tests/e2e/localization.spec.js
 ```
 
 ## Tests & verification

@@ -515,4 +515,4 @@ Compile TikZ diagrams on the server using a full TeX Live installation. Requires
 - For technical issues, contact your system administrator
 - Admins: see `README.md`, `CLAUDE.md`, and `DEPLOYMENT.md` for technical docs
 
----
+---

@@ -150,6 +150,15 @@ Scenario: Discovery import skips a duplicate etag without queuing a job
   When it is imported via the discovery flow
   Then it is skipped, not queued for ProcessDiscoveredAsset
 # pinned by: tests/Feature/DiscoverTest.php
+
+# — browser-level (see e2e-testing.md for the harness; skips without MinIO) —
+
+Scenario: Re-uploading identical bytes is reported as a duplicate, not stored twice
+  Given a PNG that was already uploaded
+  When the same bytes are uploaded again
+  Then the row is flagged as a duplicate and the duplicates panel offers the existing asset
+  And no second object is stored in the bucket
+# pinned by: tests/e2e/asset-upload.spec.js
 ```
 
 ## Tests & verification

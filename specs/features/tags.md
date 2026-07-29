@@ -215,6 +215,33 @@ Scenario: Bulk add/remove/list operate across multiple assets and require authen
   Then tags are added/removed/counted correctly across all three assets
   And each endpoint returns 401 for an unauthenticated request
 # pinned by: tests/Feature/TagTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Tags can be renamed and deleted from the tags page
+  Given a seeded tag
+  When it is renamed and then deleted
+  Then the tags table reflects both changes
+# pinned by: tests/e2e/tags.spec.js
+
+Scenario: The tags page shows type badges and protects ai tags from rename
+  Given seeded user, ai and reference tags
+  Then each is listed with its type badge
+  And the ai tag offers no rename control
+# pinned by: tests/e2e/tags.spec.js
+
+Scenario: A tag card links into the filtered asset library
+  Given a tag with attached assets
+  When its card is followed
+  Then the asset grid opens filtered to that tag
+# pinned by: tests/e2e/tags.spec.js
+
+Scenario: A tag added on the edit page appears on the asset and is removable inline
+  Given the edit page for a seeded asset
+  When a tag is typed and added, then saved
+  Then the tag badge is listed on the detail page
+  And it can be added and removed again from the grid's inline row input
+# pinned by: tests/e2e/asset-detail.spec.js
 ```
 
 ## Tests & verification

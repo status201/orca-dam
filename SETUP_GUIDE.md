@@ -4,7 +4,7 @@
 
 ### Prerequisites
 ```bash
-- PHP 8.4 or higher with minimum 256MB memory limit
+- PHP 8.3 or higher (8.4 recommended) with minimum 256MB memory limit
 - Composer
 - Node.js & NPM
 - MySQL or PostgreSQL
@@ -250,345 +250,40 @@ Create an IAM user (e.g., `orca-dam-user`) with the following minimum permission
 
 ---
 
-## Features Overview
+## What ORCA can do
 
-### 1. Asset Management
-- ✅ Upload multiple files with drag & drop
-- ✅ **Chunked upload for large files (up to 500MB)**
-- ✅ **Automatic upload method selection (direct <10MB, chunked ≥10MB)**
-- ✅ **Smart retry logic with exponential backoff**
-- ✅ **Editable filenames** (display name only — S3 key/URL unchanged)
-- ✅ **Keep original filename** option during upload
-- ✅ **Duplicate prevention** — etag-based detection with an actionable results panel (thumbnails, View existing, Copy URL, bulk-copy, Reveal in library, Restore from trash)
-- ✅ Automatic thumbnail generation
-- ✅ Image dimension detection
-- ✅ File size tracking
-- ✅ Grid, masonry, and list views with pagination
-- ✅ Multi-select with Shift+click range selection
-- ✅ Quick URL copying
-- ✅ License type and copyright fields
-- ✅ Alt text and captions for accessibility
+The feature list is in [README.md](README.md#features); how to *use* each feature —
+uploading, browsing, tagging, AI tags, replacing, trash, bulk actions, discover, import,
+export, preferences, account security, the admin panels — is documented for end users in
+[USER_MANUAL.md](USER_MANUAL.md) (Dutch: [GEBRUIKERSHANDLEIDING.md](GEBRUIKERSHANDLEIDING.md)).
+The authoritative behaviour of each feature is specified in
+[specs/features/](specs/README.md).
 
-### 2. Tagging System
-- ✅ Manual user tags
-- ✅ AI-powered auto-tagging (AWS Rekognition)
-- ✅ Reference tags for external system usage tracking (via API)
-- ✅ **Tag attribution** — shows who last assigned each tag (User or AI)
-- ✅ Manual AI tag generation button
-- ✅ Configurable max AI tags per asset
-- ✅ Multilingual AI tags via AWS Translate (en, nl, fr, de, es, etc.)
-- ✅ Tag filtering and search
-- ✅ Tag browsing page with type tabs (User, AI, Reference)
-- ✅ Remove AI tags from assets
-- ✅ Delete both user and AI tags
-- ✅ Bulk add/remove tags on multiple selected assets
+Two things that matter while you are still configuring:
 
-### 3. Search & Filter
-- ✅ Full-text search with operators (`+require`, `-exclude`)
-- ✅ Filter by tags
-- ✅ Filter by file type
-- ✅ Filter by uploader (admin)
+- **Roles.** Three of them — `admin`, `editor`, `api`. Editors upload, edit, tag and
+  soft-delete; admins add permanent delete, user management, discover, import/export, bulk
+  move and the system panels; `api` is for integrations and cannot delete. The full matrix
+  is [specs/features/authorization-policies.md](specs/features/authorization-policies.md).
+- **Upload mode.** Files under 10MB upload directly; 10MB and over are routed through the
+  chunked API automatically. This is why the PHP limits below have two valid shapes.
 
-### 4. Discovery
-- ✅ Scan S3 bucket for unmapped objects
-- ✅ Bulk import with preview
-- ✅ Auto-tag imported objects
-- ✅ Metadata extraction
+## API access
 
-### 5. User Roles
-- **Editors**: Upload and manage all assets (view, edit filenames/metadata, soft delete, bulk trash), access trash and restore deleted assets, set personal preferences
-- **Admins**: Full access including permanent delete, discover, export, bulk move (maintenance mode), bulk permanent delete (maintenance mode), user management, system settings, and API token/JWT secret management
-- All authenticated users can bulk download assets as ZIP (max 100 files / 500MB)
-- **API Users**: API-only access for external integrations (view, create, update assets; no delete or admin features)
+The complete REST reference — Sanctum vs. JWT authentication (with generation examples in
+Node, PHP, Python and Java), every endpoint, request/response shapes, the four-step
+chunked-upload flow, query parameters and editor integrations — lives in
+[RTE_INTEGRATION.md](RTE_INTEGRATION.md).
 
-### 6. User Preferences
-- ✅ Personal home folder setting (default folder when browsing assets)
-- ✅ Personal items per page setting (overrides global default)
-- ✅ Personal language preference (overrides global default)
-- ✅ Preferences accessible via Profile page
-- ✅ URL parameters still override user preferences
+To hand out credentials once ORCA is running:
 
-### 6b. Account Security
-- ✅ Two-factor authentication (TOTP via Google Authenticator etc.) with recovery codes
-- ✅ **Passkeys (WebAuthn / FIDO2)** — passwordless sign-in with Touch ID, Face ID, Windows Hello, or hardware security keys
-  - Enable from Profile → Security → "Add Passkey"
-  - Up to 10 passkeys per user, each with a custom name
-  - Successful passkey login bypasses the 2FA challenge
-  - Admins can clear a user's passkeys from the user edit page (recovery)
-  - Requires HTTPS (or `localhost`) — set `PASSKEYS_RELYING_PARTY_ID` in `.env` if `APP_URL` host doesn't match the browser host
-
-### 7. Multi-Language Support
-- ✅ UI available in English and Dutch (Nederlands)
-- ✅ Global language set by admin via System → Settings
-- ✅ Per-user language override via Profile → Preferences
-- ✅ Priority: User preference → Global setting → Config default
-
-### 8. API for RTE Integration
-- ✅ RESTful API endpoints
-- ✅ Laravel Sanctum authentication (long-lived tokens for backends)
-- ✅ JWT authentication (short-lived tokens for frontends)
-- ✅ Pagination support
-- ✅ Search and filter API
-- ✅ Public metadata endpoint (no auth required)
-- ✅ Toggle API uploads on/off at runtime (API Docs → Dashboard)
-
-### 9. Export & Reporting
-- ✅ CSV export with all asset metadata
-- ✅ Separate columns for user tags, AI tags, and reference tags
-- ✅ Includes license type and copyright information
-- ✅ Filter by file type and tags before export
-- ✅ Timestamped export filenames
-
-### 10. Trash & Restore
-- ✅ Soft delete keeps S3 objects when assets are deleted
-- ✅ Trash page shows all soft-deleted assets
-- ✅ Editors and admins can restore assets from trash
-- ✅ Permanent delete (admin only) removes database record AND S3 objects
-- ✅ Bulk permanent delete from index page (admin, maintenance mode)
-- ✅ Bulk trash from index page (editors + admins)
-- ✅ Discovery marks soft-deleted assets to prevent re-import
-
-### 11. System Administration (Admin Only)
-- ✅ System overview (PHP version, Laravel version, disk usage)
-- ✅ **Settings panel** with configurable options:
-  - S3 root folder prefix
-  - Custom domain for asset URLs (CDN support)
-  - Items per page (12, 24, 36, 48, 60, 72, 96)
-  - Timezone
-  - UI language (English, Dutch)
-  - AWS Rekognition max labels (1-20)
-  - AWS Rekognition language (13 languages)
-- ✅ Queue management (retry, flush, restart workers)
-- ✅ Log viewer with color-coded output
-- ✅ Artisan command execution (whitelisted commands)
-- ✅ S3 connection diagnostics
-- ✅ API token management (Sanctum tokens)
-- ✅ JWT secret management (per-user secrets for frontend integrations)
-- ✅ S3 integrity verification (detect missing files)
-- ✅ Web-based test runner
-
----
-
-## API Documentation
-
-### Authentication
-
-ORCA supports two authentication methods:
-
-#### Option 1: Sanctum Tokens (Backend Integrations)
-
-Long-lived tokens for backend-to-backend API calls. **Never expose these to frontend code.**
-
-```javascript
-// Generate token (admin generates via UI or CLI)
-// Use in backend requests
-headers: {
-    'Authorization': `Bearer ${sanctumToken}`,
-    'Accept': 'application/json'
-}
+```bash
+php artisan token:create user@example.com   # Sanctum, for backends
+php artisan jwt:generate user@example.com   # JWT secret, for frontends (needs JWT_ENABLED=true)
 ```
 
-Generate tokens via:
-- **Web UI**: API Docs → API Tokens tab
-- **CLI**: `php artisan token:create user@example.com`
-
-#### Option 2: JWT (Frontend RTE Integrations)
-
-Short-lived tokens ideal for browser-based integrations. Your backend generates JWTs; ORCA validates them.
-
-**Setup:**
-1. Enable JWT auth in `.env`: `JWT_ENABLED=true`
-2. Generate a JWT secret for a user:
-   - **Web UI**: API Docs → JWT Secrets tab → Generate Secret
-   - **CLI**: `php artisan jwt:generate user@example.com`
-3. Your backend generates JWTs using the secret:
-
-```javascript
-// Node.js example
-const jwt = require('jsonwebtoken');
-const token = jwt.sign(
-    { sub: orcaUserId },    // ORCA user ID (required)
-    jwtSecret,              // Secret from ORCA
-    { expiresIn: '1h', algorithm: 'HS256' }
-);
-```
-
-```php
-// PHP example
-use Firebase\JWT\JWT;
-$token = JWT::encode([
-    'sub' => $orcaUserId,   // ORCA user ID (required)
-    'iat' => time(),
-    'exp' => time() + 3600,
-], $jwtSecret, 'HS256');
-```
-
-4. Frontend uses JWT in requests:
-```javascript
-headers: {
-    'Authorization': `Bearer ${jwtToken}`,
-    'Accept': 'application/json'
-}
-```
-
-**Required JWT claims:** `sub` (user ID), `exp` (expiry), `iat` (issued at)
-
-See `RTE_INTEGRATION.md` for complete integration examples.
-
-### Endpoints
-
-#### List Assets
-```
-GET /api/assets?search=keyword&tags[]=1,2&type=image&per_page=24
-```
-
-#### Upload Assets (Direct - files <10MB)
-```
-POST /api/assets
-Content-Type: multipart/form-data
-
-files[]: File[]
-```
-
-#### Chunked Upload (Large files ≥10MB)
-```
-# 1. Initialize upload session
-POST /api/chunked-upload/init
-Content-Type: application/json
-
-{
-    "filename": "large-file.mp4",
-    "mime_type": "video/mp4",
-    "file_size": 524288000
-}
-
-Response:
-{
-    "session_token": "uuid-here",
-    "upload_id": "s3-upload-id",
-    "chunk_size": 10485760,
-    "total_chunks": 50
-}
-
-# 2. Upload each chunk
-POST /api/chunked-upload/chunk
-Content-Type: multipart/form-data
-
-session_token: "uuid-here"
-chunk_number: 1
-chunk: <chunk-blob>
-
-Response:
-{
-    "message": "Chunk uploaded successfully",
-    "part_number": 1,
-    "etag": "s3-etag",
-    "uploaded_chunks": 1,
-    "total_chunks": 50
-}
-
-# 3. Complete upload
-POST /api/chunked-upload/complete
-Content-Type: application/json
-
-{
-    "session_token": "uuid-here"
-}
-
-Response:
-{
-    "message": "Upload completed successfully",
-    "asset": { asset data with tags }
-}
-
-# Optional: Abort upload on error
-POST /api/chunked-upload/abort
-Content-Type: application/json
-
-{
-    "session_token": "uuid-here"
-}
-```
-
-#### Get Asset
-```
-GET /api/assets/{id}
-```
-
-#### Update Asset
-```
-PATCH /api/assets/{id}
-
-{
-    "alt_text": "Description",
-    "caption": "Caption text",
-    "license_type": "cc_by",
-    "copyright": "© 2026 Company Name",
-    "tags": ["tag1", "tag2"]
-}
-```
-
-#### Get Asset Metadata by URL (Public, No Auth Required)
-```
-GET /api/assets/meta?url=https://bucket.s3.amazonaws.com/assets/abc123.jpg
-
-Returns:
-{
-    "alt_text": "Description",
-    "caption": "Caption text",
-    "license_type": "cc_by",
-    "copyright": "© 2026 Company Name",
-    "filename": "image.jpg",
-    "url": "https://bucket.s3.amazonaws.com/assets/abc123.jpg"
-}
-```
-
-#### Delete Asset
-```
-DELETE /api/assets/{id}
-```
-
-#### Search (Asset Picker)
-```
-GET /api/assets/search?q=keyword&tags=1,2&type=image
-```
-
-#### List Tags
-```
-GET /api/tags?type=user
-```
-
-#### Reference Tags (External System Usage Tracking)
-
-Supports single and batch operations. Provide at least one of `asset_id`, `asset_ids`, `s3_key`, or `s3_keys`.
-
-```
-# Single asset
-POST /api/reference-tags
-{ "s3_key": "assets/abc123-uuid.jpg", "tags": ["2F.4.6.2", "REF-001"] }
-
-# Batch (multiple assets)
-POST /api/reference-tags
-{ "asset_ids": [1, 2, 3], "tags": ["slideshow-42"] }
-
-# Remove (single or batch)
-DELETE /api/reference-tags/{tag}
-{ "asset_id": 1 }
-DELETE /api/reference-tags/{tag}
-{ "asset_ids": [1, 2, 3] }
-```
-
-#### List Folders
-```
-GET /api/folders
-
-Returns:
-{
-    "folders": ["assets", "assets/marketing", "assets/docs"]
-}
-```
-
----
+Both are also available in the UI under **API Docs**. Never expose a Sanctum token or a
+JWT secret to client-side code.
 
 ## Usage Tips
 
@@ -805,60 +500,13 @@ Update validation rules and add appropriate icons/handling.
 
 ---
 
-## Production Deployment
+## Going to production
 
-### 1. Optimize Application
-```bash
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-npm run build
-```
-
-### 2. Set Up Queue Workers
-For background AI tagging:
-```bash
-php artisan queue:work
-```
-
-Or use supervisor/systemd for production.
-
-### 3. Set Up Cron
-For scheduled tasks (includes daily cleanup of stale upload sessions):
-```bash
-* * * * * cd /path-to-orca && php artisan schedule:run >> /dev/null 2>&1
-```
-
-Scheduled tasks include:
-- Daily cleanup of abandoned chunked upload sessions (>24 hours old)
-- Daily S3 integrity check (verifies all assets exist in S3)
-
-### 4. API Token Management
-```bash
-# Sanctum tokens (for backend integrations)
-php artisan token:list                   # List all tokens
-php artisan token:create user@email.com  # Create token for user
-php artisan token:revoke 5               # Revoke token ID 5
-
-# JWT secrets (for frontend integrations)
-php artisan jwt:list                     # List users with JWT secrets
-php artisan jwt:generate user@email.com  # Generate JWT secret
-php artisan jwt:revoke user@email.com    # Revoke JWT secret
-```
-
-### 5. Security Checklist
-- [ ] Change default admin password
-- [ ] Set `APP_ENV=production` and `APP_DEBUG=false`
-- [ ] Use strong `APP_KEY`
-- [ ] Enable HTTPS
-- [ ] Verify PHP memory/upload limits are properly configured (256MB minimum)
-- [ ] Restrict IAM permissions to minimum required
-- [ ] Set up regular backups
-- [ ] Configure rate limiting
-- [ ] Securely share JWT secrets with external systems (never expose in frontend code)
-- [ ] Use short JWT token lifetimes (1 hour recommended)
-
----
+Do not follow this guide for a production install — it is written for getting a working
+instance on a workstation. [DEPLOYMENT.md](DEPLOYMENT.md) owns production: server
+requirements, the annotated production `.env`, file permissions, `optimize` caching,
+Supervisor queue workers, Nginx and Apache vhosts, SSL, the cron entry, log rotation,
+backups, the security checklist, and the update/rollback procedure.
 
 ## Support & Contributing
 

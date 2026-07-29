@@ -8,6 +8,10 @@ open one anyway, please follow the guidelines below.
 - **No AI slob.** All code should be human-read before being committed.
 - **DRY and SOLID**, or ask your AI to be.
 - **Keep PRs small and focused** — one feature or fix per PR.
+- **One home per subject.** Every document owns one thing — the map is in
+  [README.md](README.md#documentation-map). Do not copy a role matrix, an endpoint list,
+  a command list or a file tree into a second document; link to the one that owns it.
+  `npm run spec:lint` guards the counts, versions and paths that used to drift.
 
 ## Workflow
 
@@ -27,8 +31,19 @@ code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (non-frame
 spec first (`/feature`, `/fix`, `/spec` slash commands). Everything else (views, CSS,
 `lang/**`, factories/seeders, tests, `public/**`, `wordpress-plugin/**`, docs) is
 exempt. For a genuinely trivial production tweak, `touch .sdd-skip` (local) or add
-`[skip-sdd]` to the commit message / the `skip-sdd` PR label (CI). Run
-`npm run spec:lint` to check spec structure.
+`[skip-sdd]` to the commit message / the `skip-sdd` PR label (CI).
+
+`npm run spec:lint` checks more than structure. It also fails on: a `# pinned by:` or
+`## Tests & verification` path that does not resolve, a spec with no
+`## Tests & verification` section, a spec or ADR missing from an index, a dependency
+version stated in the docs that contradicts `composer.json`/`package.json`, a
+hand-counted total (specs, ADRs, Alpine modules, test files) that no longer matches the
+tree, a file tree in `QUICK_REFERENCE.md` that has fallen behind `app/Services/`,
+`app/Console/Commands/` or the top-level directories, and a heading added to
+`USER_MANUAL.md` without its Dutch counterpart. Run it before opening a PR.
+
+Browser-level behaviour is pinned by the feature spec that owns it, never by
+`e2e-testing.md` — that spec owns the harness only.
 
 ## Before committing
 

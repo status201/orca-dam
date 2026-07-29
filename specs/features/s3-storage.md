@@ -16,6 +16,7 @@ related:
   - discovery-import
   - bulk-operations
   - cloudflare-purge
+  - folder-management
 source:
   - app/Services/S3Service.php
   - app/Support/UploadPolicy.php
@@ -199,6 +200,15 @@ Scenario: No endpoint config leaves AWS addressing untouched
   When S3Service is constructed
   Then its S3Client resolves the regional AWS endpoint and is not path-style
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
+
+# — browser-level (see e2e-testing.md for the harness; skips without MinIO) —
+
+Scenario: Bytes round-trip through a real S3-compatible bucket
+  Given a MinIO bucket standing in for S3
+  When a PNG is uploaded through the browser
+  Then the object is stored under assets/{folder}/ and is publicly fetchable
+  And its generated thumbnail is fetchable under thumbnails/
+# pinned by: tests/e2e/asset-upload.spec.js
 ```
 
 ## Tests & verification

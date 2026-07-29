@@ -12,6 +12,7 @@ related:
   - tags
   - duplicate-detection
   - s3-integrity
+  - asset-cycle-navigation
 source:
   - app/Models/Asset.php
   - app/Services/AssetSearchParser.php
@@ -185,6 +186,20 @@ Scenario: license fields round-trip through casts and labels
   Then license_expiry_date casts to a Carbon date
   And getLicenseLabel() returns the translated label for the type
 # pinned by: tests/Unit/AssetTest.php
+
+# — browser-level (see e2e-testing.md for the harness) —
+
+Scenario: Editing an asset persists the filename and alt text
+  Given the edit page for e2e-detail-alpha.png
+  When the filename and alt text are changed and saved
+  Then the detail page shows the new values
+# pinned by: tests/e2e/asset-detail.spec.js
+
+Scenario: An asset card opens its detail page
+  Given the asset grid
+  When a card is clicked
+  Then the detail page for that asset renders
+# pinned by: tests/e2e/asset-detail.spec.js
 ```
 
 ## Tests & verification
@@ -193,6 +208,8 @@ Scenario: license fields round-trip through casts and labels
   `tests/Unit/Services/AssetSearchParserTest.php`
 - Feature: `tests/Feature/TagAttributionTest.php`, `tests/Feature/IntegrityTest.php`
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/asset-detail.spec.js` — the metadata fields round-tripping through
+  the real edit form, and a grid card opening its detail page.
 
 ## Open questions / future
 
