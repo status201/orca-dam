@@ -7,11 +7,11 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="translate-y-0 opacity-100"
          x-transition:leave-end="translate-y-full opacity-0"
-         class="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 text-white shadow-2xl border-t border-gray-700">
+         data-testid="bulk-bar" class="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 text-white shadow-2xl border-t border-gray-700">
         <div class="mx-auto px-6 py-3">
             <div class="flex flex-wrap items-center gap-3">
                 <!-- Selected count -->
-                <span class="text-sm font-medium whitespace-nowrap">
+                <span data-testid="bulk-bar-count" class="text-sm font-medium whitespace-nowrap">
                     <i class="fas fa-check-circle mr-1"></i>
                     <span x-text="$store.bulkSelection.selected.length"></span> {{ __('selected') }}
                 </span>
@@ -33,7 +33,7 @@
                                @blur="setTimeout(() => bulkShowSuggestions = false, 200)"
                                @focus="bulkFilterTagSuggestions()"
                                :disabled="bulkLoading"
-                               placeholder="{{ __('Add tag') }}..."
+                               data-testid="bulk-tag-input" placeholder="{{ __('Add tag') }}..."
                                class="px-3 py-1.5 text-sm text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-white focus:border-transparent w-40 disabled:opacity-50">
 
                         <!-- Autocomplete dropdown (opens upward) -->
@@ -55,7 +55,7 @@
                             </template>
                         </div>
                     </div>
-                    <button @click="bulkAddTag()"
+                    <button @click="bulkAddTag()" data-testid="bulk-tag-add"
                             :disabled="!bulkTagInput.trim() || bulkLoading"
                             class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
                         <i class="fas fa-plus mr-1"></i> {{ __('Add tag') }}
@@ -66,7 +66,7 @@
 
                 <!-- Remove tags button -->
                 <div class="relative">
-                    <button @click="bulkShowRemovePanel ? (bulkShowRemovePanel = false) : bulkLoadRemoveTags()"
+                    <button @click="bulkShowRemovePanel ? (bulkShowRemovePanel = false) : bulkLoadRemoveTags()" data-testid="bulk-remove-tags"
                             :disabled="bulkLoading"
                             class="attention px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 disabled:opacity-50 whitespace-nowrap">
                         <i class="fas fa-tags mr-1"></i> {{ __('Remove tags') }}
@@ -77,6 +77,7 @@
                     <div x-show="bulkShowRemovePanel"
                          x-cloak
                          @click.away="bulkShowRemovePanel = false"
+                         data-testid="bulk-remove-panel"
                          class="absolute bottom-full mb-2 left-0 w-72 bg-white border border-gray-300 rounded-lg shadow-xl p-3 invert-scrollbar-colors">
                         <p class="text-xs text-gray-500 mb-2">{{ __('Click a tag to remove it from all selected assets') }}</p>
                         <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto">
@@ -84,7 +85,7 @@
                                 <p class="text-xs text-gray-400">{{ __('No tags found on selected assets') }}</p>
                             </template>
                             <template x-for="tag in bulkRemoveTags" :key="tag.id">
-                                <button @click="bulkRemoveTag(tag.id)"
+                                <button @click="bulkRemoveTag(tag.id)" data-testid="bulk-remove-tag-chip"
                                         :disabled="bulkLoading"
                                         :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200')"
                                         class="attention inline-flex items-center px-2 py-1 rounded text-xs font-medium disabled:opacity-50 transition-colors">
@@ -100,7 +101,7 @@
                 <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
 
                 <!-- Bulk download -->
-                <button @click="bulkDownload()"
+                <button @click="bulkDownload()" data-testid="bulk-download"
                         :disabled="bulkDownloading"
                         class="attention px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50 whitespace-nowrap">
                     <i :class="bulkDownloading ? 'fas fa-spinner fa-spin mr-1' : 'fas fa-download mr-1'"></i> {{ __('Download') }}
@@ -110,7 +111,7 @@
                 <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
 
                 <!-- Bulk move to trash -->
-                <button @click="bulkTrash()"
+                <button @click="bulkTrash()" data-testid="bulk-trash"
                         :disabled="bulkTrashing"
                         class="attention px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 disabled:opacity-50 whitespace-nowrap">
                     <i :class="bulkTrashing ? 'fas fa-spinner fa-spin mr-1' : 'fas fa-trash mr-1'"></i> {{ __('Move to Trash') }}
@@ -122,7 +123,7 @@
 
                 <!-- Bulk move -->
                 <div class="relative">
-                    <button @click="bulkMoveOpen = !bulkMoveOpen"
+                    <button @click="bulkMoveOpen = !bulkMoveOpen" data-testid="bulk-move"
                             :disabled="bulkMoving"
                             class="attention px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap">
                         <i class="fas fa-folder-open mr-1"></i> {{ __('Move asset(s)') }}
@@ -150,7 +151,7 @@
                 <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
 
                 <!-- Bulk permanent delete -->
-                <button @click="bulkForceDelete()"
+                <button @click="bulkForceDelete()" data-testid="bulk-force-delete"
                         :disabled="bulkDeleting"
                         class="attention px-3 py-1.5 bg-red-700 text-white text-sm rounded-lg hover:bg-red-800 disabled:opacity-50 whitespace-nowrap">
                     <i class="fas fa-skull-crossbones mr-1"></i> {{ __('Permanent delete') }}
@@ -162,7 +163,7 @@
                 <div class="flex-1"></div>
 
                 <!-- Clear selection -->
-                <button @click="$store.bulkSelection.clear(); bulkShowRemovePanel = false; bulkMoveOpen = false"
+                <button @click="$store.bulkSelection.clear(); bulkShowRemovePanel = false; bulkMoveOpen = false" data-testid="bulk-clear"
                         class="px-3 py-1.5 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-600 whitespace-nowrap">
                     <i class="fas fa-times mr-1"></i> {{ __('Clear selection') }}
                 </button>

@@ -5,9 +5,17 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "spec:lint": "node scripts/spec-lint.mjs"
+        "spec:lint": "node scripts/spec-lint.mjs",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:headed": "playwright test --headed",
+        "test:e2e:install": "playwright install --with-deps chromium",
+        "e2e:up": "docker compose -f docker-compose.e2e.yml up -d --wait minio && docker compose -f docker-compose.e2e.yml run --rm minio-init",
+        "e2e:down": "docker compose -f docker-compose.e2e.yml down -v",
+        "e2e:reset": "node tests/e2e/support/reseed.mjs"
     },
     "devDependencies": {
+        "@playwright/test": "^1.62.0",
         "@tailwindcss/forms": "^0.5.2",
         "alpinejs": "^3.4.2",
         "autoprefixer": "^10.4.2",

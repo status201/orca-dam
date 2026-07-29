@@ -158,6 +158,7 @@ Scenario: An invalid locale preference is rejected at the request level
 - Feature: `tests/Feature/ProfileTest.php` (form rendering, update/clear via web +
   JSON, validation errors, locale set/clear)
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/localization.spec.js` — the locale preference saved through the profile form.
 
 ## Open questions / future
 

@@ -11,7 +11,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- TikZ Server Render -->
-        <a href="{{ route('tools.tikz-server') }}" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
+        <a href="{{ route('tools.tikz-server') }}" data-testid="tools-card-tikz-server" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
             <div class="flex flex-col items-start">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="text-orca-teal group-hover:text-orca-teal-hover transition-colors">
@@ -29,7 +29,7 @@
             </div>
         </a>
         <!-- Animated GIF Maker -->
-        <a href="{{ route('tools.gif-maker') }}" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
+        <a href="{{ route('tools.gif-maker') }}" data-testid="tools-card-gif-maker" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
             <div class="flex flex-col items-start">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="text-orca-teal group-hover:text-orca-teal-hover transition-colors">
@@ -47,7 +47,7 @@
             </div>
         </a>
         <!-- LaTeX to MathML -->
-        <a href="{{ route('tools.latex-mathml') }}" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
+        <a href="{{ route('tools.latex-mathml') }}" data-testid="tools-card-latex-mathml" class="block bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-6 group">
             <div class="flex flex-col items-start">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="text-orca-teal group-hover:text-orca-teal-hover transition-colors">
@@ -65,7 +65,7 @@
             </div>
         </a>
         <!-- TikZ to SVG (deprecated) -->
-        <a href="{{ route('tools.tikz-svg') }}" class="block bg-gray-50 rounded-lg shadow opacity-60 hover:opacity-80 transition-all duration-200 p-6 group">
+        <a href="{{ route('tools.tikz-svg') }}" data-testid="tools-card-tikz-svg" class="block bg-gray-50 rounded-lg shadow opacity-60 hover:opacity-80 transition-all duration-200 p-6 group">
             <div class="flex flex-col items-start">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="text-gray-400">
@@ -83,7 +83,7 @@
             </div>
         </a>
         <!-- TikZ to SVG Embedded Fonts (deprecated) -->
-        <a href="{{ route('tools.tikz-svg-fonts') }}" class="block bg-gray-50 rounded-lg shadow opacity-60 hover:opacity-80 transition-all duration-200 p-6 group">
+        <a href="{{ route('tools.tikz-svg-fonts') }}" data-testid="tools-card-tikz-svg-fonts" class="block bg-gray-50 rounded-lg shadow opacity-60 hover:opacity-80 transition-all duration-200 p-6 group">
             <div class="flex flex-col items-start">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="text-gray-400">
@@ -101,7 +101,7 @@
             </div>
         </a>
         <!-- TikZ to PNG (deprecated) -->
-        <a href="{{ route('tools.tikz-png') }}" class="block bg-gray-50 rounded-lg shadow opacity-60 hover:opacity-80 transition-all duration-200 p-6 group">
+        <a href="{{ route('tools.tikz-png') }}" data-testid="tools-card-tikz-png" class="block bg-gray-50 rounded-lg shadow opacity-60 hover:opacity-80 transition-all duration-200 p-6 group">
             <div class="flex flex-col items-start">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="text-gray-400">

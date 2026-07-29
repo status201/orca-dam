@@ -160,6 +160,7 @@ Scenario: Every translatable string has a Dutch entry
   `<html lang>`), `tests/Feature/TranslationIntegrityTest.php` (sentinel keys +
   completeness)
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/localization.spec.js` — switching the per-user locale and asserting the rendered Dutch chrome + `<html lang>`.
 
 ## Open questions / future
 

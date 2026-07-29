@@ -29,6 +29,7 @@ the old one rather than rewriting it. An ADR's `status` is its own lifecycle —
 | [011](adr-011-settings-in-db.md) | Runtime settings live in the DB (`Setting`, 1 h cache), not `.env` | accepted |
 | [012](adr-012-reference-tags-api-only.md) | Reference tags are API-created only (external-system usage tracking) | accepted |
 | [013](adr-013-wordpress-plugin-separate-stream.md) | The WordPress plugin is a separate release stream (`wp-v*` tags) | accepted |
+| [014](adr-014-playwright-e2e-real-stack.md) | Browser E2E with Playwright against a real stack (MinIO for S3) | accepted |
 
 New ADRs copy [`_adr-template.md`](_adr-template.md) to `adr-NNN-<slug>.md`, numbered
 contiguously. Keep this index and the folder map in [`../README.md`](../README.md) in

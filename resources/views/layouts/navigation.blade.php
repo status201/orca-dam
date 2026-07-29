@@ -21,6 +21,7 @@
     @scroll.window.throttle.16ms="onScroll()"
     @scrollend.window="onScroll()"
     :class="{ '-translate-y-full': hidden }"
+    data-testid="app-nav"
     class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm transition-transform duration-300 ease-in-out {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,11 +50,11 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 md:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" data-testid="nav-dashboard">
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     <div class="relative inline-flex items-stretch" x-data="{ submenu: false }" @mouseenter="submenu = true" @mouseleave="submenu = false">
-                        <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*')" @click="if ('ontouchstart' in window && !submenu) { $event.preventDefault(); submenu = true }">
+                        <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*')" data-testid="nav-assets" @click="if ('ontouchstart' in window && !submenu) { $event.preventDefault(); submenu = true }">
                             {{ __('Assets') }}
                             <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -69,40 +70,40 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50"
                              style="display: none;">
-                            <a href="{{ route('assets.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.index') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <a href="{{ route('assets.index') }}" data-testid="nav-assets-browse" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.index') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                 <i class="fas fa-images fa-fw mr-2 {{ request()->routeIs('assets.index') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Browse') }}
                             </a>
                             <div class="border-t border-gray-100 my-1"></div>
-                            <a href="{{ route('assets.create') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.create') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                            <a href="{{ route('assets.create') }}" data-testid="nav-assets-upload" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.create') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                 <i class="fas fa-cloud-arrow-up fa-fw mr-2 {{ request()->routeIs('assets.create') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Upload') }}
                             </a>
                             @can('restore', App\Models\Asset::class)
-                                <a href="{{ route('assets.trash') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.trash') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <a href="{{ route('assets.trash') }}" data-testid="nav-assets-trash" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.trash') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                     <i class="fas fa-trash fa-fw mr-2 {{ request()->routeIs('assets.trash') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Trash') }}
                                 </a>
                             @endcan
                             @can('discover', App\Models\Asset::class)
-                                <a href="{{ route('discover.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('discover.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <a href="{{ route('discover.index') }}" data-testid="nav-assets-discover" class="block px-4 py-2 text-sm {{ request()->routeIs('discover.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                     <i class="fas fa-satellite-dish fa-fw mr-2 {{ request()->routeIs('discover.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Discover') }}
                                 </a>
                             @endcan
                             @can('export', App\Models\Asset::class)
-                                <a href="{{ route('export.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('export.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
+                                <a href="{{ route('export.index') }}" data-testid="nav-assets-export" class="block px-4 py-2 text-sm {{ request()->routeIs('export.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                     <i class="fas fa-file-export fa-fw mr-2 {{ request()->routeIs('export.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Export') }}
                                 </a>
                             @endcan
                         </div>
                     </div>
-                    <x-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
+                    <x-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')" data-testid="nav-tags">
                         {{ __('Tags') }}
                     </x-nav-link>
                     @can('viewAny', App\Models\User::class)
-                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')" data-testid="nav-users">
                             {{ __('Users') }}
                         </x-nav-link>
                     @endcan
                     <div class="relative inline-flex items-stretch" x-data="{ submenu: false }" @mouseenter="submenu = true" @mouseleave="submenu = false">
-                        <x-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')" @click="if ('ontouchstart' in window && !submenu) { $event.preventDefault(); submenu = true }">
+                        <x-nav-link :href="route('tools.index')" :active="request()->routeIs('tools.*')" data-testid="nav-tools" @click="if ('ontouchstart' in window && !submenu) { $event.preventDefault(); submenu = true }">
                             {{ __('Tools') }}
                             <svg class="ms-1 h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -133,7 +134,7 @@
                             </a>
                         </div>
                     </div>
-                    <x-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
+                    <x-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')" data-testid="nav-about">
                         {{ __('About ORCA') }}
                     </x-nav-link>
                 </div>
@@ -143,7 +144,7 @@
             <div class="hidden md:flex md:items-center md:ms-6">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                        <button data-testid="nav-user-menu" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
@@ -155,18 +156,18 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <a href="{{ route('profile.edit') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('profile.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                        <a href="{{ route('profile.edit') }}" data-testid="nav-profile" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('profile.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
                             <i class="fas fa-user fa-fw mr-2 {{ request()->routeIs('profile.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Profile') }}
                         </a>
 
                         @can('access', App\Http\Controllers\SystemController::class)
-                            <a href="{{ route('system.index') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('system.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('system.index') }}" data-testid="nav-system" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('system.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
                                 <i class="fas fa-cog fa-fw mr-2 {{ request()->routeIs('system.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('System') }}
                             </a>
-                            <a href="{{ route('api.index') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('api.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('api.index') }}" data-testid="nav-api" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('api.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
                                 <i class="fas fa-code fa-fw mr-2 {{ request()->routeIs('api.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('API') }}
                             </a>
-                            <a href="{{ route('import.index') }}" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('import.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('import.index') }}" data-testid="nav-import" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('import.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
                                 <i class="fas fa-file-import fa-fw mr-2 {{ request()->routeIs('import.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Import') }}
                             </a>
                         @endcan
@@ -175,7 +176,7 @@
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
 
-                            <a href="{{ route('logout') }}" onclick="event.preventDefault(); this.closest('form').submit();" class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 hover:bg-gray-100 focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('logout') }}" data-testid="nav-logout" onclick="event.preventDefault(); this.closest('form').submit();" class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 hover:bg-gray-100 focus:outline-none transition duration-150 ease-in-out">
                                 <i class="fas fa-arrow-right-from-bracket fa-fw mr-2 text-gray-400"></i>{{ __('Log Out') }}
                             </a>
                         </form>

@@ -4,7 +4,7 @@
             <div class="page-header">
                 <h1 class="text-3xl font-bold text-gray-900">
                     {{ __('Assets') }}
-                    <span class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
+                    <span data-testid="grid-total" class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
                         {{ number_format($assets->total()) }}
                     </span>
                 </h1>
@@ -19,7 +19,7 @@
                            @keyup.enter="applyFilters"
                            placeholder="{{ __('Search... (+require -exclude)') }}"
                            :class="appliedSearch ? 'ring-2 ring-orca-black border-orca-black' : ''"
-                           class="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                           data-testid="grid-search-mobile" class="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                     <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     <button @click="applyFilters"
                             class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700">
@@ -36,12 +36,12 @@
                                @keyup.enter="applyFilters"
                                placeholder="{{ __('Search... (+require -exclude)') }}"
                                :class="appliedSearch ? 'ring-2 ring-orca-black border-orca-black' : ''"
-                               class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                               data-testid="grid-search" class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                     </div>
 
                     <!-- Folder filter -->
-                    <select x-model="folder"
+                    <select x-model="folder" data-testid="grid-filter-folder"
                             @change="applyFilters"
                             :class="folder && folder !== rootFolder && folderCount > 1 ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono">
@@ -49,7 +49,7 @@
                     </select>
 
                     <!-- Type filter -->
-                    <select x-model="type"
+                    <select x-model="type" data-testid="grid-filter-type"
                             @change="applyFilters"
                             :class="type ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
@@ -60,7 +60,7 @@
                     </select>
 
                     <!-- Tag filter -->
-                    <button @click="showTagFilter = !showTagFilter"
+                    <button @click="showTagFilter = !showTagFilter" data-testid="grid-filter-tags"
                             :class="selectedTags.length > 0 ? 'ring-2 ring-orca-black border-orca-black' : (showTagFilter ? 'ring-1 ring-orca-black border-orca-black' : '')"
                             class="px-4 py-2 bg-white text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center">
                         <i class="fas fa-filter mr-2"></i>
@@ -68,7 +68,7 @@
                     </button>
 
                     <!-- Sort -->
-                    <select x-model="sort"
+                    <select x-model="sort" data-testid="grid-sort"
                             @change="applyFilters"
                             :class="sort !== 'date_desc' ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
@@ -86,7 +86,7 @@
 
                     <!-- Upload button -->
                     <a :href="`{{ route('assets.create') }}${folder ? '?folder=' + encodeURIComponent(folder) : ''}`"
-                       class="px-4 py-2 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover flex items-center justify-center whitespace-nowrap">
+                       data-testid="grid-upload" class="px-4 py-2 text-sm bg-orca-black text-white rounded-lg hover:bg-orca-black-hover flex items-center justify-center whitespace-nowrap">
                         <i class="fas fa-upload mr-2"></i> {{ __('Upload') }}
                     </a>
                 </div>
@@ -97,7 +97,7 @@
         <div x-show="showTagFilter"
              x-cloak
              @click.away="if (selectedTags.length === 0) showTagFilter = false"
-             class="mt-4 bg-white border text-sm border-gray-200 rounded-lg shadow-lg p-4">
+             data-testid="grid-tag-filter-panel" class="mt-4 bg-white border text-sm border-gray-200 rounded-lg shadow-lg p-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                 <h3 class="font-semibold">{{ __('Filter by Tags') }}</h3>
                 <div class="flex flex-wrap items-center gap-2">

@@ -3,7 +3,7 @@
 @section('title', __('Animated GIF Maker'))
 
 @section('content')
-<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="gifMaker()">
+<div class="max-w-7xl mx-auto sm:px-6 lg:px-8" x-data="gifMaker()" data-testid="tool-gif-maker">
 
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between">

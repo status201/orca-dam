@@ -284,7 +284,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             {{ __('Items per page') }}
                         </label>
-                        <select x-model="settings.items_per_page"
+                        <select x-model="settings.items_per_page" data-testid="system-setting-items-per-page"
                                 @change="updateSetting('items_per_page', settings.items_per_page)"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                             <option value="12">12</option>
@@ -330,7 +330,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             {{ __('UI Language') }}
                         </label>
-                        <select x-model="settings.locale"
+                        <select x-model="settings.locale" data-testid="system-setting-locale"
                                 @change="updateSetting('locale', settings.locale)"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                             @foreach($availableUiLanguages as $code => $label)
@@ -465,7 +465,7 @@
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox"
-                               x-model="settings.maintenance_mode"
+                               x-model="settings.maintenance_mode" data-testid="system-setting-maintenance-mode"
                                @change="updateSetting('maintenance_mode', settings.maintenance_mode ? '1' : '0')"
                                :checked="settings.maintenance_mode === '1' || settings.maintenance_mode === true"
                                class="sr-only peer">

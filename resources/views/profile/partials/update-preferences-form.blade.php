@@ -78,7 +78,7 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <x-primary-button :disabled="false" x-bind:disabled="saving">
+            <x-primary-button data-testid="preferences-save" :disabled="false" x-bind:disabled="saving">
                 <span x-show="!saving">{{ __('Save') }}</span>
                 <span x-show="saving"><i class="fas fa-spinner fa-spin mr-2"></i>{{ __('Saving...') }}</span>
             </x-primary-button>

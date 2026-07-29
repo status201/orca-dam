@@ -258,6 +258,7 @@ Scenario: Only admins can access SystemController per SystemPolicy
 - Unit: `tests/Unit/TestRunnerServiceTest.php` (output parsing, UTF-8 scrubbing),
   `tests/Unit/Jobs/RunTestSuiteJobTest.php`, `tests/Unit/QueueServiceTest.php`,
   `tests/Unit/Policies/SystemPolicyTest.php`
+- E2E: `tests/e2e/system-settings.spec.js` — the settings UI and the queue/log endpoints.
 
 ## Open questions / future
 

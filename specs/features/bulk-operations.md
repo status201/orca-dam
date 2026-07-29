@@ -222,6 +222,7 @@ Scenario: An api-role user can bulk-download assets
 - Feature: `tests/Feature/BulkMoveTest.php`, `tests/Feature/BulkForceDeleteTest.php`,
   `tests/Feature/BulkDownloadTest.php`, `tests/Feature/BulkTrashTest.php`
 - Run: `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/bulk-operations.spec.js` — the floating bulk bar (select-all, add/remove tag, trash, download).
 
 ## Open questions / future
 

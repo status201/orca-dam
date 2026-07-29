@@ -153,6 +153,7 @@ Scenario: Non-admins cannot delete any user
 
 - Unit: `tests/Unit/Policies/AssetPolicyTest.php`, `SystemPolicyTest.php`,
   `UserPolicyTest.php` — `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/role-matrix.spec.js` — the same matrix as the UI presents it (hidden nav + absent controls per role) plus the 403s.
 
 ## Open questions / future
 

@@ -1,7 +1,7 @@
     <!-- View Toggle -->
     <div class="mb-4 flex justify-end gap-2">
         <!-- Select All (grid + masonry mode) -->
-        <button x-show="viewMode === 'grid' || viewMode === 'masonry'"
+        <button x-show="viewMode === 'grid' || viewMode === 'masonry'" data-testid="grid-select-all"
                 @click="$store.bulkSelection.toggleSelectAll()"
                 :class="$store.bulkSelection.allOnPageSelected ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                 class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg transition-colors"
@@ -27,17 +27,17 @@
         </div>
 
         <div class="inline-flex rounded-md shadow-sm" role="group">
-            <button @click="viewMode = 'grid'; saveViewMode()"
+            <button @click="viewMode = 'grid'; saveViewMode()" data-testid="grid-view-grid"
                     :class="viewMode === 'grid' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors">
                 <i class="fas fa-th mr-2"></i> {{ __('Grid') }}
             </button>
-            <button @click="viewMode = 'masonry'; saveViewMode()"
+            <button @click="viewMode = 'masonry'; saveViewMode()" data-testid="grid-view-masonry"
                     :class="viewMode === 'masonry' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-4 py-2 text-xs font-medium border-y border-r border-gray-300 transition-colors">
                 <i class="fas fa-images mr-2"></i> {{ __('Masonry') }}
             </button>
-            <button @click="viewMode = 'list'; saveViewMode()"
+            <button @click="viewMode = 'list'; saveViewMode()" data-testid="grid-view-list"
                     :class="viewMode === 'list' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-4 py-2 text-xs font-medium border-y border-r border-gray-300 rounded-r-lg transition-colors">
                 <i class="fas fa-list mr-2"></i> {{ __('List') }}

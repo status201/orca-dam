@@ -225,6 +225,7 @@ Scenario: Bulk add/remove/list operate across multiple assets and require authen
   tag-attach endpoints, `tests/Feature/TagAttributionTest.php` — `attached_by`
   semantics end-to-end (web, API, CSV import, `applyUploadMetadata`).
 - Run: `php artisan config:clear && php artisan test tests/Feature/TagTest.php tests/Feature/TagAttributionTest.php tests/Unit/TagTest.php`
+- E2E: `tests/e2e/tags.spec.js` (rename/delete/type badges) and `tests/e2e/asset-detail.spec.js` (edit-page + inline row tag input).
 
 ## Open questions / future
 

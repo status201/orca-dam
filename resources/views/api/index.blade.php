@@ -3,7 +3,7 @@
 @section('title', __('API Docs & Management'))
 
 @section('content')
-<div x-data="apiDocs()" x-init="init()">
+<div x-data="apiDocs()" x-init="init()" data-testid="api-docs-page">
     <!-- Header -->
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">{{ __('API Docs & Management') }}</h1>
@@ -25,7 +25,7 @@
                 <i class="fas fa-book-open mr-2"></i>{{ __('Swagger') }}
             </button>
 
-            <button @click="activeTab = 'tokens'; if (!tokensLoaded) loadTokens();"
+            <button @click="activeTab = 'tokens'; if (!tokensLoaded) loadTokens();" data-testid="api-tab-tokens"
                     :class="activeTab === 'tokens' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 <i class="fas fa-key mr-2"></i>{{ __('API Tokens') }}
@@ -34,7 +34,7 @@
                       x-text="tokenCount"></span>
             </button>
 
-            <button @click="activeTab = 'jwt'; if (!jwtLoaded) loadJwtSecrets();"
+            <button @click="activeTab = 'jwt'; if (!jwtLoaded) loadJwtSecrets();" data-testid="api-tab-jwt"
                     :class="activeTab === 'jwt' ? 'border-orca-black text-orca-black' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 <i class="fas fa-shield-alt mr-2"></i>{{ __('JWT Secrets') }}
@@ -372,7 +372,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Token Name') }} *</label>
                         <input type="text"
-                               x-model="newToken.name"
+                               x-model="newToken.name" data-testid="api-token-name"
                                placeholder="{{ __('e.g., TinyMCE Integration') }}"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent bg-white text-gray-900">
                         <p class="text-xs text-gray-500 mt-1">{{ __('A descriptive name for this token') }}</p>
@@ -395,7 +395,7 @@
 
                             <!-- Existing User Dropdown -->
                             <div x-show="!newToken.createNew">
-                                <select x-model="newToken.userId"
+                                <select x-model="newToken.userId" data-testid="api-token-user"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent bg-white text-gray-900">
                                     <option value="">{{ __('Select a user...') }}</option>
                                     <template x-for="user in tokenUsers" :key="user.id">
@@ -421,7 +421,7 @@
                 </div>
 
                 <div class="mt-6 flex items-center justify-end gap-3">
-                    <button @click="createToken()"
+                    <button @click="createToken()" data-testid="api-token-create"
                             :disabled="creatingToken || !newToken.name || (!newToken.createNew && !newToken.userId) || (newToken.createNew && (!newToken.newUserName || !newToken.newUserEmail))"
                             class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50">
                         <i class="fas mr-2" :class="creatingToken ? 'fa-spinner fa-spin' : 'fa-key'"></i>
@@ -432,7 +432,7 @@
         </div>
 
         <!-- New Token Display Modal -->
-        <div x-show="createdToken.plainText" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
+        <div x-show="createdToken.plainText" data-testid="api-token-created" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0">
                     <i class="attention fas fa-check-circle text-3xl text-green-600"></i>
@@ -515,7 +515,7 @@
                                 <td class="px-6 py-4 text-sm text-gray-600" x-text="token.created_at"></td>
                                 <td class="px-6 py-4 text-sm text-gray-600" x-text="token.last_used_at || @js(__('Never'))"></td>
                                 <td class="px-6 py-4 text-sm">
-                                    <button @click="revokeToken(token.id, token.name)"
+                                    <button @click="revokeToken(token.id, token.name)" data-testid="api-token-revoke"
                                             class="attention text-red-600 hover:text-red-900">
                                         <i class="fas fa-trash mr-1"></i>{{ __('Revoke') }}
                                     </button>
@@ -603,7 +603,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Select User') }} *</label>
-                        <select x-model="jwtSelectedUserId"
+                        <select x-model="jwtSelectedUserId" data-testid="api-jwt-user"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent bg-white text-gray-900">
                             <option value="">{{ __('Select a user...') }}</option>
                             <template x-for="user in jwtAllUsers" :key="user.id">
@@ -613,7 +613,7 @@
                         <p class="text-xs text-gray-500 mt-1 mt-2">{{ __('The user whose credentials will be used for JWT-authenticated requests') }}</p>
                     </div>
                     <div class="flex items-center">
-                        <button @click="generateJwtSecret()"
+                        <button @click="generateJwtSecret()" data-testid="api-jwt-generate"
                                 :disabled="generatingJwt || !jwtSelectedUserId"
                                 class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover disabled:opacity-50">
                             <i class="fas mr-2" :class="generatingJwt ? 'fa-spinner fa-spin' : 'fa-shield-alt'"></i>
@@ -625,7 +625,7 @@
         </div>
 
         <!-- Generated Secret Display -->
-        <div x-show="generatedJwtSecret.secret" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
+        <div x-show="generatedJwtSecret.secret" data-testid="api-jwt-created" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0">
                     <i class="attention fas fa-check-circle text-3xl text-green-600"></i>

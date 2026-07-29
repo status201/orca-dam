@@ -27,14 +27,25 @@ class S3Service
         $this->region = config('filesystems.disks.s3.region');
         $this->imageProcessingService = $imageProcessingService;
 
-        $this->s3Client = new S3Client([
+        $clientConfig = [
             'version' => 'latest',
             'region' => $this->region,
             'credentials' => [
                 'key' => config('filesystems.disks.s3.key'),
                 'secret' => config('filesystems.disks.s3.secret'),
             ],
-        ]);
+        ];
+
+        // An explicit endpoint points the client at an S3-compatible service
+        // (the MinIO bucket the E2E suite runs against, an R2/Wasabi-style
+        // provider) instead of AWS. Left unset, addressing is unchanged.
+        $endpoint = config('filesystems.disks.s3.endpoint');
+        if (! empty($endpoint)) {
+            $clientConfig['endpoint'] = $endpoint;
+            $clientConfig['use_path_style_endpoint'] = (bool) config('filesystems.disks.s3.use_path_style_endpoint', false);
+        }
+
+        $this->s3Client = new S3Client($clientConfig);
     }
 
     /**

@@ -3,14 +3,14 @@
 @section('title', __('Trash'))
 
 @section('content')
-<div x-data="trashPage()">
+<div x-data="trashPage()" data-testid="trash-page">
     <!-- Header -->
     <div class="mb-6">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">
                     {{ __('Trash') }}
-                    <span class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
+                    <span data-testid="trash-total" class="ml-2 relative -top-1 inline-flex items-center justify-center px-3 py-0.5 text-base font-semibold rounded-full bg-gray-200 text-gray-700">
                         {{ number_format($assets->total()) }}
                     </span>
                 </h1>
@@ -70,12 +70,12 @@
 
         <!-- View Mode Toggle -->
         <div class="inline-flex rounded-md shadow-sm" role="group">
-            <button @click="viewMode = 'grid'; saveViewMode()"
+            <button @click="viewMode = 'grid'; saveViewMode()" data-testid="trash-view-grid"
                     :class="viewMode === 'grid' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors">
                 <i class="fas fa-th mr-2"></i> {{ __('Grid') }}
             </button>
-            <button @click="viewMode = 'list'; saveViewMode()"
+            <button @click="viewMode = 'list'; saveViewMode()" data-testid="trash-view-list"
                     :class="viewMode === 'list' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-r-lg transition-colors">
                 <i class="fas fa-list mr-2"></i> {{ __('List') }}
@@ -86,10 +86,10 @@
     <!-- Grid view -->
     <div x-show="viewMode === 'grid'" x-cloak class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-4">
         @foreach($assets as $asset)
-        <div class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"
+        <div data-testid="trash-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"
              @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.toggle({{ $asset->id }}); }">
             <!-- Selection checkbox -->
-            <div class="absolute top-2 left-2 z-20"
+            <div data-testid="trash-card-checkbox" class="absolute top-2 left-2 z-20"
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                  @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
                 <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
@@ -135,13 +135,13 @@
 
                 <!-- Overlay with actions -->
                 <div class="actions absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <button @click.stop="restoreAsset({{ $asset->id }})"
+                    <button @click.stop="restoreAsset({{ $asset->id }})" data-testid="trash-card-restore"
                             class="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors mr-2"
                             title="{{ __('Restore') }}">
                         <i class="fas fa-undo"></i>
                     </button>
                     @can('forceDelete', App\Models\Asset::class)
-                    <button @click.stop="confirmDelete({{ $asset->id }})"
+                    <button @click.stop="confirmDelete({{ $asset->id }})" data-testid="trash-card-force-delete"
                             class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
                             title="{{ __('Permanently Delete') }}">
                         <i class="fas fa-trash"></i>
@@ -216,11 +216,11 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($assets as $asset)
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr data-testid="trash-row" data-asset-id="{{ $asset->id }}" class="hover:bg-gray-50 transition-colors">
 
                         <!-- Selection checkbox -->
                         <td class="px-4 py-3 text-center">
-                            <div @click="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)"
+                            <div data-testid="trash-row-checkbox" @click="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)"
                                  :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
                                  class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
                                 <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
@@ -296,13 +296,13 @@
                         <!-- Actions -->
                         <td class="actions-icons px-4 py-3">
                             <div class="flex gap-3">
-                                <button @click="restoreAsset({{ $asset->id }})"
+                                <button @click="restoreAsset({{ $asset->id }})" data-testid="trash-row-restore"
                                         class="attention text-green-600 hover:text-green-800"
                                         title="{{ __('Restore') }}">
                                     <i class="fas fa-undo"></i>
                                 </button>
                                 @can('forceDelete', App\Models\Asset::class)
-                                <button @click="confirmDelete({{ $asset->id }})"
+                                <button @click="confirmDelete({{ $asset->id }})" data-testid="trash-row-force-delete"
                                         class="text-red-600 hover:text-red-800"
                                         title="{{ __('Permanently Delete') }}">
                                     <i class="fas fa-trash"></i>
@@ -343,7 +343,7 @@
                 <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
 
                 <!-- Bulk restore -->
-                <button @click="bulkRestore()"
+                <button @click="bulkRestore()" data-testid="trash-bulk-restore"
                         :disabled="bulkRestoring"
                         class="attention px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 whitespace-nowrap">
                     <i class="fas fa-undo mr-1"></i> {{ __('Restore') }}
@@ -354,7 +354,7 @@
                 <div class="w-px h-6 bg-gray-600 hidden sm:block"></div>
 
                 <!-- Bulk permanent delete -->
-                <button @click="bulkForceDelete()"
+                <button @click="bulkForceDelete()" data-testid="trash-bulk-force-delete"
                         :disabled="bulkDeleting"
                         class="attention px-3 py-1.5 bg-red-700 text-white text-sm rounded-lg hover:bg-red-800 disabled:opacity-50 whitespace-nowrap">
                     <i class="fas fa-skull-crossbones mr-1"></i> {{ __('Permanent delete') }}
@@ -375,7 +375,7 @@
     </div>
 
     <!-- Bulk restore loading modal -->
-    <div x-show="bulkRestoring"
+    <div x-show="bulkRestoring" data-testid="trash-restore-progress"
          x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
         <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-8 text-center">
@@ -406,7 +406,7 @@
     </div>
 
     <!-- Bulk restore summary modal -->
-    <div x-show="bulkRestoreShowSummary"
+    <div x-show="bulkRestoreShowSummary" data-testid="trash-restore-summary"
          x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
          @keydown.escape.window="bulkRestoreDismissSummary()">
@@ -424,6 +424,7 @@
                     <span x-text="bulkRestoreResults?.restored || 0"></span> {{ __('asset(s) restored. Restored filenames:') }}
                 </p>
                 <textarea readonly
+                          data-testid="trash-restore-summary-list"
                           :value="bulkRestoreSummaryText"
                           class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
                           @focus="$event.target.select()"></textarea>
@@ -432,7 +433,7 @@
                             class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
                         <i class="fas fa-copy mr-1"></i> {{ __('Copy') }}
                     </button>
-                    <button @click="bulkRestoreDismissSummary()"
+                    <button @click="bulkRestoreDismissSummary()" data-testid="trash-restore-summary-done"
                             class="px-4 py-2 bg-orca-black text-white text-sm rounded-lg hover:bg-orca-black-hover">
                         {{ __('Done') }}
                     </button>
@@ -473,7 +474,7 @@
     </div>
 
     <!-- Bulk delete summary modal -->
-    <div x-show="bulkDeleteShowSummary"
+    <div x-show="bulkDeleteShowSummary" data-testid="trash-delete-summary"
          x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
          @keydown.escape.window="bulkDeleteDismissSummary()">
@@ -491,6 +492,7 @@
                     <span x-text="bulkDeleteResults?.deleted || 0"></span> {{ __('asset(s) permanently deleted. Deleted S3 keys:') }}
                 </p>
                 <textarea readonly
+                          data-testid="trash-delete-summary-list"
                           :value="bulkDeleteSummaryText"
                           class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
                           @focus="$event.target.select()"></textarea>
@@ -499,7 +501,7 @@
                             class="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200">
                         <i class="fas fa-copy mr-1"></i> {{ __('Copy') }}
                     </button>
-                    <button @click="bulkDeleteDismissSummary()"
+                    <button @click="bulkDeleteDismissSummary()" data-testid="trash-delete-summary-done"
                             class="px-4 py-2 bg-orca-black text-white text-sm rounded-lg hover:bg-orca-black-hover">
                         {{ __('Done') }}
                     </button>

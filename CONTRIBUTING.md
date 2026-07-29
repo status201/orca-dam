@@ -40,6 +40,18 @@ php artisan config:clear && php artisan test        # Full Pest suite
 Both must pass. If a pre-commit hook fails, fix the underlying issue — do not
 bypass with `--no-verify`.
 
+If you touched Blade views or anything under `resources/js/`, also run the browser
+suite — it is a blocking CI job:
+
+```bash
+npm run test:e2e:install     # once: Chromium + OS deps
+npm run e2e:up               # MinIO stands in for S3 (needs Docker; without it the
+npm run test:e2e             #   storage specs skip and the rest still run)
+```
+
+Conventions (locate by `data-testid`, reseed per spec file):
+[`specs/recipes/write-an-e2e-test.md`](specs/recipes/write-an-e2e-test.md).
+
 ## Commit messages
 
 Use the prefix style already present in the history:

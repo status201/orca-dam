@@ -26,11 +26,20 @@ public/build/manifest.json
 /storage/framework/cache/
 storage/framework/cache/
 storage/framework/views/
+# The E2E suite uses the file session driver (.env.e2e), so this dir now exists.
+/storage/framework/sessions/
 /storage/pail
 /storage/logs/
 /vendor
 /bootstrap/cache/
 /database/database.sqlite
+/database/e2e.sqlite
+/storage/e2e/
+/tests/e2e/.auth/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 Homestead.json
 Homestead.yaml
 Thumbs.db

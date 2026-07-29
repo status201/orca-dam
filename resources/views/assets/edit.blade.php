@@ -3,7 +3,7 @@
 @section('title', __('Edit Asset'))
 
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="assetEditor()">
+<div class="max-w-7xl mx-auto" data-testid="asset-edit" x-data="assetEditor()">
     <!-- Back button and breadcrumb -->
     <div class="mb-6 flex items-center justify-between">
         <a href="{{ route('assets.show', $asset) }}" class="inline-flex items-center text-orca-black hover:text-orca-black-hover">
@@ -346,7 +346,7 @@
                                    @keydown.up.prevent="navigateUp"
                                    @keydown.escape="hideSuggestions"
                                    @blur="hideSuggestions"
-                                   placeholder="{{ __('Add tags (comma-separated)...') }}"
+                                   data-testid="asset-edit-tag-input" placeholder="{{ __('Add tags (comma-separated)...') }}"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
 
                             <!-- Autocomplete suggestions -->
@@ -368,7 +368,7 @@
                             </div>
                         </div>
                         <button type="button"
-                                @click="addTag"
+                                @click="addTag" data-testid="asset-edit-tag-add"
                                 class="px-4 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
                             <i class="fas fa-plus mr-2"></i> {{ __('Add') }}
                         </button>
@@ -419,7 +419,7 @@
                     {{ __('Cancel') }}
                 </a>
                 <button type="submit"
-                        class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
+                        data-testid="asset-edit-save" class="px-6 py-2 bg-orca-black text-white rounded-lg hover:bg-orca-black-hover">
                     <i class="fas fa-save mr-2"></i> {{ __('Save Changes') }}
                 </button>
             </div>
