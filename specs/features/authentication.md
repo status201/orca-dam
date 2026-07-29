@@ -59,6 +59,12 @@ contract; the other three mechanisms and 2FA each have their own spec.
   ([user-management.md](user-management.md)) and does not link registration from the
   navigation, but the routes remain mounted, so the contract is pinned rather than
   left to rot.
+- **REQ-7** — Email verification is **not enforced**. `User` deliberately does not
+  implement `MustVerifyEmail`, so the `verified` middleware on `GET /dashboard` passes
+  every authenticated user through and `users.email_verified_at` carries no
+  authorization weight. Any authenticated user reaches every route their role allows,
+  verified or not. Enabling the contract is a behaviour change that must be paired with
+  a way for admin-provisioned users to become verified — see "Open questions".
 
 ## Technical design
 
@@ -205,6 +211,13 @@ Scenario: Password confirmation gates sensitive screens (REQ-6)
   But a wrong password returns a validation error on password
 # pinned by: tests/Feature/Auth/PasswordConfirmationTest.php
 
+Scenario: An unverified user still reaches every route their role allows (REQ-7)
+  Given an authenticated user whose email_verified_at is null
+  When they open /dashboard, the route carrying the `verified` middleware
+  Then the response is 200, because User does not implement MustVerifyEmail
+  And the same holds for a user just created through /users, which never sets the column
+# pinned by: tests/Feature/UserManagementTest.php
+
 # — browser-level (see e2e-testing.md for the harness) —
 
 Scenario: A seeded editor logs in through the real form and lands on the asset library
@@ -247,6 +260,10 @@ Scenario: Logging out really ends the session
   are PHPUnit-style (`test_*` methods) rather than Pest, as is
   `AuthenticationTest.php` above; together with `tests/Feature/ProfileTest.php` they
   are the only seven such files in the suite.
+- Feature (REQ-7): `tests/Feature/UserManagementTest.php` — that an unverified user, and
+  specifically a freshly provisioned one, still reaches the `verified`-gated
+  `/dashboard`. Lives with the provisioning tests it guards
+  ([user-management.md](user-management.md)).
 - Run: `php artisan config:clear && php artisan test`
 - E2E: `tests/e2e/auth.spec.js` — real-browser login, bad-password error, logout, guest redirect.
 
@@ -256,13 +273,16 @@ Scenario: Logging out really ends the session
   drives only login/logout. Registration in particular is unreachable from the UI, so
   a browser test would have to navigate to `/register` directly — low value while
   provisioning goes through `/users`.
-- **Found while reconciling this spec, not fixed here**: `verified` middleware guards
-  exactly one route, `GET /dashboard` (`routes/web.php:41`), while `/assets` and the
-  rest sit behind plain `auth`. `UserController::store` does not set
-  `email_verified_at` and the column is nullable with no default, so a user
-  provisioned through `/users` ([user-management.md](user-management.md)) cannot reach
-  the dashboard until something verifies them — they can still use the whole asset
-  library. Tests and `E2eSeeder` never hit this because `UserFactory` and the seeder
-  both stamp `email_verified_at`. Either provisioning should mark users verified or
-  `/dashboard` should drop `verified`; both are behaviour changes needing their own
-  spec revision.
+- **Email verification is wired but inert, and that is a trap** (REQ-7). `GET /dashboard`
+  is the only route carrying `verified` (`routes/web.php`), and `User` does **not**
+  implement `Illuminate\Contracts\Auth\MustVerifyEmail`, so `EnsureEmailIsVerified`
+  short-circuits and lets every authenticated user through regardless of
+  `email_verified_at`. The column, the `/verify-email` routes and
+  `EmailVerificationTest.php` all work in isolation; nothing enforces them.
+  The trap: `UserController::store` never sets `email_verified_at`
+  ([user-management.md](user-management.md)), so adding `implements MustVerifyEmail` to
+  `User` — a small, plausible change — would instantly lock every admin-provisioned user
+  out of the dashboard, with no way back because provisioning sends no verification
+  mail. `UserFactory` and `E2eSeeder` both stamp the column, so no existing test would
+  catch it. The scenario pinned above exists to fail loudly if that happens; whoever
+  enables the contract must also decide how provisioned users get verified.

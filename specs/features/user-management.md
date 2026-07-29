@@ -185,6 +185,14 @@ Scenario: The transfer target must exist
   And the target user still exists
 # pinned by: tests/Feature/UserDeletionTest.php
 
+Scenario: A provisioned user is unverified but fully usable
+  Given an admin creates a user through /users
+  Then the new user's email_verified_at is null — provisioning does not verify, and
+    sends no verification mail
+  And they can still reach /dashboard, the one route carrying `verified` middleware,
+    because User does not implement MustVerifyEmail (authentication.md REQ-7)
+# pinned by: tests/Feature/UserManagementTest.php
+
 # — browser-level (see e2e-testing.md for the harness) —
 
 Scenario: An admin creates, re-roles and deletes a user
@@ -224,6 +232,9 @@ Scenario: Deleting a user who owns assets demands a transfer target in the UI
 - CRUD, role validation, the self-delete guard, and the asset-transfer path are all
   directly pinned. See [passkeys.md](passkeys.md) for the `clearPasskeys` recovery
   action's own scenarios.
-- `UserController::store` does not set `email_verified_at`, so a provisioned user is
-  blocked from `/dashboard` by the `verified` middleware while retaining full asset
-  access — see the same finding in [authentication.md](authentication.md).
+- `UserController::store` does not set `email_verified_at`, and provisioning sends no
+  verification mail. That is harmless today — `User` does not implement
+  `MustVerifyEmail`, so the `verified` middleware on `/dashboard` is inert (see REQ-7 in
+  [authentication.md](authentication.md), pinned by the scenario above). It becomes a
+  lockout the moment that contract is enabled, which is why the behaviour is pinned
+  rather than left implicit.

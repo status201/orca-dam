@@ -2,6 +2,7 @@
 
 use App\Models\Asset;
 use App\Models\User;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 test('users index forbidden for non-admin', function () {
     $this->actingAs(User::factory()->create(['role' => 'editor']))
@@ -29,6 +30,40 @@ test('admin can create a new user', function () {
     $user = User::where('email', 'editor@example.com')->first();
     expect($user)->not->toBeNull();
     expect($user->role)->toBe('editor');
+});
+
+/**
+ * Guards a latent lockout, not current behaviour. Provisioning never sets
+ * email_verified_at and sends no verification mail, which is harmless only because
+ * `User` does not implement MustVerifyEmail — so the `verified` middleware on
+ * /dashboard passes everyone. Adding that contract to `User` would strand every
+ * provisioned user, and UserFactory/E2eSeeder both stamp the column, so nothing else
+ * in the suite would notice. See authentication.md REQ-7.
+ */
+test('a provisioned user is unverified yet still reaches the verified-gated dashboard', function () {
+    $this->actingAs(User::factory()->create(['role' => 'admin']))
+        ->post('/users', [
+            'name' => 'Fresh Editor',
+            'email' => 'fresh@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'editor',
+        ])
+        ->assertRedirect('/users');
+
+    $user = User::where('email', 'fresh@example.com')->first();
+    expect($user->email_verified_at)->toBeNull();
+
+    $this->actingAs($user)->get('/dashboard')->assertOk();
+});
+
+test('an unverified user is not blocked by the verified middleware', function () {
+    $user = User::factory()->unverified()->create(['role' => 'editor']);
+
+    expect($user->email_verified_at)->toBeNull();
+    expect($user)->not->toBeInstanceOf(MustVerifyEmail::class);
+
+    $this->actingAs($user)->get('/dashboard')->assertOk();
 });
 
 test('user creation rejects invalid role', function () {
