@@ -15,7 +15,6 @@ related:
 source:
   - app/Http/Middleware/AuthenticateMultiple.php
   - app/Http/Controllers/Auth/AuthenticatedSessionController.php
-  - app/Http/Controllers/Auth/RegisteredUserController.php
   - app/Http/Controllers/Auth/PasswordResetLinkController.php
   - app/Http/Controllers/Auth/NewPasswordController.php
   - app/Http/Controllers/Auth/PasswordController.php
@@ -53,18 +52,34 @@ contract; the other three mechanisms and 2FA each have their own spec.
 - **REQ-5** — Login is rate-limited per `email|ip` (5 attempts) via
   `LoginRequest::ensureIsNotRateLimited()`, independent of any route-level throttle
   middleware.
-- **REQ-6** — The remaining Breeze scaffold flows (registration, password reset,
-  email verification, password update, password confirmation) ship unmodified and
-  stay behaviourally intact. ORCA provisions users via `/users`
-  ([user-management.md](user-management.md)) and does not link registration from the
-  navigation, but the routes remain mounted, so the contract is pinned rather than
-  left to rot.
+- **REQ-6** — The remaining Breeze scaffold flows (password reset, email verification,
+  password update, password confirmation) ship unmodified and stay behaviourally
+  intact. ORCA provisions users via `/users`
+  ([user-management.md](user-management.md)) rather than through these flows, but the
+  routes remain mounted, so the contract is pinned rather than left to rot.
 - **REQ-7** — Email verification is **not enforced**. `User` deliberately does not
   implement `MustVerifyEmail`, so the `verified` middleware on `GET /dashboard` passes
   every authenticated user through and `users.email_verified_at` carries no
   authorization weight. Any authenticated user reaches every route their role allows,
   verified or not. Enabling the contract is a behaviour change that must be paired with
   a way for admin-provisioned users to become verified — see "Open questions".
+- **REQ-8** — **There is no self-service registration.** Accounts exist only because an
+  admin created them through `/users` ([user-management.md](user-management.md)) or
+  through a console command (`token:create`, which may provision an `api`-role user).
+  The Breeze `register` route, controller and Blade view are **deleted, not merely
+  unlinked** — `GET /register` and `POST /register` resolve to `404`.
+
+  This is a security requirement, not a tidiness one. While the routes were mounted but
+  unlinked, `RegisteredUserController::store` passed no `role` to `User::create`, so a
+  self-registered account took the `users.role` column default of `editor`
+  (`database/migrations/2025_01_01_000001_add_role_to_users_table.php`) — which
+  [authorization-policies.md](authorization-policies.md) grants view, create, update,
+  replace, soft-delete, restore and bulk-download over **every asset in the library**.
+  Because email verification is inert (REQ-7), that access was live from the moment of
+  signup, with no confirmation step. Unlinked is not unreachable: the URL is guessable,
+  and at least one unknown party did register on production this way. Any future
+  reintroduction of open signup must therefore assign a role explicitly and default it
+  to the least privilege available, not to the column default.
 
 ## Technical design
 
@@ -74,8 +89,6 @@ contract; the other three mechanisms and 2FA each have their own spec.
 routes (routes/auth.php, guest-only unless noted):
   GET  /login                       AuthenticatedSessionController::create
   POST /login                       AuthenticatedSessionController::store
-  GET  /register                    RegisteredUserController::create
-  POST /register                    RegisteredUserController::store
   GET  /forgot-password             PasswordResetLinkController::create
   POST /forgot-password             PasswordResetLinkController::store
   GET  /reset-password/{token}      NewPasswordController::create
@@ -91,6 +104,10 @@ routes (auth-only):
   GET  /verify-email/{id}/{hash}    VerifyEmailController                 # + signed, throttle:6,1
   POST /email/verification-notification
                                     EmailVerificationNotificationController::store
+
+deliberately absent (REQ-8) — asserted by tests/Feature/Auth/RegistrationTest.php:
+  GET  /register                    → 404
+  POST /register                    → 404
 
 middleware:
   AuthenticateMultiple::handle(Request, Closure, ...$guards)   # app/Http/Middleware/AuthenticateMultiple.php
@@ -175,11 +192,25 @@ Scenario: A valid Sanctum token still authenticates when JWT is disabled
   Then the request authenticates as that user
 # pinned by: tests/Feature/Middleware/AuthenticateMultipleTest.php
 
-Scenario: Registration still works, though ORCA does not link to it (REQ-6)
+Scenario: Self-service registration is not reachable (REQ-8)
   Given a guest visitor
-  When they GET /register, then POST /register with a valid name, email and password
-  Then the registration screen renders
-  And the new user is created and authenticated
+  When they GET /register
+  Then the response status is 404
+  And no route named "register" is registered
+# pinned by: tests/Feature/Auth/RegistrationTest.php
+
+Scenario: Posting a registration payload creates no account (REQ-8)
+  Given a guest visitor
+  When they POST /register with a valid name, email and password
+  Then the response status is 404
+  And they remain a guest
+  And no user with that email exists
+# pinned by: tests/Feature/Auth/RegistrationTest.php
+
+Scenario: No user-creation path relies on the role column default (REQ-8)
+  Given the users.role column defaults to 'editor'
+  When every User::create call site under app/ is inspected
+  Then each one passes an explicit role
 # pinned by: tests/Feature/Auth/RegistrationTest.php
 
 Scenario: A password reset completes with a valid token (REQ-6)
@@ -252,14 +283,17 @@ Scenario: Logging out really ends the session
   reject bad password, logout.
 - Feature: `tests/Feature/Middleware/AuthenticateMultipleTest.php` — guard-order
   resolution, the JWT env/setting double-gate (REQ-3), 401 fallback.
-- Feature (Breeze scaffold, REQ-6): `tests/Feature/Auth/RegistrationTest.php`,
-  `tests/Feature/Auth/PasswordResetTest.php`,
+- Feature (REQ-8): `tests/Feature/Auth/RegistrationTest.php` — that `/register` is gone
+  (both verbs 404, no named route, no account created) and that no `User::create` call
+  site under `app/` leans on the `role` column default. It inverts what this file
+  asserted before the routes were removed.
+- Feature (Breeze scaffold, REQ-6): `tests/Feature/Auth/PasswordResetTest.php`,
   `tests/Feature/Auth/EmailVerificationTest.php`,
   `tests/Feature/Auth/PasswordUpdateTest.php`,
   `tests/Feature/Auth/PasswordConfirmationTest.php` — these came with the scaffold and
-  are PHPUnit-style (`test_*` methods) rather than Pest, as is
-  `AuthenticationTest.php` above; together with `tests/Feature/ProfileTest.php` they
-  are the only seven such files in the suite.
+  are PHPUnit-style (`test_*` methods) rather than Pest, as are
+  `AuthenticationTest.php` and `RegistrationTest.php` above; together with
+  `tests/Feature/ProfileTest.php` they are the only seven such files in the suite.
 - Feature (REQ-7): `tests/Feature/UserManagementTest.php` — that an unverified user, and
   specifically a freshly provisioned one, still reaches the `verified`-gated
   `/dashboard`. Lives with the provisioning tests it guards
@@ -270,9 +304,18 @@ Scenario: Logging out really ends the session
 ## Open questions / future
 
 - The Breeze flows in REQ-6 are pinned but not exercised end-to-end; `auth.spec.js`
-  drives only login/logout. Registration in particular is unreachable from the UI, so
-  a browser test would have to navigate to `/register` directly — low value while
-  provisioning goes through `/users`.
+  drives only login/logout.
+- REQ-8 removed self-service registration, but the password-reset pair
+  (`/forgot-password` and `/reset-password`, two routes each) is still unauthenticated
+  surface. It is far less dangerous than registration was — it can only reset an
+  *existing* account's password, and completing the reset requires control of that
+  mailbox — but it carries no route-level throttle (REQ-5's rate limit covers
+  `POST /login` only), so it is an unmetered mail-sending and user-enumeration surface.
+  Worth a `throttle:` middleware.
+- Nothing detects a role change or a new account appearing in production. This incident
+  was found by eye, not by an alert; there is no audit log over `users`. A
+  `users`-table audit trail (or at minimum a notification on admin-role assignment)
+  would have caught it sooner.
 - **Email verification is wired but inert, and that is a trap** (REQ-7). `GET /dashboard`
   is the only route carrying `verified` (`routes/web.php`), and `User` does **not**
   implement `Illuminate\Contracts\Auth\MustVerifyEmail`, so `EnsureEmailIsVerified`
