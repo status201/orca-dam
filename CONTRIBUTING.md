@@ -37,8 +37,9 @@ exempt. For a genuinely trivial production tweak, `touch .sdd-skip` (local) or a
 `## Tests & verification` path that does not resolve, a spec with no
 `## Tests & verification` section, a spec or ADR missing from an index, a dependency
 version stated in the docs that contradicts `composer.json`/`package.json`, a
-hand-counted total (specs, ADRs, Alpine modules, test files) that no longer matches the
-tree, a file tree in `QUICK_REFERENCE.md` that has fallen behind `app/Services/`,
+hand-counted total (specs, ADRs, Alpine modules, services, console commands, test files,
+E2E tests) that no longer matches the tree — in any phrasing, so a prose `all N commands`
+counts as a claim just like the file tree's `N artisan commands` comment, a file tree in `QUICK_REFERENCE.md` that has fallen behind `app/Services/`,
 `app/Console/Commands/` or the top-level directories, and a heading added to
 `USER_MANUAL.md` without its Dutch counterpart. Run it before opening a PR.
 

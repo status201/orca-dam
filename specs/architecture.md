@@ -168,7 +168,9 @@ See [`features/authentication.md`](features/authentication.md),
 
 ### Authorization — role × ability matrix
 
-Three roles (`users.role`, default `editor`): `admin`, `editor`, `api`. Policies
+Three roles (`users.role`, `NOT NULL`, no DB default — every creation path names it, see
+[`features/authentication.md`](features/authentication.md) REQ-8): `admin`, `editor`,
+`api`. Policies
 (`AssetPolicy`, `SystemPolicy`, `UserPolicy`) encode role lists explicitly (REQ-2).
 The asset matrix (see [`features/authorization-policies.md`](features/authorization-policies.md)):
 

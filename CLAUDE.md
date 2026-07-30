@@ -8,7 +8,7 @@ ORCA DAM (ORCA Retrieves Cloud Assets) — Laravel 13 Digital Asset Management w
 
 `specs/` is the architectural/behavioural source of truth — read [`specs/README.md`](specs/README.md) (the method) and [`specs/architecture.md`](specs/architecture.md) (system overview) before non-trivial work. It holds 44 feature specs, 15 ADRs (the *why*), and recipes. Specs **link** to this file for conventions; they don't restate it.
 
-**The gate is enforced.** A change that edits production code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (except Laravel-published framework configs), `resources/js/**` (except `resources/js/vendor/**`) — **must create/update a spec under `specs/` in the same change**. `scripts/sdd-guard.mjs` enforces it (PreToolUse + Stop hooks in `.claude/settings.json`, plus a CI job). Write the spec first — use `/feature`, `/fix`, `/spec`. Exempt: views, CSS, `lang/**`, factories/seeders, `tests/**`, `public/**`, `wordpress-plugin/**`, all `*.md`. Bypass a genuinely trivial production tweak with `touch .sdd-skip` (local), or `[skip-sdd]` in a commit message / the `skip-sdd` PR label (CI). `scripts/spec-lint.mjs` (`npm run spec:lint`) validates spec structure + index completeness; that every test path a spec names — in a `# pinned by:` line *or* a `## Tests & verification` bullet — resolves, and that the section exists at all; and that documented facts still match the tree: dependency versions against `composer.json` / `package.json`, hand-counted totals (specs, ADRs, Alpine modules, test files, E2E tests), the `QUICK_REFERENCE.md` file tree against `app/Services/`, `app/Console/Commands/` and the top-level dirs, and `GEBRUIKERSHANDLEIDING.md`'s heading structure against `USER_MANUAL.md`. It reads the root docs, not just `specs/**` + this file. `CHANGELOG.md` is only checked inside `[Unreleased]` — released entries are history.
+**The gate is enforced.** A change that edits production code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (except Laravel-published framework configs), `resources/js/**` (except `resources/js/vendor/**`) — **must create/update a spec under `specs/` in the same change**. `scripts/sdd-guard.mjs` enforces it (PreToolUse + Stop hooks in `.claude/settings.json`, plus a CI job). Write the spec first — use `/feature`, `/fix`, `/spec`. Exempt: views, CSS, `lang/**`, factories/seeders, `tests/**`, `public/**`, `wordpress-plugin/**`, all `*.md`. Bypass a genuinely trivial production tweak with `touch .sdd-skip` (local), or `[skip-sdd]` in a commit message / the `skip-sdd` PR label (CI). `scripts/spec-lint.mjs` (`npm run spec:lint`) validates spec structure + index completeness; that every test path a spec names — in a `# pinned by:` line *or* a `## Tests & verification` bullet — resolves, and that the section exists at all; and that documented facts still match the tree: dependency versions against `composer.json` / `package.json`, hand-counted totals (specs, ADRs, Alpine modules, services, console commands, test files, E2E tests — matched in every phrasing the docs use, prose `all N commands` as much as a file-tree comment), the `QUICK_REFERENCE.md` file tree against `app/Services/`, `app/Console/Commands/` and the top-level dirs, and `GEBRUIKERSHANDLEIDING.md`'s heading structure against `USER_MANUAL.md`. It reads the root docs, not just `specs/**` + this file. `CHANGELOG.md` is only checked inside `[Unreleased]` — released entries are history.
 
 **Docs have one home each** — the map is in [`README.md`](README.md#documentation-map). Don't copy a role matrix, endpoint list, command list or file tree into a second doc; link to the owner. Browser-level behaviour is pinned by the feature spec that owns it; [`specs/features/e2e-testing.md`](specs/features/e2e-testing.md) owns only the harness.
 
@@ -39,9 +39,11 @@ php artisan assets:deduplicate [--force] # Soft-delete duplicates by etag
 php artisan lang:safe-update             # Refresh laravel-lang files; protects project nl.json (never use raw lang:update)
 
 # API Tokens / JWT / Passkeys
-php artisan token:list / token:create [user@email] [--new] [--name="…"] / token:revoke <id|--user=email> [--force]
+php artisan token:list / token:create [user@email] [--name="…"] / token:revoke <id|--user=email> [--force]
+php artisan token:create --new [--user-name="…"] [--name="…"]   # provisions a role=api user; prompts for the email (the positional arg is ignored with --new)
 php artisan jwt:list / jwt:generate <user@email> [--force] / jwt:revoke <user@email> [--force]
 php artisan passkeys:list [--user=email] [--role=admin|editor|api] / passkeys:revoke <id|--user=email> [--force]
+php artisan users:audit [--user=email] [--event=created|updated|deleted] [--limit=50]   # user create/role-change/delete trail (CLI-only)
 
 # Queue (dev)
 php artisan queue:work --tries=3
@@ -57,7 +59,7 @@ See [`specs/architecture.md`](specs/architecture.md) for the service-layer map, 
 
 `AssetPolicy`, `SystemPolicy`, `UserPolicy`. **All abilities encode role lists explicitly — no `return true` stubs.** Adding a new role requires opting into each ability.
 
-**Roles** (`users.role`, default `editor`):
+**Roles** (`users.role`, `NOT NULL`, **no DB default** — every creation path must name the role; see [`specs/features/authentication.md`](specs/features/authentication.md) REQ-8):
 
 | Action | admin | editor | api |
 |---|---|---|---|
