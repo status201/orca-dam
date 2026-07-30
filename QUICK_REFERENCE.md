@@ -114,7 +114,7 @@ Complete for `app/Services/`, `app/Console/Commands/` and the top-level director
 ```
 orca-dam/
 ├── app/
-│   ├── Console/Commands/                  # 16 artisan commands
+│   ├── Console/Commands/                  # 17 artisan commands
 │   │   ├── BackfillEtags.php              # assets:backfill-etags
 │   │   ├── CleanupStaleUploads.php        # uploads:cleanup
 │   │   ├── DeduplicateAssets.php          # assets:deduplicate
@@ -130,6 +130,7 @@ orca-dam/
 │   │   ├── TokenRevokeCommand.php         # token:revoke
 │   │   ├── TwoFactorDisableCommand.php    # two-factor:disable
 │   │   ├── TwoFactorStatusCommand.php     # two-factor:status
+│   │   ├── UsersAuditCommand.php          # users:audit
 │   │   └── VerifyAssetIntegrity.php       # assets:verify-integrity
 │   ├── Http/
 │   │   ├── Controllers/
@@ -224,7 +225,7 @@ orca-dam/
 ├── routes/                                # web.php, api.php, auth.php, console.php
 ├── scripts/                               # sdd-guard.mjs, spec-lint.mjs
 ├── specs/                                 # the behavioural source of truth
-│   ├── features/                          # 43 feature specs
+│   ├── features/                          # 44 feature specs
 │   ├── decisions/                         # 15 ADRs
 │   └── recipes/                           # repeatable how-tos
 ├── tests/

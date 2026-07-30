@@ -8,6 +8,7 @@ owner: core
 related:
   - architecture
   - authorization-policies
+  - user-audit-log
   - api-tokens-sanctum
   - jwt-auth
   - passkeys
@@ -80,6 +81,21 @@ contract; the other three mechanisms and 2FA each have their own spec.
   and at least one unknown party did register on production this way. Any future
   reintroduction of open signup must therefore assign a role explicitly and default it
   to the least privilege available, not to the column default.
+- **REQ-9** — The password-reset pair is the only unauthenticated write surface left, and
+  it is hardened two ways:
+  - **Rate-limited at the route.** All four routes carry `throttle:6,1`. The broker's
+    `config('auth.passwords.users.throttle')` (60s) only debounces *repeat* links to the
+    same address, so it does nothing against a caller walking a list of addresses; the
+    route limit bounds per-IP volume regardless of which address is submitted.
+  - **Uniform answers.** `POST /forgot-password` returns the same generic confirmation
+    for every syntactically valid address — sent, broker-throttled, or no such user. It
+    no longer surfaces `passwords.user` ("We can't find a user with that email address"),
+    which was a login-name oracle: an unauthenticated caller could confirm whether any
+    given address held an ORCA account. Non-sent outcomes are logged server-side, so
+    operators keep the signal the user no longer gets.
+
+  `POST /reset-password` still reports failures verbatim; it requires a valid signed
+  token, so it discloses nothing to a caller who does not already hold one.
 
 ## Technical design
 
@@ -89,10 +105,10 @@ contract; the other three mechanisms and 2FA each have their own spec.
 routes (routes/auth.php, guest-only unless noted):
   GET  /login                       AuthenticatedSessionController::create
   POST /login                       AuthenticatedSessionController::store
-  GET  /forgot-password             PasswordResetLinkController::create
-  POST /forgot-password             PasswordResetLinkController::store
-  GET  /reset-password/{token}      NewPasswordController::create
-  POST /reset-password              NewPasswordController::store
+  GET  /forgot-password             PasswordResetLinkController::create   # + throttle:6,1
+  POST /forgot-password             PasswordResetLinkController::store    # + throttle:6,1
+  GET  /reset-password/{token}      NewPasswordController::create         # + throttle:6,1
+  POST /reset-password              NewPasswordController::store          # + throttle:6,1
   GET  /two-factor-challenge        TwoFactorAuthController::showChallenge
   POST /two-factor-challenge        TwoFactorAuthController::verifyChallenge
 routes (auth-only):
@@ -221,6 +237,33 @@ Scenario: A password reset completes with a valid token (REQ-6)
   And the password is changed with no validation errors
 # pinned by: tests/Feature/Auth/PasswordResetTest.php
 
+Scenario: An unknown address gets the same answer as a known one (REQ-9)
+  Given no user with the address nobody@example.com
+  When a guest POSTs /forgot-password for a registered address
+  And a guest POSTs /forgot-password for nobody@example.com
+  Then both responses carry the same generic status and no validation errors
+  And no notification was sent for the unknown address
+# pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
+
+Scenario: A broker-throttled repeat is indistinguishable from the first request (REQ-9)
+  Given a user who just requested a reset link
+  When they immediately POST /forgot-password again
+  Then the response carries the same generic status and no validation errors
+  And the broker sent no second notification
+# pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
+
+Scenario: The password-reset routes are rate-limited per IP (REQ-9)
+  Given a guest who has POSTed /forgot-password 6 times in a minute
+  When they POST it a 7th time
+  Then the response status is 429
+# pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
+
+Scenario: Every password-reset route carries the throttle (REQ-9)
+  Given the four /forgot-password and /reset-password routes
+  When their gathered middleware is inspected
+  Then each one includes throttle:6,1
+# pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
+
 Scenario: Email verification accepts a signed link and rejects a tampered hash (REQ-6)
   Given an unverified authenticated user
   When they open the signed verification URL
@@ -283,6 +326,12 @@ Scenario: Logging out really ends the session
   reject bad password, logout.
 - Feature: `tests/Feature/Middleware/AuthenticateMultipleTest.php` — guard-order
   resolution, the JWT env/setting double-gate (REQ-3), 401 fallback.
+- Feature (REQ-9): `tests/Feature/Auth/PasswordResetThrottleTest.php` — the uniform
+  answer for unknown/throttled addresses, the 429 after 6 attempts, and that all four
+  reset routes actually carry the middleware. Kept separate from
+  `PasswordResetTest.php`, which is scaffold-shaped and exercises the happy path; a
+  throttle test has to clear the rate limiter between cases and would otherwise make
+  those four tests order-dependent.
 - Feature (REQ-8): `tests/Feature/Auth/RegistrationTest.php` — that `/register` is gone
   (both verbs 404, no named route, no account created) and that no `User::create` call
   site under `app/` leans on the `role` column default. It inverts what this file
@@ -305,17 +354,20 @@ Scenario: Logging out really ends the session
 
 - The Breeze flows in REQ-6 are pinned but not exercised end-to-end; `auth.spec.js`
   drives only login/logout.
-- REQ-8 removed self-service registration, but the password-reset pair
-  (`/forgot-password` and `/reset-password`, two routes each) is still unauthenticated
-  surface. It is far less dangerous than registration was — it can only reset an
-  *existing* account's password, and completing the reset requires control of that
-  mailbox — but it carries no route-level throttle (REQ-5's rate limit covers
-  `POST /login` only), so it is an unmetered mail-sending and user-enumeration surface.
-  Worth a `throttle:` middleware.
-- Nothing detects a role change or a new account appearing in production. This incident
-  was found by eye, not by an alert; there is no audit log over `users`. A
-  `users`-table audit trail (or at minimum a notification on admin-role assignment)
-  would have caught it sooner.
+- REQ-9 closed the enumeration oracle on `POST /forgot-password`, at a real usability
+  cost: someone who typos their address now waits for mail that will never arrive,
+  because the app can no longer tell them the address is unknown. That is the standard
+  trade for not having a login-name oracle, but it makes the server-side log the only
+  place the truth exists — so the `Password reset requested for an unknown address` log
+  line is load-bearing for support, not just for security.
+- The `throttle:6,1` on the reset routes is keyed per-IP by Laravel's default resolver,
+  so a NAT'd office shares one bucket while a distributed caller gets one bucket each.
+  6/min is generous enough that the former is unlikely to bite; if it ever does, the fix
+  is a named limiter keyed on `ip + email`, not a higher ceiling.
+- The audit trail ([user-audit-log.md](user-audit-log.md)) records role changes but
+  nothing *pushes* — an operator still has to run `users:audit` or read the log. A mail
+  or Slack notification on admin-role assignment is the obvious next step; it was left
+  out because ORCA has no configured notification channel beyond password-reset mail.
 - **Email verification is wired but inert, and that is a trap** (REQ-7). `GET /dashboard`
   is the only route carrying `verified` (`routes/web.php`), and `User` does **not**
   implement `Illuminate\Contracts\Auth\MustVerifyEmail`, so `EnsureEmailIsVerified`

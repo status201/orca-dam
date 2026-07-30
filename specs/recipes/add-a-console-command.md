@@ -16,7 +16,7 @@ source:
   - app/Console/Commands/
 ```
 
-A repeatable **playbook**, not a feature. ORCA's 16 console commands are thin
+A repeatable **playbook**, not a feature. ORCA's 17 console commands are thin
 wrappers over existing services (no new business logic lives in the command
 class) and every destructive one prompts for confirmation unless `--force` is
 passed — the CLI is the emergency-recovery path when the web UI itself is

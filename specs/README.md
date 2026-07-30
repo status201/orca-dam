@@ -290,6 +290,7 @@ specs/
     passkeys.md            ·  WebAuthn/FIDO2, 10/user cap, TOTP bypass
     two-factor-auth.md     ·  TOTP setup / verify / recovery codes
     user-management.md     ·  user CRUD + role assignment (admin-only)
+    user-audit-log.md      ·  append-only trail of user create/re-role/delete
     # — API —
     rest-api.md            ·  REST endpoint/pagination/filter/sort/error contract
     reference-tags-api.md  ·  reference-tag add/remove endpoints (API-only create)
@@ -307,7 +308,7 @@ specs/
     # — system & tools —
     e2e-testing.md         ·  Playwright browser suite: roles, seeding, MinIO, CI
     system-admin.md        ·  /system dashboard, queue, logs, web test runner
-    maintenance-commands.md ·  the 16 console commands + contracts
+    maintenance-commands.md ·  the 17 console commands + contracts
     tikz-render.md         ·  TikzCompilerService pipeline + security posture
     client-side-tools.md   ·  GIF maker, LaTeX→MathML, client TikZ; ToolUploadService
     easter-egg-game.md     ·  GameScore, leaderboard, lazy-loaded bundle

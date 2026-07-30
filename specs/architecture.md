@@ -258,7 +258,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 ## Tests & verification
 
 - `php artisan config:clear && php artisan test` — the full Pest suite (980 tests,
-  78 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
+  80 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`). In-memory SQLite, sync queue.
 - `npm run test:e2e` — the Playwright browser suite (107 tests across 20 spec files)
   against a real `artisan serve` + MinIO. See [e2e-testing.md](features/e2e-testing.md).
