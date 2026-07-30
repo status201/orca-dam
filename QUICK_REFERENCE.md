@@ -71,7 +71,11 @@ npm run e2e:down
 ```bash
 # API tokens (Sanctum)
 php artisan token:list
-php artisan token:create user@email.com [--new] [--name="…"]
+php artisan token:create user@email.com [--name="…"]     # token for an existing user
+# --new provisions a role=api user first (accounts are admin-provisioned; there is no
+# self-service registration). It always prompts for the email — the positional argument
+# is ignored with --new — and prompts for --user-name when that is omitted.
+php artisan token:create --new [--user-name="…"] [--name="…"]
 php artisan token:revoke <id|--user=email> [--force]
 
 # JWT secrets

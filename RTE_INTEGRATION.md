@@ -19,7 +19,7 @@ Long-lived tokens for server-to-server calls. **Never expose to frontend code.**
 **Generate via CLI:**
 ```bash
 php artisan token:create user@example.com --name="My Integration"
-php artisan token:create --new          # Create new API user + token
+php artisan token:create --new --user-name="My Integration"   # New api user + token (prompts for the email)
 php artisan token:list                  # List all tokens
 php artisan token:revoke 5             # Revoke by ID
 ```

@@ -39,7 +39,8 @@ php artisan assets:deduplicate [--force] # Soft-delete duplicates by etag
 php artisan lang:safe-update             # Refresh laravel-lang files; protects project nl.json (never use raw lang:update)
 
 # API Tokens / JWT / Passkeys
-php artisan token:list / token:create [user@email] [--new] [--name="…"] / token:revoke <id|--user=email> [--force]
+php artisan token:list / token:create [user@email] [--name="…"] / token:revoke <id|--user=email> [--force]
+php artisan token:create --new [--user-name="…"] [--name="…"]   # provisions a role=api user; prompts for the email (the positional arg is ignored with --new)
 php artisan jwt:list / jwt:generate <user@email> [--force] / jwt:revoke <user@email> [--force]
 php artisan passkeys:list [--user=email] [--role=admin|editor|api] / passkeys:revoke <id|--user=email> [--force]
 
