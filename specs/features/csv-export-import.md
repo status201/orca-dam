@@ -49,6 +49,13 @@ mistakes before an `import` mutates anything.
 - **REQ-6** — `preview` and `import` use the *same* `CsvImportService` methods
   (`parseCsv`, `calculateChanges`/`validateRow`), so the preview a user
   approves is guaranteed to match what `import` actually does.
+- **REQ-7** — The export page's **File Type** options are the canonical
+  `Asset::typeCategories()` values, narrowed to the categories the library
+  actually contains, and `export` rejects any other value (422). Previously the
+  options were built from raw mime prefixes (`explode('/', $mime)[0]`), so
+  picking "Application" sent `application` — a value `scopeOfType` does not
+  recognise and therefore ignores ([`asset-model.md`](asset-model.md) REQ-6),
+  which exported the *entire* library while appearing to filter it.
 
 ## Technical design
 
@@ -145,6 +152,26 @@ Scenario: Export can filter by file type, folder, and tags
   Given assets of mixed types/folders/tags
   When export is called with file_type/folder/tags filters
   Then only matching assets appear in the CSV
+# pinned by: tests/Feature/ExportTest.php
+
+Scenario: The File Type options are categories the filter actually understands
+  Given a library holding a PDF, an image and a video
+  When the export page is opened
+  Then the options offered are document, image and video
+  And no option is a raw mime prefix such as "application"
+# pinned by: tests/Feature/ExportTest.php
+
+Scenario: A document-filtered export excludes every non-document
+  Given a library holding a PDF, an image and a video
+  When export is called with file_type=document
+  Then only the PDF appears in the CSV
+# pinned by: tests/Feature/ExportTest.php
+
+Scenario: A file type outside the known categories is rejected
+  Given a request with file_type=application
+  When export is called
+  Then it fails validation with 422
+  And nothing is exported, rather than everything (REQ-7)
 # pinned by: tests/Feature/ExportTest.php
 
 Scenario: Export with no matching assets produces only the header row
@@ -253,6 +280,12 @@ Scenario: A tag-filtered export downloads only the matching assets
   When a tag carried by exactly one asset is selected and the export submitted
   Then a CSV named orca-assets-export-<timestamp>.csv downloads
   And it contains that asset and not an asset without the tag
+# pinned by: tests/e2e/csv-import-export.spec.js
+
+Scenario: A document-filtered export downloads only the documents
+  Given a library holding a PDF, images and a video
+  When Document is chosen in File Type and the export submitted
+  Then the downloaded CSV contains the PDF and neither the images nor the video
 # pinned by: tests/e2e/csv-import-export.spec.js
 
 Scenario: Reset Filters returns the export to exporting everything

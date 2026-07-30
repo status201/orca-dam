@@ -478,6 +478,39 @@ class Asset extends Model
     ];
 
     /**
+     * The type categories scopeOfType() understands, in display order.
+     *
+     * Anything offering a type filter must take its options from here: a value
+     * the scope does not recognise is ignored, so a wrong one filters nothing
+     * instead of failing (asset-model.md REQ-6).
+     *
+     * @return array<int, string>
+     */
+    public static function typeCategories(): array
+    {
+        return array_keys(self::$typeCategories);
+    }
+
+    /**
+     * The category a mime type belongs to, or null if it belongs to none.
+     *
+     * A category, not the mime prefix: application/pdf is a "document", so
+     * explode('/', $mime)[0] does not yield a usable filter value.
+     */
+    public static function typeCategoryFor(string $mimeType): ?string
+    {
+        $prefix = strtolower(explode('/', $mimeType)[0]);
+
+        foreach (self::$typeCategories as $category => $prefixes) {
+            if (in_array($prefix, $prefixes, true)) {
+                return $category;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Scope: Filter by mime type
      */
     public function scopeOfType($query, ?string $type)

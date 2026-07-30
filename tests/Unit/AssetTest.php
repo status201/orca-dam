@@ -144,6 +144,28 @@ test('asset scope ofType accepts plural/friendly type names', function () {
     expect(Asset::ofType('Images')->get())->toHaveCount(2);
 });
 
+test('asset maps a mime type to its category, not its prefix', function () {
+    expect(Asset::typeCategoryFor('application/pdf'))->toBe('document');
+    expect(Asset::typeCategoryFor('text/csv'))->toBe('document');
+    expect(Asset::typeCategoryFor('image/png'))->toBe('image');
+    expect(Asset::typeCategoryFor('video/mp4'))->toBe('video');
+    expect(Asset::typeCategoryFor('audio/mpeg'))->toBe('audio');
+    expect(Asset::typeCategoryFor('font/woff2'))->toBeNull();
+
+    expect(Asset::typeCategories())->toBe(['document', 'image', 'video', 'audio']);
+});
+
+test('asset scope ofType ignores an unrecognised value instead of filtering', function () {
+    Asset::factory()->create(['mime_type' => 'image/png']);
+    Asset::factory()->create(['mime_type' => 'application/pdf']);
+
+    // "application" is a mime prefix, not a category. The scope is deliberately
+    // lenient (asset-model.md REQ-6), so it matches everything — which is exactly
+    // why callers must offer only Asset::typeCategories() and reject the rest.
+    expect(Asset::ofType('application')->get())->toHaveCount(2);
+    expect(Asset::ofType('document')->get())->toHaveCount(1);
+});
+
 test('asset url uses custom domain when configured', function () {
     $asset = Asset::factory()->create(['s3_key' => 'assets/test-image.jpg']);
 

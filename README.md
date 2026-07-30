@@ -128,7 +128,7 @@ endpoints can be switched off at runtime via **API Docs → Dashboard → Upload
 
 ```bash
 php artisan config:clear && php artisan test    # 980 tests, in-memory SQLite
-npm run test:e2e                               # 106 Playwright tests against a real stack
+npm run test:e2e                               # 107 Playwright tests against a real stack
 npm run spec:lint                              # spec structure + documented facts
 ```
 

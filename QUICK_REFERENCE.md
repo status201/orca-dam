@@ -54,7 +54,7 @@ php artisan config:clear && php artisan test --filter="asset"
 
 npm run test:e2e:install                 # once: Chromium + OS deps
 npm run e2e:up                           # MinIO on :9000 (skip → S3 specs skip)
-npm run test:e2e                         # 106 Playwright tests, 20 spec files
+npm run test:e2e                         # 107 Playwright tests, 20 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # rebuild database/e2e.sqlite
 npm run e2e:down
