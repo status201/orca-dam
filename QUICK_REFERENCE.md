@@ -94,6 +94,9 @@ php artisan passkeys:revoke <id|--user=email> [--force]
 # Reference tags
 php artisan reference-tag:create <name> [<name>…]
 
+# User audit trail (create / role-change / delete events; not exposed in the web UI)
+php artisan users:audit [--user=email] [--event=created|updated|deleted] [--limit=50]
+
 # Maintenance
 php artisan uploads:cleanup [--hours=48]      # stale chunked upload sessions
 php artisan assets:verify-integrity           # queue S3 integrity checks
@@ -105,7 +108,7 @@ php artisan lang:safe-update                  # NEVER raw lang:update — it eat
 php artisan queue:work --tries=3
 ```
 
-Full contracts for all 16 commands:
+Full contracts for all 17 commands:
 [specs/features/maintenance-commands.md](specs/features/maintenance-commands.md).
 
 ---

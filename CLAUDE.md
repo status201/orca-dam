@@ -43,6 +43,7 @@ php artisan token:list / token:create [user@email] [--name="…"] / token:revoke
 php artisan token:create --new [--user-name="…"] [--name="…"]   # provisions a role=api user; prompts for the email (the positional arg is ignored with --new)
 php artisan jwt:list / jwt:generate <user@email> [--force] / jwt:revoke <user@email> [--force]
 php artisan passkeys:list [--user=email] [--role=admin|editor|api] / passkeys:revoke <id|--user=email> [--force]
+php artisan users:audit [--user=email] [--event=created|updated|deleted] [--limit=50]   # user create/role-change/delete trail (CLI-only)
 
 # Queue (dev)
 php artisan queue:work --tries=3
