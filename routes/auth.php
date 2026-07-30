@@ -9,17 +9,15 @@ use App\Http\Controllers\Auth\PasskeyController;
 use App\Http\Controllers\Auth\PasskeyLoginController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFactorAuthController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
-        ->name('register');
-
-    Route::post('register', [RegisteredUserController::class, 'store']);
-
+    // No self-service registration: accounts are provisioned by an admin via /users
+    // (or token:create for api-role users). See specs/features/authentication.md REQ-8 —
+    // the Breeze register route defaulted new accounts to the `editor` role, so leaving
+    // it mounted-but-unlinked handed full asset read/write to anyone who found the URL.
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
