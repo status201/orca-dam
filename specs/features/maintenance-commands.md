@@ -8,14 +8,15 @@ owner: core
 related:
   - architecture
   - system-admin
+  - user-audit-log
 source:
   - app/Console/Commands/
 ```
 
 ## Background / Why
 
-ORCA ships 16 `artisan` commands covering asset hygiene, auth-secret lifecycle
-management, and translation safety. They are the CLI counterpart to the System
+ORCA ships 17 `artisan` commands covering asset hygiene, auth-secret lifecycle
+management, translation safety, and reading the user audit trail. They are the CLI counterpart to the System
 admin dashboard (`SystemService::getSuggestedCommands()` surfaces the asset/queue
 ones there) and the primary tool for emergency recovery (JWT/2FA/passkey/token
 revocation) when the web UI itself is inaccessible.
@@ -93,6 +94,13 @@ reference-tag:create {names?*}:
   # Pre-creates reference-type tags (normalized: trim + lowercase + dedup) so
   # editors can attach them from the asset edit page — reference tags are
   # otherwise API-created only (ADR-012).
+
+# User audit trail
+users:audit {--user=} {--event=} {--limit=50}:
+  # Read-only report over user_audit_logs, newest first. --user matches the subject by
+  # current email OR by the recorded label, so a deleted account's history stays
+  # reachable. --event rejects anything outside created|updated|deleted. The trail has
+  # no UI, so this is the only way to read it — see user-audit-log.md.
 
 # Translations
 lang:safe-update:

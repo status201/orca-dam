@@ -23,17 +23,22 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
-        ->name('password.request');
+    // Password reset is the only unauthenticated write surface left (REQ-9). The broker's
+    // auth.passwords.users.throttle only debounces repeat links to the *same* address, so
+    // it does nothing against a caller walking a list — hence a per-IP route limit too.
+    Route::middleware('throttle:6,1')->group(function () {
+        Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
+            ->name('password.request');
 
-    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
-        ->name('password.email');
+        Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+            ->name('password.email');
 
-    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
-        ->name('password.reset');
+        Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
+            ->name('password.reset');
 
-    Route::post('reset-password', [NewPasswordController::class, 'store'])
-        ->name('password.store');
+        Route::post('reset-password', [NewPasswordController::class, 'store'])
+            ->name('password.store');
+    });
 
     // Two-Factor Authentication Challenge (during login)
     Route::get('two-factor-challenge', [TwoFactorAuthController::class, 'showChallenge'])

@@ -8,6 +8,8 @@ use App\Listeners\EnforcePasskeyLimit;
 use App\Listeners\TouchPasskeyLastUsed;
 use App\Models\Passkey;
 use App\Models\Setting;
+use App\Models\User;
+use App\Observers\UserObserver;
 use App\Policies\SystemPolicy;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
@@ -71,5 +73,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Defense-in-depth: enforce per-user passkey cap after registration.
         Event::listen(PasskeyRegistered::class, EnforcePasskeyLimit::class);
+
+        // Append-only trail of user create / re-role / delete — an UPDATE that flips
+        // `role` otherwise leaves no trace. See specs/features/user-audit-log.md.
+        User::observe(UserObserver::class);
     }
 }
