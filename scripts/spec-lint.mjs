@@ -401,8 +401,12 @@ function checkCounts(errors, docFiles) {
     rule(/(\d+)\s+feature specs?/, features, 'feature specs in specs/features/'),
     rule(/(\d+)\s+ADRs?\b/, adrs, 'ADRs in specs/decisions/'),
     rule(/(\d+)\s+services/, services, 'files in app/Services/'),
-    rule(/(\d+)\s+artisan commands/, commands, 'files in app/Console/Commands/'),
-    rule(/(\d+)\s+console commands/, commands, 'files in app/Console/Commands/'),
+    // One rule for every phrasing the docs use, because the narrow pair this replaced
+    // ("N artisan commands" / "N console commands") missed two: QUICK_REFERENCE.md's
+    // "all 16 commands" sat one section above its own tree comment saying 17, and
+    // maintenance-commands.md writes "17 `artisan` commands" — backticked, so the old
+    // literal did not match. The qualifier is optional and its backticks are too.
+    rule(/(\d+)\s+(?:`?artisan`?\s+|`?console`?\s+)?commands\b/, commands, 'files in app/Console/Commands/'),
     rule(/(\d+)\s+files:\s*`tests\/Feature\//, testFiles, '*Test.php files under tests/'),
     rule(/(\d+)\s+tests,\s*(?:in-memory SQLite|\d+ files)/, null, 'Pest tests (not auto-countable)'),
     rule(/(\d+)\s+tests across (\d+) spec files/, e2e && e2e.tests, 'Playwright tests'),
