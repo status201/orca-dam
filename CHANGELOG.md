@@ -7,6 +7,9 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Security
+- **Dropped the `users.role` database default of `editor`.** Removing `/register` closed the route that exploited the default, but the default itself — the mechanism that turned an omitted `role` into full asset read/write — was still there for the next creation path to fall into. `users.role` is now `NOT NULL` with no default (`database/migrations/2026_07_30_120000_drop_role_default_from_users_table.php`), so an insert that omits the role fails at the driver (`NOT NULL constraint failed` on SQLite, `Field 'role' doesn't have a default value` on MySQL/MariaDB under `strict`) instead of silently minting an editor. This covers paths the `RegistrationTest` source scan cannot see — `firstOrCreate`, raw inserts, a future SSO or invite flow. No caller changes: `UserController::store` validates `role`, `TokenController::store` and `TokenCreateCommand` hardcode `api`, `UserFactory` sets `editor`. **The migration aborts rather than backfilling if any row holds a `NULL` role** — every role grants strictly more than `NULL` does, so an operator assigns those roles. Pinned by a new scenario in `specs/features/authentication.md` REQ-8; the SQLite path recreates the table from its own stored DDL because `2026_01_26_111545`'s hand-written `email … UNIQUE` left an implicit `sqlite_autoindex_users_1` that Laravel's `->change()` cannot replay.
+
 ---
 
 ## [v1.5.0] — 2026-07 — Spy Hop

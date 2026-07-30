@@ -57,7 +57,7 @@ See [`specs/architecture.md`](specs/architecture.md) for the service-layer map, 
 
 `AssetPolicy`, `SystemPolicy`, `UserPolicy`. **All abilities encode role lists explicitly — no `return true` stubs.** Adding a new role requires opting into each ability.
 
-**Roles** (`users.role`, default `editor`):
+**Roles** (`users.role`, `NOT NULL`, **no DB default** — every creation path must name the role; see [`specs/features/authentication.md`](specs/features/authentication.md) REQ-8):
 
 | Action | admin | editor | api |
 |---|---|---|---|

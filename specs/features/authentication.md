@@ -78,9 +78,25 @@ contract; the other three mechanisms and 2FA each have their own spec.
   replace, soft-delete, restore and bulk-download over **every asset in the library**.
   Because email verification is inert (REQ-7), that access was live from the moment of
   signup, with no confirmation step. Unlinked is not unreachable: the URL is guessable,
-  and at least one unknown party did register on production this way. Any future
-  reintroduction of open signup must therefore assign a role explicitly and default it
-  to the least privilege available, not to the column default.
+  and at least one unknown party did register on production this way.
+
+  **The column default is gone too.** `users.role` is `NOT NULL` with **no database
+  default** (`database/migrations/2026_07_30_120000_drop_role_default_from_users_table.php`),
+  so a creation path that omits `role` now fails with a driver error — `NOT NULL
+  constraint failed` on SQLite, `Field 'role' doesn't have a default value` on
+  MySQL/MariaDB under `strict` mode (`config/database.php`) — instead of quietly minting
+  an editor. This is the load-bearing half of the guarantee: the source scan below only
+  sees call sites spelled `User::create(`, while the constraint covers every path,
+  including `firstOrCreate`, raw inserts and any future SSO or invite flow. No caller
+  changes — `UserController::store` validates `role`, `TokenController::store` and
+  `TokenCreateCommand` hardcode `api`, and `UserFactory` sets `editor`. Any future
+  reintroduction of open signup must therefore assign a role explicitly, and pick the
+  least privilege available: there is no longer a default to inherit.
+
+  The migration refuses to run while any row holds a `NULL` role, rather than picking a
+  value for it. Such a row can only have been hand-written (no code path produces one),
+  and every role grants strictly more than `NULL` does — silently promoting an account is
+  the failure mode this requirement exists to prevent, so the operator assigns the role.
 - **REQ-9** — The password-reset pair is the only unauthenticated write surface left, and
   it is hardened two ways:
   - **Rate-limited at the route.** All four routes carry `throttle:6,1`. The broker's
@@ -157,6 +173,8 @@ redirect to `/login`, since API callers expect a JSON 401.
   [passkeys.md](passkeys.md)); JWT/Sanctum requests do not touch it (stateless).
 - No separate "auth" table — mechanisms layer directly onto `users` (session guard),
   `personal_access_tokens` (Sanctum), and `users.jwt_secret` (JWT).
+- `users.role` — `enum('editor','admin','api')`, `NOT NULL`, **no default** (REQ-8).
+  Every insert names the role; omitting it is a database error, not an implicit `editor`.
 
 ## Scenarios (BDD)
 
@@ -223,10 +241,17 @@ Scenario: Posting a registration payload creates no account (REQ-8)
   And no user with that email exists
 # pinned by: tests/Feature/Auth/RegistrationTest.php
 
-Scenario: No user-creation path relies on the role column default (REQ-8)
-  Given the users.role column defaults to 'editor'
+Scenario: No user-creation path leaves the role implicit (REQ-8)
+  Given the users.role column has no database default
   When every User::create call site under app/ is inspected
   Then each one passes an explicit role
+# pinned by: tests/Feature/Auth/RegistrationTest.php
+
+Scenario: Creating a user without a role is a database error (REQ-8)
+  Given the users table
+  When a row is inserted with no role column
+  Then the insert is rejected by the database
+  And no such user exists
 # pinned by: tests/Feature/Auth/RegistrationTest.php
 
 Scenario: A password reset completes with a valid token (REQ-6)
@@ -333,9 +358,11 @@ Scenario: Logging out really ends the session
   throttle test has to clear the rate limiter between cases and would otherwise make
   those four tests order-dependent.
 - Feature (REQ-8): `tests/Feature/Auth/RegistrationTest.php` — that `/register` is gone
-  (both verbs 404, no named route, no account created) and that no `User::create` call
-  site under `app/` leans on the `role` column default. It inverts what this file
-  asserted before the routes were removed.
+  (both verbs 404, no named route, no account created), that a role-less insert is
+  rejected by the database, and that no `User::create` call site under `app/` leaves the
+  role implicit. It inverts what this file asserted before the routes were removed. The
+  role-less-insert case is the one that holds across creation paths the source scan
+  cannot see; if it ever passes, the column default is back.
 - Feature (Breeze scaffold, REQ-6): `tests/Feature/Auth/PasswordResetTest.php`,
   `tests/Feature/Auth/EmailVerificationTest.php`,
   `tests/Feature/Auth/PasswordUpdateTest.php`,
