@@ -1,5 +1,7 @@
 # ORCA DAM - ORCA Retrieves Cloud Assets
 
+<img src="public/images/orca-logo.png" alt="ORCA DAM logo" width="320">
+
 A Digital Asset Management system for AWS S3 with AI-powered tagging.
 
 ## Documentation map
@@ -172,4 +174,4 @@ MIT License
 ## Credits
 
 Copyright © 2026 Gijs Oliemans & Studyflow.
-Built together with 🤖 Claude Opus 4.5, as part of an AI pilot for Studyflow.
+Built together with Claude, as part of an AI pilot for Studyflow.
