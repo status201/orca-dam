@@ -307,6 +307,17 @@ ${tikzScriptTags}
         },
 
         _onMessage(event) {
+            // Only our own render iframe may drive this handler — see
+            // specs/features/client-side-tools.md REQ-7. event.data.pngs[i].dataUrl is put into
+            // an <img> and can be uploaded as an asset, so a message from an opener or from a
+            // page framing ORCA is attacker-controlled data entering the page. This iframe has
+            // no sandbox at all (the fork needs Workers + IndexedDB), so its srcdoc document
+            // inherits the app's origin; the source check is what actually pins the sender.
+            if (event.origin !== window.location.origin && event.origin !== 'null') return;
+
+            const renderFrame = document.getElementById('tikz-png-iframe');
+            if (! renderFrame || event.source !== renderFrame.contentWindow) return;
+
             if (event.data?.type !== 'tikz-pngs' && event.data?.type !== 'tikz-error') return;
 
             if (this._timeoutHandle) {

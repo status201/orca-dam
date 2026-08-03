@@ -43,6 +43,13 @@ counts as a claim just like the file tree's `N artisan commands` comment, a file
 `app/Console/Commands/` or the top-level directories, and a heading added to
 `USER_MANUAL.md` without its Dutch counterpart. Run it before opening a PR.
 
+The E2E tally is the one count derived by a heuristic rather than by listing files, because
+`tests/e2e/*.spec.js` generates cases from `for (const x of …)` loops. Two consequences when
+you add an E2E test: the counter carries its own fixtures and will fail as
+`spec-lint self-test: …` if it breaks, which is a different problem from a stale number; and
+it **errors rather than guesses** on a loop it cannot size, so wrap generated tests in
+`for (const x of <array literal or named const>)` and keep the array resolvable.
+
 Browser-level behaviour is pinned by the feature spec that owns it, never by
 `e2e-testing.md` — that spec owns the harness only.
 

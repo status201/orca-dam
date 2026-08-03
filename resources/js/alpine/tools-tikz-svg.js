@@ -146,6 +146,17 @@ function tikzSvg() {
         },
 
         _onMessage(event) {
+            // Only our own render iframe may drive this handler — see
+            // specs/features/client-side-tools.md REQ-7. event.data.svgs is rendered through
+            // x-html (innerHTML), so a message from an opener or from a page framing ORCA would
+            // be DOM XSS: <img src=x onerror=…> executes there even though <script> does not.
+            // This iframe is sandboxed without allow-same-origin, so its origin is opaque and
+            // reports the literal string "null". The source check is the load-bearing one.
+            if (event.origin !== window.location.origin && event.origin !== 'null') return;
+
+            const renderFrame = document.getElementById('tikz-iframe');
+            if (! renderFrame || event.source !== renderFrame.contentWindow) return;
+
             if (event.data?.type !== 'tikz-svgs' && event.data?.type !== 'tikz-error') return;
 
             if (this._timeoutHandle) {

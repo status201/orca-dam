@@ -217,6 +217,17 @@ function tikzSvgFonts() {
         },
 
         _onMessage(event) {
+            // Only our own render iframe may drive this handler — see
+            // specs/features/client-side-tools.md REQ-7. event.data.svgs is rendered through
+            // x-html (innerHTML), so a message from an opener or from a page framing ORCA would
+            // be DOM XSS. This iframe carries allow-same-origin, so its srcdoc document inherits
+            // the app's origin: an origin check alone would also admit any other same-origin
+            // window, including the top-level page. The source check is what actually pins it.
+            if (event.origin !== window.location.origin && event.origin !== 'null') return;
+
+            const renderFrame = document.getElementById('tikz-fonts-iframe');
+            if (! renderFrame || event.source !== renderFrame.contentWindow) return;
+
             if (event.data?.type !== 'tikz-svgs-fonts' && event.data?.type !== 'tikz-error-fonts') return;
 
             if (this._timeoutHandle) {

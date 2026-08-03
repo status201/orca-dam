@@ -27,7 +27,11 @@
 // root docs — the same stale count used to sit in three files at once:
 //   • dependency versions named there match composer.json / package.json *constraints*
 //   • hand-counted totals are right: Alpine modules and spec/ADR counts (CLAUDE.md),
-//     Pest test files (specs/architecture.md), E2E tests + spec files (e2e-testing.md)
+//     Pest test files (specs/architecture.md), E2E tests + spec files (e2e-testing.md).
+//     The E2E tally resolves loop-generated cases, so it carries its own fixtures
+//     (checkE2eCounter) and errors on any block it cannot size rather than guessing —
+//     a counter that quietly stops working produces a plausible number, and the docs
+//     then get "corrected" to match it
 //   • the single file tree (QUICK_REFERENCE.md) names every app/Services/,
 //     app/Console/Commands/ and top-level directory entry, and nothing that is gone
 //   • USER_MANUAL.md and GEBRUIKERSHANDLEIDING.md share one heading-level sequence,
@@ -338,44 +342,211 @@ function countTestFiles(dir) {
 }
 
 /**
+ * Index of the bracket closing the one at `open`, or -1 if it is never closed.
+ *
+ * Aware of strings, template literals and comments, so a `]` inside `'a]b'` or after `//`
+ * does not close anything. Used to find an array literal's true extent instead of
+ * regex-matching up to the first `];`, which a nested array or a string could fake.
+ */
+function matchingBracket(text, open) {
+  const CLOSE = { '[': ']', '{': '}', '(': ')' };
+  const want = CLOSE[text[open]];
+  if (!want) return -1;
+
+  let depth = 0;
+  let quote = null;
+  let comment = null;
+
+  for (let i = open; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+
+    if (comment === 'line') { if (c === '\n') comment = null; continue; }
+    if (comment === 'block') { if (c === '*' && next === '/') { comment = null; i++; } continue; }
+    if (quote) {
+      if (c === '\\') { i++; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '/' && next === '/') { comment = 'line'; i++; continue; }
+    if (c === '/' && next === '*') { comment = 'block'; i++; continue; }
+    if (c === "'" || c === '"' || c === '`') { quote = c; continue; }
+
+    if (c === '[' || c === '{' || c === '(') depth++;
+    else if (c === ']' || c === '}' || c === ')') {
+      depth--;
+      if (depth === 0) return c === want ? i : -1;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The top-level elements of an array body (the text between its brackets).
+ *
+ * Splits on commas at depth zero only, ignoring nested brackets, strings, template
+ * literals and comments, and dropping the empty tail a trailing comma leaves. This
+ * replaces counting every `{` in the body: one entry holding a nested object or an arrow
+ * function read as several, so three loop-generated tests were reported as seven and the
+ * documented total would have been wrong in the linter's own favour.
+ */
+function topLevelElements(body) {
+  const parts = [];
+  let current = '';
+  let depth = 0;
+  let quote = null;
+  let comment = null;
+
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    const next = body[i + 1];
+
+    if (comment === 'line') { if (c === '\n') comment = null; continue; }
+    if (comment === 'block') { if (c === '*' && next === '/') { comment = null; i++; } continue; }
+    if (quote) {
+      current += c;
+      if (c === '\\') { current += next ?? ''; i++; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '/' && next === '/') { comment = 'line'; i++; continue; }
+    if (c === '/' && next === '*') { comment = 'block'; i++; continue; }
+    if (c === "'" || c === '"' || c === '`') { quote = c; current += c; continue; }
+
+    if (c === '[' || c === '{' || c === '(') { depth++; current += c; continue; }
+    if (c === ']' || c === '}' || c === ')') { depth--; current += c; continue; }
+    if (c === ',' && depth === 0) { parts.push(current); current = ''; continue; }
+
+    current += c;
+  }
+  parts.push(current);
+
+  return parts.map((p) => p.trim()).filter((p) => p !== '');
+}
+
+/** The body of `const <name> = [ … ]` in `text`, or null when there is no such array. */
+function arrayBodyFor(text, name) {
+  const decl = new RegExp('(?:const|let|var)\\s+' + escapeRe(name) + '\\s*=\\s*\\[').exec(text);
+  if (!decl) return null;
+  const open = decl.index + decl[0].length - 1;
+  const close = matchingBracket(text, open);
+  return close < 0 ? null : text.slice(open + 1, close);
+}
+
+/**
+ * How many cases a `for (const x of EXPR)` header generates, or null when EXPR cannot be
+ * resolved from the file. Null is deliberately distinct from 1: an unresolved loop makes
+ * the total untrustworthy, and countE2e reports it rather than quietly undercounting.
+ */
+function loopFactorFor(expr, text) {
+  const src = expr.trim();
+
+  if (src.startsWith('[')) {
+    const close = matchingBracket(src, 0);
+    return close === src.length - 1 ? topLevelElements(src.slice(1, close)).length : null;
+  }
+
+  if (/^[A-Za-z_$][\w$]*$/.test(src)) {
+    const body = arrayBodyFor(text, src);
+    return body === null ? null : topLevelElements(body).length;
+  }
+
+  // `xs.filter(...)`, `Object.keys(o)`, a function call — the length is not knowable here.
+  return null;
+}
+
+/**
  * Playwright tests: literal `test(` calls plus the ones a loop generates. Counting only
  * literals gets it wrong (that is exactly the drift this replaces), so loop-generated
  * cases are counted by resolving the array the loop iterates. `global.setup.js` is
  * excluded — it is not a spec file.
+ *
+ * Any block wrapping a `test(` whose repeat count cannot be resolved is returned in
+ * `unresolved` and reported as an error. Silence is not success: an unrecognised loop
+ * shape used to make the tally quietly wrong, which is the one failure this check exists
+ * to prevent. Nested loops multiply.
  */
 function countE2e() {
   const dir = path.join(ROOT, 'tests', 'e2e');
   if (!existsSync(dir)) return null;
   const specs = readdirSync(dir).filter((f) => f.endsWith('.spec.js'));
   let total = 0;
+  const unresolved = [];
+
   for (const f of specs) {
     const text = readFileSync(path.join(dir, f), 'utf8');
     const lines = text.split(/\r?\n/);
-    // Track `for (const x of ARR)` blocks so a test( inside one counts ARR.length times.
-    // ARR is either an inline literal or a top-level `const ARR = [ … ]`.
-    let loopFactor = 1;
-    let loopIndent = -1;
-    for (const line of lines) {
+    const stack = [];
+
+    lines.forEach((line, i) => {
       const indent = line.search(/\S/);
-      if (loopIndent >= 0 && indent >= 0 && indent <= loopIndent) { loopFactor = 1; loopIndent = -1; }
-      const loop = line.match(/for\s*\(\s*const\s+\w+\s+of\s+(.+?)\)\s*\{/);
-      if (loop) {
-        const src = loop[1].trim();
-        let n = 0;
-        const inline = src.match(/^\[(.*)\]$/);
-        if (inline) {
-          n = inline[1].split(',').filter((s) => s.trim() !== '').length;
-        } else {
-          const decl = text.match(new RegExp('const\\s+' + escapeRe(src) + '\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*;', 'm'));
-          if (decl) n = (decl[1].match(/\{/g) || decl[1].split(',')).length;
-        }
-        if (n > 1) { loopFactor = n; loopIndent = indent; }
-        continue;
+      if (indent >= 0) {
+        while (stack.length && indent <= stack[stack.length - 1].indent) stack.pop();
       }
-      if (/^\s*test\(/.test(line)) total += loopFactor;
+
+      const forOf = line.match(/for\s*\(\s*(?:const|let|var)\s+\w+\s+of\s+(.+?)\)\s*\{/);
+      if (forOf) {
+        stack.push({ indent, factor: loopFactorFor(forOf[1], text), expr: forOf[1].trim() });
+        return;
+      }
+
+      // Every other repeating construct. Only pushed as unresolved — if no test( appears
+      // inside, it costs nothing; the three `for (let i …)` loops in the suite today are
+      // helpers and generate no cases.
+      if (/for\s*\(|\.forEach\s*\(/.test(line) && !/^\s*(\/\/|\*)/.test(line)) {
+        stack.push({ indent, factor: null, expr: line.trim() });
+        return;
+      }
+
+      if (!/^\s*test\(/.test(line)) return;
+
+      if (stack.some((frame) => frame.factor === null)) {
+        const frame = stack.find((f2) => f2.factor === null);
+        unresolved.push(`${f}:${i + 1}: test() inside a block this counter cannot size — \`${frame.expr}\``);
+        total += 1;
+        return;
+      }
+
+      total += stack.reduce((n, frame) => n * frame.factor, 1);
+    });
+  }
+
+  return { tests: total, files: specs.length, unresolved };
+}
+
+/**
+ * The counter above is a heuristic over source text, so it gets its own fixtures, checked
+ * on every run. A counter that has silently stopped working produces a plausible number,
+ * and the docs are then "corrected" to match it — which is worse than no check at all.
+ */
+function checkE2eCounter(errors) {
+  const cases = [
+    ['a, b, c', 3, 'plain elements'],
+    ['a, b, c,', 3, 'trailing comma'],
+    ['', 0, 'empty body'],
+    ['{ a: 1 }, { b: 2 }', 2, 'one object each'],
+    ['{ a: 1, b: 2 }, { c: 3 }', 2, 'commas inside objects'],
+    ['{ f: (m) => ({ x: [m] }) }, { g: 1 }', 2, 'nested arrow and array — the case that broke'],
+    ["'a,b', 'c'", 2, 'comma inside a string'],
+    ['`x${1},${2}`, y', 2, 'comma inside a template literal'],
+    ['a /* , */, b', 2, 'comma inside a block comment'],
+    ['[1, 2], [3]', 2, 'nested arrays'],
+  ];
+
+  for (const [body, expected, what] of cases) {
+    const actual = topLevelElements(body).length;
+    if (actual !== expected) {
+      errors.push(`spec-lint self-test: topLevelElements("${body}") = ${actual}, expected ${expected} (${what})`);
     }
   }
-  return { tests: total, files: specs.length };
+
+  // An expression the counter must refuse to size rather than guess at.
+  if (loopFactorFor('items.filter(Boolean)', 'const items = [1, 2];') !== null) {
+    errors.push('spec-lint self-test: loopFactorFor should return null for a call expression');
+  }
+  if (loopFactorFor('items', 'const items = [{ a: [1, 2] }, { b: 3 }];') !== 2) {
+    errors.push('spec-lint self-test: loopFactorFor should resolve a named array to its element count');
+  }
 }
 
 /**
@@ -383,6 +554,9 @@ function countE2e() {
  * nothing else verifies, which is why each one had gone stale at least once.
  */
 function checkCounts(errors, docFiles) {
+  // Before trusting any number below: prove the one heuristic among them still works.
+  checkE2eCounter(errors);
+
   const appJs = path.join(ROOT, 'resources', 'js', 'app.js');
   const modules = existsSync(appJs)
     ? (readFileSync(appJs, 'utf8').match(/^\s*import\s+['"]\.\/alpine\//gm) || []).length
@@ -394,6 +568,15 @@ function checkCounts(errors, docFiles) {
   const commands = countFiles(path.join(ROOT, 'app', 'Console', 'Commands'), (f) => f.endsWith('.php'));
   const testFiles = countTestFiles(path.join(ROOT, 'tests'));
   const e2e = countE2e();
+
+  // An unsizable block means the E2E total is a guess, so say so instead of comparing the
+  // docs against a number that is already wrong.
+  for (const site of e2e?.unresolved ?? []) {
+    errors.push(
+      `tests/e2e/${site}. Rewrite it as \`for (const x of <array literal or named const>)\`, ` +
+      'or teach loopFactorFor() the shape — the documented Playwright total depends on it.'
+    );
+  }
 
   const rule = (re, actual, what) => ({ re, actual, what });
   const RULES = [

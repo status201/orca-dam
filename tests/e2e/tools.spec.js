@@ -45,4 +45,51 @@ test.describe('tools', () => {
             expect(errors).toEqual([]);
         });
     }
+
+    // specs/features/client-side-tools.md REQ-7. These three pages collect render output from a
+    // hidden iframe over postMessage and inject it into the page — the SVG variants through
+    // x-html, i.e. innerHTML. postMessage is deliverable by any window holding a reference to
+    // this one (an opener, or a page framing ORCA), so the handlers pin the sender to their own
+    // iframe. Posting from the page's own window is the cheapest way to prove that: it is a
+    // legitimate same-origin sender that is nonetheless not the render iframe, so it must be
+    // refused for exactly the reason a hostile opener is.
+    // One `{` per entry on purpose: spec-lint resolves a loop's array by counting braces, so a
+    // nested literal here would inflate the documented E2E total. The payload shape is built in
+    // the test body instead.
+    const messageTools = [
+        { url: '/tools/tikz-svg', root: 'tool-tikz-svg', type: 'tikz-svgs', shape: 'svgs' },
+        { url: '/tools/tikz-svg-fonts', root: 'tool-tikz-svg-fonts', type: 'tikz-svgs-fonts', shape: 'svgs' },
+        { url: '/tools/tikz-png', root: 'tool-tikz-png', type: 'tikz-pngs', shape: 'pngs' },
+    ];
+
+    for (const tool of messageTools) {
+        test(`${tool.root} ignores a forged ${tool.type} message from outside its iframe`, async ({ page }) => {
+            await page.goto(tool.url);
+            await expect(page.locator(testid(tool.root))).toBeVisible();
+
+            const markup = '<img src="x" onerror="window.__forgedRenderExecuted = true">';
+            const data = tool.shape === 'svgs'
+                ? { svgs: [markup] }
+                : { pngs: [{ dataUrl: markup, width: 1, height: 1 }] };
+
+            await page.evaluate(
+                ({ type, payload }) => {
+                    window.__forgedRenderExecuted = false;
+                    window.postMessage({ type, ...payload }, '*');
+                },
+                { type: tool.type, payload: data }
+            );
+
+            // The load-bearing assertion: an accepted message populates `results`, and the markup
+            // reaches the DOM through x-html. Verified by mutation — with the guard removed this
+            // finds one `img[src="x"]`, so it is the assertion that actually proves injection.
+            await expect(page.locator('img[src="x"]')).toHaveCount(0);
+            await expect(page.locator(`${testid(tool.root)} svg`)).toHaveCount(0);
+
+            // Secondary, and deliberately read after the DOM assertions rather than polled for
+            // false: `onerror` fires asynchronously, so polling for `false` would pass on its
+            // first check and prove nothing on its own.
+            expect(await page.evaluate(() => window.__forgedRenderExecuted)).toBe(false);
+        });
+    }
 });
