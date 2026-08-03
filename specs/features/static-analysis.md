@@ -166,7 +166,15 @@ pin would be worse than recording none.
   `exec` — which confirms the per-class exemption really is narrow, since the canary was not on the
   list. The two naming audits and the `tempnam` audit correctly stayed green.
 - Layer C: `.github/workflows/codeql.yml`, on push/PR and weekly. Cannot pass while GitHub's
-  default setup is enabled (REQ-2).
+  default setup is enabled (REQ-2). Findings land in the repository's code-scanning dashboard, not
+  in the job log — a green job means the *analysis* succeeded, not that it found nothing.
+- Layer C's first run produced a real finding, from the `actions` language rather than the
+  JavaScript: `actions/unpinned-tag` on `shivammathur/setup-php@v2`, the only third-party action in
+  the workflows. A mutable major tag is re-pointable by its owner, so a compromised upstream release
+  would execute in CI on the next run with nothing changing here. Now pinned to a full commit SHA
+  (`f3e473d…`, v2.37.2) in all four jobs. GitHub-owned actions stay on tags because they ship as
+  immutable releases, which is why the rule flagged one line and not twenty. Worth noting as the
+  concrete answer to "what does the `actions` language buy that nothing else here does".
 - Advisories, in the `security` job: `composer audit --locked` and `npm audit --audit-level=high`.
   Worth noting what these caught on their first run: two Guzzle advisories
   (`CVE-2026-69245`, `CVE-2026-69246`) published hours after the local run that had reported clean,

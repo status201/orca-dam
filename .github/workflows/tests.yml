@@ -12,13 +12,22 @@ on:
 permissions:
   contents: read
 
+# Third-party actions are pinned to a full commit SHA, with the version in a trailing comment.
+# A mutable tag like `@v2` is re-pointable by its owner, so a compromised or coerced upstream
+# release would execute here on the next run with no change on our side. GitHub-owned actions
+# (actions/*, github/*) stay on tags — they ship as immutable releases, which is why CodeQL's
+# actions/unpinned-tag rule flags only the third-party one. That rule found this.
+#
+# The trade-off is staleness: a pinned SHA never updates itself. Bump it deliberately, or wire up
+# Dependabot's github-actions ecosystem to raise the PR.
+
 jobs:
   pint:
     name: Pint (code style)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.4'
           tools: composer
@@ -41,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.4'
           extensions: mbstring, gd, exif, zip, bcmath, intl, pdo_sqlite, sqlite3
@@ -80,13 +89,13 @@ jobs:
 
   # The Security suite also runs inside the phpunit job above (a plain `artisan test` runs every
   # suite). It gets its own job so a security regression is a distinct, separately required
-  # status check rather than one line in a 1091-test run. See specs/features/security-invariants.md.
+  # status check rather than one line in a 1120-test run. See specs/features/security-invariants.md.
   security:
     name: Security invariants
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.4'
           extensions: mbstring, gd, exif, zip, bcmath, intl, pdo_sqlite, sqlite3
@@ -114,9 +123,13 @@ jobs:
         run: |
           php artisan config:clear
           php artisan test --testsuite=Security
-      # Known advisories in dependencies. Both were clean when this job was added, so neither
-      # carries an ignore list — if one fires, patch it or add an explicit, commented
-      # --ignore for that advisory. Do not append `|| true`: that makes the step decorative.
+      # Known advisories in dependencies. Neither carries an ignore list: when one fires, patch it,
+      # or add an explicit commented --ignore for that specific advisory. Do not append `|| true` —
+      # that makes the step decorative.
+      #
+      # This is not theoretical. On its first run it failed on two Guzzle advisories
+      # (CVE-2026-69245/69246) published hours after a local run had reported clean, which is the
+      # whole argument for it running again tomorrow rather than once.
       - name: Audit Composer dependencies
         run: composer audit --locked
       - name: Audit npm dependencies
@@ -127,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
         with:
           php-version: '8.4'
           extensions: mbstring, gd, exif, zip, bcmath, intl, pdo_sqlite, sqlite3
