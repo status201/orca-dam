@@ -47,14 +47,14 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 980 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1023 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
 
 npm run test:e2e:install                 # once: Chromium + OS deps
 npm run e2e:up                           # MinIO on :9000 (skip → S3 specs skip)
-npm run test:e2e                         # 107 Playwright tests, 20 spec files
+npm run test:e2e                         # 125 Playwright tests, 21 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # rebuild database/e2e.sqlite
 npm run e2e:down
@@ -139,6 +139,7 @@ orca-dam/
 │   │   ├── TwoFactorStatusCommand.php     # two-factor:status
 │   │   ├── UsersAuditCommand.php          # users:audit
 │   │   └── VerifyAssetIntegrity.php       # assets:verify-integrity
+│   ├── Demos/                             # guided onboarding walkthroughs (one class per demo)
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── Api/
@@ -222,7 +223,7 @@ orca-dam/
 ├── resources/
 │   ├── css/
 │   ├── js/
-│   │   ├── alpine/                        # 21 modules registered in app.js, + 4 mixins
+│   │   ├── alpine/                        # 22 modules registered in app.js, + 5 mixins
 │   │   └── app.js                         # module registration + showToast
 │   └── views/
 │       ├── assets/                        # index, embed, show, create, edit, partials/grid
@@ -232,8 +233,8 @@ orca-dam/
 ├── routes/                                # web.php, api.php, auth.php, console.php
 ├── scripts/                               # sdd-guard.mjs, spec-lint.mjs
 ├── specs/                                 # the behavioural source of truth
-│   ├── features/                          # 44 feature specs
-│   ├── decisions/                         # 15 ADRs
+│   ├── features/                          # 45 feature specs
+│   ├── decisions/                         # 16 ADRs
 │   └── recipes/                           # repeatable how-tos
 ├── tests/
 │   ├── Feature/                           # incl. Auth/, Console/, Middleware/

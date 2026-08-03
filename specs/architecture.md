@@ -256,13 +256,15 @@ The *why* behind the choices above — and the alternatives each rejected — li
 - [ADR-011](decisions/adr-011-settings-in-db.md) — runtime settings in the DB (REQ-5).
 - [ADR-012](decisions/adr-012-reference-tags-api-only.md) — reference tags are API-created only.
 - [ADR-013](decisions/adr-013-wordpress-plugin-separate-stream.md) — WordPress plugin is a separate release stream.
+- [ADR-014](decisions/adr-014-playwright-e2e-real-stack.md) — browser E2E against a real stack (MinIO for S3).
+- [ADR-015](decisions/adr-015-guided-demos-server-declared.md) — guided demos declared in PHP; spotlight hand-rolled.
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (980 tests,
-  80 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
+- `php artisan config:clear && php artisan test` — the full Pest suite (1023 tests,
+  81 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`). In-memory SQLite, sync queue.
-- `npm run test:e2e` — the Playwright browser suite (107 tests across 20 spec files)
+- `npm run test:e2e` — the Playwright browser suite (125 tests across 21 spec files)
   against a real `artisan serve` + MinIO. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus

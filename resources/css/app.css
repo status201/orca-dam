@@ -324,6 +324,39 @@ html.dark-mode #orca-game-loader {
     filter: invert(1);
 }
 
+/* ── Guided demos (specs/features/guided-demos.md) ──────────────────────────── */
+
+/* One transition on the shutters and the ring makes the spotlight morph between steps
+   for free — the geometry itself is set as inline px styles from demo-geometry.js. */
+.orca-demo-scrim,
+.orca-demo-ring {
+    transition: top .18s ease, left .18s ease, right .18s ease,
+                width .18s ease, height .18s ease, bottom .18s ease;
+}
+
+/* Dark mode inverts the whole document, and inversion commutes with compositing — so a
+   translucent black scrim would render as a *white* wash over the darkened page. Joining
+   the counter-invert list above puts it back. The popover deliberately stays out of that
+   list: it inverts into a dark card like every other panel, so it needs no dark styling. */
+html.dark-mode .orca-demo-scrim,
+html.dark-mode .orca-demo-ring {
+    filter: invert(1);
+}
+
+/* The nav hides itself on scroll-down (layouts/navigation.blade.php owns that state).
+   Pin it while a demo runs, in CSS, so a nav step cannot scroll out from under its own
+   spotlight — and so nothing here has to reach into the nav's Alpine state. */
+body.orca-demo-active nav[data-testid="app-nav"] {
+    transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .orca-demo-scrim,
+    .orca-demo-ring {
+        transition: none !important;
+    }
+}
+
 /* Bulk move loading animation */
 .animate-orca-swim {
     animation: orca-swim 2s ease-in-out infinite;

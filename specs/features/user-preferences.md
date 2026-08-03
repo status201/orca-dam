@@ -77,6 +77,7 @@ users.preferences:                 # encrypted JSON column, nullable
   items_per_page: int?              # one of 0,12,24,36,48,60,72,96; 0/absent = use global
   dark_mode: string?                # disabled | force_dark | force_light; "disabled"/absent = no override
   locale: string?                   # en | nl; absent = use global Setting('locale')
+  guided_demos: map?                # <demo-id> => {completed_at, dismissed}; see guided-demos.md
 ```
 
 ### Layer touchpoints & ordering
@@ -89,6 +90,13 @@ strings), and persists via a single `update(['preferences' => ...])` call. Reads
 elsewhere in the app (asset index pagination, `SetLocale`, upload folder picker)
 go through `User::getPreference()`/the typed accessors above — never the raw
 column.
+
+`guided_demos` is the one key `updatePreferences()` does not own: it is written by
+`GuidedDemoController::complete` ([`guided-demos.md`](guided-demos.md)). That separation is
+deliberate. `updatePreferences()` treats an absent field as "cleared" and unsets it, which is
+safe only because the profile form always submits all four of its fields — a partial request
+carrying just one key would drop the rest. Any future writer of a single preference key needs
+its own action for the same reason.
 
 ### Persistence
 

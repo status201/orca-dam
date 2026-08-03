@@ -86,7 +86,7 @@ helpers rather than copying their logic.
 
 ### 2. Register it — `resources/js/app.js`
 
-Add an import alongside the 21 modules registered in `resources/js/app.js`;
+Add an import alongside the 22 modules registered in `resources/js/app.js`;
 order doesn't matter functionally,
 but the file groups related modules together (asset grid/detail/editor, then
 trash/discover/import/export, then tags/uploader/replacer, then admin, then
@@ -161,11 +161,13 @@ the behaviour (never in `e2e-testing.md`, which owns only the harness).
 - Genuinely shared logic (used by more than one module) belongs in a mixin
   file, not copy-pasted — see `tag-input-core.js`'s `parseTagNames`/
   `tagInputCore`, reused by all four tag inputs in the app.
-- Registering a 22nd module makes `npm run spec:lint` fail: the module count is
-  hand-written in `CLAUDE.md`, `README.md` and
-  `.claude/agents/senior-laravel-specialist.md`, and the lint counts the
-  `import './alpine/…'` lines in `app.js` and compares. Bump all three. A new
-  *mixin* doesn't count — only a line in `app.js` does.
+- Registering another module makes `npm run spec:lint` fail: the module count is
+  hand-written in `CLAUDE.md`, `README.md`,
+  `.claude/agents/senior-laravel-specialist.md` **and the step above**, and the
+  lint counts the `import './alpine/…'` lines in `app.js` and compares. Bump all
+  four (plus the un-linted prose in `QUICK_REFERENCE.md`'s file tree). A new
+  *mixin* doesn't count — only a line in `app.js` does, which is why
+  `demo-geometry.js` was split out of `guided-demo.js`.
 - Locating by user-visible copy breaks the moment the page renders in `nl`.
   The UI ships in two locales, so a new module's controls need `data-testid`
   hooks before they can be tested at all — add them while you write the view,

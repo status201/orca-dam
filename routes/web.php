@@ -12,6 +12,7 @@ use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\GameScoreController;
+use App\Http\Controllers\GuidedDemoController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\JwtSecretController;
 use App\Http\Controllers\ProfileController;
@@ -57,6 +58,11 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/preferences', [ProfileController::class, 'updatePreferences'])->name('profile.preferences.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Guided demos are played entirely client-side; only completion is recorded.
+    // Self-scoped (the caller is always the subject), so no policy applies —
+    // eligibility lives on the demo itself. See specs/features/guided-demos.md.
+    Route::post('/demos/{demo}/complete', [GuidedDemoController::class, 'complete'])->name('demos.complete');
 
     Route::get('about', [AboutController::class, 'index'])->name('about.index');
 

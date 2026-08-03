@@ -11,6 +11,19 @@ export function featureTour(isAdmin, showPasskeyPromo) {
         isPlaying: true,
         autoPlayInterval: null,
         features: [
+            // The guided demo comes first: it is the slide that teaches you to read the
+            // others. Starting a demo is a navigation (the demo is armed by ?demo= in the
+            // URL — see specs/features/guided-demos.md), so this is an ordinary link slide
+            // and the carousel needed no new field or markup branch.
+            {
+                icon: 'fas fa-route',
+                bgColor: 'bg-cyan-500',
+                btnColor: 'bg-cyan-600 hover:bg-cyan-700',
+                title: t.guidedDemo,
+                description: t.guidedDemoDesc,
+                link: routes.guidedDemoWelcome,
+                btnText: t.guidedDemoBtn
+            },
             ...(showPasskeyPromo ? [{
                 icon: 'fas fa-key',
                 bgColor: 'bg-emerald-500',

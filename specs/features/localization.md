@@ -88,6 +88,11 @@ the controller, so every `__()` call and the `<html lang="...">` attribute in
 - `window.appTranslations` — the base layout (`resources/views/layouts/app.blade.php`),
   currently `urlCopied` / `copyFailed` for the global toast system.
 
+The base layout also contributes `window.__pageData.guidedDemo` — a namespaced key on the
+first channel, like `tagConfig`, not a fourth channel — carrying the active walkthrough's
+translated copy ([`guided-demos.md`](guided-demos.md)). It is written with the
+`window.__pageData = window.__pageData || {}` merge idiom and only when a demo is armed.
+
 API responses (`routes/api.php`) are deliberately **not** localized — external
 integrations (RTE, WordPress) expect stable English strings.
 
