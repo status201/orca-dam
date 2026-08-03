@@ -80,6 +80,10 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
   The engine observes DOM events on the target in the **capture** phase only; it must not know
   anything about the Alpine module that owns the target. `Next` stays enabled on such a step,
   so declining the action never traps the user.
+- **REQ-8a** — A step may put the page into the state it is describing (`reveal`), so that a
+  step about a view or a panel is read while that view or panel is on screen rather than
+  described in the abstract. The asset library's three view modes are one step each for this
+  reason: each switches the grid into its own view, so the same assets visibly rearrange.
 - **REQ-9** — A missing target is not an error. The engine waits briefly for hydration, then
   either skips the step silently (`fallback: skip`) or renders it as a centered card
   (`fallback: center`). Nothing in the resolve/position path may throw: a broken demo must
@@ -129,7 +133,7 @@ DemoStep.body: string                  # __()
 DemoStep.routeName: string             # 'dashboard' | 'assets.index'
 DemoStep.routeParams: map              # passed to route()
 DemoStep.placement: string             # top|bottom|left|right|center
-DemoStep.reveal: string|map|null       # 'scroll-top' | {hover: testid} | {click: testid}
+DemoStep.reveal: string|map|null       # 'scroll-top' | {hover: testid} | {click: testid, until?: testid}
 DemoStep.advanceOn: map|null           # {event, on, minLength} | {appear: testid}
 DemoStep.fallback: string              # 'skip' (default) | 'center'
 
@@ -205,8 +209,14 @@ Robustness rules the engine must hold:
 - `reveal` speaks only DOM: `'scroll-top'`; `{hover: testid}` dispatched as
   `pointerover`/`mouseover`/`mouseenter` constructed with `bubbles: true`, because `mouseenter`
   does not bubble natively and must reach the wrapper that owns the submenu state; and
-  `{click: testid}`, which must check the revealed panel's visibility first — the asset grid's
-  tag-filter control is a toggle, so a blind click closes what the previous step opened.
+  `{click: testid, until?: testid}`.
+- **A click reveal needs a postcondition**, because the controls it drives are toggles — a
+  blind click closes what the previous step opened. `until` names what the click should
+  produce, and the click is skipped when that is already visible. Omitted, the step's own
+  `target` is assumed, which is right when the reveal opens the very thing being pointed at
+  (a collapsed panel). It is *wrong* when a step points at the control it also presses: a
+  view-mode button is always visible, so the check would pass and the click would never
+  fire. That is the case the three view-mode steps need, and why `until` exists.
 - The nav is pinned while a demo runs by a body class in `resources/css/app.css`, not by
   reaching into the nav's own Alpine state.
 - Repositioning is one requestAnimationFrame-coalesced pass fed by `ResizeObserver`,
@@ -327,16 +337,17 @@ Scenario: The demo crosses from the dashboard to the library and resumes there
   And the overlay is still running the same demo, on the first library step
 # pinned by: tests/e2e/guided-demo.spec.js
 
+Scenario: The three view-mode steps switch the library into each view in turn
+  Given the Welcome demo on the assets index
+  When it reaches the grid, masonry and list steps
+  Then the library is showing that view as each step is read
+  And the list step's inline tag and licence controls are on screen when it claims them
+# pinned by: tests/e2e/guided-demo.spec.js
+
 Scenario: An interactive step advances when the user performs the action
   Given the step anchored to the grid search box
   When the user types into the real search box, touching no demo control
   Then the step stops awaiting and the demo advances
-# pinned by: tests/e2e/guided-demo.spec.js
-
-Scenario: An interactive step survives the navigation the app itself triggers
-  Given the step anchored to the grid's type filter
-  When the user changes it, which reloads the page
-  Then the demo resumes on the following step
 # pinned by: tests/e2e/guided-demo.spec.js
 
 Scenario: A shared link opens the demo part-way through
@@ -419,6 +430,18 @@ Scenario: The dashboard carousel offers the Welcome demo
   grid for the whole browser suite.
 - There is no org-wide switch to disable demos. If one is ever wanted, the hook is
   `DemoRegistry::all()` plus a `Setting` row.
+- **The `sessionStorage` breadcrumb has no test.** No step in the Welcome demo currently
+  advances on a control that navigates by itself, so the recovery path — breadcrumb written
+  in the capture phase, then one `location.replace` to re-arm the URL — is exercised by
+  nothing. A step with `advanceOn` on the grid's folder or type filter would cover it, and
+  would be worth adding before relying on that path.
+- **A script-driven navigation logs "Transition was skipped".** `app.css` opts into
+  cross-document view transitions, and a navigation that does not come from a user
+  activating a link has its transition skipped; Chromium reports the rejected promise as an
+  unhandled error. The demo hand-off is one of nine such navigations in the app
+  (`assetGrid.applyFilters` and the asset-detail prev/next among them), so this is app-wide
+  and predates demos — but it is console noise on every cross-page hand-off, and
+  `tests/e2e/guided-demo.spec.js` has to filter it to assert a clean console at all.
 - `reveal` covers scroll, hover and click. A step targeting something behind a multi-step
   disclosure (a modal inside a panel) has no primitive yet.
 - The mobile nav gained testids for this feature, but the demo says less on a phone: the

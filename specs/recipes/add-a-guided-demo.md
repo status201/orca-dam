@@ -110,8 +110,15 @@ defaults. Reach for the optional fields when:
   duplicate pair (`['grid-search', 'grid-search-mobile']`) and for elements whose variant depends
   on client state, like the asset grid's three view modes
   (`['asset-card', 'asset-masonry-card', 'asset-row']`).
-- **`reveal`** — `'scroll-top'`, `['hover' => testid]` for a hover submenu, `['click' => testid]`
-  for a collapsed panel.
+- **`reveal`** — put the page into the state the step describes before it speaks:
+  `'scroll-top'`, `['hover' => testid]` for a hover submenu, or
+  `['click' => testid, 'until' => testid]` to press something. **Give `until` whenever the
+  step points at the control it presses** — it names what the click should produce, and
+  without it the step's own target is assumed, which for an always-visible button means the
+  click never fires. The three view-mode steps of `WelcomeDemo` are the worked example:
+  each targets its own toggle and declares `until` as that view's container, so the library
+  visibly rearranges as the step is read. Omit `until` only when the reveal opens the very
+  thing being pointed at, like a collapsed panel.
 - **`advanceOn`** — `['event' => 'input', 'on' => 'self', 'minLength' => 3]`,
   `['event' => 'click'|'change', 'on' => 'self']`, or `['appear' => testid]`. Use it for the one
   or two steps where doing the thing is the point; `Next` always stays available, so a step that
@@ -166,8 +173,10 @@ wrong place.
 - **A `data-testid` on a Blade component may go nowhere.** Components that do not render
   `{{ $attributes }}` drop it without erroring. Confirm the attribute reaches the DOM before
   writing the step.
-- **`reveal: ['click' => …]` on a toggle can close what you just opened.** The engine checks the
-  revealed panel's visibility first, so do not chain two steps that both click the same toggle.
+- **`reveal: ['click' => …]` on a toggle can close what you just opened**, because the controls
+  it drives toggle rather than open. The engine skips the click when the postcondition already
+  holds, so get `until` right: too loose and the step silently does nothing (an always-visible
+  target), too eager and it undoes the step before it.
 - **A step whose control navigates on its own** (the grid's filter selects set
   `window.location.href`) must stay on the same route, or the demo resumes on a page its next step
   does not belong to and shows the hand-off card instead.

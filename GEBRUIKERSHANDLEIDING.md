@@ -111,7 +111,7 @@ Na het inloggen zie je op je dashboard: **Totaal assets**, **Mijn assets**, **To
 
 Is dit je eerste bezoek? Volg dan de **begeleide demo** — de turquoise knop onder het ORCA-logo op het dashboard, en ook de eerste slide van de functiecarrousel ernaast. De demo dimt de pagina, wijst één echte knop per keer aan en legt uit waar die voor is: eerst op het dashboard, daarna in de assetbibliotheek, waar bladeren en zoeken aan bod komen.
 
-Bij een paar stappen wordt je gevraagd het zelf te proberen — typ iets in het zoekveld, open het tagfilter — en gaat de demo verder zodra je dat doet. Je komt nooit vast te zitten: **Volgende** werkt altijd, **Terug** gaat een stap terug, en met **Demo overslaan** of de `Esc`-toets stop je op elk moment. Niets in de demo is een proefomgeving: de knoppen die worden aangewezen zijn de echte knoppen, dus wat je verandert verandert echt.
+Sommige stappen brengen de pagina in de staat die ze beschrijven, in plaats van het abstract uit te leggen: de drie weergaven krijgen elk een eigen stap, en elke stap zet de bibliotheek in die weergave, zodat je dezelfde assets ziet herschikken terwijl je leest waar die weergave goed voor is. Bij een paar andere stappen wordt je gevraagd het zelf te proberen — typ iets in het zoekveld, open het tagfilter — en gaat de demo verder zodra je dat doet. Je komt nooit vast te zitten: **Volgende** werkt altijd, **Terug** gaat een stap terug, en met **Demo overslaan** of de `Esc`-toets stop je op elk moment. Niets in de demo is een proefomgeving: de knoppen die worden aangewezen zijn de echte knoppen, dus wat je verandert verandert echt.
 
 De demo start niet vanzelf en zeurt niet. Als je hem hebt afgerond staat er een vinkje bij de knop — maar je mag hem zo vaak opnieuw doen als je wilt.
 

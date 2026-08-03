@@ -147,22 +147,46 @@ final class WelcomeDemo implements Demo
                 title: __('Sorting'),
                 body: __('Newest first by default. Sort by name when you know roughly what it is called, or by size when you are hunting for the big files.'),
             ),
+            // The three view modes get a step each, and each one switches the library into
+            // that view before it speaks — being told the views differ teaches far less
+            // than watching the same assets rearrange. `until` names what the click should
+            // produce, because the target here *is* the toggle: without it the reveal's
+            // idempotency check would never fire (a view button is always visible).
+            new DemoStep(
+                target: 'grid-view-grid',
+                placement: 'bottom',
+                routeName: 'assets.index',
+                reveal: ['click' => 'grid-view-grid', 'until' => 'asset-grid-view'],
+                title: __('Grid — for scanning a lot at once'),
+                body: __('Uniform square tiles, up to twelve across on a wide screen, so the most assets fit at once. Every tile is the same size whatever shape the file is, which makes this the quickest view for spotting something you would recognise on sight. The crop and fit buttons to the left decide whether an image is zoomed to fill its tile or shrunk to fit inside it.'),
+            ),
+            new DemoStep(
+                target: 'asset-card',
+                placement: 'right',
+                routeName: 'assets.index',
+                // Guaranteed grid view by the step above, so the copy can safely talk about
+                // the hover controls. An empty or fully-filtered library has no cards at
+                // all, though — and that is exactly when a newcomer most needs telling what
+                // one contains.
+                fallback: 'center',
+                title: __('What a tile tells you'),
+                body: __('Filename, and the first couple of tags with a count for the rest. Hover a tile for a straight download and a shortcut to its metadata; click it to open the asset in full, with its dimensions, licence and public URL.'),
+            ),
+            new DemoStep(
+                target: 'grid-view-masonry',
+                placement: 'bottom',
+                routeName: 'assets.index',
+                reveal: ['click' => 'grid-view-masonry', 'until' => 'asset-masonry-view'],
+                title: __('Masonry — for judging images by shape'),
+                body: __('Nothing is cropped here: every image keeps its own proportions, so a panorama looks like a panorama and a portrait like a portrait, and the columns read top to bottom. Reach for it when you are choosing between images and the composition matters — which is also why the crop and fit buttons disappear in this view.'),
+            ),
             new DemoStep(
                 target: 'grid-view-list',
                 placement: 'bottom',
                 routeName: 'assets.index',
-                title: __('Three ways to look'),
-                body: __('Grid for browsing, masonry for images of mixed shapes, list when you want filenames, sizes and tags side by side.'),
-            ),
-            new DemoStep(
-                target: ['asset-card', 'asset-masonry-card', 'asset-row'],
-                placement: 'right',
-                routeName: 'assets.index',
-                // An empty or fully-filtered library has no cards, and that is exactly
-                // when a newcomer most needs to be told what one looks like.
-                fallback: 'center',
-                title: __('One card per asset'),
-                body: __('Open an asset to see everything about it. You can also edit its tags and licence straight from the list, without leaving the page.'),
+                reveal: ['click' => 'grid-view-list', 'until' => 'asset-list-view'],
+                title: __('List — the working view'),
+                body: __('One row per asset, with filename, S3 key, file size and dimensions in columns you can compare straight down the page. It is the only view you can edit from without leaving it: add a tag or change a licence in the row itself. Each row also carries all four actions — open, edit, replace and delete — where a tile offers two.'),
             ),
             new DemoStep(
                 target: 'grid-upload',

@@ -310,6 +310,16 @@ export function guidedDemo() {
             const url = new URL(window.location.href);
             url.searchParams.set('demo', this.demo.id);
             url.searchParams.set('demoStep', String(this.index));
+
+            // Skip a write that would change nothing. This is not just tidiness: the first
+            // step after a cross-page hand-off already has the right URL (navigateTo put it
+            // there), and a replaceState while the cross-document view transition from
+            // app.css is still running aborts it — which the browser reports as an
+            // unhandled "Transition was skipped".
+            if (url.toString() === window.location.href) {
+                return;
+            }
+
             window.history.replaceState({}, '', url.toString());
         },
 
@@ -360,11 +370,18 @@ export function guidedDemo() {
 
             if (spec.click) {
                 const node = el(spec.click);
-                const panel = resolveTarget(this.step.target);
 
-                // The grid's tag filter is a toggle, so clicking it when the panel is
-                // already open closes what the previous step opened.
-                if (node && !panel) {
+                // Clicking a toggle that is already in the wanted state undoes it, so a
+                // click reveal needs a postcondition. `until` names what the click is
+                // supposed to produce; without it the step's own target is assumed, which
+                // is right when the reveal opens the very thing being pointed at (a
+                // collapsed panel) but not when a step points at the control it presses —
+                // a view-mode button is always visible, so it would never fire.
+                const done = spec.until
+                    ? isVisible(el(spec.until))
+                    : Boolean(resolveTarget(this.step.target));
+
+                if (node && !done) {
                     node.click();
                 }
 

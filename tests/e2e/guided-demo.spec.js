@@ -24,6 +24,27 @@ const overlay = (page) => page.locator(testid('demo-overlay'));
 const spotlitTarget = (page) => overlay(page).getAttribute('data-target');
 
 /**
+ * Collect page errors, minus one the app produces on any script-driven navigation.
+ *
+ * `app.css` opts into cross-document view transitions (`@view-transition { navigation:
+ * auto }`). A navigation that comes from script rather than from a user activating a link
+ * gets its transition skipped, and Chromium surfaces the rejected promise as an unhandled
+ * "Transition was skipped". Verified against a plain nav-link click (no error) versus both
+ * `location.assign` and a scripted anchor click (error), with no demo involved — and the
+ * app already navigates this way in eight places, `assetGrid.applyFilters` among them, so
+ * every grid filter change does it today. Nothing to do with the demo, so it is filtered
+ * rather than asserted; anything else still fails the test.
+ */
+function collectPageErrors(page) {
+    const errors = [];
+    page.on('pageerror', (error) => {
+        if (!/Transition was skipped/.test(error.message)) errors.push(error.message);
+    });
+
+    return errors;
+}
+
+/**
  * Wait until the engine has finished positioning the current step.
  *
  * Target resolution is asynchronous (a reveal, then a poll for hydration), so
@@ -107,8 +128,7 @@ test.describe('guided demos', () => {
         // This is the test that protects every other spec in the suite: the overlay ships
         // from the base layout, so an engine that armed itself unbidden would put a scrim
         // over the whole app.
-        const errors = [];
-        page.on('pageerror', (error) => errors.push(error.message));
+        const errors = collectPageErrors(page);
 
         await gotoStable(page, '/dashboard');
         await waitForAlpine(page);
@@ -269,20 +289,41 @@ test.describe('guided demos', () => {
         await expect(page.locator(testid('grid-tag-filter-panel'))).toBeVisible();
     });
 
-    test('a step whose target is absent is skipped without breaking the page', async ({ page }) => {
-        const errors = [];
-        page.on('pageerror', (error) => errors.push(error.message));
+    test('the view-mode steps switch the library into each view in turn', async ({ page }) => {
+        await openDemo(page, '/assets', 6);
 
-        // No asset matches, so the grid renders its empty state and there is no card for
-        // the "one card per asset" step to point at.
+        // Each step's reveal presses its own toggle, so the assets visibly rearrange as
+        // the step is read rather than being described in the abstract.
+        await advanceUntil(page, 'grid-view-grid');
+        await expect(page.locator(testid('asset-grid-view'))).toBeVisible();
+
+        await advanceUntil(page, 'grid-view-masonry');
+        await expect(page.locator(testid('asset-masonry-view'))).toBeVisible();
+        await expect(page.locator(testid('asset-grid-view'))).toBeHidden();
+
+        await advanceUntil(page, 'grid-view-list');
+        await expect(page.locator(testid('asset-list-view'))).toBeVisible();
+        await expect(page.locator(testid('asset-masonry-view'))).toBeHidden();
+
+        // The list step claims it is the only view you can edit from; prove the inline
+        // tag and licence controls are actually on screen while it says so.
+        await expect(page.locator(testid('asset-row-tag-add')).first()).toBeVisible();
+        await expect(page.locator(testid('asset-row-license')).first()).toBeVisible();
+    });
+
+    test('a step whose target is absent is skipped without breaking the page', async ({ page }) => {
+        const errors = collectPageErrors(page);
+
+        // No asset matches, so the grid renders its empty state: the view toggles are still
+        // there but none of the three view containers is, and there is no tile for the
+        // "what a tile tells you" step to point at.
         await openDemo(page, '/assets?search=no-such-asset-xyz', 6);
 
         await expect(page.locator(testid('asset-grid-empty'))).toBeVisible();
-        await advanceUntil(page, 'grid-sort');
 
-        // Walk past the card step; it must not stall or throw.
-        await page.click(testid('demo-next'));
-        await page.click(testid('demo-next'));
+        // Walking to the last step covers every degraded step on the way, and does not
+        // depend on how many there are.
+        await advanceUntil(page, 'grid-upload');
         await expect(overlay(page)).toHaveAttribute('data-active', 'true');
 
         expect(errors).toEqual([]);
@@ -354,28 +395,26 @@ test.describe('guided demos', () => {
         test.use({ storageState: asEditor });
 
         test('the welcome demo is playable by a non-admin', async ({ page }) => {
-            const errors = [];
-            page.on('pageerror', (error) => errors.push(error.message));
+            const errors = collectPageErrors(page);
 
             await openDemo(page);
 
             const total = Number(await page.locator(testid('demo-steps')).textContent());
 
             // Walk the whole demo. Every step must resolve to something an editor can
-            // see — the demo deliberately points at nothing gated.
+            // see — the demo deliberately points at nothing gated. Driven by "is Done
+            // showing yet" rather than a click count, so the cross-page hand-off and any
+            // step skipped for this role are both handled without special cases.
             for (let i = 1; i < total; i++) {
-                const crossing = page.url().includes('/dashboard')
-                    && (await page.locator(testid('demo-next')).isVisible());
+                await settle(page);
+
+                if (await page.locator(testid('demo-finish')).isVisible()) break;
 
                 await page.click(testid('demo-next'));
-
-                if (crossing && !page.url().includes('/dashboard')) {
-                    await waitForAlpine(page);
-                }
-
-                await expect(overlay(page)).toHaveAttribute('data-active', 'true');
+                await waitForAlpine(page);
             }
 
+            await settle(page);
             await expect(page.locator(testid('demo-finish'))).toBeVisible();
             expect(errors).toEqual([]);
         });
