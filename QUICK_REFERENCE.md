@@ -24,10 +24,13 @@ does **not** restate things other docs own — see the map in
 composer install && npm install
 cp .env.example .env && php artisan key:generate
 php artisan migrate
-php artisan db:seed --class=AdminUserSeeder
+php artisan db:seed --class=AdminUserSeeder   # dev: admin@orca.dam / password
 php artisan serve      # or use Herd
 npm run dev
 ```
+
+The seeder's defaults are development-only. Under `APP_ENV=production` it refuses to run unless
+`ORCA_ADMIN_EMAIL` and `ORCA_ADMIN_PASSWORD` are set — see [DEPLOYMENT.md](DEPLOYMENT.md) step 6.
 
 PHP upload limits (chunked vs. direct mode) and the Herd / `public/.user.ini` details are
 in [SETUP_GUIDE.md](SETUP_GUIDE.md#changing-upload-limits).
@@ -233,7 +236,7 @@ orca-dam/
 ├── routes/                                # web.php, api.php, auth.php, console.php
 ├── scripts/                               # sdd-guard.mjs, spec-lint.mjs
 ├── specs/                                 # the behavioural source of truth
-│   ├── features/                          # 45 feature specs
+│   ├── features/                          # 47 feature specs
 │   ├── decisions/                         # 16 ADRs
 │   └── recipes/                           # repeatable how-tos
 ├── tests/

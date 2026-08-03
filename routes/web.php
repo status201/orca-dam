@@ -152,12 +152,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('export', [ExportController::class, 'export'])->name('export.download');
     });
 
-    // User management routes (admin only)
-    Route::resource('users', UserController::class)->except(['show']);
-    Route::delete('users/{user}/passkeys', [UserController::class, 'clearPasskeys'])
-        ->name('users.passkeys.clear');
+    // User management routes (admin only) — gated at the route as well as in the controller.
+    // Every UserPolicy ability is admin-only, so this coarse gate is exactly equivalent to
+    // "admin only" and is not a second, divergent rule; UserController still authorizes each
+    // action individually. Without it, admin-only rested entirely on those in-controller calls,
+    // so a new method added without one would have been reachable by any editor session.
+    // See specs/features/security-invariants.md REQ-3.
+    Route::middleware(['can:viewAny,App\Models\User'])->group(function () {
+        Route::resource('users', UserController::class)->except(['show']);
+        Route::delete('users/{user}/passkeys', [UserController::class, 'clearPasskeys'])
+            ->name('users.passkeys.clear');
+    });
 
-    // Tools (editors + admins)
+    // Tools (all roles) — the tool pages author assets, and AssetPolicy::create grants
+    // create to admin, editor and api alike. Uploads go through ToolUploadRequest::authorize(),
+    // which delegates to that same ability. See specs/features/security-invariants.md REQ-3.
     Route::get('tools', [ToolsController::class, 'index'])->name('tools.index');
     Route::get('tools/latex-mathml', [ToolsController::class, 'latexMathml'])->name('tools.latex-mathml');
     Route::post('tools/latex-mathml/upload', [ToolsController::class, 'uploadMathml'])->name('tools.latex-mathml.upload');

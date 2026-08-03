@@ -78,6 +78,80 @@ jobs:
           php artisan config:clear
           php artisan test --coverage
 
+  # The Security suite also runs inside the phpunit job above (a plain `artisan test` runs every
+  # suite). It gets its own job so a security regression is a distinct, separately required
+  # status check rather than one line in a 1091-test run. See specs/features/security-invariants.md.
+  security:
+    name: Security invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, gd, exif, zip, bcmath, intl, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer
+      - name: Create runtime directories
+        run: mkdir -p bootstrap/cache storage/framework/{cache,sessions,views,testing} storage/logs
+      - name: Copy environment file
+        run: cp .env.example .env
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install Node dependencies
+        run: npm ci
+      # RouteExposureTest's guest sweep issues real requests to every guarded page, which renders
+      # Blade layouts containing @vite — that throws without a build manifest.
+      - name: Build front-end assets
+        run: npm run build
+      - name: Generate application key
+        run: php artisan key:generate
+      - name: Run security invariants
+        run: |
+          php artisan config:clear
+          php artisan test --testsuite=Security
+      # Known advisories in dependencies. Both were clean when this job was added, so neither
+      # carries an ignore list — if one fires, patch it or add an explicit, commented
+      # --ignore for that advisory. Do not append `|| true`: that makes the step decorative.
+      - name: Audit Composer dependencies
+        run: composer audit --locked
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+
+  # Static analysis, layer B — see specs/features/static-analysis.md.
+  # Separate from the `security` job because it needs Python rather than PHP, and because a
+  # Semgrep finding and a failing invariant test are different things to triage.
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    container:
+      # Pinned rather than :latest — a rule engine that changes under you turns an unrelated PR
+      # red. Bump deliberately.
+      image: semgrep/semgrep:1.172.0
+    steps:
+      - uses: actions/checkout@v5
+      # Validates the rules against .semgrep/tests/ fixtures BEFORE using them. Without this a
+      # rule that has stopped matching — a pattern typo, a Semgrep syntax change — reports a clean
+      # codebase, which is indistinguishable from a clean codebase. This step failing means the
+      # rules are wrong; the scan step failing means the code is.
+      - name: Verify the custom rules still match
+        run: semgrep --test --config .semgrep/orca.yml .semgrep/tests/
+      # Scope comes from the targets here, not from `paths:` in the rules — a paths filter would
+      # also exclude .semgrep/tests/ and make the step above vacuously green. database/factories is
+      # deliberately absent, matching tests/Security/UserProvisioningTest.php: a factory only runs
+      # from a test and its role default *is* its role declaration.
+      - name: ORCA rules
+        run: semgrep scan --error --config .semgrep/orca.yml app routes database/seeders database/migrations
+      # Registry rulesets, restricted to ERROR severity. WARNING/INFO from p/php is largely style
+      # and idiom advice that Pint and review already cover; ERROR is the injection/auth/crypto
+      # tier. Note `--error` sets the exit code, `--severity` filters what is reported.
+      - name: Registry rulesets
+        run: semgrep scan --error --severity ERROR --config p/php --config p/secrets app routes database resources/js
+
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest

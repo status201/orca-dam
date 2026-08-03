@@ -221,15 +221,35 @@ php artisan migrate --force
 
 ### 6. Create Admin User
 
+The seeder takes the first admin's credentials from the environment. **In production it refuses
+to run without them** — it exits non-zero and creates nothing — because its development fallback
+(`admin@orca.dam` / `password`) is committed to this public repository and would give you an admin
+account whose login anybody can read on GitHub.
+
+Add to `.env`, then run the seeder:
+
 ```bash
-php artisan db:seed --class=AdminUserSeeder
+ORCA_ADMIN_NAME="Your Name"
+ORCA_ADMIN_EMAIL=you@example.com
+ORCA_ADMIN_PASSWORD='a-long-unique-password'
 ```
 
-Default credentials:
-- Email: `admin@example.com`
-- Password: `password`
+```bash
+php artisan db:seed --class=AdminUserSeeder --force
+```
 
-**⚠️ Important:** Change the admin password immediately after first login!
+The password is read from the environment and **not** echoed, so it stays out of your deployment
+logs. The seeder is idempotent: re-running it reports that the account already exists and changes
+nothing.
+
+It will refuse, with an explanatory message, if either variable is unset, if the password fails
+the application's password policy, or if the password is one of a handful of well-known values
+(`password`, `admin`, `changeme`, …). Set `ORCA_ADMIN_PASSWORD` to something you generated.
+
+**Note:** if you run this *after* step 7's `config:cache`, re-run `php artisan config:clear` first
+— the credentials are read through `config/orca.php`.
+
+See [`specs/features/security-invariants.md`](specs/features/security-invariants.md) REQ-9.
 
 ### 7. Optimize for Production
 

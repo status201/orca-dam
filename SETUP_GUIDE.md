@@ -167,11 +167,15 @@ php artisan migrate
 php artisan db:seed --class=AdminUserSeeder
 ```
 
-Default admin credentials:
+Default **development** admin credentials:
 - Email: `admin@orca.dam`
 - Password: `password`
 
 **⚠️ Change this password immediately after first login!**
+
+These defaults apply only when `APP_ENV` is not `production`. In production the seeder refuses to
+run unless `ORCA_ADMIN_EMAIL` and `ORCA_ADMIN_PASSWORD` are set — the defaults above are in a
+public repository. See [DEPLOYMENT.md](DEPLOYMENT.md) step 6.
 
 #### 5. Compile Assets
 ```bash

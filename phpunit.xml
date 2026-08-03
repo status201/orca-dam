@@ -11,6 +11,15 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!--
+            Security invariants and exploit probes — specs/features/security-invariants.md.
+            Kept as its own suite so CI can require it as a separate status check: a security
+            regression should not read as "some test failed". A plain `php artisan test` with
+            no suite filter still runs it alongside the others.
+        -->
+        <testsuite name="Security">
+            <directory>tests/Security</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

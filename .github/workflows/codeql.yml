@@ -1,0 +1,65 @@
+name: CodeQL
+
+# Static analysis, layer C — see specs/features/static-analysis.md.
+#
+# IMPORTANT SCOPE LIMIT: CodeQL has no PHP support. Its languages are C/C++, C#, Go, Java/Kotlin,
+# JavaScript/TypeScript, Python, Ruby, Swift, Rust and GitHub Actions — so this workflow analyses
+# none of app/, routes/ or database/. The Laravel code is covered by Semgrep (layer B) and by the
+# invariant suite in tests/Security/. What CodeQL genuinely adds here:
+#
+#   • javascript-typescript — resources/js/ (the ~10k lines of Alpine modules that carry the whole
+#     UI) plus the WordPress plugin's JS. Nothing analysed this before.
+#   • actions — the workflow files themselves. This is not hypothetical: the
+#     actions/missing-workflow-permissions rule already produced two Copilot Autofix commits in
+#     this repository (41a4af2, ce61e7f).
+#
+# This is *advanced setup*, i.e. the configuration lives in git where it can be reviewed. It
+# conflicts with GitHub's *default setup*: if default setup is enabled under
+# Settings → Code security → Code scanning, this workflow will fail until it is turned off.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # CodeQL queries improve between releases, so a weekly run finds things a diff-triggered scan
+    # cannot. Monday 04:17 UTC — off the hour to avoid the scheduling stampede.
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to upload results to the code-scanning dashboard.
+      security-events: write
+      contents: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          language: ${{ matrix.language }}
+          # security-extended adds lower-severity security queries on top of the default pack.
+          # Not security-and-quality: the quality queries are style findings, and this repository
+          # already has Pint for that.
+          queries: security-extended
+
+      # No build step. The JS is not compiled for analysis purposes (CodeQL reads the sources
+      # directly), and `actions` needs no build at all.
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

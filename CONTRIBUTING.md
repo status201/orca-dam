@@ -56,6 +56,25 @@ php artisan config:clear && php artisan test        # Full Pest suite
 Both must pass. If a pre-commit hook fails, fix the underlying issue — do not
 bypass with `--no-verify`.
 
+The full suite includes the `Security` suite — route/policy/source invariants, exploit probes and
+the architecture bans ([`specs/features/security-invariants.md`](specs/features/security-invariants.md),
+[`static-analysis.md`](specs/features/static-analysis.md)). To run just those, as the dedicated CI
+job does:
+
+```bash
+php artisan config:clear && php artisan test --testsuite=Security
+```
+
+Two things there behave differently from a normal test, and both are deliberate. Several audits
+enumerate the application rather than naming what they cover, so **adding a route, a policy
+ability, a controller or a runtime setting can fail a test you did not touch** — the fix is to
+guard it, or to add it to that file's allowlist with a reason. And each audit carries a *canary*
+that mutates the app at runtime to prove the audit still fires; those are meant to be there.
+
+Semgrep and CodeQL run only in CI (no local dependency is added for them). If you edit
+`.semgrep/orca.yml`, add or update the matching fixture in `.semgrep/tests/` — CI verifies the
+rules against those fixtures before it uses them.
+
 If you touched Blade views or anything under `resources/js/`, also run the browser
 suite — it is a blocking CI job:
 

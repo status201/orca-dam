@@ -239,6 +239,27 @@ Scenario: The health endpoint is public and reports database connectivity
   When the client sends GET /api/health
   Then the response is 200 with { status: "ok", database: "ok" }
 # pinned by: tests/Feature/ApiTest.php
+
+Scenario: Disabling the meta endpoint closes it and withholds the metadata (REQ-5)
+  Given api_meta_endpoint_enabled is false
+  When a client (no auth) sends GET /api/assets/meta for a known asset
+  Then the response status is 403
+  And the body contains none of the asset's metadata
+# pinned by: tests/Security/RuntimeExposureTogglesTest.php
+
+Scenario: The meta kill switch applies to authenticated callers too (REQ-5)
+  Given api_meta_endpoint_enabled is false
+  When an admin, editor or api caller sends GET /api/assets/meta
+  Then the response status is 403
+# pinned by: tests/Security/RuntimeExposureTogglesTest.php
+
+Scenario: Disabling API uploads refuses the upload and stores nothing (REQ-4)
+  Given api_upload_enabled is false
+  And an authenticated api-role caller
+  When they send POST /api/assets with a file
+  Then the response status is 403
+  And no asset row is created
+# pinned by: tests/Security/RuntimeExposureTogglesTest.php
 ```
 
 ## Tests & verification
@@ -246,15 +267,17 @@ Scenario: The health endpoint is public and reports database connectivity
 - Feature: `tests/Feature/ApiTest.php` (index/show/update/destroy/search/meta/
   health/folders/sort/type/search/pagination/user-field redaction),
   `tests/Feature/DuplicatePreventionTest.php` (API upload dedup + etag persistence).
+- Security (REQ-4/REQ-5): `tests/Security/RuntimeExposureTogglesTest.php` — both states of
+  `api_meta_endpoint_enabled` and `api_upload_enabled`, that the meta kill switch withholds the
+  data rather than only changing the status, that it applies to authenticated callers too (the
+  check precedes any auth consideration), and that only an admin can flip either setting. These
+  settings are operator state rather than code, so the exposure of a public endpoint is invisible
+  in a diff — see [security-invariants.md](security-invariants.md) REQ-7.
 - Run: `php artisan config:clear && php artisan test tests/Feature/ApiTest.php`.
 - Style: `./vendor/bin/pint --test`.
 
 ## Open questions / future
 
-- No test exercises `api_upload_enabled = false` returning 403 on
-  `POST /api/assets`, nor `api_meta_endpoint_enabled = false` on
-  `GET /api/assets/meta` — both are real branches in `AssetApiController` with
-  no coverage found under `tests/`.
 - `GET /api/assets/search` has no dedicated "requires authentication" test
   (unlike `index`/`tags`/`folders`); likely covered implicitly by shared
   middleware but not asserted directly.

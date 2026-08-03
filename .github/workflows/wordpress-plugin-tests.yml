@@ -10,6 +10,12 @@ on:
     paths:
       - 'wordpress-plugin/**'
 
+# The only workflow here that lacked this. CodeQL's actions/missing-workflow-permissions rule
+# already produced two autofix commits for the same omission elsewhere (41a4af2, ce61e7f); this
+# file was missed because its paths filter kept it off those PRs.
+permissions:
+  contents: read
+
 jobs:
   phpunit:
     name: PHP unit tests

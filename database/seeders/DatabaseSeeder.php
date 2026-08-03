@@ -15,9 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
+        // The role is named explicitly rather than inherited from UserFactory's default.
+        // `db:seed` runs against whatever database is configured, so this is a production-
+        // reachable creation path; specs/features/authentication.md REQ-8 requires every one of
+        // them to state the privileges it grants. Pinned by tests/Security/UserProvisioningTest.php.
+        User::factory()->editor()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
