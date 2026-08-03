@@ -54,12 +54,12 @@ export function ensureRuntimeDirs() {
 export async function reseed() {
     ensureRuntimeDirs();
 
-    if (!existsSync(DB_FILE)) {
-        // Laravel's SQLite connector resolves the path with realpath(), which
-        // fails on a file that doesn't exist yet.
-        mkdirSync(path.dirname(DB_FILE), { recursive: true });
-        closeSync(openSync(DB_FILE, 'w'));
-    }
+    // Laravel's SQLite connector resolves the path with realpath(), which fails on a file
+    // that doesn't exist yet. Opening with 'a' creates it if absent and leaves an existing
+    // file untouched, so there is no existsSync/open pair to race — 'w' would have truncated,
+    // which is why the check was there. migrate:fresh wipes the contents either way.
+    mkdirSync(path.dirname(DB_FILE), { recursive: true });
+    closeSync(openSync(DB_FILE, 'a'));
 
     await artisan(['config:clear']);
     await artisan(['migrate:fresh', '--seed', '--seeder=Database\\Seeders\\E2eSeeder', '--force']);

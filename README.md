@@ -132,7 +132,7 @@ endpoints can be switched off at runtime via **API Docs → Dashboard → Upload
 ```bash
 php artisan config:clear && php artisan test    # 1120 tests, in-memory SQLite
 php artisan test --testsuite=Security          # security invariants + exploit probes only
-npm run test:e2e                               # 127 Playwright tests against a real stack
+npm run test:e2e                               # 130 Playwright tests against a real stack
 npm run spec:lint                              # spec structure + documented facts
 ```
 

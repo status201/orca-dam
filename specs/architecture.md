@@ -267,7 +267,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security
   invariants and exploit probes on their own, as the CI job runs them. See
   [security-invariants.md](features/security-invariants.md).
-- `npm run test:e2e` — the Playwright browser suite (127 tests across 21 spec files)
+- `npm run test:e2e` — the Playwright browser suite (130 tests across 21 spec files)
   against a real `artisan serve` + MinIO. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus

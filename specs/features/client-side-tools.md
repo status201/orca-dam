@@ -58,6 +58,36 @@ backend render step, only a backend *persist* step.
   `process: false` to `ToolUploadService::store()` — no thumbnail, resize, or AI
   tagging for a plain-text source file.
 
+- **REQ-7** — **The three TikZJax `message` handlers accept messages only from their own
+  render iframe.** Each of `tools-tikz-svg`, `tools-tikz-svg-fonts` and `tools-tikz-png`
+  registers a `window` `message` listener to collect render output from a hidden iframe. That
+  output is *injected into the page*: `tikz-svg` and `tikz-svg-fonts` render
+  `event.data.svgs[i]` through `x-html` (`innerHTML`), and `tikz-png` puts
+  `event.data.pngs[i].dataUrl` into an `<img>`. `postMessage` is deliverable by **any** window
+  holding a reference to this one — an opener created with `window.open`, or a page framing
+  ORCA (which [iframe-embedding.md](iframe-embedding.md) permits for configured domains) — so
+  a handler that trusts `event.data` without checking the sender is a DOM-XSS sink: `<img
+  src=x onerror=…>` executes through `innerHTML` even though `<script>` does not.
+
+  Each handler therefore rejects the event unless **both** hold:
+
+  1. `event.source === document.getElementById(<its iframe id>).contentWindow` — the
+     load-bearing check. It pins the sender to that one iframe, so an opener, a framing page,
+     another tab or this window itself are all refused.
+  2. `event.origin` is either `window.location.origin` or the literal string `"null"`.
+
+  Both origin values are legitimate because the three iframes are sandboxed differently: an
+  `about:srcdoc` document inherits the parent's origin, so `tikz-png` (no `sandbox`) and
+  `tikz-svg-fonts` (`allow-scripts allow-same-origin`) report the app's own origin, while
+  `tikz-svg` (`allow-scripts`, no same-origin) has an opaque origin and reports `"null"`.
+  An origin check alone would be insufficient in the first two cases — it would also admit
+  any other same-origin window, including the top-level page — which is why (1) carries the
+  guarantee and (2) is defence in depth.
+
+  The guard is written inline in each handler rather than extracted to a shared helper: a
+  security check should be readable without following a call, and a check inside a helper is
+  not reliably recognised by the scanner that found this.
+
 ## Technical design
 
 ### Contract / public interface
@@ -221,6 +251,16 @@ Scenario: Every tools page boots its Alpine component
   # 200: they still register Alpine modules, and a bundle error shows up here first.
   # Rendering is not driven — with external hosts blocked, TikZJax never loads and
   # render() would wait out its own 90s deadline.
+# pinned by: tests/e2e/tools.spec.js
+
+Scenario: A forged render message from outside the iframe is ignored (REQ-7)
+  Given a TikZJax tool page
+  When the page itself posts a tikz-svgs / tikz-pngs message carrying markup with an
+    onerror handler
+  Then no result is rendered
+  And the injected handler never executes
+  # The page's own window is not the render iframe, so event.source does not match —
+  # which is the same reason an opener or a framing page is refused.
 # pinned by: tests/e2e/tools.spec.js
 ```
 
