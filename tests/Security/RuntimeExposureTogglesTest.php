@@ -40,6 +40,19 @@ function runtimeExposureToggleCoverage(): array
     ];
 }
 
+/**
+ * Pin the public asset base URL.
+ *
+ * `$asset->url` is derived from the configured S3/CDN base, which comes from `AWS_URL`. CI copies
+ * `.env.example`, where it is **empty**, so relying on the ambient value made these tests pass
+ * only on a machine with real AWS credentials in `.env` — they failed in CI with a 422, because
+ * the resulting URL did not satisfy the endpoint's `url` validation rule. Pinning it here is what
+ * `tests/Feature/ApiTest.php` already does for the same endpoint, for the same reason.
+ */
+beforeEach(function () {
+    config(['filesystems.disks.s3.url' => 'https://orca-test.s3.amazonaws.com']);
+});
+
 /** The asset URL the public metadata endpoint resolves against. */
 function metaUrlFor(Asset $asset): string
 {

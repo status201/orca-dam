@@ -242,10 +242,12 @@ orca-dam/
 ├── tests/
 │   ├── Feature/                           # incl. Auth/, Console/, Middleware/
 │   ├── Unit/                              # incl. Jobs/, Policies/, Services/
+│   ├── Security/                           # invariant audits + exploit probes (own suite)
 │   └── e2e/                               # Playwright specs + support/ + global.setup.js
 ├── wordpress-plugin/                      # separate release stream (wp-v* tags)
 ├── .claude/                               # agents, slash commands, hooks
-├── .github/                               # workflows: tests, sdd; issue templates
+├── .github/                               # workflows: tests, sdd, codeql; issue templates
+├── .semgrep/                              # custom AST rules + their test fixtures
 ├── artisan
 ├── phpunit.xml
 ├── playwright.config.js

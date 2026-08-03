@@ -49,9 +49,11 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
-          language: ${{ matrix.language }}
+          # `languages`, plural — `language` is silently ignored with an "Unexpected input(s)"
+          # warning, which is how the first run analysed the default language set instead.
+          languages: ${{ matrix.language }}
           # security-extended adds lower-severity security queries on top of the default pack.
           # Not security-and-quality: the quality queries are style findings, and this repository
           # already has Pint for that.
@@ -60,6 +62,6 @@ jobs:
       # No build step. The JS is not compiled for analysis purposes (CodeQL reads the sources
       # directly), and `actions` needs no build at all.
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}
