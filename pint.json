@@ -2,7 +2,6 @@
     "preset": "laravel",
     "exclude": [
         "wordpress-plugin",
-        "lang",
-        ".semgrep"
+        "lang"
     ]
 }

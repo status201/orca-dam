@@ -457,13 +457,16 @@ spec exists to catch:
 - **No CSRF coverage anywhere in the suite.** Laravel disables the middleware in tests, so this
   needs deliberate `withMiddleware()` handling; worth its own change rather than a partial version
   here.
-- **Static analysis now exists but does not cover PHP dataflow.** Three layers landed in
-  [static-analysis.md](static-analysis.md): Pest arch bans, Semgrep rules that restate four of the
-  invariants below structurally, and CodeQL. None of them traces a request value through a service
-  into a query — CodeQL has no PHP support at all, and Semgrep matches syntax rather than taint.
-  Larastan was evaluated and declined (it buys correctness, not security, and sizes at 150–1,200
-  findings on this codebase). The four Semgrep rules currently **duplicate** the text scans they
-  shadow; the scans stay until the rules have CI runs behind them.
+- **Static analysis now exists but analyses no PHP.** Two layers landed in
+  [static-analysis.md](static-analysis.md): Pest arch bans (which are language-level, not
+  dataflow) and CodeQL — which has **no PHP support at all**, so it covers `resources/js/` and the
+  workflow files only. The Semgrep layer, the one that would have restated four of the requirements
+  above as parse-tree rules over `app/`, was attempted and **deferred**: it could not be executed in
+  the development environment and its rule-verification step failed in CI. The design and its
+  prerequisite are recorded there. So the source-level halves of REQ-4 and REQ-6 still rest entirely
+  on the text scans in `tests/Security/Support/SourceScanner.php`, with the weakness that file's own
+  docblock records. Larastan was evaluated and declined (it buys correctness, not security, and sizes
+  at 150–1,200 findings here).
 - **The live guest sweep in REQ-1 covers parameter-less `GET` routes only**, so `GET
   /api/assets/search` still has no direct "requires authentication" assertion — a gap
   [rest-api.md](rest-api.md) records. Parameterised routes would need per-route fixtures; the

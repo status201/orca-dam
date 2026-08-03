@@ -71,9 +71,9 @@ ability, a controller or a runtime setting can fail a test you did not touch** �
 guard it, or to add it to that file's allowlist with a reason. And each audit carries a *canary*
 that mutates the app at runtime to prove the audit still fires; those are meant to be there.
 
-Semgrep and CodeQL run only in CI (no local dependency is added for them). If you edit
-`.semgrep/orca.yml`, add or update the matching fixture in `.semgrep/tests/` — CI verifies the
-rules against those fixtures before it uses them.
+CodeQL runs only in CI, over `resources/js/` and the workflow files — it has no PHP support, so it
+analyses none of the backend. See [`specs/features/static-analysis.md`](specs/features/static-analysis.md)
+for what each layer does and does not cover.
 
 If you touched Blade views or anything under `resources/js/`, also run the browser
 suite — it is a blocking CI job:

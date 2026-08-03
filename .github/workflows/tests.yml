@@ -122,36 +122,6 @@ jobs:
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
 
-  # Static analysis, layer B — see specs/features/static-analysis.md.
-  # Separate from the `security` job because it needs Python rather than PHP, and because a
-  # Semgrep finding and a failing invariant test are different things to triage.
-  semgrep:
-    name: Semgrep
-    runs-on: ubuntu-latest
-    container:
-      # Pinned rather than :latest — a rule engine that changes under you turns an unrelated PR
-      # red. Bump deliberately.
-      image: semgrep/semgrep:1.172.0
-    steps:
-      - uses: actions/checkout@v5
-      # Validates the rules against .semgrep/tests/ fixtures BEFORE using them. Without this a
-      # rule that has stopped matching — a pattern typo, a Semgrep syntax change — reports a clean
-      # codebase, which is indistinguishable from a clean codebase. This step failing means the
-      # rules are wrong; the scan step failing means the code is.
-      - name: Verify the custom rules still match
-        run: semgrep --test --config .semgrep/orca.yml .semgrep/tests/
-      # Scope comes from the targets here, not from `paths:` in the rules — a paths filter would
-      # also exclude .semgrep/tests/ and make the step above vacuously green. database/factories is
-      # deliberately absent, matching tests/Security/UserProvisioningTest.php: a factory only runs
-      # from a test and its role default *is* its role declaration.
-      - name: ORCA rules
-        run: semgrep scan --error --config .semgrep/orca.yml app routes database/seeders database/migrations
-      # Registry rulesets, restricted to ERROR severity. WARNING/INFO from p/php is largely style
-      # and idiom advice that Pint and review already cover; ERROR is the injection/auth/crypto
-      # tier. Note `--error` sets the exit code, `--severity` filters what is reported.
-      - name: Registry rulesets
-        run: semgrep scan --error --severity ERROR --config p/php --config p/secrets app routes database resources/js
-
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest

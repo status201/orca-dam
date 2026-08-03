@@ -247,7 +247,6 @@ orca-dam/
 ├── wordpress-plugin/                      # separate release stream (wp-v* tags)
 ├── .claude/                               # agents, slash commands, hooks
 ├── .github/                               # workflows: tests, sdd, codeql; issue templates
-├── .semgrep/                              # custom AST rules + their test fixtures
 ├── artisan
 ├── phpunit.xml
 ├── playwright.config.js
