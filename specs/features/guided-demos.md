@@ -17,6 +17,9 @@ related:
   - localization
   - user-preferences
   - authorization-policies
+  - asset-search           # what the library steps explain
+  - asset-upload           # what the upload steps explain
+  - chunked-upload
   - e2e-testing
   - ../decisions/adr-007-blade-alpine-over-spa
   - ../decisions/adr-015-guided-demos-server-declared
@@ -121,11 +124,15 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
   route name `demos.complete`, inside the `auth` group. Unknown demo → 404; demo not
   available to the caller → 403; otherwise 200 with `{message, completed: [ids]}`.
 - `guidedDemo()` (`resources/js/alpine/guided-demo.js`) — the Alpine factory, no arguments;
-  it reads `window.__pageData.guidedDemo`. State: `demo`, `steps`, `index`, `awaiting`,
-  `missing`, `placement`, `targetKey`. Methods: `next()`, `prev()`, `skip()`, `finish()`,
-  `goToStep(n)`, `reposition()`.
-- `demo-geometry.js` — a mixin (not a registered module): placement maths, viewport clamping
-  and the four shutter rectangles. Pure functions, no Alpine, no DOM writes.
+  it reads `window.__pageData.guidedDemo`. State: `demo`, `steps`, `ui`, `index`, `running`,
+  `settled`, `awaiting`, `missing`, `finished`, `placement`, `targetKey`. Getters the
+  overlay binds to: `total`, `step`, `isLast`, `onThisPage`, `hasTarget`. Methods:
+  `next()`, `prev()`, `goToStep(n)`, `goToPage()`, `skip()`, `finish()`, `startNext()`,
+  `stop()`, `reposition()`.
+- `demo-geometry.js` — a mixin (not a registered module): `holeRect`, `ringStyle`,
+  `popoverStyle` (placement maths plus the viewport clamp and flip), `shutterStyle` (the four
+  click-blocking panels), `isVisible`, `fixedAncestor`. Pure functions, no Alpine, no DOM
+  writes — which is also why it is a mixin: only a registered module costs a doc-count bump.
 
 ### Data shapes
 
@@ -194,12 +201,27 @@ that finds a breadcrumb but no `?demo=` it re-arms the URL with a single `locati
 
 ### Rendering
 
-The spotlight is the *absence* of scrim: four `position: fixed` rectangles around the target,
-so nothing about the target element is mutated. That constraint is forced, not stylistic — the
-nav carries a `transition-transform` and sets `-translate-y-full` when hiding, which makes it a
-stacking context, so raising a nav link's `z-index` still paints it *below* the scrim. Shutters
-also give the right pointer semantics for REQ-8: clicks outside the hole are swallowed, clicks
-inside reach the real element.
+Nothing about the target element is ever mutated to make it stand out. That constraint is
+forced, not stylistic: the nav carries a `transition-transform` and sets `-translate-y-full`
+when hiding, which makes it a stacking context, so raising a nav link's `z-index` would still
+paint it *below* the dimming.
+
+**Dimming and click-blocking are separate jobs, done by different elements.**
+
+- **Dimming is one element** — the spotlight's own outer `box-shadow`, spread far enough
+  (`100vmax`) to reach every corner from any hole position. It must be a single element:
+  tiled panels around the hole have exact seams once settled, but each animates a different
+  property from a different start value, so mid-morph they drift apart and leak a visible
+  line along the hole. One element cannot seam against itself. An unanchored step has no
+  hole to cut, so a single full-viewport veil dims it instead.
+- **Click-blocking is four transparent panels** around the hole, because a `box-shadow` is
+  not hit-tested. They give REQ-8 its pointer semantics — clicks outside the hole are
+  swallowed, clicks inside reach the real element — and being invisible they need no
+  transition, so nothing can drift.
+- Hole edges are rounded to whole pixels **before** width and height are derived from them,
+  so the panels and the spotlight cannot disagree about where the boundary is. Rounding each
+  of top/left/width/height independently instead leaves them a pixel apart whenever the
+  target sits on a fractional offset — which, with rem-based spacing, is most of the time.
 
 Geometry is emitted only as inline `:style` in pixels; chrome is literal Tailwind classes in the
 Blade partial. No class name is ever computed, so nothing depends on the purge scanner.
@@ -228,8 +250,9 @@ Robustness rules the engine must hold:
   target's parent (Alpine `x-for` can replace the node, so the target is re-resolved by testid),
   and a capture-phase `load` listener for lazy images.
 - Dark mode is a global `filter: invert(1)` on `<html>` with a counter-invert allowlist.
-  Inversion commutes with compositing, so a translucent black scrim would render as a white
-  wash: the scrim and ring join that allowlist. The popover deliberately does **not**, so it
+  Inversion commutes with compositing, so translucent black dimming would render as a white
+  wash: the spotlight (whose shadow *is* the dimming) and the veil join that allowlist —
+  inverting twice is identity, shadow included. The popover deliberately does **not**, so it
   inverts into a dark card like every other panel and needs no dark-mode-specific CSS.
 - No focus trap. A trap would make "type in the real search box" impossible; instead the
   popover takes focus on passive steps and the target takes it on interactive ones, with
@@ -241,8 +264,8 @@ Robustness rules the engine must hold:
 
 The overlay owns the `demo-` prefix and shares nothing with the carousel's `tour-*` family:
 `demo-overlay`, `demo-spotlight`, `demo-popover`, `demo-title`, `demo-body`, `demo-step`,
-`demo-steps`, `demo-prev`, `demo-next`, `demo-skip`, `demo-finish`, `demo-outro`,
-`demo-next-demo`, `demo-start`.
+`demo-steps`, `demo-prev`, `demo-next`, `demo-skip`, `demo-finish`, `demo-goto`,
+`demo-outro`, `demo-next-demo`, `demo-start`.
 
 `demo-overlay` also carries the state channels, all **string**-valued because Alpine removes an
 attribute bound to `false`: `data-active`, `data-demo`, `data-step`, `data-target`,
@@ -442,6 +465,14 @@ Scenario: The dashboard carousel offers the Welcome demo
   grid for the whole browser suite.
 - There is no org-wide switch to disable demos. If one is ever wanted, the hook is
   `DemoRegistry::all()` plus a `Setting` row.
+- **Demo copy restates behaviour other specs own, and nothing checks it.** The upload steps
+  quote real thresholds and consequences — 500 MB per file, chunking above 10 MB, an
+  overwritten object when a kept filename collides — which belong to
+  [`asset-upload.md`](asset-upload.md), [`chunked-upload.md`](chunked-upload.md) and
+  [`upload-policy.md`](upload-policy.md). This is product prose rather than documentation, so
+  the "one home per fact" rule does not forbid it, but a change to any of those limits makes
+  the demo quietly wrong. The integrity test proves a step's *target* and *route* exist; it
+  cannot prove its sentences are still true.
 - **The `sessionStorage` breadcrumb has no test.** No step in the Welcome demo currently
   advances on a control that navigates by itself, so the recovery path — breadcrumb written
   in the capture phase, then one `location.replace` to re-arm the URL — is exercised by

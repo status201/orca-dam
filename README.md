@@ -26,6 +26,7 @@ Prose docs describe *usage*; specs define *behaviour*. When they disagree, the s
 
 ## Features
 
+- 🧭 **Guided demos** — interactive onboarding that spotlights real controls on the real page, spans the dashboard, library and upload screen, and never starts on its own
 - 🔐 Multi-user support (Editors & Admins)
 - 📁 Direct S3 bucket integration
 - 🏷️ Manual, AI-powered (AWS Rekognition), and reference tagging
