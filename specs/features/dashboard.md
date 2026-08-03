@@ -12,6 +12,7 @@ owner: core
 related:
   - architecture
   - authorization-policies
+  - guided-demos
   - passkeys
   - user-preferences
 source:
@@ -41,10 +42,13 @@ behaviour predates it and had no governing spec.
 - **REQ-2** — Admins additionally see total users and trashed assets. Non-admins
   instead see their own tag counts and their effective results-per-page, flagged
   as default or custom.
-- **REQ-3** — The tour renders one slide per feature the viewer can reach: five
+- **REQ-3** — The tour renders one slide per feature the viewer can reach: six
   base slides for everyone, seven more for admins, and a passkey-promotion slide
-  first for a user who *may* register a passkey but has none. So the slide count is
+  for a user who *may* register a passkey but has none. So the slide count is
   role-dependent by design, and nothing may assume a fixed number.
+- **REQ-3a** — The first base slide starts the Welcome guided demo
+  ([`guided-demos.md`](guided-demos.md)). Because a demo is armed by a URL, that slide is an
+  ordinary link like every other and needs no new slide field or markup branch.
 - **REQ-4** — The tour autoplays, advancing every 7s, and any manual navigation
   (next, previous, or a dot) stops it. The play/pause control reports and toggles
   that state.
@@ -158,4 +162,6 @@ Scenario: The autoplay control toggles both ways
 - The statistics have no Pest coverage of their own; the counts are only asserted
   through the browser. A Feature test asserting `stats` for a seeded library would
   pin REQ-1/REQ-2 far more cheaply than the E2E suite can.
-- The tour has no "seen it" state, so it restarts from slide one on every login.
+- The *carousel* has no "seen it" state, so it restarts from slide one on every
+  login. That is about the carousel only — a guided demo's completion **is** recorded
+  ([`guided-demos.md`](guided-demos.md) REQ-11); the two are separate pieces of state.

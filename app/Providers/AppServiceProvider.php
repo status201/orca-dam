@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Auth\JwtGuard;
+use App\Demos\DemoRegistry;
+use App\Demos\WelcomeDemo;
 use App\Http\Controllers\SystemController;
 use App\Listeners\EnforcePasskeyLimit;
 use App\Listeners\TouchPasskeyLastUsed;
@@ -33,6 +35,12 @@ class AppServiceProvider extends ServiceProvider
 
         // Encrypt the serialized credential blob at rest.
         Passkeys::usePasskeyModel(Passkey::class);
+
+        // Guided demos are declared in PHP and registered explicitly — the list order
+        // is the order they are offered in. See specs/recipes/add-a-guided-demo.md.
+        $this->app->singleton(DemoRegistry::class, fn () => new DemoRegistry([
+            new WelcomeDemo,
+        ]));
     }
 
     /**

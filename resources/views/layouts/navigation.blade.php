@@ -186,7 +186,7 @@
 
             <!-- Hamburger -->
             <div class="-me-2 flex items-center md:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
+                <button @click="open = ! open" data-testid="nav-mobile-toggle" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -199,11 +199,11 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden md:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+            <x-responsive-nav-link data-testid="nav-mobile-dashboard" :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             <div x-data="{ open: {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'true' : 'false' }} }">
-                <button @click="open = !open"
+                <button @click="open = !open" data-testid="nav-mobile-assets"
                         class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-none
                                {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'border-orca-teal text-orca-teal-hover bg-teal-50 focus:text-orca-teal-hover focus:bg-teal-100 focus:border-orca-teal' : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 focus:text-gray-800 focus:bg-gray-50 focus:border-gray-300' }}">
                     <span>{{ __('Assets') }}</span>
@@ -212,39 +212,39 @@
                     </svg>
                 </button>
                 <div x-show="open">
-                    <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.index')" class="ps-8">
+                    <x-responsive-nav-link data-testid="nav-mobile-assets-browse" :href="route('assets.index')" :active="request()->routeIs('assets.index')" class="ps-8">
                         <i class="fas fa-images fa-fw mr-2 text-gray-400"></i>{{ __('Browse') }}
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('assets.create')" :active="request()->routeIs('assets.create')" class="ps-8">
+                    <x-responsive-nav-link data-testid="nav-mobile-assets-upload" :href="route('assets.create')" :active="request()->routeIs('assets.create')" class="ps-8">
                         <i class="fas fa-cloud-arrow-up fa-fw mr-2 text-gray-400"></i>{{ __('Upload') }}
                     </x-responsive-nav-link>
                     @can('restore', App\Models\Asset::class)
-                        <x-responsive-nav-link :href="route('assets.trash')" :active="request()->routeIs('assets.trash')" class="ps-8">
+                        <x-responsive-nav-link data-testid="nav-mobile-assets-trash" :href="route('assets.trash')" :active="request()->routeIs('assets.trash')" class="ps-8">
                             <i class="fas fa-trash fa-fw mr-2 text-gray-400"></i>{{ __('Trash') }}
                         </x-responsive-nav-link>
                     @endcan
                     @can('discover', App\Models\Asset::class)
-                        <x-responsive-nav-link :href="route('discover.index')" :active="request()->routeIs('discover.*')" class="ps-8">
+                        <x-responsive-nav-link data-testid="nav-mobile-assets-discover" :href="route('discover.index')" :active="request()->routeIs('discover.*')" class="ps-8">
                             <i class="fas fa-satellite-dish fa-fw mr-2 text-gray-400"></i>{{ __('Discover') }}
                         </x-responsive-nav-link>
                     @endcan
                     @can('export', App\Models\Asset::class)
-                        <x-responsive-nav-link :href="route('export.index')" :active="request()->routeIs('export.*')" class="ps-8">
+                        <x-responsive-nav-link data-testid="nav-mobile-assets-export" :href="route('export.index')" :active="request()->routeIs('export.*')" class="ps-8">
                             <i class="fas fa-file-export fa-fw mr-2 text-gray-400"></i>{{ __('Export') }}
                         </x-responsive-nav-link>
                     @endcan
                 </div>
             </div>
-            <x-responsive-nav-link :href="route('tags.index')" :active="request()->routeIs('tags.*')">
+            <x-responsive-nav-link data-testid="nav-mobile-tags" :href="route('tags.index')" :active="request()->routeIs('tags.*')">
                 {{ __('Tags') }}
             </x-responsive-nav-link>
             @can('viewAny', App\Models\User::class)
-                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                <x-responsive-nav-link data-testid="nav-mobile-users" :href="route('users.index')" :active="request()->routeIs('users.*')">
                     {{ __('Users') }}
                 </x-responsive-nav-link>
             @endcan
             <div x-data="{ open: {{ request()->routeIs('tools.*') ? 'true' : 'false' }} }">
-                <button @click="open = !open"
+                <button @click="open = !open" data-testid="nav-mobile-tools"
                         class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-none
                                {{ request()->routeIs('tools.*') ? 'border-orca-teal text-orca-teal-hover bg-teal-50 focus:text-orca-teal-hover focus:bg-teal-100 focus:border-orca-teal' : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 focus:text-gray-800 focus:bg-gray-50 focus:border-gray-300' }}">
                     <span>{{ __('Tools') }}</span>
@@ -267,14 +267,14 @@
                     </x-responsive-nav-link>
                 </div>
             </div>
-            <x-responsive-nav-link :href="route('about.index')" :active="request()->routeIs('about.*')">
+            <x-responsive-nav-link data-testid="nav-mobile-about" :href="route('about.index')" :active="request()->routeIs('about.*')">
                 {{ __('About ORCA') }}
             </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200" x-data="{ open: false }">
-            <button @click="open = !open" class="w-full flex justify-between items-center px-4 py-2 text-start focus:outline-none hover:bg-gray-50">
+            <button @click="open = !open" data-testid="nav-mobile-user-menu" class="w-full flex justify-between items-center px-4 py-2 text-start focus:outline-none hover:bg-gray-50">
                 <div>
                     <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                     <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
@@ -285,18 +285,18 @@
             </button>
 
             <div x-show="open" class="mt-1 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
+                <x-responsive-nav-link data-testid="nav-mobile-profile" :href="route('profile.edit')" :active="request()->routeIs('profile.*')">
                     <i class="fas fa-user fa-fw mr-2"></i>{{ __('Profile') }}
                 </x-responsive-nav-link>
 
                 @can('access', App\Http\Controllers\SystemController::class)
-                    <x-responsive-nav-link :href="route('system.index')" :active="request()->routeIs('system.*')">
+                    <x-responsive-nav-link data-testid="nav-mobile-system" :href="route('system.index')" :active="request()->routeIs('system.*')">
                         <i class="fas fa-cog fa-fw mr-2"></i>{{ __('System') }}
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('api.index')" :active="request()->routeIs('api.*')">
+                    <x-responsive-nav-link data-testid="nav-mobile-api" :href="route('api.index')" :active="request()->routeIs('api.*')">
                         <i class="fas fa-code fa-fw mr-2"></i>{{ __('API') }}
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('import.index')" :active="request()->routeIs('import.*')">
+                    <x-responsive-nav-link data-testid="nav-mobile-import" :href="route('import.index')" :active="request()->routeIs('import.*')">
                         <i class="fas fa-file-import fa-fw mr-2"></i>{{ __('Import') }}
                     </x-responsive-nav-link>
                 @endcan

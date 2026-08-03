@@ -21,11 +21,12 @@ copy that is **not** listed below is the one to delete.
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow and the spec-before-code gate | Contributors |
 | [CHANGELOG.md](CHANGELOG.md) | Release history | Everyone |
 
-`specs/` is the source of truth for behaviour: 44 feature specs, 15 ADRs, and recipes.
+`specs/` is the source of truth for behaviour: 45 feature specs, 16 ADRs, and recipes.
 Prose docs describe *usage*; specs define *behaviour*. When they disagree, the spec wins.
 
 ## Features
 
+- 🧭 **Guided demos** — interactive onboarding that spotlights real controls on the real page, spans the dashboard, library and upload screen, and never starts on its own
 - 🔐 Multi-user support (Editors & Admins)
 - 📁 Direct S3 bucket integration
 - 🏷️ Manual, AI-powered (AWS Rekognition), and reference tagging
@@ -129,7 +130,7 @@ endpoints can be switched off at runtime via **API Docs → Dashboard → Upload
 ## Testing
 
 ```bash
-php artisan config:clear && php artisan test    # 980 tests, in-memory SQLite
+php artisan config:clear && php artisan test    # 1023 tests, in-memory SQLite
 npm run test:e2e                               # 107 Playwright tests against a real stack
 npm run spec:lint                              # spec structure + documented facts
 ```
@@ -143,7 +144,7 @@ Chromium) are in [QUICK_REFERENCE.md](QUICK_REFERENCE.md) and
 ## Architecture
 
 - **Backend:** Laravel 13 with AWS SDK v3
-- **Frontend:** Blade templates + Alpine.js (21 modules registered in `resources/js/app.js`)
+- **Frontend:** Blade templates + Alpine.js (22 modules registered in `resources/js/app.js`)
 - **Styling:** Tailwind CSS with custom ORCA theme
 - **Image Processing:** Intervention Image 4.x (GD driver)
 - **AI Tagging:** AWS Rekognition (with job queue for background processing)

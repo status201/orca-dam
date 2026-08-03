@@ -19,6 +19,7 @@ import './alpine/api-docs';
 import './alpine/preferences';
 import './alpine/passkeys';
 import './alpine/dashboard';
+import './alpine/guided-demo';
 import './alpine/tools-latex-mathml';
 import './alpine/tools-tikz-svg';
 import './alpine/tools-tikz-png';

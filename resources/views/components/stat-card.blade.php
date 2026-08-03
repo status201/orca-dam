@@ -1,6 +1,8 @@
 @props(['icon', 'bgClass', 'label', 'value', 'link' => null, 'linkClass' => null])
 
-<div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+{{-- $attributes is merged so a call site can pass data-testid; without this it was
+     silently dropped, which is why these cards were untargetable. --}}
+<div {{ $attributes->merge(['class' => 'bg-white overflow-hidden shadow-sm sm:rounded-lg']) }}>
     <div class="p-6 h-full">
         <div class="flex items-center h-full">
             <div class="flex-shrink-0 {{ $bgClass }} rounded-md p-3 w-14 text-center">

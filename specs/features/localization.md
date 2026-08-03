@@ -58,7 +58,7 @@ php artisan lang:safe-update                      # wraps lang:update; protects 
 ### Data shapes
 
 ```yaml
-# users.preferences (encrypted JSON) — see features/user-preferences.md
+# users.preferences (plain JSON) — see features/user-preferences.md
 preferences:
   locale: "en" | "nl"                              # optional; absent = fall through
 
@@ -88,12 +88,17 @@ the controller, so every `__()` call and the `<html lang="...">` attribute in
 - `window.appTranslations` — the base layout (`resources/views/layouts/app.blade.php`),
   currently `urlCopied` / `copyFailed` for the global toast system.
 
+The base layout also contributes `window.__pageData.guidedDemo` — a namespaced key on the
+first channel, like `tagConfig`, not a fourth channel — carrying the active walkthrough's
+translated copy ([`guided-demos.md`](guided-demos.md)). It is written with the
+`window.__pageData = window.__pageData || {}` merge idiom and only when a demo is armed.
+
 API responses (`routes/api.php`) are deliberately **not** localized — external
 integrations (RTE, WordPress) expect stable English strings.
 
 ### Persistence
 
-- No dedicated table; locale resolution reads `users.preferences` (encrypted JSON
+- No dedicated table; locale resolution reads `users.preferences` (plain JSON
   column) and the `settings` table (`Setting::get('locale')`, 1h cache — see
   [`features/settings.md`](settings.md)).
 - `lang/nl.json` is a version-controlled file, not DB state; it is alphabetized on

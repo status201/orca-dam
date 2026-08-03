@@ -49,7 +49,7 @@ repo actually has — no translation needed:
 | --------------------- | ---------------------------------------------------------------------------------------- |
 | Database schema       | `database/migrations/` + the Eloquent models (`Asset`, `Tag`, `User`, …) + the `settings` table |
 | API contract          | `routes/api.php` + `routes/web.php` + Policy abilities + the controllers' request/response shapes |
-| Persistence / model   | MariaDB tables, the S3 key layout (`assets/{folder}/{uuid}.{ext}`), encrypted `users.preferences` |
+| Persistence / model   | MariaDB tables, the S3 key layout (`assets/{folder}/{uuid}.{ext}`), `users.preferences` |
 | System diagram        | request → middleware → controller → service → S3 / queue                                 |
 
 See [`architecture.md`](architecture.md) for the system-wide version of all four.
@@ -302,8 +302,9 @@ specs/
     iframe-embedding.md    ·  AllowEmbedding CSP frame-ancestors + /assets/embed
     upload-policy.md       ·  allowlist + AllowedUploadExtension + SVG sanitize
     cloudflare-purge.md    ·  non-blocking CDN purge on replace / thumbnail regen
-    user-preferences.md    ·  encrypted users.preferences + profile settings
+    user-preferences.md    ·  users.preferences JSON + profile settings
     dashboard.md           ·  post-login stats + the role-built feature tour
+    guided-demos.md        ·  interactive onboarding walkthroughs (spotlight, cross-page)
     queue-jobs.md          ·  the 5 queued jobs and their dispatch
     # — system & tools —
     e2e-testing.md         ·  Playwright browser suite: roles, seeding, MinIO, CI
@@ -319,6 +320,7 @@ specs/
     add-a-policy-ability.md  ·  a policy ability with explicit role lists
     add-a-migration.md       ·  the ripple: migration → model → factory → CSV → search → API → tests
     add-an-alpine-module.md  ·  a resources/js/alpine/ module + app.js registration
+    add-a-guided-demo.md     ·  a new app/Demos/ walkthrough (storyboard → class → registry)
     add-a-console-command.md ·  an artisan command + Feature/Console test
     add-a-queued-job.md      ·  an app/Jobs/ job (dispatch, tries, sync-in-tests)
     add-a-setting.md         ·  a runtime Setting (default, get/set, cache)
@@ -343,6 +345,7 @@ specs/
     adr-012-reference-tags-api-only.md          ·  reference tags API-created only
     adr-013-wordpress-plugin-separate-stream.md ·  WP plugin is a separate release stream
     adr-014-playwright-e2e-real-stack.md        ·  Playwright E2E on a real stack (MinIO)
+    adr-015-guided-demos-server-declared.md     ·  demos declared in PHP; spotlight hand-rolled
 ```
 
 > This map grows as the backfill lands (see `_backfill-status.md` while it exists).

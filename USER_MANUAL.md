@@ -107,6 +107,16 @@ Deleted files go to Trash first ("soft delete"). Both editors and admins can res
 
 When you log in, your dashboard shows **Total Assets**, **My Assets**, **Total Storage**, and **Tag** counts. Admins also see user count and trashed items.
 
+### The guided demo
+
+If this is your first visit, take the **guided demo** — the teal button under the ORCA logo on the dashboard, also offered as the first slide of the feature carousel beside it. It dims the page, points at one real control at a time and explains it, starting on the dashboard and continuing in the asset library to cover browsing and finding things.
+
+Some steps put the page into the state they are describing rather than describing it in the abstract: the three view modes get a step each, and each one switches the library into that view, so you watch the same assets rearrange while you read what the view is good for. A couple of other steps ask you to actually try something — type in the search box, open the tag filter — and move on when you do.
+
+It also visits the upload screen for the three choices that are hard to undo afterwards — which folder, whether to keep the original filename, and the batch metadata — and then brings you back to the library. Nothing is uploaded along the way. You are never stuck: **Next** always works, **Back** returns a step, and **Skip demo** or the `Esc` key leaves at any point. Nothing you do during the demo is a test; the controls it highlights are the real ones, so anything you change is a real change.
+
+The demo does not start by itself and it does not nag. Once you have finished it, the launcher shows a small tick — but you can replay it as often as you like.
+
 ### Your Role: Editor vs Admin
 
 | Feature | Editor | Admin |

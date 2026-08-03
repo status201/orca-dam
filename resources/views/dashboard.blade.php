@@ -37,7 +37,20 @@
                     </div>
                 </div>
                 <h1 class="text-4xl font-bold text-gray-900 mb-3">ORCA DAM</h1>
-                <p class="text-xl text-gray-600 pb-8"><span>ORCA</span> <span>{{ __('Retrieves') }}</span> <span>{{ __('Cloud') }}</span> <span>{{ __('Assets') }}</span></p>
+                <p class="text-xl text-gray-600 pb-4"><span>ORCA</span> <span>{{ __('Retrieves') }}</span> <span>{{ __('Cloud') }}</span> <span>{{ __('Assets') }}</span></p>
+
+                {{-- A launcher that doesn't move. The carousel also offers the demo, but it
+                     rotates away every few seconds, so this is the one you can aim at. --}}
+                <div class="pb-8">
+                    <a href="{{ route('dashboard') }}?demo=welcome" data-testid="demo-start"
+                       class="inline-flex items-center gap-2 rounded-md bg-orca-teal px-4 py-2 text-sm font-medium text-white transition hover:bg-orca-teal-hover">
+                        <i class="fas fa-route"></i>
+                        {{ __('Take the guided demo') }}
+                        @if(auth()->user()->getPreference('guided_demos.welcome.completed_at'))
+                            <i class="fas fa-check text-xs opacity-80" title="{{ __('You have already taken this demo') }}"></i>
+                        @endif
+                    </a>
+                </div>
             </div>
 
             <!-- Two Column Grid -->
@@ -58,17 +71,17 @@
                     <!-- Stats in 2-column grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                        <x-stat-card icon="fas fa-images" bgClass="bg-blue-500" :label="__('Total Assets')" :value="number_format($stats['total_assets'])" :link="route('assets.index')" linkClass="text-blue-600 hover:text-blue-800" />
+                        <x-stat-card data-testid="stat-total-assets" icon="fas fa-images" bgClass="bg-blue-500" :label="__('Total Assets')" :value="number_format($stats['total_assets'])" :link="route('assets.index')" linkClass="text-blue-600 hover:text-blue-800" />
 
-                        <x-stat-card icon="fas fa-user" bgClass="bg-green-500" :label="__('My Assets')" :value="number_format($stats['my_assets'])" :link="route('assets.index', ['user' => Auth::id()])" linkClass="text-green-600 hover:text-green-800" />
+                        <x-stat-card data-testid="stat-my-assets" icon="fas fa-user" bgClass="bg-green-500" :label="__('My Assets')" :value="number_format($stats['my_assets'])" :link="route('assets.index', ['user' => Auth::id()])" linkClass="text-green-600 hover:text-green-800" />
 
-                        <x-stat-card icon="fas fa-tags" bgClass="bg-purple-500" :label="__('Total Tags')" :value="number_format($stats['total_tags'])" :link="route('tags.index')" linkClass="text-purple-600 hover:text-purple-800">
+                        <x-stat-card data-testid="stat-total-tags" icon="fas fa-tags" bgClass="bg-purple-500" :label="__('Total Tags')" :value="number_format($stats['total_tags'])" :link="route('tags.index')" linkClass="text-purple-600 hover:text-purple-800">
                             <dd class="text-xs text-gray-500 mt-1">
                                 {{ __(':count user', ['count' => number_format($stats['user_tags'])]) }} • {{ __(':count AI', ['count' => number_format($stats['ai_tags'])]) }}
                             </dd>
                         </x-stat-card>
 
-                        <x-stat-card icon="fas fa-database" bgClass="bg-yellow-500" :label="__('Total Storage')" :value="$stats['total_storage']" />
+                        <x-stat-card data-testid="stat-total-storage" icon="fas fa-database" bgClass="bg-yellow-500" :label="__('Total Storage')" :value="$stats['total_storage']" />
 
                         @if(!$isAdmin)
                             <x-stat-card icon="fas fa-tag" bgClass="bg-teal-500" :label="__('My Tags')" :value="number_format($stats['my_tags'])" :link="route('tags.index')" linkClass="text-teal-600 hover:text-teal-800">
@@ -201,9 +214,13 @@
             profileEdit: '{{ route('profile.edit') }}',
             systemIndex: '{{ route('system.index') }}',
             apiIndex: '{{ route('api.index') }}',
-            importIndex: '{{ route('import.index') }}'
+            importIndex: '{{ route('import.index') }}',
+            guidedDemoWelcome: '{{ route('dashboard') }}?demo=welcome'
         },
         translations: {
+            guidedDemo: @js(__('Take the guided demo')),
+            guidedDemoDesc: @js(__('A short walkthrough that points at the real controls — the dashboard first, then how to browse and find assets.')),
+            guidedDemoBtn: @js(__('Start the demo')),
             addPasskey: @js(__('Sign in with a Passkey')),
             addPasskeyDesc: @js(__('Skip passwords and two-factor codes. Use your fingerprint, face, or device PIN to sign in — phishing-resistant and faster.')),
             addPasskeyBtn: @js(__('Add Passkey')),
