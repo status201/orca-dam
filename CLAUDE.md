@@ -72,7 +72,7 @@ See [`specs/architecture.md`](specs/architecture.md) for the service-layer map, 
 
 ### Locale
 
-`SetLocale` middleware: user preference → `settings.locale` → `config('app.locale')`. Languages: `en`, `nl`. User prefs in encrypted JSON `users.preferences`. App strings in `lang/nl.json` (add a Dutch entry for every new `__()` string); framework strings (validation/auth/passwords) in `lang/nl/*.php`, published via `laravel-lang/common` (dev dep — refresh with `php artisan lang:safe-update`; **never raw `lang:update`/`lang:add nl`**, which overwrite project translations in `nl.json` — a PreToolUse hook blocks them and `TranslationIntegrityTest` guards sentinel keys + completeness). JS toasts get translations via `@js(__())` injection into `window.__pageData.translations` (tools views), `window.assetTranslations` (asset grid), or `window.appTranslations` (layout); API responses stay English.
+`SetLocale` middleware: user preference → `settings.locale` → `config('app.locale')`. Languages: `en`, `nl`. User prefs in plain JSON `users.preferences` (cast `array`, not encrypted). App strings in `lang/nl.json` (add a Dutch entry for every new `__()` string); framework strings (validation/auth/passwords) in `lang/nl/*.php`, published via `laravel-lang/common` (dev dep — refresh with `php artisan lang:safe-update`; **never raw `lang:update`/`lang:add nl`**, which overwrite project translations in `nl.json` — a PreToolUse hook blocks them and `TranslationIntegrityTest` guards sentinel keys + completeness). JS toasts get translations via `@js(__())` injection into `window.__pageData.translations` (tools views), `window.assetTranslations` (asset grid), or `window.appTranslations` (layout); API responses stay English.
 
 ## Environment Configuration
 

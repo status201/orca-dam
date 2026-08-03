@@ -193,7 +193,58 @@ final class WelcomeDemo implements Demo
                 placement: 'left',
                 routeName: 'assets.index',
                 title: __('Adding your own'),
-                body: __('Drag files in, up to 500 MB each. Large files are split up automatically, so a flaky connection will not cost you an upload.'),
+                body: __('This opens the upload screen. Next takes you there — we will walk through the three choices that are awkward to undo, then bring you back here.'),
+            ),
+
+            // ── the upload screen ──────────────────────────────────────────────
+            new DemoStep(
+                target: 'upload-folder',
+                placement: 'bottom',
+                routeName: 'assets.create',
+                reveal: 'scroll-top',
+                title: __('Choose the folder first'),
+                body: __('This decides where the files are stored, and the line underneath shows exactly where they will land. It is worth getting right up front: moving an asset later is an administrator job, because the storage path is part of its permanent URL. The folder starts on your home folder, which you can set in your profile.'),
+            ),
+            new DemoStep(
+                target: 'upload-keep-filename',
+                placement: 'bottom',
+                routeName: 'assets.create',
+                title: __('Keep original filename — read this one twice'),
+                body: __('Left off, every file is stored under a generated name and your filename is kept as a label. Switch it on and the real filename becomes part of the permanent URL, which is what you want for links people have to type or recognise. Two consequences: the URL cannot easily be changed afterwards, and uploading a file with a name that already exists in that folder overwrites it. ORCA asks you to confirm for exactly that reason.'),
+            ),
+            new DemoStep(
+                target: 'batch-metadata-toggle',
+                placement: 'bottom',
+                routeName: 'assets.create',
+                advanceOn: ['event' => 'click', 'on' => 'self'],
+                title: __('Metadata for the whole batch'),
+                body: __('Tagging fifty files one at a time is how tagging stops happening. Open this panel to fill it in once for everything in the batch.'),
+            ),
+            new DemoStep(
+                target: 'batch-metadata-panel',
+                placement: 'top',
+                routeName: 'assets.create',
+                reveal: ['click' => 'batch-metadata-toggle', 'until' => 'batch-metadata-panel'],
+                fallback: 'center',
+                title: __('What gets copied to every file'),
+                body: __('Tags, licence, copyright holder and source — each applied to every file you upload in this batch, so a shoot or an export arrives already organised. Anything left blank is simply not set, and all of it stays editable per asset afterwards.'),
+            ),
+            new DemoStep(
+                target: 'upload-dropzone',
+                placement: 'top',
+                routeName: 'assets.create',
+                title: __('Then add the files'),
+                body: __('Drag them in or browse, as many at once as you like, up to 500 MB each. Anything over 10 MB is split into chunks automatically, so a dropped connection costs you a retry rather than the whole upload. ORCA also spots files already in the library and tells you instead of storing them twice.'),
+            ),
+
+            // ── and back where we started ──────────────────────────────────────
+            new DemoStep(
+                target: 'grid-total',
+                placement: 'bottom',
+                routeName: 'assets.index',
+                reveal: 'scroll-top',
+                title: __('Back in the library'),
+                body: __('We have brought you back to the library — nothing was uploaded, and nothing you saw is saved. You now know where things are: search and filters to find, three views to look, and the upload screen for adding your own.'),
             ),
         ];
     }

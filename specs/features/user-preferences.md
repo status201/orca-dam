@@ -20,15 +20,19 @@ source:
 Individual users need to override a handful of global defaults — which folder
 their library opens to, how many items per page, dark mode, UI language — without
 those choices leaking to other users or requiring admin action. `users.preferences`
-is a single encrypted JSON column rather than one column per preference, so adding
+is a single JSON column rather than one column per preference, so adding
 a new preference key is a code change, not a migration.
 
 ## Requirements
 
-- **REQ-1** — `users.preferences` is an encrypted JSON column (`'preferences' =>
-  'array'` cast; the column itself is `encrypted` at rest via Laravel's model
-  encryption — see `User::casts()`). Known keys: `home_folder`, `items_per_page`,
-  `locale`, `dark_mode`. It may be `null` (no overrides at all).
+- **REQ-1** — `users.preferences` is a **plain** JSON column, cast `'array'` in
+  `User::casts()` and stored unencrypted. Nothing in it is a secret: it holds display
+  choices, and the column is in `$hidden` so it is not serialised into responses.
+  (`User::casts()` reserves `encrypted` for `jwt_secret` and the two-factor columns —
+  contrast those if a genuinely sensitive key is ever proposed here, since adding one
+  would mean changing the cast *and* migrating existing rows.) Known keys:
+  `home_folder`, `items_per_page`, `locale`, `dark_mode`, `guided_demos`. It may be
+  `null` (no overrides at all).
 - **REQ-2** — `User::getPreference(string $key, mixed $default = null)` /
   `setPreference(string $key, mixed $value)` are the only accessors; callers never
   read/write the `preferences` array directly.
@@ -72,7 +76,7 @@ PATCH /profile/preferences   (ProfileController::updatePreferences)
 ### Data shapes
 
 ```yaml
-users.preferences:                 # encrypted JSON column, nullable
+users.preferences:                 # plain JSON column (cast array), nullable
   home_folder: string?              # must equal or nest under S3Service::getRootFolder()
   items_per_page: int?              # one of 0,12,24,36,48,60,72,96; 0/absent = use global
   dark_mode: string?                # disabled | force_dark | force_light; "disabled"/absent = no override
@@ -100,7 +104,7 @@ its own action for the same reason.
 
 ### Persistence
 
-- **DB**: `users.preferences` (encrypted JSON, nullable).
+- **DB**: `users.preferences` (plain JSON, cast `array`, nullable — not encrypted; see REQ-1).
 - **Not persisted**: no separate history of past preference values; overwriting is
   destructive (last write wins), matching the model's "one column, whole-object
   replace" shape.

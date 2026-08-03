@@ -58,7 +58,7 @@ php artisan lang:safe-update                      # wraps lang:update; protects 
 ### Data shapes
 
 ```yaml
-# users.preferences (encrypted JSON) — see features/user-preferences.md
+# users.preferences (plain JSON) — see features/user-preferences.md
 preferences:
   locale: "en" | "nl"                              # optional; absent = fall through
 
@@ -98,7 +98,7 @@ integrations (RTE, WordPress) expect stable English strings.
 
 ### Persistence
 
-- No dedicated table; locale resolution reads `users.preferences` (encrypted JSON
+- No dedicated table; locale resolution reads `users.preferences` (plain JSON
   column) and the `settings` table (`Setting::get('locale')`, 1h cache — see
   [`features/settings.md`](settings.md)).
 - `lang/nl.json` is a version-controlled file, not DB state; it is alphabetized on

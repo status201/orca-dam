@@ -76,6 +76,10 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
   overlay renders a centered hand-off card whose primary action navigates there. This single
   rule covers the cross-page continuation, a shared link that lands on the wrong page, and
   Back-button drift.
+- **REQ-7a** — A demo that leaves the page it started on says so before it goes, and ends
+  where the reader can carry on working rather than stranding them on a form. The Welcome
+  demo announces the upload screen on the step that opens it and closes with a step back on
+  the library, which states that it has returned and that nothing was uploaded.
 - **REQ-8** — A step may require a real user action (`advanceOn`) and advance when it happens.
   The engine observes DOM events on the target in the **capture** phase only; it must not know
   anything about the Alpine module that owns the target. `Next` stays enabled on such a step,
@@ -342,6 +346,14 @@ Scenario: The three view-mode steps switch the library into each view in turn
   When it reaches the grid, masonry and list steps
   Then the library is showing that view as each step is read
   And the list step's inline tag and licence controls are on screen when it claims them
+# pinned by: tests/e2e/guided-demo.spec.js
+
+Scenario: The demo covers the upload screen and brings the reader back
+  Given the Welcome demo on the library's upload step
+  When it continues
+  Then it is on the upload screen, pointing at the folder, the keep-filename choice and
+    the batch metadata panel in turn
+  And continuing from the last of those returns to the library on the closing step
 # pinned by: tests/e2e/guided-demo.spec.js
 
 Scenario: An interactive step advances when the user performs the action

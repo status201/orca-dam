@@ -326,20 +326,23 @@ html.dark-mode #orca-game-loader {
 
 /* ── Guided demos (specs/features/guided-demos.md) ──────────────────────────── */
 
-/* One transition on the shutters and the ring makes the spotlight morph between steps
-   for free — the geometry itself is set as inline px styles from demo-geometry.js. */
-.orca-demo-scrim,
+/* The spotlight dims the page with its own outer shadow rather than with tiled panels
+   around it: one element cannot leave a seam against itself, whereas four that each
+   animate a different property from a different start value drift apart mid-morph and
+   leak a line along the hole. 100vmax reaches every corner from any hole position.
+   Geometry is set as inline px styles from demo-geometry.js; only the morph is here. */
 .orca-demo-ring {
-    transition: top .18s ease, left .18s ease, right .18s ease,
-                width .18s ease, height .18s ease, bottom .18s ease;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.6);
+    transition: top .18s ease, left .18s ease, width .18s ease, height .18s ease;
 }
 
 /* Dark mode inverts the whole document, and inversion commutes with compositing — so a
    translucent black scrim would render as a *white* wash over the darkened page. Joining
-   the counter-invert list above puts it back. The popover deliberately stays out of that
-   list: it inverts into a dark card like every other panel, so it needs no dark styling. */
-html.dark-mode .orca-demo-scrim,
-html.dark-mode .orca-demo-ring {
+   the counter-invert list above puts it back (invert twice is identity), shadow included.
+   The popover deliberately stays out of that list: it inverts into a dark card like every
+   other panel, so it needs no dark-mode styling of its own. */
+html.dark-mode .orca-demo-ring,
+html.dark-mode .orca-demo-veil {
     filter: invert(1);
 }
 
@@ -351,7 +354,6 @@ body.orca-demo-active nav[data-testid="app-nav"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .orca-demo-scrim,
     .orca-demo-ring {
         transition: none !important;
     }

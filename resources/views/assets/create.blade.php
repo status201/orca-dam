@@ -71,9 +71,10 @@
         </div>
 
         <!-- Keep original filename option -->
-        <div class="mb-6">
+        <div class="mb-6" data-testid="upload-keep-filename">
             <label class="inline-flex items-center cursor-pointer">
                 <input type="checkbox"
+                       data-testid="upload-keep-filename-input"
                        :checked="keepOriginalFilename"
                        @change="toggleKeepOriginalFilename($event)"
                        :disabled="uploading"
@@ -86,7 +87,8 @@
         @include('partials.upload-metadata')
 
         <!-- Drag and drop area -->
-        <div @drop.prevent="handleDrop"
+        <div data-testid="upload-dropzone"
+             @drop.prevent="handleDrop"
              @dragover.prevent="dragActive = true"
              @dragleave.prevent="dragActive = false"
              :class="dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'"

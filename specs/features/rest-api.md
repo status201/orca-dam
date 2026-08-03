@@ -186,7 +186,7 @@ Scenario: Default sort is newest-updated-first
 # pinned by: tests/Feature/ApiTest.php
 
 Scenario: List and show responses hide sensitive user fields
-  Given an asset owned by a user with an email and encrypted preferences
+  Given an asset owned by a user with an email and stored preferences
   When the client fetches GET /api/assets or GET /api/assets/{id}
   Then the embedded user object exposes only id, name, and role
 # pinned by: tests/Feature/ApiTest.php

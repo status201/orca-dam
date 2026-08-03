@@ -48,12 +48,24 @@
          @keydown.escape.window="skip()"
          @keydown.window="onKey($event)">
 
-        {{-- Four shutters; the spotlight is where they aren't. Clicks land on a shutter
-             outside the hole and on the real element inside it — which is what lets an
-             act-to-advance step work at all. --}}
+        {{-- Dimming and click-blocking are deliberately separate jobs.
+
+             The dimming is ONE element: the spotlight's own huge outer box-shadow. Four
+             tiled shutters used to draw it, and their seams were exact once settled — but
+             each animates a different property from a different start value, so mid-morph
+             they drifted apart and leaked a visible line along the hole. One element cannot
+             have a seam with itself.
+
+             The shutters remain, transparent, purely to swallow clicks outside the hole:
+             a box-shadow is not hit-tested, and clicks *inside* the hole must still reach
+             the real element — that is what makes an act-to-advance step work. Being
+             invisible, they need no transition, so nothing can drift. --}}
         <template x-for="side in shutters" :key="side">
-            <div class="orca-demo-scrim fixed z-[60] bg-black/60" :style="shutter(side)"></div>
+            <div x-show="hasTarget" class="fixed z-[60]" :style="shutter(side)"></div>
         </template>
+
+        {{-- No hole to cut: dim the lot with a single element. --}}
+        <div x-show="!hasTarget" class="orca-demo-veil fixed inset-0 z-[60] bg-black/60"></div>
 
         {{-- A passive step gets a transparent lid so the highlighted control cannot be
              clicked by mistake; an interactive one deliberately does not. --}}
@@ -61,7 +73,7 @@
 
         <div data-testid="demo-spotlight"
              x-show="hasTarget"
-             class="orca-demo-ring fixed z-[61] rounded-md border-2 border-white shadow-[0_0_0_2px_rgba(0,0,0,0.35)] pointer-events-none"
+             class="orca-demo-ring fixed z-[61] rounded-md border-2 border-white pointer-events-none"
              :style="ring"></div>
 
         <div data-testid="demo-popover"

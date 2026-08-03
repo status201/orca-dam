@@ -49,7 +49,7 @@ repo actually has — no translation needed:
 | --------------------- | ---------------------------------------------------------------------------------------- |
 | Database schema       | `database/migrations/` + the Eloquent models (`Asset`, `Tag`, `User`, …) + the `settings` table |
 | API contract          | `routes/api.php` + `routes/web.php` + Policy abilities + the controllers' request/response shapes |
-| Persistence / model   | MariaDB tables, the S3 key layout (`assets/{folder}/{uuid}.{ext}`), encrypted `users.preferences` |
+| Persistence / model   | MariaDB tables, the S3 key layout (`assets/{folder}/{uuid}.{ext}`), `users.preferences` |
 | System diagram        | request → middleware → controller → service → S3 / queue                                 |
 
 See [`architecture.md`](architecture.md) for the system-wide version of all four.
@@ -302,7 +302,7 @@ specs/
     iframe-embedding.md    ·  AllowEmbedding CSP frame-ancestors + /assets/embed
     upload-policy.md       ·  allowlist + AllowedUploadExtension + SVG sanitize
     cloudflare-purge.md    ·  non-blocking CDN purge on replace / thumbnail regen
-    user-preferences.md    ·  encrypted users.preferences + profile settings
+    user-preferences.md    ·  users.preferences JSON + profile settings
     dashboard.md           ·  post-login stats + the role-built feature tour
     guided-demos.md        ·  interactive onboarding walkthroughs (spotlight, cross-page)
     queue-jobs.md          ·  the 5 queued jobs and their dispatch

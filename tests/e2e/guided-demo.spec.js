@@ -83,6 +83,9 @@ async function advanceUntil(page, target, max = 25) {
         if ((await spotlitTarget(page)) === target) return;
 
         await page.click(testid('demo-next'));
+        // A step may cross a page boundary, so let the next document hydrate. Cheap when
+        // nothing navigated: x-cloak is already clear.
+        await waitForAlpine(page);
         await expect(overlay(page)).toHaveAttribute('data-active', 'true');
     }
 
@@ -309,6 +312,40 @@ test.describe('guided demos', () => {
         // tag and licence controls are actually on screen while it says so.
         await expect(page.locator(testid('asset-row-tag-add')).first()).toBeVisible();
         await expect(page.locator(testid('asset-row-license')).first()).toBeVisible();
+    });
+
+    test('the upload steps run on the upload screen and the demo returns to the library', async ({ page }) => {
+        await openDemo(page, '/assets', 6);
+        await advanceUntil(page, 'grid-upload');
+
+        await Promise.all([
+            page.waitForURL(/\/assets\/create/),
+            page.click(testid('demo-next')),
+        ]);
+        await waitForAlpine(page);
+
+        await expect(page.locator(testid('upload-page'))).toBeVisible();
+        await expect(overlay(page)).toHaveAttribute('data-target', 'upload-folder');
+
+        // The two choices that are awkward to undo, then the batch metadata panel, which
+        // the step opens for itself.
+        await advanceUntil(page, 'upload-keep-filename');
+        await advanceUntil(page, 'batch-metadata-panel');
+        await expect(page.locator(testid('batch-metadata-panel'))).toBeVisible();
+
+        await advanceUntil(page, 'upload-dropzone');
+
+        // The closing step lives back on the library, so Next crosses back — which is what
+        // the upload step promised would happen.
+        await Promise.all([
+            page.waitForURL(/\/assets\?/),
+            page.click(testid('demo-next')),
+        ]);
+        await waitForAlpine(page);
+
+        await expect(page.locator(testid('asset-grid'))).toBeVisible();
+        await expect(overlay(page)).toHaveAttribute('data-target', 'grid-total');
+        await expect(page.locator(testid('demo-finish'))).toBeVisible();
     });
 
     test('a step whose target is absent is skipped without breaking the page', async ({ page }) => {

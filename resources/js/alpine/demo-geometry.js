@@ -32,15 +32,21 @@ const px = (n) => `${Math.round(n)}px`;
 /**
  * The padded rectangle the spotlight cuts, clamped to the viewport so a partially
  * off-screen target still produces a sane hole.
+ *
+ * Edges are rounded to whole pixels *before* the width and height are derived from them,
+ * so the click-blocking panels and the spotlight always agree on where the boundary is.
+ * Rounding each of top/left/width/height independently instead leaves them disagreeing by
+ * a pixel whenever the target sits on a fractional offset — which, with rem-based
+ * spacing, is most of the time.
  */
 export function holeRect(rect) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    const top = Math.max(0, rect.top - RING_PAD);
-    const left = Math.max(0, rect.left - RING_PAD);
-    const bottom = Math.min(vh, rect.bottom + RING_PAD);
-    const right = Math.min(vw, rect.right + RING_PAD);
+    const top = Math.round(Math.max(0, rect.top - RING_PAD));
+    const left = Math.round(Math.max(0, rect.left - RING_PAD));
+    const bottom = Math.round(Math.min(vh, rect.bottom + RING_PAD));
+    const right = Math.round(Math.min(vw, rect.right + RING_PAD));
 
     return {
         top,
@@ -53,16 +59,18 @@ export function holeRect(rect) {
 }
 
 /**
- * Inline style for one of the four scrim shutters around `hole`.
+ * Inline style for one of the four click-blocking panels around `hole`.
  *
- * With no hole (an unanchored step) the `top` shutter covers the whole viewport and the
- * other three collapse, so the same four elements render a plain full-page scrim.
+ * These are transparent: the dimming is the spotlight's own outer box-shadow (see
+ * app.css). They exist only so a click outside the hole is swallowed while a click inside
+ * it still reaches the real element — a box-shadow is not hit-tested.
+ *
+ * With no hole an unanchored step is dimmed by the single full-viewport veil instead, so
+ * all four collapse.
  */
 export function shutterStyle(side, hole) {
     if (!hole) {
-        return side === 'top'
-            ? 'top:0;left:0;right:0;bottom:0;'
-            : 'display:none;';
+        return 'display:none;';
     }
 
     switch (side) {
