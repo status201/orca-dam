@@ -10,7 +10,7 @@
         "bacon/bacon-qr-code": "^3.0",
         "enshrined/svg-sanitize": "^0.22.0",
         "firebase/php-jwt": "^7.0",
-        "guzzlehttp/guzzle": "^7.15.1",
+        "guzzlehttp/guzzle": "^7.15.2",
         "intervention/image": "^4.2",
         "laravel/framework": "^13.0",
         "laravel/passkeys": "~0.2.1",

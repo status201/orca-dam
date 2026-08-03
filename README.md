@@ -21,7 +21,7 @@ copy that is **not** listed below is the one to delete.
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow and the spec-before-code gate | Contributors |
 | [CHANGELOG.md](CHANGELOG.md) | Release history | Everyone |
 
-`specs/` is the source of truth for behaviour: 45 feature specs, 16 ADRs, and recipes.
+`specs/` is the source of truth for behaviour: 47 feature specs, 16 ADRs, and recipes.
 Prose docs describe *usage*; specs define *behaviour*. When they disagree, the spec wins.
 
 ## Features
@@ -130,8 +130,9 @@ endpoints can be switched off at runtime via **API Docs → Dashboard → Upload
 ## Testing
 
 ```bash
-php artisan config:clear && php artisan test    # 1023 tests, in-memory SQLite
-npm run test:e2e                               # 107 Playwright tests against a real stack
+php artisan config:clear && php artisan test    # 1120 tests, in-memory SQLite
+php artisan test --testsuite=Security          # security invariants + exploit probes only
+npm run test:e2e                               # 127 Playwright tests against a real stack
 npm run spec:lint                              # spec structure + documented facts
 ```
 

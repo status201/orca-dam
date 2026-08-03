@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Tests\Security\Support\SourceScanner;
 use Tests\TestCase;
 
 /**
@@ -95,13 +96,9 @@ class RegistrationTest extends TestCase
     {
         $offenders = [];
 
-        foreach ($this->phpFilesUnder(app_path()) as $file) {
-            $source = file_get_contents($file);
-
-            foreach ($this->callArgumentsFor($source, 'User::create(') as $arguments) {
-                if (! str_contains($arguments, "'role'")) {
-                    $offenders[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file);
-                }
+        foreach (SourceScanner::callSitesUnder([app_path()], 'User::create(') as $site) {
+            if (! str_contains($site['call'], "'role'")) {
+                $offenders[] = $site['file'];
             }
         }
 
@@ -115,64 +112,11 @@ class RegistrationTest extends TestCase
     /** Sanity check on the scanner itself — a passing scan must mean it found something. */
     public function test_the_role_scanner_sees_the_known_creation_paths(): void
     {
-        $sites = 0;
+        $sites = SourceScanner::callSitesUnder([app_path()], 'User::create(');
 
-        foreach ($this->phpFilesUnder(app_path()) as $file) {
-            $sites += count($this->callArgumentsFor(file_get_contents($file), 'User::create('));
-        }
-
-        $this->assertGreaterThanOrEqual(3, $sites,
+        $this->assertGreaterThanOrEqual(3, count($sites),
             'Expected to find the UserController, TokenController and TokenCreateCommand '
             .'creation paths. Finding fewer means the scanner silently stopped working.'
         );
-    }
-
-    /** @return list<string> */
-    private function phpFilesUnder(string $directory): array
-    {
-        $files = [];
-
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS)
-        );
-
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $files[] = $file->getPathname();
-            }
-        }
-
-        return $files;
-    }
-
-    /**
-     * Every argument list passed to $needle in $source, matched by balancing parentheses
-     * so multi-line array literals come back whole.
-     *
-     * @return list<string>
-     */
-    private function callArgumentsFor(string $source, string $needle): array
-    {
-        $calls = [];
-        $offset = 0;
-
-        while (($position = strpos($source, $needle, $offset)) !== false) {
-            $cursor = $position + strlen($needle);
-            $depth = 1;
-
-            while ($cursor < strlen($source) && $depth > 0) {
-                $depth += match ($source[$cursor]) {
-                    '(' => 1,
-                    ')' => -1,
-                    default => 0,
-                };
-                $cursor++;
-            }
-
-            $calls[] = substr($source, $position, $cursor - $position);
-            $offset = $cursor;
-        }
-
-        return $calls;
     }
 }

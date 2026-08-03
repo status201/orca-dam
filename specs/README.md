@@ -299,6 +299,7 @@ specs/
     settings.md            ·  Setting key-value model, 1h cache, groups
     localization.md        ·  SetLocale, nl.json ownership, JS translation channels
     security-headers.md    ·  SecurityHeaders middleware (nosniff, XFO, HSTS)
+    security-invariants.md ·  self-auditing route/policy/source invariants + exploit probes
     iframe-embedding.md    ·  AllowEmbedding CSP frame-ancestors + /assets/embed
     upload-policy.md       ·  allowlist + AllowedUploadExtension + SVG sanitize
     cloudflare-purge.md    ·  non-blocking CDN purge on replace / thumbnail regen
@@ -308,6 +309,7 @@ specs/
     queue-jobs.md          ·  the 5 queued jobs and their dispatch
     # — system & tools —
     e2e-testing.md         ·  Playwright browser suite: roles, seeding, MinIO, CI
+    static-analysis.md     ·  arch bans, Semgrep rules, CodeQL — and what each cannot see
     system-admin.md        ·  /system dashboard, queue, logs, web test runner
     maintenance-commands.md ·  the 17 console commands + contracts
     tikz-render.md         ·  TikzCompilerService pipeline + security posture
