@@ -375,8 +375,13 @@ npm run e2e:down
 `tools.spec.js` loops), on top of the 4 in `global.setup.js` — so
 `npx playwright test --list` reports **134 tests in 22 files**. Counting only literal
 `test(` calls understates it; `npm run spec:lint` counts the loop-generated cases too.
-It resolves a loop's array by counting `{` per entry, so an entry containing a nested
-object or arrow literal inflates the total — keep one brace per entry.
+It resolves a loop's array by splitting on top-level commas — bracket-, string- and
+comment-aware — so a nested object or arrow literal in an entry no longer inflates the
+total. Two guarantees come with that: the counter has fixtures checked on every run
+(`checkE2eCounter`, so a broken counter fails as a self-test rather than as a stale
+number), and a loop it cannot size is an **error**, not a silent 1. Generated tests must
+therefore iterate an array literal or a named `const` — `for (const x of xs.filter(…))`
+will be rejected.
 ~4 minutes serialized; 7 tests skip without MinIO (4 upload, 1 replace, 2 discovery):
 
 ```
