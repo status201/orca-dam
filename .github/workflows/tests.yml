@@ -23,6 +23,33 @@ permissions:
 # trailing version comment. Merging that PR is the intended way to bump these.
 
 jobs:
+  # TEMPORARY — delete after one green run. Smoke-tests actions/upload-artifact@v7.
+  #
+  # Both real uses of that action sit behind `if: failure()` (the Playwright report here, and the
+  # same step in wordpress-plugin-tests.yml), so they are skipped on a passing build. The v6 -> v7
+  # bump in #38 therefore went green without the action ever executing, and the first time it would
+  # actually run is a failed E2E job — the least convenient moment to find out it is broken.
+  #
+  # This mirrors the real step's inputs exactly (same name, same multi-path list, same
+  # retention-days) so it validates the invocation and not merely that the action loads.
+  artifact-smoke-test:
+    name: upload-artifact smoke test (temporary)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create stand-in report files
+        run: |
+          mkdir -p playwright-report test-results
+          echo 'smoke test' > playwright-report/index.html
+          echo 'smoke test' > test-results/result.txt
+      - name: Upload (same inputs as the E2E failure path)
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
   pint:
     name: Pint (code style)
     runs-on: ubuntu-latest
