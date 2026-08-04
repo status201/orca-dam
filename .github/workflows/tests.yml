@@ -1,9 +1,12 @@
 name: Tests
 
+# The pull_request trigger is deliberately unfiltered while push is not. Branch protection requires
+# these jobs by name, and a required check from a workflow that does not run never reports — the PR
+# then waits forever on a status that is never coming. A plugin-only PR therefore still runs the app
+# suite (a few wasted minutes, rarely) rather than becoming unmergeable. On push to main nothing is
+# gated, so the filter stays there and saves the run.
 on:
   pull_request:
-    paths-ignore:
-      - 'wordpress-plugin/**'
   push:
     branches: [main]
     paths-ignore:
@@ -161,6 +164,61 @@ jobs:
         run: composer audit --locked
       - name: Audit npm dependencies
         run: npm audit --audit-level=high
+
+  # Static analysis, layer B — see specs/features/static-analysis.md.
+  # Separate from the `security` job because it needs Python rather than PHP, and because a
+  # Semgrep finding and a failing invariant test are different things to triage.
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # Installed with pip on the plain runner rather than run in the semgrep/semgrep container.
+      # Two reasons. The container is Alpine-based, and GitHub injects its own glibc Node into a
+      # container to run JavaScript actions like actions/checkout — a combination that breaks on
+      # musl, and the failure looks nothing like a rule problem. And this is the install path that
+      # was actually exercised while developing these rules, so the version below is one that has
+      # been run against them rather than one that merely exists.
+      #
+      # Exact-pinned, not `>=`: a rule engine that changes under you turns an unrelated PR red. Note
+      # the SHA-pinning policy at the top of this file does not reach a pip package, and
+      # .github/dependabot.yml's github-actions ecosystem does not either — there is no manifest for
+      # it to watch. This version moves only when someone edits it deliberately, and the fixture
+      # step below is what will say so if a future version changes rule semantics.
+      - name: Install Semgrep
+        run: pip install --disable-pip-version-check semgrep==1.172.0
+      # Validates the rules against .semgrep/tests/ fixtures BEFORE using them. Without this a
+      # rule that has stopped matching — a pattern typo, a Semgrep syntax change — reports a clean
+      # codebase, which is indistinguishable from a clean codebase. This step failing means the
+      # rules are wrong; the scan steps failing mean the code is.
+      #
+      # One invocation per fixture, deliberately: `--test` with a single-file --config and a
+      # directory target crashes with an IndexError inside semgrep's own test.py (see the header of
+      # .semgrep/orca.yml). Only file-config + file-target avoids it. `set -e` plus the explicit
+      # exit means one broken rule fails the job rather than being lost in the loop.
+      - name: Verify the custom rules still match
+        run: |
+          set -e
+          status=0
+          for fixture in .semgrep/tests/*.php; do
+            echo "--- $fixture"
+            semgrep --test --config .semgrep/orca.yml "$fixture" || status=1
+          done
+          exit $status
+      # Scope comes from the targets here, not from `paths:` in the rules — a paths filter would
+      # also exclude .semgrep/tests/ and make the step above vacuously green. database/factories is
+      # deliberately absent, matching tests/Security/UserProvisioningTest.php: a factory only runs
+      # from a test and its role default *is* its role declaration.
+      - name: ORCA rules
+        run: semgrep scan --error --config .semgrep/orca.yml app routes database/seeders database/migrations
+      # Registry rulesets, restricted to ERROR severity. WARNING/INFO from p/php is largely style
+      # and idiom advice that Pint and review already cover; ERROR is the injection/auth/crypto
+      # tier. Note `--error` sets the exit code, `--severity` filters what is reported.
+      - name: Registry rulesets
+        run: semgrep scan --error --severity ERROR --config p/php --config p/secrets app routes database resources/js
 
   e2e:
     name: Playwright E2E

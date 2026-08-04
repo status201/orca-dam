@@ -1,0 +1,176 @@
+# ORCA-specific Semgrep rules — see specs/features/static-analysis.md (layer B).
+#
+# These deliberately restate invariants that tests/Security/ already checks. The difference is
+# how: tests/Security/Support/SourceScanner.php matches text, and says so in its own docblock
+# ("A source scan is a blunt instrument — it sees text, not semantics, and cannot follow a
+# variable or a helper"). These rules match the parse tree, so a call spelled across three lines,
+# or with its arguments in a different order, is still the same call — and a call inside a comment
+# or a string literal is not one.
+#
+# The duplication is intentional and temporary. Both must catch the same defect (asserted by the
+# mutation table in the spec); once these rules have proven themselves in CI, the corresponding
+# text scans can be retired rather than maintained in parallel.
+#
+# Every rule has a fixture under .semgrep/tests/ and is verified by `semgrep --test` in CI
+# *before* the scan runs, so a broken rule fails as "the rules are wrong" rather than silently
+# matching nothing and reporting a clean codebase.
+#
+# `--test` is invoked once per fixture file, not once for the directory. That is a workaround for an
+# upstream crash, and it is the reason the first attempt at this layer was abandoned: with a
+# single-file --config and a directory target, semgrep/test.py's relatively_eq() computes
+# `config.relative_to(parent_config).parts`, which for identical paths is an empty tuple, and then
+# indexes it — IndexError, no rules run, red job. Only the file-config + file-target combination
+# takes the early-return path that skips it. Verified against semgrep 1.172.0; if a later version
+# fixes it, this can collapse back to one invocation.
+#
+# Do not write the words "ruleid" or "ok" followed by a colon in a fixture's prose. Semgrep's
+# annotation parser scans every comment for that token and cannot tell documentation from an
+# annotation; it reads the sentence as naming a rule, finds none, and fails the file.
+#
+# No rule carries a `paths:` filter. Scope comes from the targets passed on the command line
+# (see the semgrep job in .github/workflows/tests.yml), because a `paths.include` would also
+# exclude .semgrep/tests/ and make `--test` vacuously green.
+#
+# Every rule here has been mutation-checked: a deliberate defect was introduced for each and the
+# rule confirmed to report it, and a deliberately broken pattern confirmed to fail `--test` rather
+# than pass with zero findings. See the mutation table in specs/features/static-analysis.md.
+
+rules:
+  # ── specs/features/authentication.md REQ-8 ──────────────────────────────────
+  #
+  # The registration incident was not User::create being called; it was User::create being called
+  # with no role, letting the column default fill in `editor`. The column default is gone, so an
+  # omitted role now fails at the driver — but a call site that never names the role is still a
+  # call site whose privileges nobody decided.
+  - id: orca-user-create-without-role
+    languages: [php]
+    severity: ERROR
+    message: >-
+      This creates a User without naming a role. Every creation path must state the privileges it
+      grants explicitly — see specs/features/authentication.md REQ-8 and
+      specs/features/security-invariants.md REQ-4. Add 'role' => '…', or use an explicit factory
+      state (->admin() / ->editor() / ->apiUser()).
+    patterns:
+      # `(..., $ARGS)` binds the LAST argument, which is the attributes array in every arity:
+      # create($attrs), firstOrCreate($find, $attrs), updateOrCreate($find, $attrs). Listing
+      # `firstOrCreate($ARGS)` and `firstOrCreate($FIND, $ARGS)` as separate alternatives — as the
+      # first version of this rule did — makes the binding depend on which alternative Semgrep
+      # tries first, and on the single-arg one $ARGS is the *lookup* array. Both seeders name their
+      # role in the second argument, so that ambiguity reported them as offenders.
+      - pattern-either:
+          - pattern: User::create(..., $ARGS)
+          - pattern: User::firstOrCreate(..., $ARGS)
+          - pattern: User::updateOrCreate(..., $ARGS)
+          # `<... X ...>` is Semgrep's deep-expression operator: it matches X anywhere inside the
+          # receiver, so one pattern covers every chain depth — factory()->create(),
+          # factory()->count(3)->create(), and anything else in between. Spelling the chain out as
+          # `factory(...)->$STATE(...)->create(...)` only reaches depth 1, which is how the first
+          # version of this rule came to promise factory coverage in its message and not implement
+          # it. database/seeders/DatabaseSeeder.php is the live case: it writes ->editor()
+          # explicitly, with a comment saying why inheriting UserFactory's default is not enough.
+          - pattern: <... User::factory(...) ...>->create(..., $ARGS)
+      # The attributes array is inspected as text while the *call* is AST-matched. That split is
+      # deliberate: AST matching is what rules out a `User::create(` inside a comment or a string,
+      # and the regex keeps the key check tolerant of formatting, nesting and trailing commas.
+      - metavariable-regex:
+          metavariable: $ARGS
+          regex: '(?s)^(?![\s\S]*[''"]role[''"])[\s\S]*$'
+      # A factory *state* is the role declaration, wherever it sits in the chain. This is a regex
+      # over the matched expression rather than three `pattern-not` chains because the state can
+      # appear at any depth (->count(3)->editor()->create()), and a `pattern-not` has to pin the
+      # position. It mirrors the /->(admin|editor|apiUser)\(/ exemption in
+      # tests/Security/UserProvisioningTest.php.
+      - pattern-not-regex: '->(admin|editor|apiUser)\('
+
+  # ── specs/features/security-invariants.md REQ-6 ─────────────────────────────
+  #
+  # `role` is mass-assignable on User because the admin user form assigns it, so any write that
+  # takes the caller's whole payload is a privilege-escalation path.
+  #
+  # `$REQ` is deliberately unconstrained, which makes this *stronger* than the text scan (that one
+  # only matches a variable literally spelled `$request`) at the cost of one theoretical false
+  # positive: `->all()` is also Collection's method, so `$model->update($collection->all())` would
+  # be reported. Nothing in app/ does that today. If it ever fires that way, add a targeted
+  # `pattern-not` for that call — do not loosen the metavariable.
+  - id: orca-unfiltered-mass-assignment
+    languages: [php]
+    severity: ERROR
+    message: >-
+      A model write is being handed the caller's entire request payload. User::$fillable includes
+      'role', so on a User this assigns whatever was posted. Validate first and assign
+      $request->validated(), or list the fields explicitly. See
+      specs/features/security-invariants.md REQ-6.
+    # The write method is a metavariable rather than four spelled-out alternatives, so this covers
+    # every (method × payload-shape) combination — the same 4 × 3 grid that
+    # tests/Security/ModelInvariantsTest.php enumerates. The first version of this rule listed
+    # seven of the twelve by hand and silently missed the other five.
+    patterns:
+      - pattern-either:
+          - pattern: $MODEL->$WRITE($REQ->all())
+          - pattern: $MODEL->$WRITE(request()->all())
+          - pattern: $MODEL->$WRITE($REQ->except(...))
+      - metavariable-regex:
+          metavariable: $WRITE
+          regex: '^(fill|forceFill|update|create)$'
+
+  # ── ADR-002 / specs/features/authorization-policies.md REQ-1 ────────────────
+  #
+  # PolicyMatrixTest also detects this, by slicing the method body out of the file by line number.
+  # Expressed as a parse-tree pattern, an ability whose body is `return true;` written across two
+  # lines, or with a comment inside it, is still caught.
+  #
+  # Scoped by class name rather than by directory, so a policy placed outside app/Policies is
+  # covered too — and so the three FormRequests whose `authorize()` legitimately returns true
+  # (LoginRequest, StoreAssetRequest, UpdateAssetRequest) are not flagged.
+  - id: orca-policy-blanket-grant
+    languages: [php]
+    severity: ERROR
+    message: >-
+      This policy ability grants unconditionally. ADR-002 requires every ability to enumerate the
+      roles it allows, so that adding a role means opting it into each ability rather than
+      inheriting all of them.
+    patterns:
+      - pattern-inside: |
+          class $CLASS { ... }
+      - metavariable-regex:
+          metavariable: $CLASS
+          regex: '.*Policy$'
+      # `return 1;` is listed because PolicyMatrixTest::policyIsBlanketGrant() accepts it
+      # (`/^return (true|1);?$/i`), and this layer must not be weaker than the text scan it
+      # duplicates. `TRUE` needs no alternative — PHP keywords are case-insensitive, so the parser
+      # normalises it to the same literal.
+      - pattern-either:
+          - pattern: |
+              public function $ABILITY(...)
+              {
+                return true;
+              }
+          - pattern: |
+              public function $ABILITY(...)
+              {
+                return 1;
+              }
+
+  # ── Forward-looking: no raw SQL built from a variable ───────────────────────
+  #
+  # There are zero DB::raw calls in app/ today. This rule exists so that the first one has to be
+  # a literal, rather than being noticed after it ships.
+  - id: orca-db-raw-from-variable
+    languages: [php]
+    severity: ERROR
+    message: >-
+      DB::raw() is being given a non-literal expression. Raw SQL assembled from a variable is an
+      injection sink; use bindings, or a query-builder method, instead.
+    # The facade is a metavariable, not the literal `DB`, because Semgrep does not resolve a
+    # fully-qualified name back to its imported short form. Mutation-testing the first version of
+    # this rule found that `\Illuminate\Support\Facades\DB::raw($column)` and `\DB::raw($column)`
+    # both went unreported — and `\DB::raw()` is ordinary style inside a namespaced class with no
+    # import. The regex still pins it to the facade, so a project class that happens to be named
+    # DB (`\App\Support\DB::raw()`) is not swept up.
+    patterns:
+      - pattern: $DBFACADE::raw($EXPR)
+      - metavariable-regex:
+          metavariable: $DBFACADE
+          regex: '^\\?(Illuminate\\Support\\Facades\\)?DB$'
+      - pattern-not: $DBFACADE::raw("...")
+      - pattern-not: $DBFACADE::raw('...')

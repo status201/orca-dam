@@ -457,16 +457,23 @@ spec exists to catch:
 - **No CSRF coverage anywhere in the suite.** Laravel disables the middleware in tests, so this
   needs deliberate `withMiddleware()` handling; worth its own change rather than a partial version
   here.
-- **Static analysis now exists but analyses no PHP.** Two layers landed in
-  [static-analysis.md](static-analysis.md): Pest arch bans (which are language-level, not
-  dataflow) and CodeQL — which has **no PHP support at all**, so it covers `resources/js/` and the
-  workflow files only. The Semgrep layer, the one that would have restated four of the requirements
-  above as parse-tree rules over `app/`, was attempted and **deferred**: it could not be executed in
-  the development environment and its rule-verification step failed in CI. The design and its
-  prerequisite are recorded there. So the source-level halves of REQ-4 and REQ-6 still rest entirely
-  on the text scans in `tests/Security/Support/SourceScanner.php`, with the weakness that file's own
-  docblock records. Larastan was evaluated and declined (it buys correctness, not security, and sizes
-  at 150–1,200 findings here).
+- **The source-level halves of REQ-4 and REQ-6 are now guarded twice, and the duplication is
+  deliberate.** [static-analysis.md](static-analysis.md) REQ-5 restates four of the requirements
+  above as Semgrep parse-tree rules over `app/`, `routes/`, `database/seeders` and
+  `database/migrations` — so those invariants no longer rest solely on the text scans in
+  `tests/Security/Support/SourceScanner.php`, with the weakness that file's own docblock records. The
+  text half stays until the rules have a track record; the mutation table there asserts both catch
+  the same defect. Not yet equivalent, though: `SourceScanner` covers six creation idioms including
+  `DB::table('users')->insert(`, which has no AST counterpart.
+
+  Neither layer can follow a variable, so four `$asset->update($updates)`-shaped writes in `app/` are
+  outside both nets. That boundary is recorded there rather than here.
+
+  The other layers: Pest arch bans (language-level, not dataflow), CodeQL (**no PHP support at all**,
+  so `resources/js/` and the workflow files only), and PHPStan/Larastan — which was declined in an
+  earlier version of that spec on an unmeasured estimate of 150–1,200 findings, then measured at 41
+  and **adopted at level 2 with no baseline**. It found two real defects. This bullet previously
+  repeated the decline; it was wrong twice over, and the correction lives there.
 - **The live guest sweep in REQ-1 covers parameter-less `GET` routes only**, so `GET
   /api/assets/search` still has no direct "requires authentication" assertion — a gap
   [rest-api.md](rest-api.md) records. Parameterised routes would need per-route fixtures; the
