@@ -169,12 +169,21 @@ pin would be worse than recording none.
   default setup is enabled (REQ-2). Findings land in the repository's code-scanning dashboard, not
   in the job log — a green job means the *analysis* succeeded, not that it found nothing.
 - Layer C's first run produced a real finding, from the `actions` language rather than the
-  JavaScript: `actions/unpinned-tag` on `shivammathur/setup-php@v2`, the only third-party action in
-  the workflows. A mutable major tag is re-pointable by its owner, so a compromised upstream release
-  would execute in CI on the next run with nothing changing here. Now pinned to a full commit SHA
-  (`f3e473d…`, v2.37.2) in all four jobs. GitHub-owned actions stay on tags because they ship as
-  immutable releases, which is why the rule flagged one line and not twenty. Worth noting as the
-  concrete answer to "what does the `actions` language buy that nothing else here does".
+  JavaScript: `actions/unpinned-tag` on `shivammathur/setup-php`, the only third-party action in the
+  workflows. A mutable major tag is re-pointable by its owner, so a compromised upstream release
+  would execute in CI on the next run with nothing changing here. It is now pinned to a full commit
+  SHA in all four jobs of `tests.yml`, which owns the exact value — this spec deliberately does not
+  name it, because `.github/dependabot.yml` will change it and `spec-lint` does not check action
+  versions, so repeating it here would be a drift vector with nothing to catch it. GitHub-owned
+  actions stay on tags because they ship as immutable releases, which is why the rule flagged one
+  line and not twenty. Worth noting as the concrete answer to "what does the `actions` language buy
+  that nothing else here does".
+- Pinning traded a supply-chain risk for a staleness one, so `.github/dependabot.yml` closes it: the
+  `github-actions` ecosystem raises a weekly grouped PR and rewrites both the SHA and its trailing
+  version comment. Scoped to that ecosystem only — a composer or npm *version* bump can name a
+  version the docs also state, which fails `spec-lint` until the docs are edited, whereas action
+  versions live in no manifest. Composer and npm *security* updates arrive without any config and
+  are unaffected.
 - Advisories, in the `security` job: `composer audit --locked` and `npm audit --audit-level=high`.
   Worth noting what these caught on their first run: two Guzzle advisories
   (`CVE-2026-69245`, `CVE-2026-69246`) published hours after the local run that had reported clean,

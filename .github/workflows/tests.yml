@@ -18,8 +18,9 @@ permissions:
 # (actions/*, github/*) stay on tags — they ship as immutable releases, which is why CodeQL's
 # actions/unpinned-tag rule flags only the third-party one. That rule found this.
 #
-# The trade-off is staleness: a pinned SHA never updates itself. Bump it deliberately, or wire up
-# Dependabot's github-actions ecosystem to raise the PR.
+# The trade-off is staleness: a pinned SHA never updates itself. .github/dependabot.yml handles
+# that — its github-actions ecosystem raises a weekly grouped PR and rewrites both the SHA and the
+# trailing version comment. Merging that PR is the intended way to bump these.
 
 jobs:
   pint:

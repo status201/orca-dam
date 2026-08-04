@@ -1,0 +1,39 @@
+# Dependabot — version updates for GitHub Actions only.
+#
+# Why this file exists: `shivammathur/setup-php` is pinned to a full commit SHA in every job of
+# tests.yml, because CodeQL's actions/unpinned-tag rule flagged the mutable `@v2` tag as
+# re-pointable by its owner. Pinning closed that hole and opened a smaller one — a pinned SHA
+# never updates itself, so without this the action would sit frozen and miss its own fixes.
+# Dependabot rewrites both the SHA and its trailing `# vX.Y.Z` comment, which is what that
+# comment is for.
+#
+# It also keeps the GitHub-owned actions on tags current (actions/checkout, setup-node, cache,
+# upload-artifact, github/codeql-action). That is not incidental: the same class of update
+# cleared the Node 20 deprecation annotations, and codeql-action v3 was deprecated mid-flight.
+#
+# Scope is deliberately narrow. Composer and npm *security* updates already arrive without any
+# config file — every Dependabot PR this repo has seen so far has been an npm_and_yarn security
+# update — and adding an entry here would not change that. What an entry would add is *version*
+# updates, and those can bump a version that the docs name, which fails `npm run spec:lint`
+# until someone edits the docs. Action versions live in no manifest, so github-actions updates
+# cannot trip that rule. Widen this only with that trade-off in mind.
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    # Read relative to the repo root; this covers every file in .github/workflows/.
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      # One PR for the week's action updates rather than one per action.
+      github-actions:
+        patterns:
+          - '*'
+    open-pull-requests-limit: 3
+    commit-message:
+      # Matches the chore(...) style the history uses for dependency and CI changes, rather than
+      # the [BRACKET] prefixes CONTRIBUTING.md reserves for hand-written commits.
+      prefix: chore(ci)

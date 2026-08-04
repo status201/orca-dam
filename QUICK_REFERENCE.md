@@ -246,7 +246,7 @@ orca-dam/
 │   └── e2e/                               # Playwright specs + support/ + global.setup.js
 ├── wordpress-plugin/                      # separate release stream (wp-v* tags)
 ├── .claude/                               # agents, slash commands, hooks
-├── .github/                               # workflows: tests, sdd, codeql; issue templates
+├── .github/                               # workflows: tests, sdd, codeql; dependabot; issue templates
 ├── artisan
 ├── phpunit.xml
 ├── playwright.config.js
