@@ -1,0 +1,15 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+
+    # Level 2 adds undefined properties and methods on known types, which is where Laravel bugs
+    # actually surface. It was chosen from measurement, not feel: 0→2, 1→3, 2→41, 3→46, 4→62,
+    # 5→73, 6→351 findings. Everything at level 2 was fixed rather than baselined, so there is
+    # deliberately no phpstan-baseline.neon — see specs/features/static-analysis.md.
+    level: 2
+
+    # Kept in the project so CI can cache it; gitignored like /.phpunit.cache.
+    tmpDir: .phpstan.cache

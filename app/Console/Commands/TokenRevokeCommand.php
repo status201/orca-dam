@@ -74,8 +74,8 @@ class TokenRevokeCommand extends Command
             [
                 ['ID', $token->id],
                 ['Name', $token->name],
-                ['User', $user ? $user->name : 'N/A'],
-                ['Email', $user ? $user->email : 'N/A'],
+                ['User', $user instanceof User ? $user->name : 'N/A'],
+                ['Email', $user instanceof User ? $user->email : 'N/A'],
                 ['Created', $token->created_at->format('Y-m-d H:i')],
                 ['Last Used', $token->last_used_at ? $token->last_used_at->format('Y-m-d H:i') : 'Never'],
             ]

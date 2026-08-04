@@ -162,6 +162,15 @@ class ChunkedUploadController extends Controller
             'metadata_copyright_source' => 'nullable|string|max:500',
         ]);
 
+        // Declared before the try because the DuplicateAssetException handler below reads it, and
+        // the assignment inside the try is itself a throwing call — without this, the `?? null`
+        // there would be silently doubling as an undefined-variable guard. Deliberately *not*
+        // hoisted out of the try: firstOrFail()'s ModelNotFoundException is meant to land in the
+        // \Exception arm, and moving the query would change which handler runs. The sibling
+        // uploadChunk()/abort() methods have the same shape but never read $session from a catch,
+        // so they are left alone.
+        $session = null;
+
         try {
             $session = UploadSession::where('session_token', $request->session_token)
                 ->where('user_id', Auth::id())
@@ -191,7 +200,7 @@ class ChunkedUploadController extends Controller
         } catch (DuplicateAssetException $e) {
             return response()->json([
                 'message' => __('Duplicate file detected. This file already exists in the library.'),
-                'duplicates' => [DuplicateAssetException::formatDuplicate($e->existingAsset, $session->filename ?? null)],
+                'duplicates' => [DuplicateAssetException::formatDuplicate($e->existingAsset, $session?->filename)],
             ], 409);
 
         } catch (\Exception $e) {

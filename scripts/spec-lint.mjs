@@ -203,6 +203,10 @@ const ALIASES = [
   ['PHPUnit', 'phpunit/phpunit'],
   ['Pest', 'pestphp/pest'],
   ['Intervention Image', 'intervention/image'],
+  // Without this, prose saying "Larastan 3.x" is matched by nothing and drifts silently — the
+  // bare word is neither an alias nor a package name, and only `larastan/larastan` would be
+  // checked. Same reasoning as every other entry here.
+  ['Larastan', 'larastan/larastan'],
 ];
 
 function readJson(file) {

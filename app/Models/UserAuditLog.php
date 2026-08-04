@@ -41,12 +41,14 @@ class UserAuditLog extends Model
     ];
 
     /** The account that was changed. Null once that account is deleted. */
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /** Who made the change. Null for console/system writes. */
+    /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');

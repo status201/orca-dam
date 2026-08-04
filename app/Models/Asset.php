@@ -60,6 +60,8 @@ class Asset extends Model
 
     /**
      * Get the user who uploaded this asset
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -68,6 +70,8 @@ class Asset extends Model
 
     /**
      * Get the user who last modified this asset
+     *
+     * @return BelongsTo<User, $this>
      */
     public function modifier(): BelongsTo
     {
@@ -76,6 +80,8 @@ class Asset extends Model
 
     /**
      * The asset this one was derived from (e.g. the .tex template that produced this render).
+     *
+     * @return BelongsTo<Asset, $this>
      */
     public function parent(): BelongsTo
     {
@@ -84,6 +90,8 @@ class Asset extends Model
 
     /**
      * Assets derived from this one.
+     *
+     * @return HasMany<Asset, $this>
      */
     public function children(): HasMany
     {
@@ -100,6 +108,8 @@ class Asset extends Model
 
     /**
      * Get all tags for this asset
+     *
+     * @return BelongsToMany<Tag, $this>
      */
     public function tags(): BelongsToMany
     {
@@ -128,6 +138,8 @@ class Asset extends Model
 
     /**
      * Get only user-created tags
+     *
+     * @return BelongsToMany<Tag, $this>
      */
     public function userTags(): BelongsToMany
     {
@@ -136,6 +148,8 @@ class Asset extends Model
 
     /**
      * Get only AI-generated tags
+     *
+     * @return BelongsToMany<Tag, $this>
      */
     public function aiTags(): BelongsToMany
     {
@@ -144,6 +158,8 @@ class Asset extends Model
 
     /**
      * Get only reference tags
+     *
+     * @return BelongsToMany<Tag, $this>
      */
     public function referenceTags(): BelongsToMany
     {

@@ -386,15 +386,27 @@ class TestRunnerService
     }
 
     /**
-     * Find the PHP CLI binary path.
-     * PHP_BINARY might point to php-fpm which can't run CLI commands.
-     * Configure via .env: PHP_CLI_PATH=/usr/bin/php8.2
-     * On Plesk: PHP_CLI_PATH=/opt/plesk/php/8.2/bin/php
+     * Find the PHP CLI binary path — see specs/features/system-admin.md REQ-6.
+     *
+     * PHP_BINARY might point to php-fpm or CGI, neither of which can run CLI commands, so an
+     * operator can override it with PHP_CLI_PATH in .env (on Plesk, typically
+     * /opt/plesk/php/8.2/bin/php).
+     *
+     * That override is read through config, never env(). It previously read
+     * `config('app.php_cli_path') ?: env('PHP_CLI_PATH')`, where the config key was never
+     * defined in config/app.php — so it was always null — and env() returns null once
+     * `config:cache` has run, which DEPLOYMENT.md does. The `config:clear` at the top of
+     * runStreaming() does not rescue it either: clearing the compiled file does not repopulate
+     * $_ENV in an already-booted process. The escape hatch was shut in exactly the deployment
+     * that needs it.
+     *
+     * The cast matters too: config() returns mixed, and a truthiness check does not narrow it —
+     * `1`, `true` and `['x']` all pass `if ($x)` while violating the declared return type.
      */
     private function findPhpCliBinary(): string
     {
-        $configuredPath = config('app.php_cli_path') ?: env('PHP_CLI_PATH');
-        if ($configuredPath) {
+        $configuredPath = config('orca.php_cli_path');
+        if (is_string($configuredPath) && $configuredPath !== '') {
             return $configuredPath;
         }
 

@@ -170,6 +170,13 @@ class ChunkedUploadService
 
     /**
      * Complete the multipart upload and create Asset
+     *
+     * The @throws is load-bearing, not decoration: ChunkedUploadController::complete() catches
+     * DuplicateAssetException specifically, and without this declaration static analysis concludes
+     * nothing in that try block can throw it — so it treats the handler as reachable only from
+     * before the UploadSession lookup, and every read of $session there as a read of null.
+     *
+     * @throws DuplicateAssetException when an asset with the same etag already exists
      */
     public function completeUpload(UploadSession $session): Asset
     {

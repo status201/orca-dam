@@ -52,7 +52,9 @@ class TokenListCommand extends Command
         // Filter by role after fetching (since role is on User, not token)
         if ($role) {
             $tokens = $tokens->filter(function ($token) use ($role) {
-                return $token->tokenable && $token->tokenable->role === $role;
+                $owner = $token->tokenable;
+
+                return $owner instanceof User && $owner->role === $role;
             });
         }
 
@@ -70,9 +72,9 @@ class TokenListCommand extends Command
             return [
                 'ID' => $token->id,
                 'Name' => $token->name,
-                'User' => $user ? $user->name : 'N/A',
-                'Email' => $user ? $user->email : 'N/A',
-                'Role' => $user ? $user->role : 'N/A',
+                'User' => $user instanceof User ? $user->name : 'N/A',
+                'Email' => $user instanceof User ? $user->email : 'N/A',
+                'Role' => $user instanceof User ? $user->role : 'N/A',
                 'Created' => $token->created_at->format('Y-m-d H:i'),
                 'Last Used' => $token->last_used_at ? $token->last_used_at->format('Y-m-d H:i') : 'Never',
             ];

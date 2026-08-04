@@ -3,7 +3,7 @@
 ```yaml
 id: static-analysis
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -11,6 +11,7 @@ related:
   - authorization-policies
   - authentication
 source:
+  - phpstan.neon
   - tests/Security/ArchitectureTest.php
   - .github/workflows/codeql.yml
   - .github/workflows/tests.yml
@@ -28,7 +29,7 @@ browser harness rather than any particular behaviour.
 a taint flow. The audits in [security-invariants.md](security-invariants.md) are what catch that
 shape of defect. Static analysis is a floor, not a replacement.
 
-**Two layers are implemented; the third is designed and deferred.** Semgrep — custom rules that
+**Three layers are implemented; one is designed and deferred.** Semgrep — custom rules that
 would restate ORCA's invariants as parse-tree patterns instead of the text matching
 `tests/Security/Support/SourceScanner.php` relies on — was written, fixtured and pushed, and its
 rule-verification step failed on the first CI run. Nothing in the development environment can
@@ -37,11 +38,25 @@ iteration against CI. The rules were **removed** rather than left failing or mad
 the design is preserved under Open questions so the next attempt does not start from scratch. That
 is the honest state: the layer with the most security value here is the one not yet in place.
 
-Larastan was evaluated and **declined**. With `declare(strict_types=1)` at 0 of 116 files in `app/`,
-99 bare `array`/`?array` return types, 113 methods with no return type and 135 `$request->input()`
-call sites returning `mixed`, a useful level lands somewhere between 150 and 1,200 findings. That is
-a baseline-management project, and it buys correctness rather than security. Revisit separately; do
-not smuggle it in here.
+**Larastan was declined in version 1 of this spec, on an estimate that turned out to be wrong.**
+That estimate — "a useful level lands somewhere between 150 and 1,200 findings", inferred from
+`declare(strict_types=1)` at 0 of 116 files, 99 bare `array` return types and 135
+`$request->input()` call sites — was never measured. When it was, it was out by 3–4×:
+
+| Level | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|---|
+| Findings | 2 | 3 | **41** | 46 | 62 | 73 | 351 |
+
+`larastan/larastan` v3.10.0 resolves against this project's Laravel 13 and PHP 8.3+ constraints —
+the compatibility gate that
+was assumed to be the blocker — and adds three packages. **Level 2 is adopted, with no baseline**:
+all 41 findings were resolved rather than recorded. The ladder is kept above so a future raise
+starts from data rather than another estimate.
+
+Two things the count concealed, and the reason a count alone was a bad basis for the decision.
+First, the findings were **concentrated**: 34 of the 41 traced to 14 relation methods carrying no
+PHPStan generics, so the fix was roughly a dozen high-leverage docblocks rather than 41 independent
+edits. Second, among them were **real defects** — see REQ-4.
 
 ## Requirements
 
@@ -72,6 +87,39 @@ not smuggle it in here.
   or carries an explicit commented exemption naming the reason. When a check cannot be made to pass
   honestly it is removed rather than neutered — which is what happened to the Semgrep job.
 
+- **REQ-4** — **PHPStan (Larastan) runs at level 2 over `app/`, with nothing suppressed.** No
+  `phpstan-baseline.neon`, no `@phpstan-ignore` comments, no `ignoreErrors` entries: the gate is
+  zero-or-fail, so a new finding cannot be absorbed silently. Version 1 of this spec pre-committed
+  to a baseline as a prerequisite for adoption; that is deliberately **not** what happened, because
+  the measured count made it unnecessary and a baseline tends to become permanent.
+
+  Level 2 is the level that catches undefined properties and methods, which is where Laravel bugs
+  surface. Scope is `app/` because that is what was measured; `tests/`, `routes/` and `database/`
+  are unmeasured and out of scope. `tmpDir` is project-local so CI can cache it.
+
+  It found **two real defects**, both invisible to every other layer here:
+
+  - `TestRunnerService::findPhpCliBinary()` read its override as
+    `config('app.php_cli_path') ?: env('PHP_CLI_PATH')` — a config key that was never defined, and
+    an `env()` call that returns null once `config:cache` has run. Fixed under
+    [system-admin.md](system-admin.md) REQ-6, which did not exist before this.
+  - `ChunkedUploadService::completeUpload()` threw `DuplicateAssetException` **without declaring
+    it**, and `ChunkedUploadController::complete()` catches exactly that. With no `@throws`, static
+    analysis concluded the handler was reachable only from before the `UploadSession` lookup and
+    every read of `$session` there was a read of `null` — which is what the missing declaration
+    actually meant. There was no `@throws DuplicateAssetException` anywhere in `app/`.
+
+  Two tool limitations are worth recording, because the remedies look redundant otherwise.
+  Larastan resolves model property types from the `$casts` **property** and falls back to the
+  migration's column type; this codebase declares casts in the newer `casts()` **method**
+  form, which it does not read — so `preferences` read as `string` (its `json` column) and every
+  `datetime` cast read as `string`. Hence the `@property` block on `User`. And the
+  `laravel/passkeys` package annotates its own `$user` as the `PasskeyUser` *interface*, which is
+  narrowed in `App\Models\Passkey` rather than at each of the five call sites.
+
+  Narrowing uses `instanceof` or `@var`, never `assert()` — REQ-1 bans that function, so the
+  usual PHPStan idiom is unavailable here.
+
 ## Technical design
 
 ### Contract / public interface
@@ -86,6 +134,14 @@ layer_a_arch:
 layer_b_semgrep:
   status: deferred                    # see Open questions for the design and why
   reason: cannot be executed or verified in the development environment
+
+layer_d_phpstan:
+  file: phpstan.neon
+  package: larastan/larastan          # + phpstan/phpstan, iamcal/sql-parser
+  level: 2
+  paths: [app]
+  baseline: none                      # 41 findings resolved, not recorded
+  ci_job: phpstan                     # cloned from pint: no node, no build, no app key
 
 layer_c_codeql:
   file: .github/workflows/codeql.yml
@@ -153,9 +209,25 @@ Scenario: A policy placed outside app/Policies is still a policy
 # pinned by: tests/Security/ArchitectureTest.php
 ```
 
+```gherkin
+Scenario: A config override read with env() fails the analysis (REQ-4)
+  Given production code outside config/
+  When it calls env()
+  Then PHPStan fails, because env() returns null once config:cache has run
+# pinned by: tests/Unit/TestRunnerServiceTest.php
+
+Scenario: The web test runner honours a configured PHP CLI path (REQ-4, system-admin.md REQ-6)
+  Given orca.php_cli_path is set to an absolute binary path
+  When findPhpCliBinary() runs
+  Then it returns that path
+  And with the key unset it never consults the environment
+# pinned by: tests/Unit/TestRunnerServiceTest.php
+```
+
 CodeQL has no Pest test and is deliberately not pinned to one — it is a CI workflow whose results
 land in the repository's code-scanning dashboard rather than in a job log. Recording a fabricated
-pin would be worse than recording none.
+pin would be worse than recording none. PHPStan is the same: its gate is the `phpstan` CI job, and
+the scenarios above are pinned to the tests that cover the *defects it found*, not to the analyser.
 
 ## Tests & verification
 
@@ -184,6 +256,20 @@ pin would be worse than recording none.
   version the docs also state, which fails `spec-lint` until the docs are edited, whereas action
   versions live in no manifest. Composer and npm *security* updates arrive without any config and
   are unaffected.
+- Layer D: `vendor/bin/phpstan analyse` — level 2 over `app/`, **0 errors, no baseline**. Runs as
+  the `phpstan` CI job. Reaching zero took 41 → 35 → 23 → 1 → 0: the `@property` block on `User`,
+  generics on 14 relation methods, `instanceof` narrowing for Sanctum's `MorphTo` tokenable, a
+  narrowed `$user` on `App\Models\Passkey`, `getAttribute()` for a joined column on `GameScore`, and
+  the two real defects in REQ-4.
+- Layer D found its own next finding mid-fix, which is worth recording: initialising `$session = null`
+  in `ChunkedUploadController::complete()` cleared the original error and surfaced a new one, because
+  the analyser could then see the variable was null on the path it thought reached the handler. That
+  is what led to the missing `@throws` — the count rising before it fell was the useful signal, not
+  noise.
+- Layer D mutation check: reverting `findPhpCliBinary()` to
+  `config('app.php_cli_path') ?: env('PHP_CLI_PATH')` makes PHPStan fail on the `env()` call **and**
+  fails two tests in `tests/Unit/TestRunnerServiceTest.php`, including the one that pins "read from
+  config, not from the environment". Both nets fire independently.
 - Advisories, in the `security` job: `composer audit --locked` and `npm audit --audit-level=high`.
   Worth noting what these caught on their first run: two Guzzle advisories
   (`CVE-2026-69245`, `CVE-2026-69246`) published hours after the local run that had reported clean,
@@ -232,8 +318,17 @@ pin would be worse than recording none.
   not taint — nothing traces a request value through a service into a query. Psalm's taint analysis
   is the only realistic OSS option for PHP and was not evaluated.
 
-- **Larastan remains declined**, with the sizing in Background. If it is ever adopted, a
-  `phpstan-baseline.neon` and a `.gitignore` entry for its cache directory are prerequisites.
+- **PHPStan's scope is `app/` only.** `tests/`, `routes/`, `database/` and `config/` are
+  unanalysed — unmeasured, so out of scope rather than assumed cheap. Raising the level is the
+  other axis: the ladder in Background gives 46 at level 3 and 73 at level 5, so the next step up
+  is a known quantity rather than a guess. Level 6 (351) is where the iterable-generics tax lands
+  and would need a different decision about baselines.
+- **`@property` on `User` and the shape-typed `$pivot` on `Tag` describe the model to the analyser,
+  not to the reader.** Both work around tool limitations (the `casts()` method form; a pivot with
+  no pivot model). The `Tag` one is deliberately a shape rather than a `->using()` pivot class,
+  because introducing one would change how attribution rows are hydrated at runtime — a type fix
+  should not alter behaviour [tags.md](tags.md) pins. If a pivot model is ever added for other
+  reasons, that annotation should go.
 
 - **CodeQL cannot pass until default setup is switched off** (REQ-2). Until then the job is red for
   a configuration reason rather than a code one, which is exactly the kind of ambiguity REQ-3 exists

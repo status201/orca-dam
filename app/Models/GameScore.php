@@ -13,6 +13,7 @@ class GameScore extends Model
 
     protected $fillable = ['user_id', 'score'];
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -32,8 +33,11 @@ class GameScore extends Model
             ->orderByDesc('score')
             ->limit($limit)
             ->get()
+            // `name` comes from the joined users table via selectRaw, not from game_scores, so it
+            // is read with getAttribute() rather than as a property — declaring a @property for a
+            // column this model only has inside this one query would misdescribe the model.
             ->map(fn ($row) => [
-                'name' => $row->name,
+                'name' => $row->getAttribute('name'),
                 'score' => (int) $row->score,
             ]);
     }

@@ -45,6 +45,22 @@ three narrow services, gated entirely by `SystemPolicy::access` (admin only, see
   underlying PHP CLI subprocess.
 - **REQ-5** — Test-run progress/results live only in cache
   (`TestRunnerService::CACHE_PREFIX`, 1h TTL) — nothing is persisted to the DB.
+- **REQ-6** — **The PHP CLI binary is resolved through config, never `env()`.**
+  `PHP_BINARY` can point at php-fpm or CGI, which cannot run `artisan test`, so an operator
+  must be able to override it — `PHP_CLI_PATH` in `.env`, surfaced as
+  `config('orca.php_cli_path')`. `findPhpCliBinary()` reads **only** that config key and casts
+  the result to `string`; failing that it uses `PHP_BINARY` unless the path contains `fpm` or
+  `cgi`, and finally bare `php` on `getExtendedPath()`.
+
+  Reading it with `env()` is the bug this requirement exists to prevent. `DEPLOYMENT.md` runs
+  `php artisan config:cache`, after which `env()` returns `null` — and the
+  `Artisan::call('config:clear')` at the top of `runStreaming()` does not save it, because
+  clearing the compiled file does not repopulate `$_ENV` in an already-booted process. The
+  override was therefore inert in exactly the environment that needs it (Plesk), while the
+  companion `config('app.php_cli_path')` read a key that was never defined in `config/app.php`
+  and so was always null. Same failure mode as
+  [security-invariants.md](security-invariants.md) REQ-9's seeder credentials, and the reason
+  `config/orca.php` exists.
 
 ## Technical design
 

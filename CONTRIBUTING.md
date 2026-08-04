@@ -57,11 +57,19 @@ Browser-level behaviour is pinned by the feature spec that owns it, never by
 
 ```bash
 ./vendor/bin/pint                                    # Code style (Laravel Pint)
+./vendor/bin/phpstan analyse                         # Static analysis (Larastan, level 2)
 php artisan config:clear && php artisan test        # Full Pest suite
 ```
 
-Both must pass. If a pre-commit hook fails, fix the underlying issue — do not
+All three must pass. If a pre-commit hook fails, fix the underlying issue — do not
 bypass with `--no-verify`.
+
+PHPStan runs at **level 2 over `app/` with no baseline**, so it is zero-or-fail: there is no
+`phpstan-baseline.neon`, and findings are not to be silenced with `@phpstan-ignore` comments or
+`ignoreErrors` entries. If a finding is a genuine tool limitation rather than a defect, fix it with
+a type annotation that says something true about the code — `@property` on the model, generics on
+the relation — and note why. Narrow with `instanceof` or `@var`, never `assert()`: the architecture
+audit bans that function.
 
 The full suite includes the `Security` suite — route/policy/source invariants, exploit probes and
 the architecture bans ([`specs/features/security-invariants.md`](specs/features/security-invariants.md),
@@ -78,9 +86,10 @@ ability, a controller or a runtime setting can fail a test you did not touch** �
 guard it, or to add it to that file's allowlist with a reason. And each audit carries a *canary*
 that mutates the app at runtime to prove the audit still fires; those are meant to be there.
 
-CodeQL runs only in CI, over `resources/js/` and the workflow files — it has no PHP support, so it
-analyses none of the backend. See [`specs/features/static-analysis.md`](specs/features/static-analysis.md)
-for what each layer does and does not cover.
+CodeQL runs only in CI, over `resources/js/` and the workflow files — it has no PHP support, so the
+backend is covered by PHPStan above and by the architecture bans in the `Security` suite. See
+[`specs/features/static-analysis.md`](specs/features/static-analysis.md) for what each layer does
+and does not cover.
 
 If you touched Blade views or anything under `resources/js/`, also run the browser
 suite — it is a blocking CI job:

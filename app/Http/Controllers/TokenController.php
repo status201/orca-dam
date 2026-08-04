@@ -21,15 +21,18 @@ class TokenController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($token) {
+                // Sanctum's tokenable() is a MorphTo, so it is typed as a bare Model. Only User
+                // uses HasApiTokens here, so the instanceof both narrows it for static analysis
+                // and keeps the existing "N/A" fallback for a token with no owner.
                 $user = $token->tokenable;
 
                 return [
                     'id' => $token->id,
                     'name' => $token->name,
-                    'user_name' => $user ? $user->name : 'N/A',
-                    'user_email' => $user ? $user->email : 'N/A',
-                    'user_role' => $user ? $user->role : 'N/A',
-                    'user_id' => $user ? $user->id : null,
+                    'user_name' => $user instanceof User ? $user->name : 'N/A',
+                    'user_email' => $user instanceof User ? $user->email : 'N/A',
+                    'user_role' => $user instanceof User ? $user->role : 'N/A',
+                    'user_id' => $user instanceof User ? $user->id : null,
                     'created_at' => $token->created_at->format('Y-m-d H:i'),
                     'last_used_at' => $token->last_used_at ? $token->last_used_at->format('Y-m-d H:i') : null,
                 ];

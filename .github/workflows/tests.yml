@@ -46,6 +46,32 @@ jobs:
       - name: Check code style
         run: ./vendor/bin/pint --test
 
+  # Static analysis of the PHP that actually runs — see specs/features/static-analysis.md.
+  # Cloned from the pint job, not phpunit: PHPStan needs the autoloader and nothing else, so no
+  # node, no asset build and no app key. Level 2 with no baseline, so this is 0-or-fail.
+  phpstan:
+    name: PHPStan (Larastan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.4'
+          tools: composer
+          coverage: none
+      # bootstrap/cache is gitignored, so it's absent on a fresh checkout;
+      # composer's post-autoload-dump (package:discover) needs it to exist.
+      - name: Create runtime directories
+        run: mkdir -p bootstrap/cache
+      # package:discover boots the app, which reads AWS_* config; without .env
+      # those are null and S3Service's typed string props fail to construct.
+      - name: Copy environment file
+        run: cp .env.example .env
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+      - name: Analyse
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
   phpunit:
     name: PHPUnit
     runs-on: ubuntu-latest

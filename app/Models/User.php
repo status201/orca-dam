@@ -8,10 +8,31 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Passkeys\Contracts\PasskeyUser;
 use Laravel\Passkeys\PasskeyAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * Attribute types for static analysis.
+ *
+ * These are not decoration. Larastan resolves model property types from the `$casts` *property*
+ * and falls back to the migration's column type when it cannot find one — and this model declares
+ * its casts in the Laravel 11+ `casts()` **method** form, which it does not read. So without these,
+ * `preferences` reads as the migration's `json` column (`string`, hence "cannot unset offset on
+ * string") and every `datetime` cast reads as `string` (hence "cannot call format() on string").
+ * Annotating here fixes every consumer at once; annotating at the call sites would not.
+ *
+ * @property array<string, mixed>|null $preferences
+ * @property Carbon|null $email_verified_at
+ * @property Carbon|null $jwt_secret_generated_at
+ * @property Carbon|null $two_factor_confirmed_at
+ * @property Carbon|null $last_login_at
+ * @property Carbon|null $last_passkey_used_at
+ * @property string|null $jwt_secret
+ * @property string|null $two_factor_secret
+ * @property array<int, string>|null $two_factor_recovery_codes
+ */
 class User extends Authenticatable implements PasskeyUser
 {
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable;
@@ -76,6 +97,8 @@ class User extends Authenticatable implements PasskeyUser
 
     /**
      * Get all assets uploaded by this user
+     *
+     * @return HasMany<Asset, $this>
      */
     public function assets(): HasMany
     {

@@ -6,6 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * The `asset_tag` pivot row, populated only when the tag was hydrated through one of Asset's
+ * tag relations (`tags`, `userTags`, `aiTags`, `referenceTags`). `attached_by` carries the
+ * "last attacher wins" attribution described in tags.md.
+ *
+ * Declared as a shape rather than by introducing a `->using()` pivot model on purpose: a pivot
+ * class would change how attribution rows are hydrated and written at runtime, and a type fix
+ * has no business altering behaviour the spec pins.
+ *
+ * @property-read object{attached_by: string}|null $pivot
+ */
 class Tag extends Model
 {
     use HasFactory;
@@ -26,6 +37,8 @@ class Tag extends Model
 
     /**
      * Get all assets with this tag
+     *
+     * @return BelongsToMany<Asset, $this>
      */
     public function assets(): BelongsToMany
     {

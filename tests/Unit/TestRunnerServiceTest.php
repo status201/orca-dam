@@ -20,6 +20,66 @@ function invokeToUtf8(string $input): string
     return $method->invoke($service, $input);
 }
 
+function invokeFindPhpCliBinary(): string
+{
+    $service = new TestRunnerService;
+    $method = new ReflectionMethod(TestRunnerService::class, 'findPhpCliBinary');
+    $method->setAccessible(true);
+
+    return $method->invoke($service);
+}
+
+// ─── findPhpCliBinary() ──────────────────────────────────────────────────────
+//
+// specs/features/system-admin.md REQ-6. This had no coverage at all, which is how it went
+// unnoticed that the override was read as `config('app.php_cli_path') ?: env('PHP_CLI_PATH')` —
+// a config key that was never defined, falling back to an env() call that returns null once
+// `config:cache` has run. The override was inert in the only deployment that needs it.
+
+test('a configured CLI path wins over PHP_BINARY', function () {
+    config(['orca.php_cli_path' => '/opt/plesk/php/8.2/bin/php']);
+
+    expect(invokeFindPhpCliBinary())->toBe('/opt/plesk/php/8.2/bin/php');
+});
+
+test('the CLI path is read from config, not from the environment', function () {
+    // The regression this pins: with the config key unset, an env var must NOT be consulted,
+    // because after `config:cache` it would be null anyway and the old code silently relied on it.
+    config(['orca.php_cli_path' => null]);
+    putenv('PHP_CLI_PATH=/from/env/php');
+
+    try {
+        expect(invokeFindPhpCliBinary())->not->toBe('/from/env/php');
+    } finally {
+        putenv('PHP_CLI_PATH');
+    }
+});
+
+test('a non-string configured value is ignored rather than returned', function () {
+    // config() returns mixed and `if ($x)` does not narrow it — 1, true and ['x'] all pass a
+    // truthiness check while violating the declared string return type.
+    config(['orca.php_cli_path' => true]);
+
+    expect(invokeFindPhpCliBinary())->toBeString();
+})->with([true, 1, ['x']]);
+
+test('an empty configured value falls through to PHP_BINARY', function () {
+    config(['orca.php_cli_path' => '']);
+
+    expect(invokeFindPhpCliBinary())->not->toBe('');
+});
+
+test('with nothing configured it resolves a usable binary', function () {
+    config(['orca.php_cli_path' => null]);
+
+    $binary = invokeFindPhpCliBinary();
+
+    // Either PHP_BINARY itself, or bare 'php' when PHP_BINARY looks like fpm/cgi. Both are
+    // strings and neither is an fpm/cgi path, which is the property that matters.
+    expect($binary)->toBeString()->not->toBeEmpty();
+    expect(str_contains($binary, 'fpm') || str_contains($binary, 'cgi'))->toBeFalse();
+});
+
 // ─── toUtf8() ────────────────────────────────────────────────────────────────
 
 test('toUtf8 scrubs truncated multi-byte sequence so json_encode succeeds', function () {

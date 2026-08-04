@@ -29,4 +29,27 @@ return [
         'password' => env('ORCA_ADMIN_PASSWORD'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | PHP CLI binary
+    |--------------------------------------------------------------------------
+    |
+    | Absolute path to a PHP *CLI* binary, for the web test runner
+    | (app/Services/TestRunnerService.php) — see
+    | specs/features/system-admin.md REQ-6. Null means "work it out from
+    | PHP_BINARY", which is right almost everywhere.
+    |
+    | It exists because PHP_BINARY under a web request can point at php-fpm or
+    | CGI, neither of which can run `artisan test`. On Plesk, for example:
+    | PHP_CLI_PATH=/opt/plesk/php/8.2/bin/php
+    |
+    | Same reason as the block above for living in config rather than being read
+    | with env() at the call site: `config:cache` makes env() return null, and
+    | the service used to read it that way — so the override was inert in
+    | precisely the deployment that needs it.
+    |
+    */
+
+    'php_cli_path' => env('PHP_CLI_PATH'),
+
 ];
