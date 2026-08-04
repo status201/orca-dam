@@ -86,12 +86,29 @@ through `S3Service`. The reasoning and the rejected alternatives are in
   run the other ~95% of the suite. Under `CI` the absence of an endpoint is a hard
   error instead: a MinIO that failed to start must fail the job, not quietly skip
   the storage coverage.
+
+  The `AWS_ENDPOINT` read out of `.env.e2e` is validated before it is probed: the
+  protocol must be `http`/`https` and the host must be `127.0.0.1` or `localhost`,
+  and the origin the probe fetches is rebuilt from those allowlisted literals rather
+  than from the parsed text. A malformed or non-loopback value counts as "no
+  endpoint", so it skips locally and fails the job in CI. `E2E_S3_ENDPOINT` is the
+  deliberate exception and is used as given — it is the escape hatch for a remote
+  MinIO or a tunnel, and an environment variable is not file data. This came from
+  CodeQL's `js/file-access-to-http` (see
+  [static-analysis.md](static-analysis.md) REQ-2), which was reporting a real
+  dataflow from `readFileSync` into `fetch`; the committed `.env.e2e` made it
+  harmless, but a probe that fetches whatever host a config file names was worth
+  tightening regardless.
 - **REQ-9** — Workers are serialized (`workers: 1`). The whole suite shares one
   SQLite file and one bucket; parallel workers would interleave reseeds.
-- **REQ-10** — CI runs the suite as a **blocking** job on every PR that touches
-  anything outside `wordpress-plugin/**` (`.github/workflows/tests.yml` → `e2e`),
-  with `retries: 2` and the HTML report + traces uploaded as an artifact on
-  failure.
+- **REQ-10** — CI runs the suite as a **blocking** job on **every** PR
+  (`.github/workflows/tests.yml` → `e2e`), with `retries: 2` and the HTML report +
+  traces uploaded as an artifact on failure. The `pull_request` trigger carries no
+  path filter, deliberately: branch protection requires this job by name, and a
+  required check from a workflow that does not run never reports, so a
+  `wordpress-plugin/**`-only PR would block forever waiting for it. The filter is
+  kept on the `push` trigger, where nothing is gated. The cost is a few wasted
+  minutes on the rare plugin-only PR.
 - **REQ-11** — The browser is **network-isolated**: the `page` fixture aborts every
   request whose host is neither the app nor the bucket. The layouts load Font
   Awesome from cdnjs and the Figtree webfont from fonts.bunny.net, which otherwise
