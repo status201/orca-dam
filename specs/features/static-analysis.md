@@ -335,12 +335,28 @@ fabrication this method warns against.
   JavaScript: `actions/unpinned-tag` on `shivammathur/setup-php`, the only third-party action in the
   workflows. A mutable major tag is re-pointable by its owner, so a compromised upstream release
   would execute in CI on the next run with nothing changing here. It is now pinned to a full commit
-  SHA in all four jobs of `tests.yml`, which owns the exact value — this spec deliberately does not
-  name it, because `.github/dependabot.yml` will change it and `spec-lint` does not check action
-  versions, so repeating it here would be a drift vector with nothing to catch it. GitHub-owned
+  SHA in every job of `tests.yml` that sets up PHP, which owns the exact value — this spec
+  deliberately names neither the SHA nor a job count, because `.github/dependabot.yml` will change
+  the one and adding a job changes the other, and `spec-lint` checks neither: both would be drift
+  vectors with nothing to catch them. (It said "all four jobs" until the fifth was added.) GitHub-owned
   actions stay on tags because they ship as immutable releases, which is why the rule flagged one
   line and not twenty. Worth noting as the concrete answer to "what does the `actions` language buy
   that nothing else here does".
+- Layer C's `javascript-typescript` findings, all now resolved, and worth listing because the split
+  between them is the useful part. **Three were real defects in shipped code**: missing origin
+  verification in the `postMessage` handlers of the three TikZ tool modules, where any window could
+  deliver a payload that reached an `<img src>` — fixed under
+  [client-side-tools.md](client-side-tools.md) REQ-7. **Two were in the E2E harness**, where the
+  threat model is different but both were still worth fixing rather than dismissing: a
+  file-system race in `reseed()` (an `existsSync`/open pair, replaced by opening with `'a'`), and
+  `js/file-access-to-http` — `.env.e2e`'s `AWS_ENDPOINT` flowing from `readFileSync` into `fetch`,
+  now validated against a loopback allowlist per [e2e-testing.md](e2e-testing.md) REQ-8. Neither
+  harness finding was exploitable: both files are committed, so editing them requires the access that
+  editing the code beside them would. They were fixed because the rules were pointing at genuinely
+  sloppy code, and because dismissing an alert puts the reasoning in a dashboard instead of in git.
+  Note GitHub code scanning does **not** honour inline suppression comments, so "fix it or dismiss it
+  in the UI" are the only two options — there is no in-code exemption of the kind REQ-3 allows
+  elsewhere, which tilts the choice towards fixing.
 - Pinning traded a supply-chain risk for a staleness one, so `.github/dependabot.yml` closes it: the
   `github-actions` ecosystem raises a weekly grouped PR and rewrites both the SHA and its trailing
   version comment. Scoped to that ecosystem only — a composer or npm *version* bump can name a

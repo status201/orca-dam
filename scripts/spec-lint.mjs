@@ -597,6 +597,15 @@ function checkCounts(errors, docFiles) {
     rule(/(\d+)\s+files:\s*`tests\/Feature\//, testFiles, '*Test.php files under tests/'),
     rule(/(\d+)\s+tests,\s*(?:in-memory SQLite|\d+ files)/, null, 'Pest tests (not auto-countable)'),
     rule(/(\d+)\s+tests across (\d+) spec files/, e2e && e2e.tests, 'Playwright tests'),
+    // Same lesson as the commands rule above: one phrasing is never all of them. This one is why
+    // QUICK_REFERENCE.md sat at "127 Playwright tests" while e2e-testing.md and architecture.md both
+    // said 130 — the pair matched "N tests across M spec files" and nothing else, so the count that
+    // drifted was the count nobody was checking.
+    rule(/(\d+)\s+Playwright tests/, e2e && e2e.tests, 'Playwright tests'),
+    // "spec files" means E2E spec files throughout these docs; the markdown ones are always called
+    // "feature specs" (see the rule above). Keep that distinction if you add a phrasing. This also
+    // covers the trailing count in "N tests across M spec files", which used to need its own block.
+    rule(/(\d+)\s+spec files/, e2e && e2e.files, 'spec files in tests/e2e/'),
   ];
 
   for (const file of docFiles) {
@@ -610,11 +619,6 @@ function checkCounts(errors, docFiles) {
         if (m && Number(m[1]) !== actual) {
           errors.push(`${at}: ${m[1]} documented, the tree has ${actual} ${what}`);
         }
-      }
-      // "N tests across M spec files" also states the file count.
-      const m = line.match(/\d+\s+tests across (\d+) spec files/);
-      if (m && e2e && Number(m[1]) !== e2e.files) {
-        errors.push(`${at}: ${m[1]} E2E spec files documented, tests/e2e/ has ${e2e.files}`);
       }
     });
   }
