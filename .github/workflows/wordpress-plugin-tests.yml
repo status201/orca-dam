@@ -34,7 +34,10 @@ jobs:
         run: ./vendor/bin/phpunit
 
   e2e:
-    name: Playwright E2E
+    # Suffixed because .github/workflows/tests.yml has a job named `Playwright E2E` too, and branch
+    # protection matches required checks by job name — two workflows sharing one name makes the
+    # required context ambiguous.
+    name: Playwright E2E (WP plugin)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

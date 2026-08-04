@@ -137,6 +137,9 @@ npm run test:e2e                               # 130 Playwright tests against a 
 npm run spec:lint                              # spec structure + documented facts
 ```
 
+Semgrep runs the custom rules in `.semgrep/orca.yml` as its own CI job. It needs Python, so it is
+not a required local dependency — see [CONTRIBUTING.md](CONTRIBUTING.md) if you want it locally.
+
 Always `config:clear` first: a stale `bootstrap/cache/config.php` can point
 `RefreshDatabase` at the development database. Admins can also run the Pest suite from
 the browser via **System → Tests**. Full command set and the E2E prerequisites (MinIO,

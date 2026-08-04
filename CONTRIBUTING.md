@@ -86,10 +86,20 @@ ability, a controller or a runtime setting can fail a test you did not touch** �
 guard it, or to add it to that file's allowlist with a reason. And each audit carries a *canary*
 that mutates the app at runtime to prove the audit still fires; those are meant to be there.
 
-CodeQL runs only in CI, over `resources/js/` and the workflow files — it has no PHP support, so the
-backend is covered by PHPStan above and by the architecture bans in the `Security` suite. See
+CodeQL runs only in CI, over `resources/js/` and the workflow files — it has no PHP support. The
+backend is covered by PHPStan above, by the architecture bans in the `Security` suite, and by the
+custom Semgrep rules in `.semgrep/orca.yml`. See
 [`specs/features/static-analysis.md`](specs/features/static-analysis.md) for what each layer does
 and does not cover.
+
+**If you edit `.semgrep/orca.yml`, add or update the matching fixture in `.semgrep/tests/`.** CI
+verifies the rules against those fixtures *before* it uses them, because a rule that has stopped
+matching reports a clean codebase — which reads exactly like a clean codebase. Semgrep is not a
+required local dependency; if you want to run it, it needs Python (a WSL2 distro plus
+`pipx install semgrep` works) and it must scan from a native filesystem — over `/mnt/c` it is
+roughly a hundred times slower and looks hung rather than slow. Two gotchas are documented in that
+file's header: `--test` takes one fixture file at a time, not the directory, and a fixture must never
+contain the annotation keywords followed by a colon in its prose.
 
 If you touched Blade views or anything under `resources/js/`, also run the browser
 suite — it is a blocking CI job:

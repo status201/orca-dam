@@ -3,7 +3,7 @@
 ```yaml
 id: static-analysis
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -12,6 +12,7 @@ related:
   - authentication
 source:
   - phpstan.neon
+  - .semgrep/orca.yml
   - tests/Security/ArchitectureTest.php
   - .github/workflows/codeql.yml
   - .github/workflows/tests.yml
@@ -29,14 +30,27 @@ browser harness rather than any particular behaviour.
 a taint flow. The audits in [security-invariants.md](security-invariants.md) are what catch that
 shape of defect. Static analysis is a floor, not a replacement.
 
-**Three layers are implemented; one is designed and deferred.** Semgrep — custom rules that
-would restate ORCA's invariants as parse-tree patterns instead of the text matching
-`tests/Security/Support/SourceScanner.php` relies on — was written, fixtured and pushed, and its
-rule-verification step failed on the first CI run. Nothing in the development environment can
-execute Semgrep (no Docker, no working Python), so the patterns cannot be corrected without blind
-iteration against CI. The rules were **removed** rather than left failing or made non-blocking, and
-the design is preserved under Open questions so the next attempt does not start from scratch. That
-is the honest state: the layer with the most security value here is the one not yet in place.
+**All four layers are now in place.** Semgrep — custom rules restating ORCA's invariants as
+parse-tree patterns instead of the text matching `tests/Security/Support/SourceScanner.php` relies
+on — was written, fixtured and pushed in version 1, failed its own rule-verification step on the
+first CI run, and was **removed** rather than left failing or made non-blocking, because nothing in
+the development environment could execute Semgrep. That history is kept deliberately: it is why the
+layer is shaped the way REQ-5 describes.
+
+The prerequisite version 2 recorded — *a local runner, so the rules can be verified before they
+reach CI* — was then met with a WSL2 distro and `pipx install semgrep`. What the local runner found
+in one afternoon is the argument for having insisted on it:
+
+- The original CI failure **was not a rule bug at all.** `semgrep --test` with a single-file
+  `--config` and a *directory* target crashes with an `IndexError` inside Semgrep's own
+  `test.py`, so no rule ever ran. Version 2 blamed two specific patterns; both guesses were wrong.
+- Three of the four rules had **coverage holes that review had not noticed** and that only mutation
+  testing exposed: a fully-qualified `\DB::raw($x)` went unreported, five of twelve mass-assignment
+  shapes were missing, and the factory creation path the rule's own message promised to cover was
+  not implemented. See REQ-5.
+
+The lesson generalises past Semgrep: a rule, like a test, is only known to work once it has been
+observed to fail.
 
 **Larastan was declined in version 1 of this spec, on an estimate that turned out to be wrong.**
 That estimate — "a useful level lands somewhere between 150 and 1,200 findings", inferred from
@@ -70,8 +84,8 @@ edits. Second, among them were **real defects** — see REQ-4.
 
 - **REQ-2** — **CodeQL covers what it can, and the limit is documented rather than implied.**
   CodeQL has **no PHP support**; its languages are C/C++, C#, Go, Java/Kotlin, JS/TS, Python, Ruby,
-  Swift, Rust and GitHub Actions. It therefore analyses none of `app/`, `routes/` or `database/`,
-  and is not a substitute for the deferred Semgrep layer. It runs `javascript-typescript` over
+  Swift, Rust and GitHub Actions. It therefore analyses none of `app/`, `routes/` or `database/` —
+  that is REQ-5's job, not this one. It runs `javascript-typescript` over
   `resources/js/` — roughly ten thousand lines of Alpine that carried the entire UI unanalysed —
   and `actions` over the workflow files, which is not hypothetical: the
   `actions/missing-workflow-permissions` rule already produced two autofix commits here
@@ -85,7 +99,9 @@ edits. Second, among them were **real defects** — see REQ-4.
 
 - **REQ-3** — **No step is decorative.** No `|| true`, no `continue-on-error`. A finding is fixed,
   or carries an explicit commented exemption naming the reason. When a check cannot be made to pass
-  honestly it is removed rather than neutered — which is what happened to the Semgrep job.
+  honestly it is removed rather than neutered — which is what happened to the Semgrep job in version
+  1, and the reason it took two versions of this spec to land instead of one green-looking job that
+  verified nothing.
 
 - **REQ-4** — **PHPStan (Larastan) runs at level 2 over `app/`, with nothing suppressed.** No
   `phpstan-baseline.neon`, no `@phpstan-ignore` comments, no `ignoreErrors` entries: the gate is
@@ -120,6 +136,46 @@ edits. Second, among them were **real defects** — see REQ-4.
   Narrowing uses `instanceof` or `@var`, never `assert()` — REQ-1 bans that function, so the
   usual PHPStan idiom is unavailable here.
 
+- **REQ-5** — **Semgrep matches the parse tree for four ORCA invariants, and every rule is verified
+  against a fixture before it is used.** The rules live in `.semgrep/orca.yml`; each has a fixture in
+  `.semgrep/tests/` carrying per-line expectations, and the `semgrep` CI job runs `--test` over those
+  fixtures **before** either scan step. Without that ordering, a rule that has stopped matching
+  reports a clean codebase, which is indistinguishable from a clean codebase. The scan targets come
+  from the command line rather than a `paths:` filter in the rules, because a `paths.include` would
+  also exclude the fixtures and make the verification vacuous. `database/factories` is deliberately
+  not scanned, matching `tests/Security/UserProvisioningTest.php`.
+
+  The four rules, and what each covers *after* mutation testing corrected it:
+
+  | Rule | Invariant | What mutation testing added |
+  |---|---|---|
+  | `orca-user-create-without-role` | [authentication.md](authentication.md) REQ-8 | last-argument binding, so a two-argument `firstOrCreate($find, $attrs)` is judged on its attributes and not its lookup key; and the factory chain the message already promised, at any depth |
+  | `orca-unfiltered-mass-assignment` | [security-invariants.md](security-invariants.md) REQ-6 | the write method as a metavariable, covering all twelve (method × payload) shapes instead of a hand-written seven |
+  | `orca-policy-blanket-grant` | ADR-002 / [authorization-policies.md](authorization-policies.md) REQ-1 | `return 1;`, which the text scan already accepted, so this layer is not the weaker of the two |
+  | `orca-db-raw-from-variable` | forward-looking; zero `DB::raw` calls exist | the facade as a metavariable, because Semgrep does not resolve `\Illuminate\Support\Facades\DB` or `\DB` back to the imported short name — both spellings were silently unreported |
+
+  Two upstream constraints are worked around rather than hidden, both recorded in
+  `.semgrep/orca.yml`'s header because they look arbitrary otherwise. `--test` is invoked **once per
+  fixture file**: with a single-file `--config` and a directory target, `relatively_eq()` in
+  Semgrep's `test.py` takes `config.relative_to(parent_config).parts` — an empty tuple when the two
+  are the same file — and indexes it. And a fixture must never contain the words `ruleid` or `ok`
+  followed by a colon in prose, because the annotation parser reads them as annotations naming a rule
+  that does not exist and fails the whole file. The original fixture's docblock did exactly that.
+
+  The engine is installed with `pip` on the plain runner and exact-pinned there, rather than run in
+  the `semgrep/semgrep` container. The container is Alpine-based, and GitHub injects a glibc Node into
+  a container in order to run JavaScript actions such as `actions/checkout` — a musl mismatch whose
+  failure looks nothing like a rule problem. The pip path is also the one these rules were developed
+  and mutation-checked against, so the pinned version is one that has been run rather than one that
+  merely exists.
+
+  `.github/workflows/tests.yml` owns that version. This spec does not repeat it, for the same reason
+  it does not repeat the `setup-php` SHA: `spec-lint` checks documented versions only against
+  `composer.json`/`package.json`, and a pip pin in a workflow appears in neither, so a copy here would
+  be drift with nothing to catch it. `.github/dependabot.yml` will not bump it either — its
+  `github-actions` ecosystem has no manifest to watch for this — so the pin moves only deliberately,
+  and the fixture step is what reports it if a future version changes rule semantics.
+
 ## Technical design
 
 ### Contract / public interface
@@ -132,8 +188,14 @@ layer_a_arch:
   tests: 7
 
 layer_b_semgrep:
-  status: deferred                    # see Open questions for the design and why
-  reason: cannot be executed or verified in the development environment
+  rules: .semgrep/orca.yml            # 4 ORCA rules, all ERROR severity
+  fixtures: .semgrep/tests/           # 1 per rule; --test runs per file, not per directory
+  registry: [p/php, p/secrets]        # ERROR severity only
+  targets:                            # from the CLI, never `paths:` in the rules
+    orca: [app, routes, database/seeders, database/migrations]
+    registry: [app, routes, database, resources/js]
+  ci_job: semgrep                     # pip install on the plain runner; version pinned in tests.yml
+  pint: excluded                      # fixtures carry deliberate style oddities
 
 layer_d_phpstan:
   file: phpstan.neon
@@ -229,6 +291,12 @@ land in the repository's code-scanning dashboard rather than in a job log. Recor
 pin would be worse than recording none. PHPStan is the same: its gate is the `phpstan` CI job, and
 the scenarios above are pinned to the tests that cover the *defects it found*, not to the analyser.
 
+Semgrep is the same again, with one difference worth stating: its rules **do** have executable
+expectations, just not Pest ones. Each fixture in `.semgrep/tests/` asserts per line whether the rule
+must fire, and the `semgrep` job runs those before it runs anything else. That is the pin; it is a
+`--test` invocation rather than a `# pinned by:` path, and inventing a Pest file for it would be the
+fabrication this method warns against.
+
 ## Tests & verification
 
 - Layer A: `tests/Security/ArchitectureTest.php` — 7 tests, inside the `Security` suite.
@@ -237,6 +305,29 @@ the scenarios above are pinned to the tests that cover the *defects it found*, n
   `md5`, `exec` and `unserialize` was added and removed. Four of the seven audits fired, including
   `exec` — which confirms the per-class exemption really is narrow, since the canary was not on the
   list. The two naming audits and the `tempnam` audit correctly stayed green.
+- Layer B: the `semgrep` CI job — `--test` over each fixture, then the ORCA rules, then the registry
+  rulesets. Locally, run `--test` once per file in `.semgrep/tests/` (see the header of
+  `.semgrep/orca.yml` for why it cannot take the directory), then `semgrep scan --error --config
+  .semgrep/orca.yml app routes database/seeders database/migrations`.
+  Current state: 4/4 fixtures pass, **0 findings on 171 files** for the ORCA
+  rules and **0 on 208 files across 46 rules** for `p/php` + `p/secrets`.
+- Layer B needs a **native filesystem**, which is worth knowing before anyone tries it under WSL. A
+  scan of three files over `/mnt/c` did not finish in 240 seconds, of which 0.7s was CPU — it is all
+  9p stat latency, not analysis. The same three files on ext4 took 2.1 seconds. Copy the scan targets
+  into the distro first, or the tool looks broken when it is merely on the wrong side of a filesystem
+  boundary. CI is unaffected: the container runs on ext4.
+- Layer B mutation check: the whole point of the exercise, since all four rules report zero on a
+  clean tree and a rule that reports nothing looks identical whether it works or not. Seven
+  mutations, each applied to a throwaway copy, scanned, and reverted — results in the table below.
+  Two of them changed the rules: `\DB::raw($column)` and `\Illuminate\Support\Facades\DB::raw($column)`
+  were **not** reported by the first version, and stripping `->editor()` from `DatabaseSeeder`'s
+  factory chain was **not** reported either. Neither hole was visible by reading the rules.
+- Layer B's negative assertion, which matters as much as the positives: the ORCA scan covers `app/`,
+  and `app/Http/Requests/` contains three `authorize()` methods whose entire body is `return true;`
+  (`LoginRequest`, `StoreAssetRequest`, `UpdateAssetRequest`). All three stay unreported, which is
+  real-code proof that `orca-policy-blanket-grant`'s class-name scoping binds. `.semgrep/tests/`
+  asserts the same thing with a dedicated non-policy class, so the guard does not depend on those
+  three files continuing to exist.
 - Layer C: `.github/workflows/codeql.yml`, on push/PR and weekly. Cannot pass while GitHub's
   default setup is enabled (REQ-2). Findings land in the repository's code-scanning dashboard, not
   in the job log — a green job means the *analysis* succeeded, not that it found nothing.
@@ -286,37 +377,51 @@ the scenarios above are pinned to the tests that cover the *defects it found*, n
 | Canary service calling `dd` | REQ-1 debug audit fails |
 | Canary service calling `md5` | REQ-1 weak-hash audit fails |
 | Canary service calling `exec` (not on the exemption list) | REQ-1 process-execution audit fails |
+| Drop `'role'` from `AdminUserSeeder`'s two-argument `firstOrCreate` | `orca-user-create-without-role` fires — the arity fix, since the role sits in the second argument |
+| Strip `->editor()` from `DatabaseSeeder`'s factory chain | `orca-user-create-without-role` fires. **Missed by the first rule version**; the message promised factory coverage the patterns did not implement |
+| `$request->user()->fill($request->all())` in `ProfileController` | `orca-unfiltered-mass-assignment` fires |
+| `SystemPolicy::access` reduced to `return true;` | `orca-policy-blanket-grant` fires |
+| The three `FormRequest::authorize()` bodies left as `return true;` | nothing fires — class-name scoping confirmed on real code, not just the fixture |
+| `DB::raw($column)` via the imported facade | `orca-db-raw-from-variable` fires |
+| Same call as `\DB::raw($column)` and `\Illuminate\Support\Facades\DB::raw($column)` | both fire. **Missed by the first rule version** — Semgrep does not resolve a FQN to its short form |
+| A metavariable typo'd in one pattern | `--test` fails, *before* either scan step reports clean. This is the assertion that the fixtures are load-bearing |
 
 ## Open questions / future
 
-- **Semgrep is designed but not in place, and this is the biggest gap in this spec.** It is the only
-  adopted-in-principle layer that would analyse PHP for security rather than style. The design, kept
-  so the next attempt starts from it:
+- **Four invariants are now guarded twice, and that is deliberate but temporary.** Both the Semgrep
+  rules (REQ-5) and the text scans in `tests/Security/Support/SourceScanner.php` cover the same
+  ground, from opposite directions: one sees the parse tree, one sees text. The mutation table
+  asserts both catch the same defect, which is the precondition for eventually retiring the text
+  half. Not yet — the rules have run in CI for one change. Retire them when there is evidence, not
+  because the duplication is untidy. Note the two are not yet exactly equivalent: `SourceScanner`
+  covers `DB::table('users')->insert(` and `User::factory(` under six idioms, and the Semgrep rule
+  covers three named methods plus the factory chain, so `DB::table('users')->insert(...)` has no AST
+  counterpart.
 
-  Four rules, restating invariants that `SourceScanner` currently checks as text —
-  `orca-user-create-without-role` (a `User::create`/`firstOrCreate`/`updateOrCreate` whose
-  attributes name no `role`), `orca-unfiltered-mass-assignment` (`$m->fill($request->all())` and
-  friends), `orca-policy-blanket-grant` (an ability in a `*Policy` class whose entire body is
-  `return true`), and `orca-db-raw-from-variable`. Each with a fixture carrying `// ruleid:` and
-  `// ok:` annotations, and a `semgrep --test` step running **before** the scan so a rule that has
-  stopped matching fails as "the rules are wrong" rather than reporting a clean codebase. Scope from
-  CLI targets, not `paths:` in the rules, because a `paths.include` would also exclude the fixtures
-  and make that verification vacuous. Registry rulesets `p/php` and `p/secrets` at `ERROR` severity.
+- **Neither layer can follow a variable.** Four writes in `app/` are handed a prepared array rather
+  than a payload expression — `AssetProcessingService:80`, `ProcessDiscoveredAsset:43`,
+  `AssetBulkController:236`, `ImportController:163`, all `$asset->update($updates)`-shaped. A
+  syntactic rule cannot see what is in `$updates` and neither can a text scan. This is the honest
+  boundary of REQ-5, and the reason the bullet below is not closed by having adopted Semgrep.
 
-  What went wrong: the rules were pushed unverified, and `semgrep --test` failed. The likely
-  culprits are the array `metavariable-regex` in `orca-user-create-without-role` and the exact-body
-  match in `orca-policy-blanket-grant`. **Prerequisite for the next attempt: a local runner**
-  (`pipx install semgrep`, or Docker) so the rules can be verified before they reach CI. Note also
-  that the fixtures must be excluded from Pint — they contain deliberate style oddities (a
-  double-quoted `"role"` key, spaced concatenation) that Pint would rewrite into passing by accident.
+- **No PHP-level dataflow analysis anywhere.** Semgrep matches syntax, not taint — nothing traces a
+  request value through a service into a query. Psalm's taint analysis is the only realistic OSS
+  option for PHP; it was evaluated and declined (zero taint findings, verified not to be a silent
+  skip since plain mode found 295 on the same files; 14 packages; and `psalm/plugin-laravel` pulls
+  `orchestra/testbench-core` v11 onto a Laravel 13 project).
 
-- **The duplication Semgrep was meant to resolve is still unresolved.** The text scans in
-  `tests/Security/Support/SourceScanner.php` remain the only check for those invariants, with the
-  weakness their own docblock records: they see text, not semantics.
+- **`orca-db-raw-from-variable` covers `DB::raw` only.** `selectRaw`, `whereRaw`, `orderByRaw` and
+  `havingRaw` take raw SQL too and are more common in practice; `DB::table('users')->selectRaw($col)`
+  is unreported today. Worth adding, but it widens the rule past what its id and message claim, so it
+  is a deliberate follow-up rather than a silent extension. Also unreported: a factory `create()`
+  called with **no arguments**, since the rule binds an attributes metavariable — nothing in the tree
+  does that, and covering it needs a second rule rather than a wider pattern.
 
-- **No PHP-level dataflow analysis anywhere.** Even with Semgrep in place, Semgrep matches syntax,
-  not taint — nothing traces a request value through a service into a query. Psalm's taint analysis
-  is the only realistic OSS option for PHP and was not evaluated.
+- **`orca-unfiltered-mass-assignment` leaves `$REQ` unconstrained**, which makes it stronger than the
+  text scan (that one only matches a variable literally spelled `$request`) at the cost of one
+  theoretical false positive: `->all()` is also `Collection`'s method. Nothing in `app/` writes
+  `$model->update($collection->all())`. If it ever fires that way the fix is a targeted `pattern-not`,
+  not a looser metavariable.
 
 - **PHPStan's scope is `app/` only.** `tests/`, `routes/`, `database/` and `config/` are
   unanalysed — unmeasured, so out of scope rather than assumed cheap. Raising the level is the
