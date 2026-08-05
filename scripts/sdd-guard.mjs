@@ -32,20 +32,48 @@ import path from 'node:path';
 
 const mode = process.argv[2] ?? '';
 
-function git(args, cwd) {
+function git(args, cwd, { raw = false } = {}) {
   try {
     // stderr is discarded, not inherited: every caller here treats a failure as "no"
     // (a ref that does not resolve, a path absent from a commit), and execFileSync
     // forwards the child's stderr to ours by default — which printed git's `fatal:`
     // lines for probes that are *expected* to fail, e.g. `show <base>:<new-spec>`.
-    return execFileSync('git', args, {
+    const out = execFileSync('git', args, {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
+    });
+    // `raw` exists for `status --porcelain`, whose format is two status columns then a
+    // space then the path — so an unstaged-only entry starts with a space (" M app/x").
+    // Trimming ate that space, and the slice(3) that strips the status columns then ate
+    // the first character of the path: " M app/Models/Asset.php" was read as
+    // "pp/Models/Asset.php", which matched no gated prefix. The whole spec-before-code
+    // backstop therefore missed a production edit whenever the alphabetically-first
+    // changed file was merely modified rather than staged — the normal case.
+    return raw ? out : out.trim();
   } catch {
     return '';
   }
+}
+
+/**
+ * Paths from `git status --porcelain`, status columns stripped and renames resolved.
+ *
+ * Parsed off the raw output with an explicit two-column prefix rather than by slicing a
+ * trimmed string, for the reason above.
+ */
+function porcelainPaths(pathspec = []) {
+  const out = git(['status', '--porcelain', ...(pathspec.length ? ['--', ...pathspec] : [])], ROOT, { raw: true });
+  const paths = [];
+  for (const line of out.split('\n')) {
+    if (line.length < 4) continue; // "XY " + at least one path character
+    let p = line.slice(3);
+    const arrow = p.indexOf(' -> '); // renames: "old -> new"
+    if (arrow >= 0) p = p.slice(arrow + 4);
+    p = p.replace(/^"|"$/g, '').trim();
+    if (p) paths.push(p);
+  }
+  return paths;
 }
 
 const ROOT = git(['rev-parse', '--show-toplevel'], process.cwd()) || process.cwd();
@@ -141,18 +169,7 @@ function markerPresent({ ci = false } = {}) {
 
 /** Production files changed in the working tree (staged + unstaged + untracked). */
 function changedProductionWorkingTree() {
-  const out = git(['status', '--porcelain'], ROOT);
-  if (!out) return [];
-  const files = [];
-  for (const line of out.split('\n')) {
-    if (!line.trim()) continue;
-    let p = line.slice(3); // strip the XY status + space
-    const arrow = p.indexOf(' -> '); // renames: "old -> new"
-    if (arrow >= 0) p = p.slice(arrow + 4);
-    p = p.replace(/^"|"$/g, '');
-    if (isProductionPath(p)) files.push(p);
-  }
-  return files;
+  return porcelainPaths().filter(isProductionPath);
 }
 
 /** Production files changed on this branch vs base (for CI). */
@@ -224,14 +241,7 @@ function unbumpedSpecs() {
   const base = baseRef();
   if (!base) return []; // no base to diff — callers announce the skip
 
-  const candidates = new Set();
-  for (const line of git(['status', '--porcelain', '--', SPEC_DIR], ROOT).split('\n')) {
-    if (!line.trim()) continue;
-    let p = line.slice(3);
-    const arrow = p.indexOf(' -> ');
-    if (arrow >= 0) p = p.slice(arrow + 4);
-    candidates.add(p.replace(/^"|"$/g, ''));
-  }
+  const candidates = new Set(porcelainPaths([SPEC_DIR]));
   for (const p of git(['diff', '--name-only', `${base}...HEAD`, '--', SPEC_DIR], ROOT).split('\n')) {
     if (p.trim()) candidates.add(p.trim());
   }
