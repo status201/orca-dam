@@ -554,12 +554,237 @@ function checkE2eCounter(errors) {
 }
 
 /**
+ * Blank out PHP `#` line comments, preserving length and newlines so byte offsets still map
+ * to lines. `#[` is left alone: that is an attribute, not a comment, and blanking it would
+ * hide the `#[DataProvider]` the Pest counter has to refuse.
+ *
+ * The shared bracket/comma helpers understand line comments, block comments and quotes, but
+ * not `#`, because they were written for JavaScript. Rather than teach them a PHP-only
+ * comment syntax — and risk the E2E counter that depends on them — the PHP text is
+ * normalised on the way in.
+ */
+function blankHashComments(text) {
+  let out = '';
+  let quote = null;
+  let comment = null;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+
+    if (comment === 'hash') { out += c === '\n' ? c : ' '; if (c === '\n') comment = null; continue; }
+    if (comment === 'line') { out += c; if (c === '\n') comment = null; continue; }
+    if (comment === 'block') { out += c; if (c === '*' && next === '/') { out += next; i++; comment = null; } continue; }
+    if (quote) {
+      out += c;
+      if (c === '\\') { out += next ?? ''; i++; continue; }
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '/' && next === '/') { comment = 'line'; out += c; continue; }
+    if (c === '/' && next === '*') { comment = 'block'; out += c; continue; }
+    if (c === "'" || c === '"') { quote = c; out += c; continue; }
+
+    // A `#` outside any string starts a comment; `#[` is an attribute.
+    if (c === '#' && next !== '[') { comment = 'hash'; out += ' '; continue; }
+
+    out += c;
+  }
+
+  return out;
+}
+
+/** 1-based line number of a byte offset. */
+function lineOf(text, offset) {
+  return text.slice(0, offset).split('\n').length;
+}
+
+/** `dataset('name', [ … ])` declarations anywhere under tests/ — Pest registers them globally. */
+function namedDatasets(phpFiles) {
+  const sizes = new Map();
+
+  for (const file of phpFiles) {
+    const text = blankHashComments(readFileSync(file, 'utf8'));
+    for (const m of text.matchAll(/\bdataset\(\s*(['"])([^'"]+)\1\s*,\s*\[/g)) {
+      const open = m.index + m[0].length - 1;
+      const close = matchingBracket(text, open);
+      if (close < 0) continue;
+      sizes.set(m[2], topLevelElements(text.slice(open + 1, close)).length);
+    }
+  }
+
+  return sizes;
+}
+
+/**
+ * How many cases one `->with(ARG)` contributes, or null when ARG cannot be sized here.
+ * Null is deliberately distinct from 1, exactly as in loopFactorFor(): an unresolved
+ * dataset makes the total untrustworthy, and countPest() reports it instead of guessing.
+ */
+function datasetSize(arg, named) {
+  const src = arg.trim();
+
+  if (src.startsWith('[')) {
+    const close = matchingBracket(src, 0);
+    return close === src.length - 1 ? topLevelElements(src.slice(1, close)).length : null;
+  }
+
+  const literal = /^(['"])([^'"]+)\1$/.exec(src);
+  if (literal) return named.has(literal[2]) ? named.get(literal[2]) : null;
+
+  // `->with($cases)`, `->with(fn () => …)`, a generator — not knowable from the text.
+  return null;
+}
+
+/**
+ * The tests in one PHP file. Split out from countPest() so the fixtures in
+ * checkPestCounter() can exercise it on a string.
+ *
+ * Three shapes, which is what this suite actually contains:
+ *   - Pest's function API at statement level — `test()`, `it()`, and `arch()`, whose arch
+ *     expectations are each one test;
+ *   - a dataset attached to one of those, which makes it N tests rather than one. The chain
+ *     after the call is walked so `->throws(…)->with([…])` is still seen, and two `->with()`
+ *     calls multiply, as Pest does;
+ *   - class-based PHPUnit methods (`public function test_…`), which Laravel Breeze ships and
+ *     which the first version of this counter missed entirely — 49 of 1132 tests lived in
+ *     shapes that had no `test(` token anywhere.
+ *
+ * Anything it cannot size is returned in `unresolved` rather than counted as one. A data
+ * provider or an annotated method would each be undercounted by a plausible-looking margin,
+ * which is the failure this whole check exists to prevent.
+ */
+function pestTestsIn(text, named, label = '') {
+  const src = blankHashComments(text);
+  const unresolved = [];
+  let total = 0;
+
+  for (const m of src.matchAll(/#\[(DataProvider|TestWith|Test)\b|@(dataProvider|test)\b/g)) {
+    unresolved.push(`${label}:${lineOf(src, m.index)}: \`${m[0]}\` — this counter cannot size a data provider or an annotated method`);
+  }
+
+  for (const m of src.matchAll(/(?:^|\n)[ \t]*(test|it|arch)\s*\(/g)) {
+    const openParen = m.index + m[0].length - 1;
+    const close = matchingBracket(src, openParen);
+    if (close < 0) {
+      unresolved.push(`${label}:${lineOf(src, m.index)}: unterminated ${m[1]}(`);
+      total += 1;
+      continue;
+    }
+
+    let i = close + 1;
+    let factor = 1;
+    let unsizable = null;
+
+    // Walk `->method(…)` links; a bare `->not->` property ends the walk, which is fine —
+    // only `->with()` changes the count and nothing chains a dataset after one.
+    for (;;) {
+      while (i < src.length && /\s/.test(src[i])) i++;
+      const link = /^->\s*(\w+)\s*\(/.exec(src.slice(i, i + 64));
+      if (!link) break;
+
+      const argOpen = i + link[0].length - 1;
+      const argClose = matchingBracket(src, argOpen);
+      if (argClose < 0) break;
+
+      if (link[1] === 'with') {
+        const n = datasetSize(src.slice(argOpen + 1, argClose), named);
+        if (n === null) unsizable = src.slice(argOpen + 1, argClose).replace(/\s+/g, ' ').slice(0, 40);
+        else factor *= n;
+      }
+      i = argClose + 1;
+    }
+
+    if (unsizable !== null) {
+      unresolved.push(`${label}:${lineOf(src, m.index)}: dataset this counter cannot size — \`${unsizable}\``);
+      total += 1;
+    } else {
+      total += factor;
+    }
+  }
+
+  total += (src.match(/^[ \t]*public function test\w*\s*\(/gm) || []).length;
+
+  return { tests: total, unresolved };
+}
+
+/** Pest tests across every `*Test.php` under tests/. Same shape as countE2e(). */
+function countPest() {
+  const dir = path.join(ROOT, 'tests');
+  if (!existsSync(dir)) return null;
+
+  const php = walk(dir).filter((f) => f.endsWith('.php'));
+  const named = namedDatasets(php);
+  const files = php.filter((f) => f.endsWith('Test.php'));
+
+  let total = 0;
+  const unresolved = [];
+
+  for (const file of files) {
+    const one = pestTestsIn(readFileSync(file, 'utf8'), named, rel(file));
+    total += one.tests;
+    unresolved.push(...one.unresolved);
+  }
+
+  return { tests: total, files: files.length, unresolved };
+}
+
+/**
+ * Same reasoning as checkE2eCounter: this counter is a heuristic over source text, so it
+ * carries fixtures checked on every run. The Pest total went stale twice before it was
+ * countable at all — once silently by one — so a counter that has quietly stopped working
+ * would be worse than the comment that used to say the number could not be checked.
+ */
+function checkPestCounter(errors) {
+  const named = new Map([['role_matrix', 13]]);
+  const cases = [
+    ["test('a', function () {});", 1, 'a plain test'],
+    ["it('a', function () {});", 1, 'the it() alias'],
+    ["arch('a')->expect('x')->not->toBeUsed();", 1, 'an arch expectation, whose chain has a bare ->not->'],
+    ["test('a', function () {})->with([1, 2, 3]);", 3, 'an inline dataset'],
+    ["test('a', function () {})->with(['x' => [1], 'y' => [2]]);", 2, 'a keyed dataset'],
+    ["test('a', function () {})->with('role_matrix');", 13, 'a named dataset'],
+    ["test('a', function () {})->throws(E::class)->with([1, 2]);", 2, 'a dataset later in the chain'],
+    ["test('a', function () {})->with([1, 2])->with(['x', 'y', 'z']);", 6, 'two datasets multiply'],
+    ["test('a', function () {})->with([\"a,b\", 'c']);", 2, 'a comma inside a dataset string'],
+    ['    public function test_profile_is_shown(): void {}', 1, 'a class-based method'],
+    ['    public function testProfileIsShown(): void {}', 1, 'the camelCase method form'],
+    ["$mock->shouldReceive('put')->with('assets/a.jpg', 'x');", 0, 'a Mockery ->with() is not a dataset'],
+    ["Asset::query()->with('tags')->get();", 0, 'an Eloquent ->with() is not a dataset'],
+    ["// test('commented out', function () {});", 0, 'a commented-out test'],
+    ["#[Group('x')]\ntest('a', function () {});", 1, 'an unrelated attribute is not a refusal'],
+  ];
+
+  for (const [text, expected, what] of cases) {
+    const actual = pestTestsIn(text, named).tests;
+    if (actual !== expected) {
+      errors.push(`spec-lint self-test: pestTestsIn(${JSON.stringify(text)}) = ${actual}, expected ${expected} (${what})`);
+    }
+  }
+
+  // Shapes it must refuse rather than undercount.
+  const refusals = [
+    ["test('a', function () {})->with($cases);", 'a dataset held in a variable'],
+    ["test('a', function () {})->with(fn () => [1, 2]);", 'a dataset built by a closure'],
+    ["test('a', function () {})->with('never_declared');", 'an unknown named dataset'],
+    ['    #[DataProvider(\'cases\')]\n    public function test_a(): void {}', 'a PHPUnit data provider'],
+  ];
+
+  for (const [text, what] of refusals) {
+    if (pestTestsIn(text, named).unresolved.length === 0) {
+      errors.push(`spec-lint self-test: pestTestsIn should refuse to size ${what}`);
+    }
+  }
+}
+
+/**
  * Hand-counted totals stated in the docs. Every number here is one a human typed and
  * nothing else verifies, which is why each one had gone stale at least once.
  */
 function checkCounts(errors, docFiles) {
-  // Before trusting any number below: prove the one heuristic among them still works.
+  // Before trusting any number below: prove the two heuristics among them still work.
   checkE2eCounter(errors);
+  checkPestCounter(errors);
 
   const appJs = path.join(ROOT, 'resources', 'js', 'app.js');
   const modules = existsSync(appJs)
@@ -572,6 +797,7 @@ function checkCounts(errors, docFiles) {
   const commands = countFiles(path.join(ROOT, 'app', 'Console', 'Commands'), (f) => f.endsWith('.php'));
   const testFiles = countTestFiles(path.join(ROOT, 'tests'));
   const e2e = countE2e();
+  const pest = countPest();
 
   // An unsizable block means the E2E total is a guess, so say so instead of comparing the
   // docs against a number that is already wrong.
@@ -579,6 +805,14 @@ function checkCounts(errors, docFiles) {
     errors.push(
       `tests/e2e/${site}. Rewrite it as \`for (const x of <array literal or named const>)\`, ` +
       'or teach loopFactorFor() the shape — the documented Playwright total depends on it.'
+    );
+  }
+
+  // Same contract for the Pest total: an unsizable dataset is reported, not absorbed.
+  for (const site of pest?.unresolved ?? []) {
+    errors.push(
+      `${site}. Inline the dataset as an array literal or declare it with \`dataset('name', [...])\`, ` +
+      'or teach datasetSize() the shape — the documented Pest total depends on it.'
     );
   }
 
@@ -595,7 +829,12 @@ function checkCounts(errors, docFiles) {
     // literal did not match. The qualifier is optional and its backticks are too.
     rule(/(\d+)\s+(?:`?artisan`?\s+|`?console`?\s+)?commands\b/, commands, 'files in app/Console/Commands/'),
     rule(/(\d+)\s+files:\s*`tests\/Feature\//, testFiles, '*Test.php files under tests/'),
-    rule(/(\d+)\s+tests,\s*(?:in-memory SQLite|\d+ files)/, null, 'Pest tests (not auto-countable)'),
+    // Countable since v1.7.0. It was `null` — "not auto-countable" — for as long as the
+    // other rules existed, and drifted twice while nothing checked it, the second time by a
+    // single test, which is the size of error a human never spots. Verify the counter against
+    // `vendor/bin/pest --list-tests | grep -c '^ - '`, which is the authority it was built to
+    // reproduce; see countPest() for the shapes it knows and the ones it refuses.
+    rule(/(\d+)\s+tests,\s*(?:in-memory SQLite|\d+ files)/, pest && pest.tests, 'Pest tests'),
     rule(/(\d+)\s+tests across (\d+) spec files/, e2e && e2e.tests, 'Playwright tests'),
     // Same lesson as the commands rule above: one phrasing is never all of them. This one is why
     // QUICK_REFERENCE.md sat at "127 Playwright tests" while e2e-testing.md and architecture.md both
@@ -611,11 +850,29 @@ function checkCounts(errors, docFiles) {
   for (const file of docFiles) {
     if (!existsSync(file)) continue;
     const r = rel(file);
-    checkableText(file).split(/\r?\n/).forEach((line, i) => {
+    const lines = checkableText(file).split(/\r?\n/);
+
+    lines.forEach((line, i) => {
       const at = `${r}:${i + 1}`;
+      // A count and the qualifier that identifies it are sometimes split by a line wrap —
+      // `architecture.md` writes "(1132 tests,\n  91 files: …)" — and matching line by line
+      // cannot see across that break. So the Pest total sat there documented and checked by
+      // nothing, which is how it drifted by one unnoticed. Each line is therefore tested on
+      // its own and again joined with the next, with the line's own match preferred so one
+      // number cannot be reported twice.
+      //
+      // Only a *continuation* is joined: the next line must be indented further than this
+      // one. Joining unconditionally is wrong — `architecture.md`'s dependency block ends a
+      // line with "gif.js 0.2" and the next reads "commands:", which glued together matched
+      // the commands rule as "0.2 commands" and reported the tree as having 2.
+      const next = lines[i + 1];
+      const indentOf = (s) => { const at = s.search(/\S/); return at < 0 ? -1 : at; };
+      const continues = next !== undefined && next.trim() !== '' && indentOf(next) > indentOf(line);
+      const joined = continues ? `${line} ${next.trim()}` : null;
+
       for (const { re, actual, what } of RULES) {
         if (actual === null || actual === undefined) continue;
-        const m = line.match(re);
+        const m = line.match(re) || (joined ? joined.match(re) : null);
         if (m && Number(m[1]) !== actual) {
           errors.push(`${at}: ${m[1]} documented, the tree has ${actual} ${what}`);
         }

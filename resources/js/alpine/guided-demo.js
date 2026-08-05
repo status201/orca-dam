@@ -88,6 +88,11 @@ export function guidedDemo() {
         popover: '',
         ring: 'display:none;',
 
+        // Latched the first time a step on this document is positioned, so the keyboard is
+        // handed the popover once per page load rather than on every reposition. See
+        // focusPrimary().
+        _focused: false,
+
         // Teardown handles, all nulled by stop().
         _observers: [],
         _advance: null,
@@ -479,6 +484,7 @@ export function guidedDemo() {
             this._frame = window.requestAnimationFrame(() => {
                 this._frame = null;
                 this.reposition();
+                this.focusPrimary();
             });
         },
 
@@ -528,6 +534,54 @@ export function guidedDemo() {
 
         shutter(side) {
             return shutterStyle(side, this.hole);
+        },
+
+        // ── focus ─────────────────────────────────────────────────────────────
+
+        /**
+         * Hand the keyboard the step's primary action, once per document (REQ-13).
+         *
+         * Stepping with Enter worked same-page only by accident: clicking Next left it
+         * focused, so the next Enter re-activated the same node — and that node survives
+         * every same-page transition, since only the text and the geometry change. A
+         * hand-off is a full document load (navigateTo → location.assign), which resets
+         * focus to the body, so Enter did nothing until the reader found the button with
+         * Tab. Moving focus in is also what the popover's role="dialog" aria-modal="true"
+         * has been claiming all along.
+         *
+         * Latched rather than per-step, because schedule() also fires on every scroll,
+         * resize and observer tick — re-focusing there would fight the reader for the
+         * keyboard. Guarded on `settled`, which reposition() has just written, so this can
+         * never fire while a target is still resolving.
+         */
+        focusPrimary() {
+            if (this._focused || !this.running || !this.settled) {
+                return;
+            }
+
+            // Consumed even when the focus is declined below: a step that lands the reader
+            // in the search box must not have the keyboard taken away one step later.
+            this._focused = true;
+
+            // An act-to-advance step wants the reader's hands on the app's own control
+            // (REQ-8), so taking focus here would break the step it is meant to help.
+            // `awaiting` is set in attachAdvance, inside lockOn, before its schedule() —
+            // so it is already correct by the time this reads it.
+            if (this.awaiting) {
+                return;
+            }
+
+            const primary = !this.onThisPage
+                ? 'demo-goto'
+                : (this.isLast ? 'demo-finish' : 'demo-next');
+
+            // demo-goto lives in a nested x-if, so it exists only once onThisPage has
+            // flipped and Alpine has patched the DOM; `?.` makes a miss harmless anyway.
+            this.$nextTick(() => {
+                // preventScroll: lockOn has already put the target where it wants it, and a
+                // focus-induced scroll would slide it out from under the spotlight.
+                this.$el.querySelector(`[data-testid="${primary}"]`)?.focus({ preventScroll: true });
+            });
         },
 
         observe(node) {

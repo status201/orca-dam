@@ -199,8 +199,9 @@ test.describe('guided demos', () => {
     test('the demo crosses from the dashboard to the library and resumes there', async ({ page }) => {
         await openDemo(page);
 
-        // Walk to the last dashboard step, then one more Next crosses the page boundary.
-        await advanceUntil(page, 'nav-user-menu');
+        // Walk to the last dashboard step — the Assets nav item, which is what the hand-off
+        // is anchored on — then one more Next crosses the page boundary.
+        await advanceUntil(page, 'nav-assets');
 
         await Promise.all([
             page.waitForURL(/\/assets\?/),
@@ -213,6 +214,14 @@ test.describe('guided demos', () => {
         await expect(overlay(page)).toHaveAttribute('data-active', 'true');
         await expect(overlay(page)).toHaveAttribute('data-demo', 'welcome');
         await expect(overlay(page)).toHaveAttribute('data-target', 'grid-total');
+
+        // REQ-13: the hand-off is a full document load, so focus is handed back to the
+        // primary action. Without that, Enter — which stepped the demo a moment ago on the
+        // dashboard — silently does nothing until the reader tabs to the button.
+        await expect(page.locator(testid('demo-next'))).toBeFocused();
+
+        await page.keyboard.press('Enter');
+        await expect(overlay(page)).toHaveAttribute('data-target', 'grid-search');
     });
 
     test('a shared link opens the demo part-way through', async ({ page }) => {
@@ -231,6 +240,9 @@ test.describe('guided demos', () => {
         await expect(overlay(page)).toHaveAttribute('data-placement', 'center');
         await expect(page.locator(testid('demo-goto'))).toBeVisible();
         await expect(page.locator(testid('demo-spotlight'))).toBeHidden();
+
+        // The card's own action takes the focus, so Enter takes the hand-off (REQ-13).
+        await expect(page.locator(testid('demo-goto'))).toBeFocused();
 
         await Promise.all([
             page.waitForURL(/\/assets\?/),
@@ -377,6 +389,11 @@ test.describe('guided demos', () => {
 
         // On the search step the arrows belong to the search box, not to the demo.
         await openDemo(page, '/assets', 6);
+
+        // And so does the focus: an act-to-advance step is the one case REQ-13 declines,
+        // because the reader is being asked to type into the app's own control.
+        await expect(page.locator(testid('demo-next'))).not.toBeFocused();
+
         await page.locator(testid('grid-search')).focus();
         const before = await spotlitTarget(page);
 

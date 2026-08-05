@@ -9,7 +9,7 @@
 ```yaml
 id: guided-demos
 status: implemented
-version: 1
+version: 3
 owner: core
 related:
   - architecture
@@ -92,7 +92,12 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
 - **REQ-7a** — A demo that leaves the page it started on says so before it goes, and ends
   where the reader can carry on working rather than stranding them on a form. The Welcome
   demo announces the upload screen on the step that opens it and closes with a step back on
-  the library, which states that it has returned and that nothing was uploaded.
+  the library, which states that it has returned and that nothing was uploaded. A hand-off is
+  also *anchored* on the control that leads where it is going, so the reader is already looking
+  at the door when it opens: the step that crosses a page boundary is the one pointing at the
+  way in, and it carries the announcing sentence. Hence the Welcome demo's dashboard block ends
+  on the Assets nav item, rather than passing that item a step earlier and announcing the
+  library from somewhere unrelated.
 - **REQ-8** — A step may require a real user action (`advanceOn`) and advance when it happens.
   The engine observes DOM events on the target in the **capture** phase only; it must not know
   anything about the Alpine module that owns the target. `Next` stays enabled on such a step,
@@ -115,6 +120,15 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
   persisted server-side.
 - **REQ-12** — The overlay ships on every authenticated page from the base layout, but renders
   **nothing** — no DOM node, no script — when no demo is armed.
+- **REQ-13** — A demo is steppable from the keyboard alone, and crossing a page boundary does
+  not break that. The arrow keys step it from anywhere on the page; on *entering* a page the
+  overlay moves focus to the step's primary action — Next, Done, or the REQ-7 hand-off button —
+  so `Enter` continues the demo without the reader hunting for the button with `Tab`. This is
+  the focus move the popover's `role="dialog" aria-modal="true"` already implies. Focus is taken
+  **once per document**, not per step: within a page the buttons outlive every transition, so a
+  per-step grab would only fight the reader. It is never taken on a step awaiting a real user
+  action (REQ-8) — those steps want the reader's hands on the app's own control, and stealing
+  the keyboard would break the very step it was meant to help.
 
 ## Technical design
 
@@ -138,7 +152,17 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
   `settled`, `awaiting`, `missing`, `finished`, `placement`, `targetKey`. Getters the
   overlay binds to: `total`, `step`, `isLast`, `onThisPage`, `hasTarget`. Methods:
   `next()`, `prev()`, `goToStep(n)`, `goToPage()`, `skip()`, `finish()`, `startNext()`,
-  `stop()`, `reposition()`.
+  `stop()`, `reposition()`, `focusPrimary()`.
+- `focusPrimary()` implements REQ-13. It hangs off the single `requestAnimationFrame` funnel in
+  `schedule()`, which is where every path to a rendered step converges — anchored (`lockOn`),
+  unanchored (`showUnanchored`, the hand-off card and the centered fallback) and `reposition()`'s
+  own error branch — so one call site covers every way a step can come up. A `_focused` latch
+  makes it once-per-document, which it must be: `schedule()` also runs on every scroll, resize
+  and observer tick. An `awaiting` step *consumes* the latch without taking focus, so the engine
+  cannot yank the keyboard out of the search box a step or two later either. `Enter` is
+  deliberately **not** handled in `onKey`: a native `<button>` already activates on `Enter`, and
+  `onKey`'s guard tests the active element's tag (`input`/`textarea`/`select`), so a `button`
+  does not read as typing and an explicit branch would double-fire alongside the native click.
 - `demo-geometry.js` — a mixin (not a registered module): `holeRect`, `ringStyle`,
   `popoverStyle` (placement maths plus the viewport clamp and flip), `shutterStyle` (the four
   click-blocking panels), `isVisible`, `fixedAncestor`. Pure functions, no Alpine, no DOM
@@ -368,7 +392,7 @@ Scenario: The spotlight follows the real element
 # pinned by: tests/e2e/guided-demo.spec.js
 
 Scenario: The demo crosses from the dashboard to the library and resumes there
-  Given the Welcome demo on its last dashboard step
+  Given the Welcome demo on its last dashboard step, the one anchored to the Assets nav item
   When the hand-off is taken
   Then the browser is on the assets index
   And the overlay is still running the same demo, on the first library step
@@ -387,6 +411,18 @@ Scenario: The demo covers the upload screen and brings the reader back
   Then it is on the upload screen, pointing at the folder, the keep-filename choice and
     the batch metadata panel in turn
   And continuing from the last of those returns to the library on the closing step
+# pinned by: tests/e2e/guided-demo.spec.js
+
+Scenario: The keyboard still steps the demo after a cross-page hand-off (REQ-13)
+  Given the Welcome demo having just crossed from the dashboard to the library
+  When the new page has hydrated
+  Then the step's primary action holds focus, and Enter alone advances the demo
+# pinned by: tests/e2e/guided-demo.spec.js
+
+Scenario: An act-to-advance step leaves the keyboard on the app's own control (REQ-13)
+  Given a link opening the demo directly on the step anchored to the search box
+  When the page has hydrated
+  Then the demo has not taken focus, and the real search box is still the reader's to type in
 # pinned by: tests/e2e/guided-demo.spec.js
 
 Scenario: An interactive step advances when the user performs the action
@@ -464,7 +500,8 @@ Scenario: The dashboard carousel offers the Welcome demo
   payload gating and step clamping, and the completion endpoint including the regression that
   it must not disturb the user's other preferences.
 - E2E: `tests/e2e/guided-demo.spec.js` — the engine in a browser: launch, stepping,
-  spotlight geometry, the cross-page hand-off, act-to-advance, deep links, the nav pin, the
+  spotlight geometry, the cross-page hand-off and the focus it hands the keyboard (REQ-13,
+  including the act-to-advance step it must leave alone), act-to-advance, deep links, the nav pin, the
   absent-target path, the REQ-6a regression that a finished demo does not reappear on the
   next page opened, and the inert-when-idle boot check that protects the rest of the suite.
 - Style: `./vendor/bin/pint --test`
@@ -490,7 +527,14 @@ Scenario: The dashboard carousel offers the Welcome demo
   [`upload-policy.md`](upload-policy.md). This is product prose rather than documentation, so
   the "one home per fact" rule does not forbid it, but a change to any of those limits makes
   the demo quietly wrong. The integrity test proves a step's *target* and *route* exist; it
-  cannot prove its sentences are still true.
+  cannot prove its sentences are still true. The sharper form of this shipped and went
+  unnoticed for a whole release: the tag-filter step told the reader to "pin the ones you use
+  constantly", and tag pinning has never existed anywhere in the app — not a column, not a
+  pivot, not a gesture. That is worse than a stale threshold owned by another spec, because it
+  is a claim about the *panel the step is pointing at*, and the reader is looking straight at
+  the place the button should be. Nothing failed, because nothing reads the copy. If this class
+  is ever worth automating, the shape is a check that resolves the control a sentence names —
+  not a diff of the prose.
 - **The `sessionStorage` breadcrumb has no test.** No step in the Welcome demo currently
   advances on a control that navigates by itself, so the recovery path — breadcrumb written
   in the capture phase, then one `location.replace` to re-arm the URL — is exercised by
