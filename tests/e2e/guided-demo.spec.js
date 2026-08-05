@@ -418,6 +418,31 @@ test.describe('guided demos', () => {
         await expect(page.locator(`${testid('demo-start')} .fa-check`)).toBeVisible();
     });
 
+    // REQ-6a. stop() strips the demo from the address bar, but it cannot strip links the
+    // server already rendered — and the grid used to copy its whole query string onto every
+    // card link, so opening an asset handed the finished demo straight back. The last step
+    // belongs to assets.index, so on the detail page it surfaced as a hand-off card.
+    test('a finished demo does not follow the reader onto an asset page', async ({ page }) => {
+        const errors = collectPageErrors(page);
+
+        await openDemo(page, '/assets', 99);
+        await expect(page.locator(testid('demo-finish'))).toBeVisible();
+
+        // Closes outright rather than offering a successor, because WelcomeDemo names one
+        // that is not registered. Register 'admin-basics' and this needs demo-skip first.
+        await page.click(testid('demo-finish'));
+        await expect(overlay(page)).toHaveAttribute('data-active', 'false');
+
+        await page.locator(testid('asset-card')).first().click();
+        await waitForAlpine(page);
+
+        await expect(page).toHaveURL(/\/assets\/\d+/);
+        expect(page.url()).not.toContain('demo');
+        // REQ-12: nothing armed means the overlay is not rendered at all.
+        await expect(overlay(page)).toHaveCount(0);
+        expect(errors).toEqual([]);
+    });
+
     test('the dashboard carousel offers the demo', async ({ page }) => {
         await gotoStable(page, '/dashboard');
         await waitForAlpine(page);

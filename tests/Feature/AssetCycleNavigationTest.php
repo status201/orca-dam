@@ -270,3 +270,36 @@ test('grid card links include current query string', function () {
     $html = $response->getContent();
     expect($html)->toContain('sort=name_asc');
 });
+
+// Regression (REQ-6/REQ-7): the card links and the stamped return URL carry the
+// CONTEXT_KEYS allowlist, never the raw query string. A guided demo's own parameters
+// leaking through either of them re-armed a demo the user had already finished on the
+// next page they opened — see specs/features/guided-demos.md REQ-6a.
+test('non-context params do not ride the card links or the return url', function () {
+    $user = User::factory()->create();
+    Asset::factory()->image()->create(['filename' => 'a.jpg', 's3_key' => 'assets/a.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.index', [
+        'sort' => 'name_asc',
+        'demo' => 'welcome',
+        'demoStep' => 22,
+    ]));
+
+    $response->assertStatus(200);
+
+    // The demo is armed on *this* page, so the overlay's own payload legitimately names it.
+    // What must not happen is the parameters travelling into the grid's outgoing links.
+    $links = [];
+    preg_match_all('#/assets/\d+\?[^"\']*#', $response->getContent(), $links);
+
+    expect($links[0])->not->toBeEmpty();
+
+    foreach ($links[0] as $link) {
+        expect($link)->toContain('sort=name_asc');
+        expect($link)->not->toContain('demo');
+    }
+
+    $returnUrl = session('assets_return_url');
+    expect($returnUrl)->toContain('sort=name_asc');
+    expect($returnUrl)->not->toContain('demo');
+});

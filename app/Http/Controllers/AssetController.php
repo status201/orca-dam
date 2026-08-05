@@ -45,7 +45,7 @@ class AssetController extends Controller
         $data = $this->buildIndexData($request);
         $data['indexRoute'] = 'assets.index';
 
-        session(['assets_return_url' => $request->fullUrl()]);
+        session(['assets_return_url' => route('assets.index').$data['showSuffix']]);
 
         return view('assets.index', $data);
     }
@@ -58,7 +58,7 @@ class AssetController extends Controller
         $data = $this->buildIndexData($request);
         $data['indexRoute'] = 'assets.embed';
 
-        session(['assets_return_url' => $request->fullUrl()]);
+        session(['assets_return_url' => route('assets.embed').$data['showSuffix']]);
 
         return view('assets.embed', $data);
     }
@@ -92,7 +92,15 @@ class AssetController extends Controller
 
         $activeIds = $this->parseIdsParam($request->input('ids')) ?? [];
 
-        return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount', 'filterUser', 'activeIds');
+        // What the grid's card links append, and what index/embed stamp the return URL
+        // with. The CONTEXT_KEYS allowlist, not the raw query string: the show page reads
+        // nothing outside it, so anything else would be carried for no reason — and a
+        // leaked `?demo=` would re-arm a demo the user has already finished on whatever
+        // they open next (specs/features/guided-demos.md REQ-6a).
+        $context = $this->extractContextParams($request);
+        $showSuffix = $context === [] ? '' : '?'.http_build_query($context);
+
+        return compact('assets', 'perPage', 'folders', 'rootFolder', 'folder', 'missingCount', 'filterUser', 'activeIds', 'showSuffix');
     }
 
     /**
