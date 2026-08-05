@@ -14,7 +14,7 @@ You are working on **ORCA DAM**, a Laravel 13 Digital Asset Management system. Y
 - Service layer pattern in `app/Services/` (S3Service, AssetProcessingService, ChunkedUploadService, etc.)
 - Policy-based authorization (AssetPolicy, SystemPolicy, UserPolicy) with three roles: `admin`, `editor`, `api`
 - Multi-auth via Sanctum + JWT + passkeys (`laravel/passkeys`) with `AuthenticateMultiple` middleware
-- Pest PHP test suite with in-memory SQLite (1023 tests, 81 files); production uses MariaDB
+- Pest PHP test suite with in-memory SQLite (1132 tests, 91 files); production uses MariaDB
 - Playwright browser suite (130 tests, 21 spec files) in `tests/e2e/` against a real stack
 - Alpine.js + Blade frontend (22 modules registered in `resources/js/app.js`)
 - Settings stored in `Setting` model with 1-hour cache; access via `Setting::get()` / `Setting::set()`

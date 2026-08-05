@@ -31,6 +31,21 @@ test('assets index shows assets', function () {
     $response->assertSee('test-file.jpg');
 });
 
+test('assets index does not leak raw Blade source into the page', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'test-file.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.index'));
+
+    $response->assertStatus(200);
+    // The grid partial renders only for a non-empty result set, so assert it is really
+    // there — otherwise the checks below pass on a page that never included it.
+    $response->assertSee('test-file.jpg');
+    $response->assertDontSee('@endphp', false);
+    $response->assertDontSee('@php', false);
+    $response->assertDontSee('$showSuffix', false);
+});
+
 test('assets index can filter by search', function () {
     $user = User::factory()->create();
     Asset::factory()->create(['filename' => 'findme.jpg']);

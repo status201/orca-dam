@@ -41,6 +41,20 @@ test('embed view shows assets', function () {
     $response->assertSee('embed-test.jpg');
 });
 
+test('embed view does not leak raw Blade source into the page', function () {
+    $user = User::factory()->create();
+    Asset::factory()->create(['filename' => 'embed-test.jpg']);
+
+    $response = $this->actingAs($user)->get(route('assets.embed'));
+
+    $response->assertStatus(200);
+    // As on the index: prove the grid partial was included before asserting on its output.
+    $response->assertSee('embed-test.jpg');
+    $response->assertDontSee('@endphp', false);
+    $response->assertDontSee('@php', false);
+    $response->assertDontSee('$showSuffix', false);
+});
+
 test('embed view supports type filter', function () {
     $user = User::factory()->create();
     Asset::factory()->create(['filename' => 'photo.jpg', 'mime_type' => 'image/jpeg']);

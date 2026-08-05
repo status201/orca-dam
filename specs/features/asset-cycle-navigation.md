@@ -13,6 +13,7 @@ related:
 source:
   - app/Http/Controllers/AssetController.php
   - resources/views/assets/show.blade.php
+  - resources/views/assets/partials/grid-cards.blade.php
   - resources/views/components/asset-cycle-nav.blade.php
   - resources/js/alpine/asset-detail.js
 ```
@@ -221,12 +222,27 @@ Scenario: A non-context parameter does not ride the card links or the return URL
   Then both still carry sort=name_asc
   And neither carries the demo parameters
 # pinned by: tests/Feature/AssetCycleNavigationTest.php
+
+Scenario: The block that builds $showSuffix never leaks into the page (REQ-7)
+  Given the index and the embed page rendered with a non-empty result set
+  When the response body is inspected
+  Then it carries no Blade directive text and no raw $showSuffix
+# pinned by: tests/Feature/AssetTest.php, tests/Feature/EmbedTest.php, tests/e2e/asset-grid.spec.js
 ```
 
 ## Tests & verification
 
 - Feature: `tests/Feature/AssetCycleNavigationTest.php` — all of the above; flushes the
   cache in `beforeEach` so the 60s ID-list cache cannot leak between cases.
+- Feature: `tests/Feature/AssetTest.php`, `tests/Feature/EmbedTest.php` — the rendered index
+  and embed pages carry no Blade directive text and no raw `$showSuffix`. Both assert a
+  filename first, because the grid partial renders only for a non-empty result set and the
+  check would otherwise pass on a page that never included it.
+- Feature: `tests/Feature/BladeRawBlockTest.php` — repo-wide, and the reason the above is
+  more than a one-off: it applies Blade's own non-greedy raw-block pattern to every view and
+  fails on a directive literal written inside a block, or on one left closing nothing.
+  `$showSuffix` lives in such a block, and v1.6.0 shipped it printing its own source.
+- E2E: `tests/e2e/asset-grid.spec.js` — the same absence, in a browser.
 - Unit: `tests/Unit/AssetSortScopeTest.php` — the `applySort` ordering the cycle relies
   on ([asset-model.md](asset-model.md)).
 - Run: `php artisan config:clear && php artisan test tests/Feature/AssetCycleNavigationTest.php`
@@ -237,7 +253,8 @@ Scenario: A non-context parameter does not ride the card links or the return URL
 
 ## Open questions / future
 
-- No E2E coverage. The behaviour is keyboard- and prefetch-driven in
+- No E2E coverage of the cycling itself (the grid's rendered output is covered). The
+  behaviour is keyboard- and prefetch-driven in
   `resources/js/alpine/asset-detail.js`, which a browser test would exercise better than
   a Feature test can; the Feature suite asserts the rendered payload, not the arrow-key
   handling. See [e2e-testing.md](e2e-testing.md).
