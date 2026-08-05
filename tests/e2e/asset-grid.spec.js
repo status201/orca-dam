@@ -21,6 +21,19 @@ test.describe('asset grid', () => {
         await expect(assetCard(page, 'e2e-grid-14.png')).toBeVisible();
     });
 
+    // v1.6.0 printed the tail of grid-cards.blade.php's own raw PHP block above the grid.
+    // The Feature suite asserts on the rendered HTML; this asserts on what a browser shows,
+    // which is the layer the bug was reported from. The grid must be visible first, or an
+    // empty result set would satisfy this vacuously — the partial renders only when the
+    // result set is non-empty.
+    test('the grid renders no leaked Blade source', async ({ page }) => {
+        await gotoAssets(page);
+
+        await expect(page.locator(testid('asset-card')).first()).toBeVisible();
+        await expect(page.locator('body')).not.toContainText('endphp');
+        await expect(page.locator('body')).not.toContainText('$showSuffix');
+    });
+
     test('searching narrows the grid to matching filenames', async ({ page }) => {
         await gotoAssets(page);
         await search(page, 'e2e-grid-01');

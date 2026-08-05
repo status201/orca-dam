@@ -190,6 +190,20 @@ scenarios green. Only edit the spec if a public **contract** changes.
 **Trivial** — typos, comments, formatting, pure renames, dep bumps, and
 test/style/doc edits need no spec (see exemptions below).
 
+**Bump the spec's `version:` when its contract changes** — that is, when
+`## Requirements` or `## Technical design` changes. It is a plain integer counting
+contract revisions, and it is enforced (see "Enforcement & exemptions"), because for a
+long time it was a comment in the template that nothing checked: 45 of 47 specs sat at
+`1` while their requirements were rewritten underneath them.
+
+Editing anything **else** must *not* bump it — `## Background / Why`,
+`## Scenarios (BDD)`, `## Tests & verification`, `## Open questions / future`, or a
+`status:` transition. This is deliberate and load-bearing for the bug-fix flow above:
+that flow prescribes adding a **regression scenario**, so counting scenarios as contract
+changes would force a bump on nearly every fix and the number would stop meaning
+anything. The corollary is that fixing a *wrong requirement* does bump, because the
+documented contract really did change even when behaviour did not.
+
 The `/feature`, `/fix`, and `/spec` slash commands run these flows.
 
 ## Enforcement & exemptions
@@ -198,9 +212,21 @@ SDD is enforced by `scripts/sdd-guard.mjs`, wired as Claude Code hooks
 (`.claude/settings.json`) and a CI check (`.github/workflows/sdd.yml`):
 
 - **PreToolUse** blocks an `Edit`/`Write` to production code when no spec changed.
-- **Stop** blocks finishing a turn whose diff changed production code without specs.
-- **CI** fails a PR with the same rule (also catches non-Claude agents + direct
+- **Stop** blocks finishing a turn whose diff changed production code without specs,
+  **or** changed a feature spec's contract without incrementing its `version:`.
+- **CI** fails a PR with the same two rules (also catches non-Claude agents + direct
   commits to `main`).
+- **`npm run spec:version`** runs the version rule on its own against the base ref.
+
+The version rule diffs the `## Requirements` and `## Technical design` sections of each
+changed `specs/features/*.md` against the base ref, so it is blind to line-number shifts
+and to edits anywhere else in the file. A **new** spec is skipped (there is no previous
+contract to have changed), and so is a rename. Both rules share the bypass below — a typo
+inside a `REQ-` line is the known false positive and that is its answer. Two scope limits
+worth knowing: `recipes/` carry a `version:` but follow the leaner playbook shape with no
+contract section for the rule to read, and ADRs carry no `version:` at all (they are
+superseded, not revised). `spec-lint` requires the key on every feature spec, so the gate
+cannot be disabled by deleting it.
 
 **Gated (needs a spec):** `app/**`, `routes/**`, `database/migrations/**`,
 `config/**` (except Laravel-published framework configs), `resources/js/**`
