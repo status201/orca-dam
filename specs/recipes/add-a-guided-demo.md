@@ -182,6 +182,11 @@ wrong place.
   does not belong to and shows the hand-off card instead.
 - **Don't hardcode a step count anywhere** — not in copy ("step 3 of 8"), not in a test. Steps are
   data and the engine reports the total.
+- **Write the copy from the markup, not from memory.** A sentence describing a control that does
+  not exist passes every test in the repo: the integrity test resolves a step's `target` and
+  `routeName`, and nothing anywhere reads a `body`. The Welcome demo shipped a step telling
+  readers to *pin* tags, a feature the app has never had. Have the Blade partial open beside the
+  step, and claim only what you can point at.
 - **`isAvailableTo` is not a policy.** It is deliberately outside `app/Policies/`
   ([ADR-015](../decisions/adr-015-guided-demos-server-declared.md)), so mirror the relevant
   ability rather than re-deriving a role list.

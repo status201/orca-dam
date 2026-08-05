@@ -9,7 +9,7 @@
 ```yaml
 id: guided-demos
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -92,7 +92,12 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
 - **REQ-7a** — A demo that leaves the page it started on says so before it goes, and ends
   where the reader can carry on working rather than stranding them on a form. The Welcome
   demo announces the upload screen on the step that opens it and closes with a step back on
-  the library, which states that it has returned and that nothing was uploaded.
+  the library, which states that it has returned and that nothing was uploaded. A hand-off is
+  also *anchored* on the control that leads where it is going, so the reader is already looking
+  at the door when it opens: the step that crosses a page boundary is the one pointing at the
+  way in, and it carries the announcing sentence. Hence the Welcome demo's dashboard block ends
+  on the Assets nav item, rather than passing that item a step earlier and announcing the
+  library from somewhere unrelated.
 - **REQ-8** — A step may require a real user action (`advanceOn`) and advance when it happens.
   The engine observes DOM events on the target in the **capture** phase only; it must not know
   anything about the Alpine module that owns the target. `Next` stays enabled on such a step,
@@ -368,7 +373,7 @@ Scenario: The spotlight follows the real element
 # pinned by: tests/e2e/guided-demo.spec.js
 
 Scenario: The demo crosses from the dashboard to the library and resumes there
-  Given the Welcome demo on its last dashboard step
+  Given the Welcome demo on its last dashboard step, the one anchored to the Assets nav item
   When the hand-off is taken
   Then the browser is on the assets index
   And the overlay is still running the same demo, on the first library step
@@ -490,7 +495,14 @@ Scenario: The dashboard carousel offers the Welcome demo
   [`upload-policy.md`](upload-policy.md). This is product prose rather than documentation, so
   the "one home per fact" rule does not forbid it, but a change to any of those limits makes
   the demo quietly wrong. The integrity test proves a step's *target* and *route* exist; it
-  cannot prove its sentences are still true.
+  cannot prove its sentences are still true. The sharper form of this shipped and went
+  unnoticed for a whole release: the tag-filter step told the reader to "pin the ones you use
+  constantly", and tag pinning has never existed anywhere in the app — not a column, not a
+  pivot, not a gesture. That is worse than a stale threshold owned by another spec, because it
+  is a claim about the *panel the step is pointing at*, and the reader is looking straight at
+  the place the button should be. Nothing failed, because nothing reads the copy. If this class
+  is ever worth automating, the shape is a check that resolves the control a sentence names —
+  not a diff of the prose.
 - **The `sessionStorage` breadcrumb has no test.** No step in the Welcome demo currently
   advances on a control that navigates by itself, so the recovery path — breadcrumb written
   in the capture phase, then one `location.replace` to re-arm the URL — is exercised by

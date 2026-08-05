@@ -199,8 +199,9 @@ test.describe('guided demos', () => {
     test('the demo crosses from the dashboard to the library and resumes there', async ({ page }) => {
         await openDemo(page);
 
-        // Walk to the last dashboard step, then one more Next crosses the page boundary.
-        await advanceUntil(page, 'nav-user-menu');
+        // Walk to the last dashboard step — the Assets nav item, which is what the hand-off
+        // is anchored on — then one more Next crosses the page boundary.
+        await advanceUntil(page, 'nav-assets');
 
         await Promise.all([
             page.waitForURL(/\/assets\?/),

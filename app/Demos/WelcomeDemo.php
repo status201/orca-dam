@@ -75,21 +75,23 @@ final class WelcomeDemo implements Demo
                 body: __('This panel rotates through every feature you can reach, built from your role. It is the quickest index of what ORCA can do.'),
             ),
             new DemoStep(
+                target: ['nav-user-menu', 'nav-mobile-profile'],
+                placement: 'bottom',
+                routeName: 'dashboard',
+                fallback: 'center',
+                title: __('Your own settings'),
+                body: __('Your profile, interface language, dark mode and how many results you see per page all live behind your name.'),
+            ),
+            // Last on the dashboard, and so the step the hand-off is taken from: the reader is
+            // looking at the Assets menu at the moment the library opens (REQ-7a).
+            new DemoStep(
                 target: ['nav-assets', 'nav-mobile-assets'],
                 placement: 'bottom',
                 routeName: 'dashboard',
                 reveal: 'scroll-top',
                 fallback: 'center',
                 title: __('Everything starts under Assets'),
-                body: __('Browsing, uploading and the trash all hang off this menu. It stays with you on every page.'),
-            ),
-            new DemoStep(
-                target: ['nav-user-menu', 'nav-mobile-profile'],
-                placement: 'bottom',
-                routeName: 'dashboard',
-                fallback: 'center',
-                title: __('Your own settings'),
-                body: __('Your profile, interface language, dark mode and how many results you see per page all live behind your name. Next, we will open the library itself.'),
+                body: __('Browsing, uploading and the trash all hang off this menu. It stays with you on every page. Next, we will open the library itself.'),
             ),
 
             // ── the library ────────────────────────────────────────────────────
@@ -138,14 +140,14 @@ final class WelcomeDemo implements Demo
                 reveal: ['click' => 'grid-filter-tags'],
                 fallback: 'center',
                 title: __('Tags, in one place'),
-                body: __('Search the tags, sort them, pin the ones you use constantly. Some tags are added by hand, others by image recognition.'),
+                body: __('Search the tags, sort them by name or by how often they are used, and narrow the list to one kind. The badge on each tag says where it came from: someone typed it, image recognition found it, or an external system marked where the asset is being used. Whatever you tick moves to the top of the list.'),
             ),
             new DemoStep(
                 target: 'grid-sort',
                 placement: 'bottom',
                 routeName: 'assets.index',
                 title: __('Sorting'),
-                body: __('Newest first by default. Sort by name when you know roughly what it is called, or by size when you are hunting for the big files.'),
+                body: __('Newest first by default, so the most recent work is at the top. Sort by size when you are hunting for the big files. Sorting by name earns its keep once a filter has already cut the list down — alphabetical order across the whole library rarely tells you much.'),
             ),
             // The three view modes get a step each, and each one switches the library into
             // that view before it speaks — being told the views differ teaches far less
@@ -177,8 +179,8 @@ final class WelcomeDemo implements Demo
                 placement: 'bottom',
                 routeName: 'assets.index',
                 reveal: ['click' => 'grid-view-masonry', 'until' => 'asset-masonry-view'],
-                title: __('Masonry — for judging images by shape'),
-                body: __('Nothing is cropped here: every image keeps its own proportions, so a panorama looks like a panorama and a portrait like a portrait, and the columns read top to bottom. Reach for it when you are choosing between images and the composition matters — which is also why the crop and fit buttons disappear in this view.'),
+                title: __('Masonry — for visual search and inspiration'),
+                body: __('There is nothing to set here: every image arrives at its own shape, so a panorama looks like a panorama and a portrait like a portrait, and the columns read top to bottom. That is why the crop and fit buttons disappear in this view — reach for it when you are choosing between images and the composition matters.'),
             ),
             new DemoStep(
                 target: 'grid-view-list',
