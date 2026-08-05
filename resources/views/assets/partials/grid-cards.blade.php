@@ -128,7 +128,7 @@
             $isImageLike = $asset->isImage() || $asset->isSvg();
             $hasDims = $asset->width && $asset->height;
         @endphp
-        <div data-testid="asset-masonry-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer mb-3 break-inside-avoid"
+        <div data-testid="asset-masonry-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer mb-3 break-inside-avoid"
              x-data="assetCard({{ $asset->id }})"
              @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset).$showSuffix }}'; }">
             <!-- Selection checkbox -->
