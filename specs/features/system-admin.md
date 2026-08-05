@@ -3,7 +3,7 @@
 ```yaml
 id: system-admin
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture

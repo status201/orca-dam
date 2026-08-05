@@ -13,7 +13,9 @@
 ```yaml
 id: <kebab-case-id>          # matches the filename
 status: draft                # draft | active | implemented
-version: 1                   # bump when the contract changes
+version: 1                   # integer; bump when ## Requirements or ## Technical design
+                             # changes — enforced by scripts/sdd-guard.mjs. Scenarios,
+                             # tests, background and open questions do not bump it.
 owner: <name or team>
 related:                     # other specs this depends on / extends
   - architecture

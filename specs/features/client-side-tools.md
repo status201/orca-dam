@@ -3,7 +3,7 @@
 ```yaml
 id: client-side-tools
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture

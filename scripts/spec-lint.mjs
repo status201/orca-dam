@@ -739,9 +739,20 @@ function lint(failExit) {
         : 'draft | active | implemented'})`);
     }
 
+    // A feature spec's `version:` is gated by scripts/sdd-guard.mjs, which requires it
+    // to increment whenever `## Requirements` or `## Technical design` changes. That
+    // gate reads the key, so a missing or non-numeric one would quietly disable it —
+    // hence errors here rather than the warning this used to be. ADRs carry no version
+    // (they are superseded, not revised) and recipes have no contract section for the
+    // rule to read, so both keep the lenient treatment.
     const version = topKey(block, 'version');
-    if (version !== null && !/^[1-9]\d*$/.test(version)) {
-      warn(`\`version: ${version}\` is not a positive integer`);
+    const versionRequired = !isAdr && r.includes('/features/');
+    if (version === null) {
+      if (versionRequired) err('metadata is missing `version` (gated by sdd-guard: bump it when the contract changes)');
+    } else if (!/^[1-9]\d*$/.test(version)) {
+      const msg = `\`version: ${version}\` is not a positive integer`;
+      if (versionRequired) err(msg);
+      else warn(msg);
     }
 
     for (const tok of pinnedPaths(text)) {

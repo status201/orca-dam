@@ -1,10 +1,13 @@
 name: SDD
 
-# Spec-before-code gate: a PR that changes production code must also change a spec.
-# Mirrors the local Claude Code hooks (scripts/sdd-guard.mjs) so the rule also
-# applies to non-Claude agents. The structure lint additionally runs on direct
-# pushes to main (the guard needs a PR base to diff against). Bypass a genuinely
-# trivial production change with [skip-sdd] in a commit message or the 'skip-sdd' label.
+# The two branch-scoped SDD gates, both in scripts/sdd-guard.mjs `ci` mode:
+#   1. spec-before-code — a PR that changes production code must also change a spec.
+#   2. contract-changes-bump-the-version — a feature spec whose ## Requirements or
+#      ## Technical design changed must also increment its `version:`.
+# Mirrors the local Claude Code hooks so the rules also apply to non-Claude agents.
+# The structure lint additionally runs on direct pushes to main (both gates need a PR
+# base to diff against). Bypass a genuinely trivial change with [skip-sdd] in a commit
+# message or the 'skip-sdd' label.
 
 on:
   pull_request:
@@ -29,7 +32,7 @@ jobs:
       - name: Fetch base branch
         if: github.event_name == 'pull_request'
         run: git fetch origin "${{ github.base_ref }}"
-      - name: Spec-before-code check
+      - name: Spec-before-code and spec-version checks
         if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}

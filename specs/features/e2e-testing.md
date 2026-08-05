@@ -3,7 +3,7 @@
 ```yaml
 id: e2e-testing
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
