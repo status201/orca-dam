@@ -38,17 +38,28 @@ exempt. For a genuinely trivial production tweak, `touch .sdd-skip` (local) or a
 `## Tests & verification` section, a spec or ADR missing from an index, a dependency
 version stated in the docs that contradicts `composer.json`/`package.json`, a
 hand-counted total (specs, ADRs, Alpine modules, services, console commands, test files,
-E2E tests) that no longer matches the tree — in any phrasing, so a prose `all N commands`
-counts as a claim just like the file tree's `N artisan commands` comment, a file tree in `QUICK_REFERENCE.md` that has fallen behind `app/Services/`,
+Pest tests, E2E tests) that no longer matches the tree — in any phrasing, so a prose
+`all N commands` counts as a claim just like the file tree's `N artisan commands` comment,
+and across a line wrap, since a count split from its qualifier by a newline used to match
+nothing, a file tree in `QUICK_REFERENCE.md` that has fallen behind `app/Services/`,
 `app/Console/Commands/` or the top-level directories, and a heading added to
 `USER_MANUAL.md` without its Dutch counterpart. Run it before opening a PR.
 
-The E2E tally is the one count derived by a heuristic rather than by listing files, because
-`tests/e2e/*.spec.js` generates cases from `for (const x of …)` loops. Two consequences when
-you add an E2E test: the counter carries its own fixtures and will fail as
-`spec-lint self-test: …` if it breaks, which is a different problem from a stale number; and
-it **errors rather than guesses** on a loop it cannot size, so wrap generated tests in
-`for (const x of <array literal or named const>)` and keep the array resolvable.
+Two tallies are derived by a heuristic rather than by listing files, because both suites
+generate cases: `tests/e2e/*.spec.js` from `for (const x of …)` loops, and Pest from
+datasets. Each counter carries its own fixtures and fails as `spec-lint self-test: …` if it
+breaks — a different problem from a stale number, and the one worth reading first, because a
+counter that has quietly stopped working produces a plausible total and the docs then get
+"corrected" to match it. Each also **errors rather than guesses** on a case it cannot size:
+
+- **E2E** — wrap generated tests in `for (const x of <array literal or named const>)` and
+  keep the array resolvable.
+- **Pest** — write a dataset as an array literal or declare it with
+  `dataset('name', [...])`. `->with($variable)`, `->with(fn () => …)` and a PHPUnit
+  `#[DataProvider]` are all refused by name rather than counted as one test. The counter
+  knows three shapes: `test()`/`it()`, `arch()`, and class-based `public function test_…`
+  methods — the last of which it originally missed, because those files contain no `test(`
+  token anywhere and so counted as empty.
 
 Browser-level behaviour is pinned by the feature spec that owns it, never by
 `e2e-testing.md` — that spec owns the harness only.
