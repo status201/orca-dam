@@ -1,8 +1,14 @@
     @php
-        // Append the current index query string so the show page can reconstruct
-        // the result-set context (for cycle navigation and the back button).
-        $showQuery = request()->getQueryString();
-        $showSuffix = $showQuery ? '?'.$showQuery : '';
+        // The index-context query params, built by AssetController::buildIndexData() from the
+        // CONTEXT_KEYS allowlist, so the show page can reconstruct the result set (cycle
+        // navigation and the back button). Deliberately not the whole query string — see
+        // specs/features/asset-cycle-navigation.md REQ-7. Defaulted so a future include from
+        // outside buildIndexData() degrades to a plain deeplink rather than erroring.
+        //
+        // Block form, not the @php(...) shorthand: this file has another @php block further
+        // down, and Blade's raw-block regex would pair an unclosed @php with *that* @endphp
+        // and swallow the whole grid view in between.
+        $showSuffix = $showSuffix ?? '';
     @endphp
     <!-- Asset grid -->
     <!-- Grid View -->

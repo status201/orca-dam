@@ -75,192 +75,8 @@
         </nav>
     </div>
 
-    <!-- Overview Tab -->
-    <div x-show="activeTab === 'overview'" class="space-y-6">
-        <!-- System Info Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- PHP Version -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
-                        <i class="fab fa-php text-2xl text-purple-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">{{ __('PHP Version') }}</p>
-                        <p class="text-lg font-semibold text-gray-900">{{ $systemInfo['php_version'] }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Laravel Version -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
-                        <i class="fab fa-laravel text-2xl text-red-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">{{ __('Laravel') }}</p>
-                        <p class="text-lg font-semibold text-gray-900">{{ $systemInfo['laravel_version'] }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Environment -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
-                        <i class="fas fa-server text-2xl text-green-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">{{ __('Environment') }}</p>
-                        <p class="text-lg font-semibold text-gray-900">{{ ucfirst($systemInfo['environment']) }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Memory Limit -->
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
-                        <i class="fas fa-memory text-2xl text-blue-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-500">{{ __('Memory Limit') }}</p>
-                        <p class="text-lg font-semibold text-gray-900">{{ $systemInfo['memory_limit'] }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Database Statistics -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-database mr-2"></i>{{ __('Database Statistics') }}
-                </h3>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    @foreach($databaseStats['tables'] as $table => $count)
-                        <div class="text-center">
-                            <p class="text-2xl font-bold text-gray-900">{{ number_format($count) }}</p>
-                            <p class="text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $table)) }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        <!-- API Status -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-heartbeat mr-2"></i>{{ __('API Status') }}
-                </h3>
-            </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <!-- Sanctum Status -->
-                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="attention w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">Sanctum</p>
-                            <p class="attention text-xs text-green-600">{{ __('Active') }}</p>
-                        </div>
-                    </div>
-
-                    <!-- JWT Status -->
-                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="attention w-3 h-3 rounded-full mr-3"
-                             :class="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">JWT</p>
-                            <p class="attention text-xs"
-                               :class="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1' ? 'text-green-600' : 'text-red-600'">
-                                <template x-if="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1'">
-                                    <span>{{ __('Active') }}</span>
-                                </template>
-                                <template x-if="systemInfo.jwtEnvEnabled !== '1'">
-                                    <span>{{ __('Disabled (env)') }}</span>
-                                </template>
-                                <template x-if="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled !== '1'">
-                                    <span>{{ __('Disabled (setting)') }}</span>
-                                </template>
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Upload Endpoints Status -->
-                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="attention w-3 h-3 rounded-full mr-3"
-                             :class="settings.uploadEndpointEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">{{ __('Upload') }}</p>
-                            <p class="attention text-xs"
-                               :class="settings.uploadEndpointEnabled === '1' ? 'text-green-600' : 'text-red-600'"
-                               x-text="settings.uploadEndpointEnabled === '1' ? @js(__('Enabled')) : @js(__('Disabled'))"></p>
-                        </div>
-                    </div>
-
-                    <!-- Public Meta Status -->
-                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                        <div class="attention w-3 h-3 rounded-full mr-3"
-                             :class="settings.metaEndpointEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">{{ __('Public Meta') }}</p>
-                            <p class="attention text-xs"
-                               :class="settings.metaEndpointEnabled === '1' ? 'text-green-600' : 'text-red-600'"
-                               x-text="settings.metaEndpointEnabled === '1' ? @js(__('Enabled')) : @js(__('Disabled'))"></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-6 pt-[0]">
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 class="text-sm font-semibold text-blue-900 mb-2">
-                        <i class="fas fa-info-circle mr-1"></i>{{ __('About API settings') }}
-                    </h4>
-                    <div class="text-xs text-blue-800 space-y-1">
-                        <p>{{ __('You can find these API settings on the') }} <strong><a href="/api-docs" title="{{ __('API Settings & Documentation') }}">{{ __('API page') }}</a></strong></p>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-
-        <!-- Disk Usage -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-900">
-                    <i class="fas fa-hard-drive mr-2"></i>{{ __('Disk Usage') }}
-                </h3>
-            </div>
-            <div class="p-6">
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">{{ __('Storage (app/)') }}</span>
-                        <span class="text-sm font-semibold text-gray-900" x-text="formatBytes({{ $diskUsage['storage_size'] }})"></span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">{{ __('Logs') }}</span>
-                        <span class="text-sm font-semibold text-gray-900" x-text="formatBytes({{ $diskUsage['logs_size'] }})"></span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm text-gray-600">{{ __('Cache') }}</span>
-                        <span class="text-sm font-semibold text-gray-900" x-text="formatBytes({{ $diskUsage['cache_size'] }})"></span>
-                    </div>
-                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-                        <span class="text-sm font-semibold text-gray-900">{{ __('Total Storage') }}</span>
-                        <span class="text-lg font-bold text-gray-900" x-text="formatBytes({{ $diskUsage['total_size'] }})"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Settings Tab -->
-    <div x-show="activeTab === 'settings'" class="space-y-6">
+    <div x-show="activeTab === 'settings'" x-cloak class="space-y-6">
         <!-- Status Messages -->
         <div x-show="settingsSaved" x-transition class="attention p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
             <i class="fas fa-check-circle mr-2"></i>{{ __('Settings saved successfully') }}
@@ -687,8 +503,192 @@
         </div>
     </div>
 
+    <!-- Overview Tab -->
+    <div x-show="activeTab === 'overview'" x-cloak class="space-y-6">
+        <!-- System Info Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- PHP Version -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                        <i class="fab fa-php text-2xl text-purple-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">{{ __('PHP Version') }}</p>
+                        <p class="text-lg font-semibold text-gray-900">{{ $systemInfo['php_version'] }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Laravel Version -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
+                        <i class="fab fa-laravel text-2xl text-red-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">{{ __('Laravel') }}</p>
+                        <p class="text-lg font-semibold text-gray-900">{{ $systemInfo['laravel_version'] }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Environment -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                        <i class="fas fa-server text-2xl text-green-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">{{ __('Environment') }}</p>
+                        <p class="text-lg font-semibold text-gray-900">{{ ucfirst($systemInfo['environment']) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory Limit -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                        <i class="fas fa-memory text-2xl text-blue-600"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">{{ __('Memory Limit') }}</p>
+                        <p class="text-lg font-semibold text-gray-900">{{ $systemInfo['memory_limit'] }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Statistics -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-database mr-2"></i>{{ __('Database Statistics') }}
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    @foreach($databaseStats['tables'] as $table => $count)
+                        <div class="text-center">
+                            <p class="text-2xl font-bold text-gray-900">{{ number_format($count) }}</p>
+                            <p class="text-sm text-gray-500">{{ ucfirst(str_replace('_', ' ', $table)) }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <!-- API Status -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-heartbeat mr-2"></i>{{ __('API Status') }}
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Sanctum Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full bg-green-500 mr-3"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">Sanctum</p>
+                            <p class="attention text-xs text-green-600">{{ __('Active') }}</p>
+                        </div>
+                    </div>
+
+                    <!-- JWT Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full mr-3"
+                             :class="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">JWT</p>
+                            <p class="attention text-xs"
+                               :class="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1' ? 'text-green-600' : 'text-red-600'">
+                                <template x-if="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled === '1'">
+                                    <span>{{ __('Active') }}</span>
+                                </template>
+                                <template x-if="systemInfo.jwtEnvEnabled !== '1'">
+                                    <span>{{ __('Disabled (env)') }}</span>
+                                </template>
+                                <template x-if="systemInfo.jwtEnvEnabled === '1' && settings.jwtSettingEnabled !== '1'">
+                                    <span>{{ __('Disabled (setting)') }}</span>
+                                </template>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Upload Endpoints Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full mr-3"
+                             :class="settings.uploadEndpointEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ __('Upload') }}</p>
+                            <p class="attention text-xs"
+                               :class="settings.uploadEndpointEnabled === '1' ? 'text-green-600' : 'text-red-600'"
+                               x-text="settings.uploadEndpointEnabled === '1' ? @js(__('Enabled')) : @js(__('Disabled'))"></p>
+                        </div>
+                    </div>
+
+                    <!-- Public Meta Status -->
+                    <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                        <div class="attention w-3 h-3 rounded-full mr-3"
+                             :class="settings.metaEndpointEnabled === '1' ? 'bg-green-500' : 'bg-red-500'"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ __('Public Meta') }}</p>
+                            <p class="attention text-xs"
+                               :class="settings.metaEndpointEnabled === '1' ? 'text-green-600' : 'text-red-600'"
+                               x-text="settings.metaEndpointEnabled === '1' ? @js(__('Enabled')) : @js(__('Disabled'))"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 pt-[0]">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="text-sm font-semibold text-blue-900 mb-2">
+                        <i class="fas fa-info-circle mr-1"></i>{{ __('About API settings') }}
+                    </h4>
+                    <div class="text-xs text-blue-800 space-y-1">
+                        <p>{{ __('You can find these API settings on the') }} <strong><a href="/api-docs" title="{{ __('API Settings & Documentation') }}">{{ __('API page') }}</a></strong></p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- Disk Usage -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-hard-drive mr-2"></i>{{ __('Disk Usage') }}
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">{{ __('Storage (app/)') }}</span>
+                        <span class="text-sm font-semibold text-gray-900" x-text="formatBytes({{ $diskUsage['storage_size'] }})"></span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">{{ __('Logs') }}</span>
+                        <span class="text-sm font-semibold text-gray-900" x-text="formatBytes({{ $diskUsage['logs_size'] }})"></span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">{{ __('Cache') }}</span>
+                        <span class="text-sm font-semibold text-gray-900" x-text="formatBytes({{ $diskUsage['cache_size'] }})"></span>
+                    </div>
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <span class="text-sm font-semibold text-gray-900">{{ __('Total Storage') }}</span>
+                        <span class="text-lg font-bold text-gray-900" x-text="formatBytes({{ $diskUsage['total_size'] }})"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Queue Tab -->
-    <div x-show="activeTab === 'queue'" class="space-y-6">
+    <div x-show="activeTab === 'queue'" x-cloak class="space-y-6">
         <!-- Queue Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white rounded-lg shadow p-6">
@@ -884,7 +884,7 @@
     </div>
 
     <!-- Logs Tab -->
-    <div x-show="activeTab === 'logs'" class="space-y-6">
+    <div x-show="activeTab === 'logs'" x-cloak class="space-y-6">
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -932,7 +932,7 @@
     </div>
 
     <!-- Commands Tab -->
-    <div x-show="activeTab === 'commands'" class="space-y-6">
+    <div x-show="activeTab === 'commands'" x-cloak class="space-y-6">
         <!-- Command Input -->
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1004,7 +1004,7 @@
     </div>
 
     <!-- Diagnostics Tab -->
-    <div x-show="activeTab === 'diagnostics'" class="space-y-6">
+    <div x-show="activeTab === 'diagnostics'" x-cloak class="space-y-6">
         <!-- Configuration Details -->
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
@@ -1179,7 +1179,7 @@
     </div>
 
     <!-- Documentation Tab -->
-    <div x-show="activeTab === 'documentation'" x-init="$watch('activeTab', value => { if (value === 'documentation' && !docContent && !docError) loadDocumentation(); })" class="space-y-6">
+    <div x-show="activeTab === 'documentation'" x-cloak x-init="$watch('activeTab', value => { if (value === 'documentation' && !docContent && !docError) loadDocumentation(); })" class="space-y-6">
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -1229,7 +1229,7 @@
     </div>
 
     <!-- Tests Tab -->
-    <div x-show="activeTab === 'tests'" class="space-y-6">
+    <div x-show="activeTab === 'tests'" x-cloak class="space-y-6">
         <!-- Test Runner Controls -->
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">

@@ -57,9 +57,15 @@ degrades cleanly to a plain deeplink.
 - **REQ-6** — The back link derives from the context params when present (returning to
   the exact filtered/sorted/paged view); otherwise it falls back to the
   `assets_return_url` session value stamped by `index`/`embed`, and finally to
-  `assets.index`.
-- **REQ-7** — Grid cards link to the show route **with the current query string
-  appended**, which is what supplies the context in REQ-1.
+  `assets.index`. That stamp is the index route plus the **context params only** — not the
+  raw `fullUrl()` — for the reason given in REQ-7.
+- **REQ-7** — Grid cards link to the show route with the **index-context query parameters**
+  appended (the REQ-1 `CONTEXT_KEYS` allowlist, canonical order, empties dropped), which is
+  what supplies the context in REQ-1. Deliberately *not* the whole query string: the show
+  page reads nothing outside that allowlist, so any other parameter is at best carried for
+  no reason and at worst reactivates an unrelated feature on the detail page — a finished
+  guided demo re-arming from a leaked `?demo=` is the case that forced this
+  ([`guided-demos.md`](guided-demos.md) REQ-6a).
 
 ## Technical design
 
@@ -78,6 +84,10 @@ controller (app/Http/Controllers/AssetController.php, all private):
   buildContextSummary(Request): string           # REQ-5, localized via __()
   sortLabel(string): string                      # sort key → translated label
   buildFilteredAssetQuery(Request): Builder      # shared with index/embed — REQ-2
+
+view data (buildIndexData, so index and embed alike):
+  $showSuffix → '' or '?'+http_build_query(extractContextParams())  # REQ-7; the grid
+                card links append it, and index/embed stamp assets_return_url from it
 
 view data (resources/views/assets/show.blade.php):
   $cycleNav  → <x-asset-cycle-nav :nav="$cycleNav" />, and Js::from($cycleNav)
@@ -203,6 +213,13 @@ Scenario: Grid cards carry the current query string into the show URL (REQ-7)
   Given the index rendered with ?sort=name_asc&search=a
   When the grid markup is inspected
   Then the card links embed that query string
+# pinned by: tests/Feature/AssetCycleNavigationTest.php
+
+Scenario: A non-context parameter does not ride the card links or the return URL (REQ-6, REQ-7)
+  Given the index rendered with ?sort=name_asc and a guided demo armed in the URL
+  When the grid markup and the stamped assets_return_url are inspected
+  Then both still carry sort=name_asc
+  And neither carries the demo parameters
 # pinned by: tests/Feature/AssetCycleNavigationTest.php
 ```
 

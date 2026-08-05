@@ -75,6 +75,16 @@ testids, `tests/e2e/dashboard-tour.spec.js`). This feature is a **demo** through
   payload already positioned, so the first paint is the correct step. Within a page,
   navigation rewrites the URL with `history.replaceState` — never `pushState`, so Back costs
   one press per page rather than one per step.
+- **REQ-6a** — `demo` and `demoStep` are the demo's own state, and no other feature may
+  propagate them. A link, redirect or session stamp built from "the current query string"
+  must exclude them. `stop()` scrubs the two parameters from the address bar, but it cannot
+  scrub links the server already rendered: a page that copies its query string wholesale into
+  its own outgoing links hands a *finished* demo straight back to the user on whatever they
+  open next, where the step almost certainly belongs to another route and so surfaces as a
+  REQ-7 hand-off card. The asset grid's card links and `assets_return_url` are the concrete
+  case ([`asset-cycle-navigation.md`](asset-cycle-navigation.md) REQ-7). This is not a ban on
+  `?demo=` in a URL — arming a demo that way is REQ-5/REQ-6, and a completed demo stays
+  replayable — only on carrying it somewhere nobody asked for.
 - **REQ-7** — When the resolved step belongs to a different route than the current one, the
   overlay renders a centered hand-off card whose primary action navigates there. This single
   rule covers the cross-page continuation, a shared link that lands on the wrong page, and
@@ -409,6 +419,13 @@ Scenario: Finishing the demo records it
   Then the overlay closes and the completion is stored against the user
 # pinned by: tests/e2e/guided-demo.spec.js
 
+Scenario: A finished demo does not follow the reader onto the next page (REQ-6a)
+  Given the Welcome demo finished on its last step, on the assets index
+  When an asset is opened from the grid the demo just closed on
+  Then the browser is on the asset detail page with no demo parameters
+  And no overlay is rendered at all
+# pinned by: tests/e2e/guided-demo.spec.js
+
 Scenario: A step whose target is absent is skipped without breaking the page
   Given the library filtered so no asset cards are rendered
   When the demo reaches the step anchored to a card
@@ -448,7 +465,8 @@ Scenario: The dashboard carousel offers the Welcome demo
   it must not disturb the user's other preferences.
 - E2E: `tests/e2e/guided-demo.spec.js` — the engine in a browser: launch, stepping,
   spotlight geometry, the cross-page hand-off, act-to-advance, deep links, the nav pin, the
-  absent-target path, and the inert-when-idle boot check that protects the rest of the suite.
+  absent-target path, the REQ-6a regression that a finished demo does not reappear on the
+  next page opened, and the inert-when-idle boot check that protects the rest of the suite.
 - Style: `./vendor/bin/pint --test`
 - `php artisan config:clear && php artisan test`, then `npm run build` and
   `npm run test:e2e -- tests/e2e/guided-demo.spec.js`, then the full `npm run test:e2e`.
