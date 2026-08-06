@@ -256,6 +256,23 @@ final class DatabaseError
     }
 
     /**
+     * Columns whose constraint violations must be reported against a different field.
+     *
+     * assets.s3_key_hash is a derived column: it exists only to carry the uniqueness of
+     * assets.s3_key, which at varchar(1024) utf8mb4 is 4096 bytes and exceeds InnoDB's 3072-byte
+     * index key limit, so it can no longer be indexed whole (input-validation.md REQ-10). A
+     * duplicate upload therefore violates assets_s3_key_hash_unique, and BOTH drivers name the
+     * surrogate — MySQL through the index name, SQLite through "UNIQUE constraint failed:
+     * assets.s3_key_hash". The column really exists, so verifyColumn() would accept it happily and
+     * the error bag would key on a field no form has: the user would see nothing at all.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private const COLUMN_ALIASES = [
+        'assets' => ['s3_key_hash' => 's3_key'],
+    ];
+
+    /**
      * A column name is only usable if it really exists — otherwise the error bag would key on a
      * field no form has, and the user would see nothing at all.
      */
@@ -264,6 +281,12 @@ final class DatabaseError
         if ($table === null || $column === null || $column === '') {
             return null;
         }
+
+        // Aliased before the existence check, not after, so the name returned is still one this
+        // method has verified against the schema. This is also the single point where
+        // columnFromIndexName() (MySQL) and columnFromQualifiedName() (SQLite) converge, so one
+        // entry covers every driver.
+        $column = self::COLUMN_ALIASES[$table][$column] ?? $column;
 
         try {
             return Schema::hasColumn($table, $column) ? $column : null;

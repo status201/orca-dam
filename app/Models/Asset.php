@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\AssetSearchParser;
 use App\Services\S3Service;
+use App\Support\S3KeyHash;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,18 @@ class Asset extends Model
         'parent_id',
     ];
 
+    /**
+     * s3_key_hash is deliberately absent from $fillable: it is derived, and keeping it out means
+     * no request body and no Asset::create() array can set it to something inconsistent with the
+     * s3_key it stands for. The saving hook below assigns it directly, which is not mass
+     * assignment and is unaffected by this list.
+     */
+    protected $hidden = [
+        // A uniqueness surrogate, not data. Without this it would appear in every toArray() /
+        // toJson() — including the public API payloads — as a meaningless 64-character digest.
+        's3_key_hash',
+    ];
+
     protected $casts = [
         'size' => 'integer',
         'width' => 'integer',
@@ -47,6 +60,28 @@ class Asset extends Model
         'license_expiry_date' => 'date',
         's3_missing_at' => 'datetime',
     ];
+
+    /**
+     * Keep the uniqueness surrogate in step with the column it stands for.
+     *
+     * assets.s3_key is varchar(1024) utf8mb4 = 4096 bytes and can no longer carry its own UNIQUE
+     * index (InnoDB caps a key at 3072), so assets_s3_key_hash_unique holds the invariant instead.
+     * See specs/features/input-validation.md REQ-10 and App\Support\S3KeyHash for why this is a
+     * PHP hook rather than a MySQL generated column.
+     *
+     * `saving` rather than `creating` + `updating`, so there is one place it can be wrong:
+     * isDirty() is true for every set attribute on a new model, so a create fills it too. Bulk
+     * move (AssetBulkController) rewrites s3_key through $asset->update(), so it lands here as
+     * well — the one operation ADR-006 allows to change the key.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $asset): void {
+            if ($asset->isDirty('s3_key')) {
+                $asset->s3_key_hash = S3KeyHash::of((string) $asset->s3_key);
+            }
+        });
+    }
 
     public const APPEND_FIELDS = [
         'url',

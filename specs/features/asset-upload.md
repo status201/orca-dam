@@ -3,7 +3,7 @@
 ```yaml
 id: asset-upload
 status: implemented
-version: 2
+version: 4
 owner: core
 related:
   - architecture
@@ -61,9 +61,14 @@ supplied alongside the files.
 `AssetController::store(StoreAssetRequest $request)` — `POST /assets`
 (`assets.store`, web-authenticated). Validation
 (`StoreAssetRequest::rules()`): `files.*` (required, file, max 500000KB,
-`AllowedUploadExtension`), `folder` (nullable string, max 100 — matching
-`FolderController`'s creation cap, since folder + filename both feed the
-`varchar(255)` `s3_key`), `keep_original_filename` (nullable bool), plus the
+`AllowedUploadExtension`, `BoundedFilename` — `max:512000` is *kilobytes* and
+bounds the bytes, so the name needs its own cap; see
+[`input-validation.md`](input-validation.md) REQ-13), `folder` (nullable string, max 100 — matching
+`FolderController`'s creation cap; folder + filename both feed `s3_key`, now
+`varchar(1024)`, so this is no longer an overflow guard but what keeps the folder
+`LIKE` range inside the 255-character index prefix of
+[`input-validation.md`](input-validation.md) REQ-12), `keep_original_filename`
+(nullable bool), plus the
 shared upload-metadata rules (`UploadMetadataRules::rules()`, reached through the
 `HasUploadMetadataRules` trait — `metadata_tags.*` max `Tag::MAX_NAME_LENGTH`,
 `metadata_license_type` in `Asset::licenseTypes()` keys,

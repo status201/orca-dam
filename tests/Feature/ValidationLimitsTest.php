@@ -167,7 +167,7 @@ function schemaBackedFields(): array
 function unboundStringFields(): array
 {
     return [
-        'folder' => 'An S3 path segment, not a column. It contributes to assets.s3_key along with the filename; capped at 100 to match FolderController\'s creation rule.',
+        'folder' => 'An S3 path segment, not a column. It contributes to assets.s3_key along with the filename; capped at 100 to match FolderController\'s creation rule, which also keeps the folder LIKE range inside assets_folder_filter_index\'s 255-character prefix.',
         'content' => 'A base64 payload streamed to S3 by the /tools endpoints. Never persisted to a column; the cap bounds the request body.',
         'latex' => 'LaTeX source compiled to MathML and discarded. Never persisted.',
     ];

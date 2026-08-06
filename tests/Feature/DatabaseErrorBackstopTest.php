@@ -5,6 +5,7 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Support\ColumnLimits;
 use App\Support\ErrorId;
+use App\Support\S3KeyHash;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -105,8 +106,12 @@ test('a real unique-constraint violation becomes a keyed 422', function () {
 });
 
 test('a real not-null violation names the missing field', function () {
+    // s3_key_hash is supplied even though s3_key is not, deliberately: it is also NOT NULL, and
+    // leaving both out would let the driver report whichever column it reaches first. Filling it
+    // makes s3_key the only missing one, so this asserts what it claims to.
     $url = routeRunning(fn () => DB::table('assets')->insert([
         'filename' => 'x.jpg', 'mime_type' => 'image/jpeg', 'size' => 1,
+        's3_key_hash' => S3KeyHash::of('assets/never-inserted.jpg'),
         'created_at' => now(), 'updated_at' => now(),
     ]));
 
@@ -117,8 +122,11 @@ test('a real not-null violation names the missing field', function () {
 });
 
 test('a real foreign-key violation is a 409 with an actionable message', function () {
+    // A raw insert bypasses Asset's saving hook, so s3_key_hash has to be written by hand or the
+    // NOT NULL on the surrogate fires before the foreign key this test is about.
     $url = routeRunning(fn () => DB::table('assets')->insert([
-        's3_key' => 'assets/orphan.jpg', 'filename' => 'orphan.jpg', 'mime_type' => 'image/jpeg',
+        's3_key' => 'assets/orphan.jpg', 's3_key_hash' => S3KeyHash::of('assets/orphan.jpg'),
+        'filename' => 'orphan.jpg', 'mime_type' => 'image/jpeg',
         'size' => 1, 'user_id' => 999999, 'created_at' => now(), 'updated_at' => now(),
     ]));
 

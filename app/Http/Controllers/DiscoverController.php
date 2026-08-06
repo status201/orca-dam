@@ -6,6 +6,7 @@ use App\Jobs\ProcessDiscoveredAsset;
 use App\Models\Asset;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
+use App\Support\ColumnLimits;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -108,7 +109,9 @@ class DiscoverController extends Controller
 
         $request->validate([
             'keys' => 'required|array',
-            'keys.*' => 'required|string',
+            // These are written straight into assets.s3_key below, so they carry the column's
+            // width. They come from an S3 listing in practice, but nothing here enforces that.
+            'keys.*' => 'required|string|max:'.ColumnLimits::for('assets', 's3_key'),
         ]);
 
         $imported = 0;

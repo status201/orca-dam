@@ -603,6 +603,12 @@ npm run build
 # Run migrations
 php artisan migrate --force
 
+# Verify the schema the migrations just produced. The test suite runs SQLite, which
+# reports no varchar length and enforces no index key limit, so column widths and
+# InnoDB's 3072-byte index budget are checked here or nowhere.
+# Exit 0 verified, 1 a check failed, 2 this driver cannot answer (SQLite deployments).
+php artisan db:verify-schema
+
 # Clear and rebuild caches
 php artisan config:clear
 php artisan cache:clear

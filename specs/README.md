@@ -339,7 +339,7 @@ specs/
     e2e-testing.md         ·  Playwright browser suite: roles, seeding, MinIO, CI
     static-analysis.md     ·  arch bans, Semgrep rules, CodeQL — and what each cannot see
     system-admin.md        ·  /system dashboard, queue, logs, web test runner
-    maintenance-commands.md ·  the 17 console commands + contracts
+    maintenance-commands.md ·  the 18 console commands + contracts
     tikz-render.md         ·  TikzCompilerService pipeline + security posture
     client-side-tools.md   ·  GIF maker, LaTeX→MathML, client TikZ; ToolUploadService
     easter-egg-game.md     ·  GameScore, leaderboard, lazy-loaded bundle

@@ -200,7 +200,9 @@ See [`features/s3-storage.md`](features/s3-storage.md),
 
 ```yaml
 Asset:                  # assets table — features/asset-model.md
-  s3_key: string        # unique, IMMUTABLE (REQ-3)
+  s3_key: string(1024)  # IMMUTABLE (REQ-3). Unique, but the constraint sits on s3_key_hash —
+                        # 1024 utf8mb4 chars exceed InnoDB's index key limit. input-validation.md REQ-11
+  s3_key_hash: char(64) # sha256 surrogate carrying that UNIQUE; not fillable, hidden, hook-maintained
   etag: string          # S3 etag — the dedup key (features/duplicate-detection.md)
   filename: string      # editable display name
   mime_type / size / width / height
@@ -271,13 +273,13 @@ The *why* behind the choices above — and the alternatives each rejected — li
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1198 tests,
-  94 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
+- `php artisan config:clear && php artisan test` — the full Pest suite (1215 tests,
+  96 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security
   invariants and exploit probes on their own, as the CI job runs them. See
   [security-invariants.md](features/security-invariants.md).
-- `npm run test:e2e` — the Playwright browser suite (133 tests across 21 spec files)
+- `npm run test:e2e` — the Playwright browser suite (134 tests across 21 spec files)
   against a real `artisan serve` + MinIO. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus

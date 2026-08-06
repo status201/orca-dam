@@ -1422,6 +1422,7 @@
     "The file itself, filename, dimensions, and file size.": "Het bestand zelf, bestandsnaam, afmetingen en bestandsgrootte.",
     "The file may not be greater than 500MB.": "Het bestand mag niet groter zijn dan 500MB.",
     "The file must have the same extension.": "Het bestand moet dezelfde extensie hebben.",
+    "The filename is too long (:length characters, maximum :max).": "De bestandsnaam is te lang (:length tekens, maximaal :max).",
     "The fork's": "De",
     "The GIF is assembled in the browser from the rendered PNG frames.": "De GIF wordt in de browser samengesteld uit de gerenderde PNG-frames.",
     "The given data was invalid.": "De gegeven data was ongeldig.",
