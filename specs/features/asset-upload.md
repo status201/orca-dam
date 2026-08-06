@@ -3,7 +3,7 @@
 ```yaml
 id: asset-upload
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -40,9 +40,11 @@ supplied alongside the files.
 - **REQ-2** — Every file is validated against the shared extension allowlist
   (`App\Rules\AllowedUploadExtension`, `config/uploads.php`) — see
   [`upload-policy.md`](upload-policy.md).
-- **REQ-3** — A per-file etag dedup check runs before the `Asset` row is created;
-  duplicates are skipped and reported rather than failing the whole batch (see
-  [`duplicate-detection.md`](duplicate-detection.md)).
+- **REQ-3** — A per-file etag dedup check runs before the `Asset` row is created,
+  skipped only when the upload collides with an existing `s3_key` (an overwrite is
+  not a duplicate — [`duplicate-detection.md`](duplicate-detection.md) REQ-2, and
+  **not** the `keep_original_filename` flag, which is what this used to say).
+  Duplicates are skipped and reported rather than failing the whole batch.
 - **REQ-4** — Thumbnail + resize generation and AI-tag dispatch are delegated to
   `AssetProcessingService::processImageAsset()`, never done inline in the
   controller (REQ-1 of `architecture.md`).
@@ -97,7 +99,8 @@ generation or AI dispatch.
 StoreAssetRequest validation
   → AssetPolicy::create authorization
   → per file: S3Service::uploadFile() (folder + keepOriginalFilename)
-      → etag dedup check (skipped when keepOriginalFilename)          [duplicate-detection.md]
+      → s3_key lookup FIRST — its result gates the next step        [duplicate-detection.md]
+      → etag dedup check (skipped only when that key collided)      [duplicate-detection.md]
       → s3_key collision handling (keepOriginalFilename overwrite branch:
         deletes old derived files via S3Service::deleteAssetFiles(keepOriginal: true),
         updates the existing Asset row in place instead of creating a new one)
@@ -196,8 +199,9 @@ Scenario: A disallowed file type is rejected in the browser
 
 ## Open questions / future
 
-- The `keep_original_filename` overwrite branch in `AssetController::store`
-  (s3_key collision → update existing asset in place, `deleted_at` reset) has no
-  dedicated test in `tests/Feature/AssetTest.php` or elsewhere in the suite —
-  only the chunked-upload equivalent path is indirectly covered. Worth adding a
-  direct-upload regression test for this branch.
+- ~~The `keep_original_filename` overwrite branch has no dedicated test.~~ **Resolved** — all four
+  combinations of the flag are now pinned in `tests/Feature/DuplicatePreventionTest.php`
+  ([`duplicate-detection.md`](duplicate-detection.md) REQ-2). Worth recording *why* this mattered:
+  the note said the overwrite branch was untested, and the branch that decided whether to *reach*
+  it was untested too — `keep_original_filename` appeared nowhere under `tests/` at all. That is
+  how a dedup check gated on the wrong condition shipped.

@@ -8,6 +8,7 @@ use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\Sanctum;
 
 function expectedDuplicateKeys(): array
 {
@@ -173,6 +174,53 @@ test('api role cannot restore a trashed duplicate from the panel payload', funct
 
     expect($payload['is_trashed'])->toBeTrue();
     expect($payload['can_restore'])->toBeFalse();
+});
+
+test('the API duplicate payload carries the shared shape and keeps its legacy url key', function () {
+    // The REST path hand-built a 3-key payload while duplicate-detection.md REQ-4 named
+    // formatDuplicate() the single source of truth, so an API caller could not render the panel the
+    // web paths produce. It now spreads the shared payload.
+    $apiUser = User::factory()->apiUser()->create();
+    Sanctum::actingAs($apiUser);
+
+    $existing = Asset::factory()->create([
+        'etag' => 'api-shared-shape',
+        'filename' => 'already-here.jpg',
+        's3_key' => 'assets/marketing/already-here.jpg',
+    ]);
+
+    $s3Service = Mockery::mock(S3Service::class);
+    $s3Service->shouldReceive('uploadFile')->once()->andReturn([
+        's3_key' => 'assets/attempted.jpg',
+        'filename' => 'attempted.jpg',
+        'mime_type' => 'image/jpeg',
+        'size' => 5000,
+        'etag' => 'api-shared-shape',
+        'width' => 800,
+        'height' => 600,
+    ]);
+    $s3Service->shouldReceive('deleteFile')->once()->andReturn(true);
+    $this->app->instance(S3Service::class, $s3Service);
+
+    $response = $this->postJson('/api/assets', [
+        'files' => [UploadedFile::fake()->image('attempted.jpg', 800, 600)],
+    ]);
+
+    $response->assertStatus(409);
+    $payload = $response->json('duplicates.0');
+
+    foreach (expectedDuplicateKeys() as $key) {
+        expect($payload)->toHaveKey($key);
+    }
+
+    // The load-bearing half: existing_asset_url is NOT in formatDuplicate(), and public_url is not a
+    // substitute for it (that one stays non-null for a trashed asset). Dropping it while "unifying"
+    // the payload would silently break every existing API consumer.
+    expect($payload)->toHaveKey('existing_asset_url')
+        ->and($payload['existing_asset_url'])->toBe($existing->url)
+        ->and($payload['existing_asset_id'])->toBe($existing->id)
+        ->and($payload['existing_filename'])->toBe('already-here.jpg')
+        ->and($payload['filename'])->toBe('attempted.jpg');
 });
 
 test('assets index ids[] filter returns only the listed assets and bypasses folder scoping', function () {

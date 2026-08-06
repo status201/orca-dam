@@ -225,8 +225,23 @@ class AssetController extends Controller
                     // Upload to S3 with folder support
                     $fileData = $this->s3Service->uploadFile($file, $folder, $keepOriginalFilename);
 
-                    // Check for duplicate by etag (skip when keeping original filename, as overwrite is intentional)
-                    if (! $keepOriginalFilename && ! empty($fileData['etag'])) {
+                    // Resolved BEFORE the etag check, because it is what decides whether that check
+                    // applies. Only reachable in keep_original_filename mode: otherwise the key is
+                    // a fresh UUID and can never collide.
+                    $existingByKey = Asset::withTrashed()->where('s3_key', $fileData['s3_key'])->first();
+
+                    // Check for duplicate by etag (skip when overwriting by s3_key).
+                    //
+                    // Gated on the collision, not on keep_original_filename. Those are not the same
+                    // thing, and conflating them is what let identical bytes upload twice under
+                    // different names: the flag was set, so this was skipped, and the key check
+                    // below then missed because the keys differed. An overwrite is not a duplicate;
+                    // a second copy under another name is. ChunkedUploadService has always gated it
+                    // this way — see duplicate-detection.md REQ-2.
+                    //
+                    // The guard has to stay: on a real overwrite the existing row already carries
+                    // this etag, so without it the upload would report as a duplicate of itself.
+                    if (! $existingByKey && ! empty($fileData['etag'])) {
                         $existing = Asset::withTrashed()->where('etag', $fileData['etag'])->first();
                         if ($existing) {
                             // Clean up the just-uploaded S3 object
@@ -244,7 +259,6 @@ class AssetController extends Controller
                     }
 
                     // Handle s3_key collision when keeping original filename
-                    $existingByKey = Asset::withTrashed()->where('s3_key', $fileData['s3_key'])->first();
                     if ($existingByKey) {
                         // Clean up old thumbnails and resized images
                         $this->s3Service->deleteAssetFiles($existingByKey, keepOriginal: true);

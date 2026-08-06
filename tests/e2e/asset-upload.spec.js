@@ -19,9 +19,18 @@ import { pngFixture, uniqueColor, uniqueName } from './support/files.js';
  * A fully clean batch redirects to the library ~1s later, so the "Uploaded" badge
  * is not a stable thing to assert on — the response is.
  */
-async function upload(page, file) {
+async function upload(page, file, { keepOriginalFilename = false } = {}) {
     await page.goto('/assets/create');
     await expect(page.locator(testid('upload-page'))).toBeVisible();
+
+    if (keepOriginalFilename) {
+        // Turning the toggle on fires a native confirm() (asset-uploader.js); Alpine only sets the
+        // flag once it is accepted, so without this handler the checkbox silently unticks itself.
+        page.once('dialog', (dialog) => dialog.accept());
+        await page.click(testid('upload-keep-filename-input'));
+        await expect(page.locator(testid('upload-keep-filename-input'))).toBeChecked();
+    }
+
     await page.setInputFiles(testid('upload-input'), file);
     // Alpine has rendered the staged row, so the submit button exists.
     await expect(page.locator(testid('upload-row'))).toHaveCount(1);
@@ -74,6 +83,25 @@ test.describe('asset upload', () => {
         expect(again.status()).toBe(409);
 
         // A duplicate keeps the user on the page, so the panel is stable.
+        await expect(page.locator(testid('upload-status-duplicate'))).toBeVisible();
+        await expect(page.locator(testid('upload-duplicates'))).toContainText(first);
+    });
+
+    test('identical bytes under a different name are a duplicate even when keeping the filename', async ({ page }) => {
+        // The reported bug, against a real MinIO etag — the only place in the suite where the etag
+        // is computed from the bytes rather than stipulated by a mock. The dedup check used to be
+        // gated on the keep-filename flag rather than on an actual s3_key collision, so ticking the
+        // box turned dedup off entirely and this second upload became a second asset.
+        const color = uniqueColor();
+        const first = uniqueName('e2e-keepdupe');
+
+        expect((await upload(page, pngFixture(first, { color }), { keepOriginalFilename: true })).ok()).toBeTruthy();
+
+        const again = await upload(page, pngFixture(uniqueName('e2e-keepdupe-again'), { color }), {
+            keepOriginalFilename: true,
+        });
+        expect(again.status()).toBe(409);
+
         await expect(page.locator(testid('upload-status-duplicate'))).toBeVisible();
         await expect(page.locator(testid('upload-duplicates'))).toContainText(first);
     });

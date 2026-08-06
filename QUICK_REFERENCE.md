@@ -50,14 +50,14 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1216 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1221 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
 
 npm run test:e2e:install                 # once: Chromium + OS deps
 npm run e2e:up                           # MinIO on :9000 (skip → S3 specs skip)
-npm run test:e2e                         # 134 Playwright tests, 21 spec files
+npm run test:e2e                         # 135 Playwright tests, 21 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # rebuild database/e2e.sqlite
 npm run e2e:down

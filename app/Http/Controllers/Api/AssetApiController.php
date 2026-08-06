@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\DuplicateAssetException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
@@ -88,9 +89,14 @@ class AssetApiController extends Controller
                 if ($existing) {
                     // Clean up the just-uploaded S3 object
                     $this->s3Service->deleteFile($fileData['s3_key']);
-                    $duplicates[] = [
-                        'filename' => $fileData['filename'],
-                        'existing_asset_id' => $existing->id,
+                    // The shared payload (duplicate-detection.md REQ-4), not a hand-rolled subset:
+                    // this used to return 3 of the 12 documented fields, so an API caller could not
+                    // render the duplicates panel the web paths produce.
+                    //
+                    // Additive on purpose. existing_asset_url pre-dates formatDuplicate() and is not
+                    // in it — and its `public_url` is NOT a substitute, since that stays non-null for
+                    // a trashed asset where this is null. Dropping it would break existing consumers.
+                    $duplicates[] = DuplicateAssetException::formatDuplicate($existing, $fileData['filename']) + [
                         'existing_asset_url' => $existing->trashed() ? null : $existing->url,
                     ];
 
