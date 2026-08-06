@@ -3,7 +3,7 @@
 ```yaml
 id: rest-api
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -130,7 +130,11 @@ request:
   metadata_tags / metadata_license_type / metadata_copyright / metadata_copyright_source: # HasUploadMetadataRules
 
 # 201 response
-{ message: string, data: [Asset], duplicates: [{ filename, existing_asset_id, existing_asset_url }]|null }
+{ message: string, data: [Asset], duplicates: [DuplicatePayload & { existing_asset_url }]|null }
+# DuplicatePayload = the 12 fields of DuplicateAssetException::formatDuplicate()
+# (duplicate-detection.md). existing_asset_url is API-only: it pre-dates the shared
+# payload, and public_url is NOT a substitute — that stays non-null for a trashed
+# asset, where existing_asset_url is null.
 # 409 when EVERY file in the batch is a duplicate
 { message: 'All files are duplicates of existing assets.', duplicates: [...] }
 
@@ -157,13 +161,17 @@ calls `$this->authorize()` explicitly; `index`/`show`/`update`/`store` rely on
 the route being open to all three known roles (no policy check beyond
 `isKnownRole`-equivalent access via the guard).
 
-**Divergence from the web/chunked upload paths**: `AssetApiController::store`
-does **not** use `DuplicateAssetException::formatDuplicate()` — it builds its
-own lighter `duplicates` array (`filename`, `existing_asset_id`,
-`existing_asset_url`) inline and deletes the just-uploaded S3 object on etag
-collision. The richer duplicate payload (`thumbnail_url`, `show_url`,
-`is_trashed`, `can_restore`, …) described in `CLAUDE.md`'s Upload workflow is a
-web/chunked-upload-only contract — see [`duplicate-detection.md`](duplicate-detection.md).
+**Duplicate payload**: `AssetApiController::store` uses
+`DuplicateAssetException::formatDuplicate()` like the web and chunked paths
+(`duplicate-detection.md` REQ-4), so an API caller gets the full 12-field payload
+and can render the same duplicates panel. It used to build a 3-field array inline,
+which is why that requirement previously named only the web paths.
+
+It additionally returns **`existing_asset_url`**, which is API-only: it pre-dates
+the shared payload and is not part of it. This is deliberate rather than tidied
+away — dropping it would break existing consumers, and `public_url` does not
+replace it, since `public_url` stays non-null for a trashed asset where
+`existing_asset_url` is null.
 
 ### Persistence
 

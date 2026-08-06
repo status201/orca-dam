@@ -163,6 +163,23 @@ php artisan config:clear && php artisan test
   immutable by design (REQ-1 of `asset-model.md`,
   [ADR-006](../decisions/adr-006-immutable-s3-key.md)); a "cache busting"
   motivation for touching it is always wrong — use a Cloudflare purge instead.
+  What ADR-006 fixes is the stored *value*, not the column's declaration: the
+  1024-character widening in
+  `2026_08_06_100001_widen_s3_key_columns_on_assets_table.php` changed no value
+  and broke no URL, and is not an exception to this rule.
+- **Widening an indexed column is a different job from adding one.** At utf8mb4
+  a `varchar` costs 4 bytes per character in an index key, and InnoDB caps that
+  key at 3072 bytes — so `varchar(769)` upward cannot be indexed whole, and any
+  index containing the column must be **dropped before** the `->change()` and
+  recreated after, in that order, in the same `Schema::table()` closure. SQLite
+  enforces neither limit, so CI stays green and the failure (errno 1071) lands
+  on the first real deploy. Blueprint cannot express an index prefix length
+  either, so a prefixed replacement needs a driver-guarded raw `DB::statement()`.
+  Worked instance:
+  `2026_08_06_100000_add_s3_key_hash_to_assets_table.php` +
+  `2026_08_06_100001_widen_s3_key_columns_on_assets_table.php`, with the full
+  reasoning in [`input-validation.md`](../features/input-validation.md) REQ-10
+  to REQ-12.
 - A migration with no matching `$fillable` entry doesn't error — `Asset::create()`
   just silently drops the field. This is the single most common way this
   ripple goes wrong; there's no test that catches it generically.

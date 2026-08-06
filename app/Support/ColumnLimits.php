@@ -33,12 +33,38 @@ final class ColumnLimits
      */
     public const CHARS = [
         'assets' => [
-            'filename' => 255,
+            // The browser's original filename, stored verbatim (S3Service::uploadFile) — sanitising
+            // applies to the S3 key, not to this column. 500 is deliberately generous rather than
+            // tight: it is long past any real filename, and it is what bounds the derived keys.
+            // With folder capped at 100 per segment (356 for the deepest legal nesting), the
+            // longest thumbnails/L/{folder}/{basename}.{ext} is ~871 characters, inside s3_key's
+            // 1024. Raising this without re-doing that arithmetic reopens the overflow.
+            'filename' => 500,
             'license_type' => 255,
             'copyright' => 500,
             'copyright_source' => 500,
-            's3_key' => 255,
-            'thumbnail_s3_key' => 255,
+            // An S3 object key is at most 1024 BYTES (an AWS hard limit). These are declared in
+            // characters, the unit a `max:` rule counts, so 1024 characters can never be narrower
+            // than what S3 accepts — a UTF-8 key of 1024 bytes is at most 1024 characters. It is
+            // looser for a multibyte key, which S3 would then reject itself; that is an S3 error
+            // with a message, not the silent 255-character truncation this replaced.
+            's3_key' => 1024,
+            'thumbnail_s3_key' => 1024,
+            // The derived keys are LONGER than the key they come from — S3Service builds
+            // `thumbnails/L/{folder}/{basename}.{ext}` — so leaving these at 255 would only move
+            // the ceiling one step downstream.
+            'resize_s_s3_key' => 1024,
+            'resize_m_s3_key' => 1024,
+            'resize_l_s3_key' => 1024,
+        ],
+        'upload_sessions' => [
+            // The chunked-upload path reserves the key before the asset row exists, so this
+            // column has to accept everything assets.s3_key does.
+            's3_key' => 1024,
+            // Likewise: ChunkedUploadController::initiate validates the filename against
+            // assets.filename and parks it here until complete() creates the asset, so anything
+            // that column accepts has to survive the round trip.
+            'filename' => 500,
         ],
         'tags' => [
             // The column is wider than any rule: names are capped at Tag::MAX_NAME_LENGTH

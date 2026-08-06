@@ -3,7 +3,7 @@
 ```yaml
 id: maintenance-commands
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -15,8 +15,9 @@ source:
 
 ## Background / Why
 
-ORCA ships 17 `artisan` commands covering asset hygiene, auth-secret lifecycle
-management, translation safety, and reading the user audit trail. They are the CLI counterpart to the System
+ORCA ships 18 `artisan` commands covering asset hygiene, auth-secret lifecycle
+management, translation safety, reading the user audit trail, and verifying the live
+schema. They are the CLI counterpart to the System
 admin dashboard (`SystemService::getSuggestedCommands()` surfaces the asset/queue
 ones there) and the primary tool for emergency recovery (JWT/2FA/passkey/token
 revocation) when the web UI itself is inaccessible.
@@ -41,6 +42,14 @@ revocation) when the web UI itself is inaccessible.
   non-reference tag: colliding with a `user`-type tag of the same name is skipped
   with a warning and the exit code reflects the failure only when *every*
   requested name collided.
+- **REQ-6** — `db:verify-schema` makes the schema assertions the suite structurally
+  cannot, and **never reports success for a check it did not run**. Its exit code is
+  three-valued: `0` verified, `1` a check failed, `2` the driver cannot answer. `2`
+  is distinct from `1` because a pipeline must be able to tell "verified wrong" from
+  "not verified" — SQLite is a supported deployment (`DEPLOYMENT.md`), so refusing to
+  run is not the same as a broken schema, and returning `0` would turn an unverified
+  run into a passing one. See [`input-validation.md`](input-validation.md) REQ-1 and
+  REQ-10 to REQ-12 for what it checks and why nothing else can.
 
 ## Technical design
 
@@ -101,6 +110,21 @@ users:audit {--user=} {--event=} {--limit=50}:
   # current email OR by the recorded label, so a deleted account's history stays
   # reachable. --event rejects anything outside created|updated|deleted. The trail has
   # no UI, so this is the only way to read it — see user-audit-log.md.
+
+# Schema verification (MySQL/MariaDB only — REQ-6)
+db:verify-schema:
+  # Reads information_schema and compares the LIVE schema against what the application
+  # believes: every ColumnLimits::CHARS varchar width, every TEXT_BYTES capacity, the
+  # row format (DYNAMIC, or the index and row-size limits collapse), and the byte size
+  # of every non-PRIMARY B-TREE index against InnoDB's 3072-byte key limit. FULLTEXT and
+  # SPATIAL indexes are exempt from that limit — measuring assets_fulltext summed two TEXT
+  # columns to 131072 bytes and failed a schema MySQL had accepted — so they are listed as
+  # exempt rather than dropped, since an unreported exemption reads like a check that passed.
+  # The index check is deliberately generic rather than a list of the known indexes:
+  # those are already pinned by name in tests/Feature/S3KeyWidthTest.php, which SQLite
+  # can run. What SQLite cannot do is add up the bytes — so this is what tells the next
+  # person to widen an indexed column before they meet errno 1071 in production.
+  # Exit 0 verified / 1 failed / 2 not verifiable on this driver.
 
 # Translations
 lang:safe-update:
@@ -240,6 +264,18 @@ Scenario: reference-tag:create succeeds when at least one of several names is cr
   Then it exits 0, "fresh" is created as reference, and "collide" is untouched
 # pinned by: tests/Feature/ReferenceTagCreateCommandTest.php
 
+Scenario: db:verify-schema declines rather than passing on a driver it cannot read
+  Given the connection is SQLite
+  When db:verify-schema runs
+  Then it exits 2 and explains that no check was performed
+# pinned by: tests/Feature/Console/VerifySchemaCommandTest.php
+
+Scenario: db:verify-schema measures a prefixed utf8mb4 index at four bytes per character
+  Given a varchar(1024) utf8mb4 column indexed at a 255-character prefix
+  When its key size is computed
+  Then it is 1020 bytes, inside InnoDB's 3072-byte limit
+# pinned by: tests/Feature/Console/VerifySchemaCommandTest.php
+
 Scenario: project translations survive a laravel-lang refresh
   Given lang/nl.json has project-owned overrides of laravel-lang defaults
   When the underlying lang:update publisher would overwrite them
@@ -256,6 +292,10 @@ Scenario: project translations survive a laravel-lang refresh
   `tests/Feature/Console/TwoFactorCommandTest.php`, `tests/Feature/PasskeyTest.php`
   (passkeys:list/revoke), `tests/Feature/ReferenceTagCreateCommandTest.php` —
   `php artisan config:clear && php artisan test`
+- Feature: `tests/Feature/Console/VerifySchemaCommandTest.php` — REQ-6's refusal to
+  return success on an unverifiable driver, plus the index byte arithmetic, which is
+  pure and therefore the only part of that command SQLite *can* exercise. The checks
+  themselves need a real MariaDB and are run by the command, not by the suite.
 
 ## Open questions / future
 

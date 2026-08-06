@@ -3,7 +3,7 @@
 ```yaml
 id: reference-tags-api
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -77,8 +77,9 @@ php artisan reference-tag:create {names?*}          # pre-create without attachi
 request:
   asset_id: int?            # exists:assets,id
   asset_ids: int[]?         # max 500, each exists:assets,id
-  s3_key: string?           # max 255 — the assets.s3_key column width (ColumnLimits)
-  s3_keys: string[]?        # max 500, each max 255
+  s3_key: string?           # max 1024 — the assets.s3_key column width (ColumnLimits), which is
+                            # also S3's own key limit. Was 255 while the column was too narrow.
+  s3_keys: string[]?        # max 500, each max 1024
   tags: string[]            # required, min 1, max 100, each max 100 chars
 response_200:
   message: string           # "Reference tags added to N asset(s)"

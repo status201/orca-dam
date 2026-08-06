@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Rules\AllowedUploadExtension;
+use App\Rules\BoundedFilename;
 use App\Services\AssetProcessingService;
 use App\Services\CloudflareService;
 use App\Services\RekognitionService;
@@ -75,6 +76,9 @@ class AssetReplaceController extends Controller
                 'file',
                 'max:512000', // 500MB
                 new AllowedUploadExtension,
+                // replaceFile() keeps the S3 key but returns the new file's name, which the
+                // controller writes into assets.filename — so this path needs the cap too.
+                new BoundedFilename,
                 function ($attribute, $value, $fail) use ($originalExtension) {
                     $newExtension = strtolower($value->getClientOriginalExtension());
                     if ($newExtension !== $originalExtension) {

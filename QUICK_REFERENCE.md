@@ -50,14 +50,14 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1198 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1221 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
 
 npm run test:e2e:install                 # once: Chromium + OS deps
 npm run e2e:up                           # MinIO on :9000 (skip → S3 specs skip)
-npm run test:e2e                         # 133 Playwright tests, 21 spec files
+npm run test:e2e                         # 135 Playwright tests, 21 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # rebuild database/e2e.sqlite
 npm run e2e:down
@@ -106,12 +106,14 @@ php artisan assets:verify-integrity           # queue S3 integrity checks
 php artisan assets:backfill-etags             # fetch etags from S3 for dedup
 php artisan assets:deduplicate [--force]      # dry-run, or soft-delete duplicates
 php artisan lang:safe-update                  # NEVER raw lang:update — it eats nl.json
+php artisan db:verify-schema                  # widths/row format/index bytes vs ColumnLimits
+                                              # MySQL/MariaDB only; exit 2 = not verifiable here
 
 # Queue (dev; production uses Supervisor — see DEPLOYMENT.md)
 php artisan queue:work --tries=3
 ```
 
-Full contracts for all 17 commands:
+Full contracts for all 18 commands:
 [specs/features/maintenance-commands.md](specs/features/maintenance-commands.md).
 
 ---
@@ -124,7 +126,7 @@ Complete for `app/Services/`, `app/Console/Commands/` and the top-level director
 ```
 orca-dam/
 ├── app/
-│   ├── Console/Commands/                  # 17 artisan commands
+│   ├── Console/Commands/                  # 18 artisan commands
 │   │   ├── BackfillEtags.php              # assets:backfill-etags
 │   │   ├── CleanupStaleUploads.php        # uploads:cleanup
 │   │   ├── DeduplicateAssets.php          # assets:deduplicate
@@ -141,7 +143,8 @@ orca-dam/
 │   │   ├── TwoFactorDisableCommand.php    # two-factor:disable
 │   │   ├── TwoFactorStatusCommand.php     # two-factor:status
 │   │   ├── UsersAuditCommand.php          # users:audit
-│   │   └── VerifyAssetIntegrity.php       # assets:verify-integrity
+│   │   ├── VerifyAssetIntegrity.php       # assets:verify-integrity
+│   │   └── VerifySchemaCommand.php        # db:verify-schema (MySQL/MariaDB only)
 │   ├── Demos/                             # guided onboarding walkthroughs (one class per demo)
 │   ├── Http/
 │   │   ├── Controllers/

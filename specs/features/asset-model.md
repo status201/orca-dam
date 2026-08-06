@@ -3,7 +3,7 @@
 ```yaml
 id: asset-model
 status: implemented
-version: 2
+version: 4
 owner: core
 related:
   - architecture
@@ -91,13 +91,16 @@ list of computed fields to `append()` before serializing an asset to JSON.
 ```yaml
 Asset:
   id: int
-  s3_key: string          # unique, IMMUTABLE (REQ-1)
+  s3_key: string(1024)    # IMMUTABLE (REQ-1); widened from 255 — input-validation.md REQ-10
+  s3_key_hash: char(64)   # sha256 of s3_key — carries the UNIQUE, which the wide column cannot;
+                          # NOT fillable, $hidden, set by a saving hook. input-validation.md REQ-11
   etag: string            # S3 etag — dedup key, see duplicate-detection.md
-  filename: string        # editable display name
+  filename: string(500)   # editable display name; the browser's original name, stored verbatim.
+                          # Widened from 255 — input-validation.md REQ-13
   mime_type: string
   size: int
   width / height: int|null
-  thumbnail_s3_key / resize_{s,m,l}_s3_key: string|null
+  thumbnail_s3_key / resize_{s,m,l}_s3_key: string(1024)|null   # widened from 255 — REQ-10
   alt_text / caption: text|null    # TEXT, not varchar — rules cap characters, see input-validation.md
   license_type: enum      # see Asset::licenseTypes()
   license_expiry_date: date|null   # cast 'date'

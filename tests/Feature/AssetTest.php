@@ -977,6 +977,69 @@ test('store rejects invalid metadata_license_type', function () {
     $response->assertJsonValidationErrors('metadata_license_type');
 });
 
+test('store rejects a filename longer than the column accepts', function () {
+    // The direct-upload path had no filename rule at all: `files.*` was validated as a *file*
+    // (max:512000 kilobytes), and S3Service writes getClientOriginalName() verbatim into
+    // assets.filename, so an over-length name reached MariaDB as SQLSTATE 22001.
+    $user = User::factory()->create();
+
+    $limit = ColumnLimits::for('assets', 'filename');
+    $tooLong = str_repeat('a', $limit + 1 - 4).'.jpg';   // limit + 1 characters including the extension
+
+    $response = $this->actingAs($user)->postJson(route('assets.store'), [
+        'files' => [UploadedFile::fake()->image($tooLong)],
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors('files.0');
+});
+
+test('store accepts a filename at exactly the column limit', function () {
+    // The boundary's other side, so the rule cannot be "reject everything long" and pass.
+    $user = User::factory()->create();
+
+    $limit = ColumnLimits::for('assets', 'filename');
+    $name = str_repeat('a', $limit - 4).'.jpg';
+    expect(mb_strlen($name))->toBe($limit);
+
+    $s3Service = Mockery::mock(S3Service::class);
+    $s3Service->shouldReceive('uploadFile')->once()->andReturn([
+        's3_key' => 'assets/'.$name,
+        'filename' => $name,
+        'mime_type' => 'image/jpeg',
+        'size' => 5000,
+        'etag' => 'etag-long-name',
+        'width' => 800,
+        'height' => 600,
+    ]);
+    $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
+    $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
+    $this->app->instance(S3Service::class, $s3Service);
+
+    $this->actingAs($user)->postJson(route('assets.store'), [
+        'files' => [UploadedFile::fake()->image($name)],
+    ])->assertStatus(200);
+
+    // Length, not equality: a truncating column would still match a prefix comparison.
+    expect(mb_strlen(Asset::where('etag', 'etag-long-name')->value('filename')))->toBe($limit);
+});
+
+test('the filename cap bounds every derived key inside the s3_key column', function () {
+    // The reason the cap is 500 rather than something larger. S3Service builds
+    // thumbnails/L/{folder}/{basename}.{ext} into resize_l_s3_key, which is the longest key the
+    // app ever constructs — longer than the s3_key it derives from. If this arithmetic stops
+    // holding, a legal upload produces a derived key the column cannot store.
+    $folderLimit = 100 + 1 + 255;                       // FolderController: parent (255) + name (100)
+    $filenameLimit = ColumnLimits::for('assets', 'filename');
+
+    $longestDerived = mb_strlen('thumbnails/L/')        // the longest derived prefix
+        + $folderLimit
+        + 1                                             // the separating slash
+        + $filenameLimit;
+
+    expect($longestDerived)->toBeLessThanOrEqual(ColumnLimits::for('assets', 'resize_l_s3_key'));
+});
+
 test('store rejects a metadata_copyright longer than the column accepts', function () {
     $user = User::factory()->create();
 
@@ -987,6 +1050,22 @@ test('store rejects a metadata_copyright longer than the column accepts', functi
 
     $response->assertStatus(422);
     $response->assertJsonValidationErrors('metadata_copyright');
+});
+
+test('the upload form renders a character counter under each capped copyright field', function () {
+    // input-validation.md REQ-7: a maxlength alone is not feedback. ValidationLimitsTest audits the
+    // rules and the controllers, but nothing there reads a Blade view — so without this, the counters
+    // could be deleted from the shared partial and every other test would still pass.
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get(route('assets.create'));
+
+    $response->assertStatus(200);
+    $response->assertSee('data-testid="char-counter-batch-metadata-copyright"', false);
+    $response->assertSee('data-testid="char-counter-batch-metadata-copyright-source"', false);
+    // The limit is rendered from ColumnLimits, so the counter cannot promise a different number
+    // than the rule enforces.
+    $response->assertSee('data-char-max="'.ColumnLimits::for('assets', 'copyright').'"', false);
 });
 
 test('store works without any metadata fields', function () {

@@ -3,7 +3,7 @@
 ```yaml
 id: error-handling
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -60,6 +60,14 @@ driver at all is [`input-validation.md`](input-validation.md); this spec is the 
   → a generic "one of the values you entered is too long". Where the driver reports only an index
   name, the derived column is verified with `Schema::hasColumn()` before use and dropped to `null`
   if it does not resolve — the handler never invents a field name.
+- **REQ-4a** — A **derived column is reported against the field it stands for**, via
+  `DatabaseError::COLUMN_ALIASES`, applied inside `verifyColumn()` *before* the `Schema::hasColumn()`
+  check so the reported name is still schema-verified. The one entry today is
+  `assets.s3_key_hash → s3_key`: that surrogate carries the uniqueness `assets.s3_key` is too wide to
+  index ([`input-validation.md`](input-validation.md) REQ-11), and both drivers name it on a
+  violation — MySQL through the index name, SQLite through the qualified column. Verification alone
+  is not enough here precisely *because* the surrogate is a real column: REQ-4's guard would accept
+  it and key the error bag on a field no form has, so the user would see nothing at all.
 - **REQ-5** — An **unclassified** `QueryException` returns `null` from the renderer when
   `config('app.debug')` is on, so local debugging keeps the whoops page and stack trace. In
   production it becomes a friendly failure carrying the error reference. Only this branch is

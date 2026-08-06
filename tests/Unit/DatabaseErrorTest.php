@@ -68,8 +68,16 @@ test('a driver rejection is classified into a kind, a status and a column', func
     'mysql server gone away' => ['HY000', 2006, 'MySQL server has gone away', 'update `assets` set `filename` = ?', 'unavailable', null, 503],
     'mysql connection refused' => ['08006', 2002, 'Connection refused', 'update `assets` set `filename` = ?', 'unavailable', null, 503],
 
+    // The s3_key uniqueness surrogate. assets.s3_key is varchar(1024) utf8mb4 = 4096 bytes and
+    // exceeds InnoDB's 3072-byte index key limit, so the invariant sits on assets.s3_key_hash
+    // (input-validation.md REQ-10) and both drivers name that column instead — MySQL through the
+    // index name, SQLite through the qualified column. It is a real column, so verifyColumn()
+    // would accept it and key the error bag on a field no form has. COLUMN_ALIASES maps it back.
+    'mysql duplicate on the s3_key surrogate' => ['23000', 1062, "Duplicate entry 'e3b0c442…' for key 'assets.assets_s3_key_hash_unique'", 'insert into `assets` (`s3_key`, `s3_key_hash`) values (?, ?)', 'duplicate', 's3_key', 422],
+
     // SQLite — what the suite itself raises.
     'sqlite unique' => ['23000', 19, 'UNIQUE constraint failed: tags.name', 'insert into "tags" ("name") values (?)', 'duplicate', 'name', 422],
+    'sqlite duplicate on the s3_key surrogate' => ['23000', 19, 'UNIQUE constraint failed: assets.s3_key_hash', 'insert into "assets" ("s3_key", "s3_key_hash") values (?, ?)', 'duplicate', 's3_key', 422],
     'sqlite not null' => ['23000', 19, 'NOT NULL constraint failed: assets.s3_key', 'insert into "assets" ("s3_key") values (?)', 'missing_required', 's3_key', 422],
     'sqlite foreign key' => ['23000', 19, 'FOREIGN KEY constraint failed', 'insert into "assets" ("user_id") values (?)', 'related_conflict', null, 409],
 

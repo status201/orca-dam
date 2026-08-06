@@ -49,8 +49,9 @@ class ChunkedUploadController extends Controller
             'filename' => ['required', 'string', 'max:'.ColumnLimits::for('assets', 'filename'), new AllowedUploadExtension],
             'mime_type' => 'required|string',
             'file_size' => 'required|integer|min:1|max:524288000', // 500MB in bytes
-            // 100, matching FolderController's creation cap: folder and filename both feed the
-            // varchar(255) s3_key, and the derived thumbnails/resize keys are longer still.
+            // 100, matching FolderController's creation cap: folder and filename both feed s3_key,
+            // now varchar(1024). The cap stays to keep the folder LIKE range inside
+            // assets_folder_filter_index's 255-character prefix.
             'folder' => 'nullable|string|max:100',
             'keep_original_filename' => 'nullable|boolean',
         ]);

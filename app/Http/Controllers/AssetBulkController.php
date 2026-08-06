@@ -189,8 +189,10 @@ class AssetBulkController extends Controller
         $request->validate([
             'asset_ids' => 'required|array|max:500',
             'asset_ids.*' => 'integer|exists:assets,id',
-            // 100, matching FolderController's creation cap — the destination becomes part of
-            // the varchar(255) s3_key of every moved asset.
+            // 100, matching FolderController's creation cap — the destination becomes part of the
+            // s3_key of every moved asset. The column is varchar(1024) now, so this is no longer
+            // the overflow guard it was; it is what keeps the LIKE range on
+            // assets_folder_filter_index inside that index's 255-character prefix.
             'destination_folder' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9\/_-]+$/', function ($attribute, $value, $fail) use ($configuredFolders) {
                 $folder = rtrim($value, '/');
                 $isConfigured = collect($configuredFolders)->contains(function ($configured) use ($folder) {

@@ -89,6 +89,19 @@ test.describe('batch metadata form', () => {
         await expect(page.locator(testid('batch-metadata-tag'))).toHaveCount(0);
     });
 
+    test('the copyright counter reports the count against the limit', async ({ page }) => {
+        // The upload page's half of input-validation.md REQ-7. maxlength truncates in silence, so
+        // without the counter a pasted copyright is cut at 500 with nothing on screen to say so.
+        await openBatchMetadata(page);
+
+        const counter = page.locator(testid('char-counter-batch-metadata-copyright'));
+        await expect(counter).toContainText('0 / 500');
+
+        await page.fill(testid('batch-metadata-copyright'), `© ORCA e2e ${'abcdefghij'.repeat(50)}`.slice(0, 500));
+
+        await expect(counter).toContainText('500 / 500');
+    });
+
     test('the collapsed header reports that metadata is set', async ({ page }) => {
         await openBatchMetadata(page);
 
