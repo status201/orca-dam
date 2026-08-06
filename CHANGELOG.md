@@ -7,6 +7,53 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+---
+
+## [v1.7.1] — 2026-08 — Remora
+
+### Notes for upgrading from v1.7.0 Sucker Fish
+- **This release has migrations, unlike v1.7.0.** Three of them:
+  `2026_08_06_100000_add_s3_key_hash_to_assets_table`,
+  `2026_08_06_100001_widen_s3_key_columns_on_assets_table` and
+  `2026_08_06_110000_widen_filename_columns`. Run `php artisan migrate --force`.
+- **Run the widening migration in a maintenance window.** MySQL/MariaDB DDL is not
+  transactional, and `..._widen_s3_key_columns...` drops two indexes on `assets`, widens five
+  columns and recreates the indexes at a 255-character prefix. If it dies between the drops and
+  the recreations, `assets` is left wide and **unindexed** — recovery is re-running the two
+  `DB::statement()` index creations at the end of that migration's `createS3KeyIndexes()`. The
+  column widening itself is `ALGORITHM=INPLACE` (extending a `varchar` whose length-byte count
+  does not change), so it does not copy the table; the backfill in the first migration is the
+  only slow step, and it is isolated there precisely so a retry never repeats it.
+- **Then run `php artisan db:verify-schema`.** New command, and the only check that the schema
+  the migrations produced is the one the application believes in — the suite runs SQLite, which
+  reports no `varchar` length and enforces no index key limit, so widths and InnoDB's 3072-byte
+  index budget are verifiable here or nowhere. Exit `0` verified, `1` a check failed, `2` the
+  driver cannot answer (SQLite deployments). Already added to `DEPLOYMENT.md`'s runbook after
+  `migrate --force`.
+- **Rebuild assets and clear compiled views: `npm run build && php artisan view:clear`.** This
+  release adds `resources/js/char-counter.js` and `resources/js/http-errors.js`, and changes the
+  Blade partial behind the upload form's metadata panel. A stale build or a cached compiled view
+  keeps serving the old markup after the code is correct. `DEPLOYMENT.md`'s runbook does both; a
+  manual pull does not.
+- **Duplicate uploads made while v1.7.0 was live are still in the database.** Ticking "Keep
+  original filename" disabled duplicate detection entirely, so the same bytes could be stored
+  twice under different names. The fix prevents new ones; it does not clean up old ones.
+  `php artisan assets:deduplicate` (dry-run by default) finds them — but it keeps the **oldest**
+  and soft-deletes the rest, so check what already links to each row before `--force`, and note
+  it uses a bare `Asset::where` with no `withTrashed()`, so its notion of a duplicate is
+  narrower than the upload-time one.
+- **The API's duplicate payload is richer, additively.** `POST /api/assets` now returns the same
+  12 fields the web paths do, and still returns `existing_asset_url`. No consumer needs to
+  change; the three original keys are unchanged.
+- **Rebase any branch with a spec edit in flight.** Twelve feature specs moved version in this
+  release — `asset-model` (→4), `asset-upload` (→5), `chunked-upload` (→2),
+  `csv-export-import` (→2), `duplicate-detection` (→2), `error-handling` (new, 2),
+  `guided-demos` (→3), `input-validation` (new, 4), `localization` (→3),
+  `maintenance-commands` (→2), `reference-tags-api` (→3), `rest-api` (→3) — so a branch that
+  also touched one of those `version:` lines will conflict on it. Rebasing keeps the bump;
+  merging can silently take your side and leave the spec looking unbumped to the gate.
+- No dependency changes; `composer install --no-dev` / `npm ci` only for the usual deploy reasons.
+
 ### Changed
 - **The Pest total is now counted, closing the last documented number nothing verified.** `spec-lint`'s rule for it carried a `null` and the comment "Pest tests (not auto-countable)" for as long as the other count rules existed, and it drifted twice in that time — to two different values in four places, and the second time by a **single test**, which is the size of error no human spots in review. `countPest()` reconciles exactly against `vendor/bin/pest --list-tests`, and getting there took finding three shapes rather than one: Pest's `test()`/`it()` function API, `arch()` expectations (7, each one test), and **class-based `public function test_…` methods** (42, in the Breeze-generated `ProfileTest` and `Auth/*` files). That last group is why the first attempt reconciled to 1083 instead of 1132 — those files contain no `test(` token anywhere, so a counter looking for one reads them as empty, and 49 tests were invisible in a way that a plausible-looking total would have concealed. Datasets expand: an inline array literal is sized by top-level commas, a `dataset('name', […])` declaration is resolved by name, two chained `->with()` calls multiply, and the chain is walked so `->throws(…)->with([…])` is still seen. Deliberately **not** keyed on `->with(` alone, which was the tempting shortcut and is wrong — the suite has 26 `->with('…')` calls that are Mockery expectations and Eloquent eager-loads, not datasets, so that heuristic would have inflated the total while looking like it worked. Anything unsizable — `->with($cases)`, `->with(fn () => …)`, an unknown dataset name, a PHPUnit `#[DataProvider]` — is **named and errored on**, never absorbed as one test, exactly as `loopFactorFor()` already refuses a loop it cannot size. Carries its own fixtures, checked on every run like the E2E counter's: 15 shapes it must size and 4 it must refuse, mutation-checked by disabling the class-method branch, which fails as `spec-lint self-test: …` and names the shape rather than merely reporting a wrong number. One real bug surfaced during the build and is worth recording because the design caught it: PHP `#` comments needed blanking before the shared bracket helpers (written for JavaScript) could scan the text, and the first version was not quote-aware — the suite uses `#` as a `preg_match` delimiter and in SVG fragment ids, so seven test calls had their closing brackets eaten. It failed as "unterminated `test(`" rather than as a quietly wrong number, which is the whole argument for refusing over guessing.
 - **A documented count split across a line wrap was matched by nothing.** `checkCounts()` tests each line against its rules independently, so `architecture.md`'s `(1132 tests,` / `91 files: …` — the number on one line, the qualifier that identifies it on the next — matched no rule at all. That is how the Pest total drifted there unnoticed, and fixing only the counter above would have left it unchecked in the one doc that states it that way. Each line is now also tested joined with the next, the line's own match preferred so a number cannot be reported twice. The join is restricted to a genuine **continuation** — the next line must be indented further — because joining unconditionally is wrong in a way that showed up immediately: `architecture.md`'s dependency block ends one line with a trailing version number and the next line begins the `commands:` key, so the join made that version read as a count of console commands and reported the tree as having two of them. Mutation-checked by mis-stating the wrapped total and confirming it is now named with its line number. Worth knowing for anyone writing about these rules: the entry you are reading tripped the same rule on its first draft, because quoting the glued-together text put a digit next to the word the rule matches — inside `[Unreleased]`, which is checked exactly like any other doc.
