@@ -614,3 +614,29 @@ test('ai tags still cannot be renamed after reference tag update', function () {
 
     $response->assertStatus(403);
 });
+
+test('a tag at the full name length can still be renamed', function () {
+    // Every creation path allows Tag::MAX_NAME_LENGTH, but the rename rule used to cap at 50 — so
+    // a 51-100 character tag could be created and then never renamed, because its own current
+    // name failed validation. See specs/features/tags.md.
+    $user = User::factory()->create();
+    $tag = Tag::factory()->create(['name' => str_repeat('a', Tag::MAX_NAME_LENGTH), 'type' => 'user']);
+
+    $newName = str_repeat('b', Tag::MAX_NAME_LENGTH);
+
+    $this->actingAs($user)
+        ->patchJson(route('tags.update', $tag), ['name' => $newName])
+        ->assertOk();
+
+    expect($tag->fresh()->name)->toBe($newName);
+});
+
+test('a tag name over the limit is still rejected on rename', function () {
+    $user = User::factory()->create();
+    $tag = Tag::factory()->create(['name' => 'short', 'type' => 'user']);
+
+    $this->actingAs($user)
+        ->patchJson(route('tags.update', $tag), ['name' => str_repeat('b', Tag::MAX_NAME_LENGTH + 1)])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('name');
+});

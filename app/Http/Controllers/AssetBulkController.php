@@ -189,7 +189,9 @@ class AssetBulkController extends Controller
         $request->validate([
             'asset_ids' => 'required|array|max:500',
             'asset_ids.*' => 'integer|exists:assets,id',
-            'destination_folder' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\/_-]+$/', function ($attribute, $value, $fail) use ($configuredFolders) {
+            // 100, matching FolderController's creation cap — the destination becomes part of
+            // the varchar(255) s3_key of every moved asset.
+            'destination_folder' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9\/_-]+$/', function ($attribute, $value, $fail) use ($configuredFolders) {
                 $folder = rtrim($value, '/');
                 $isConfigured = collect($configuredFolders)->contains(function ($configured) use ($folder) {
                     return $folder === $configured || str_starts_with($folder.'/', $configured.'/');

@@ -5,6 +5,7 @@ id: adr-010-services-swallow-controllers-map
 status: accepted
 date: 2026-07-22
 deciders: core
+amended_by: adr-016-database-errors-are-user-errors
 related:
   - ../architecture
   - ../features/rest-api
@@ -48,3 +49,9 @@ exception like `DuplicateAssetException`.
 - **Trade-off:** a `null` return is easy to ignore at the call site, so controllers
   must check; and the log is the only trace of a swallowed error, so log hygiene
   matters.
+- **Amended by [ADR-016](adr-016-database-errors-are-user-errors.md):** this record's
+  scope is *service* failures. A driver rejection is thrown by Eloquent inside the
+  controller's own frame, with no service to swallow it, so "controllers map" left it
+  with nowhere to go and it reached the user as a bare 500. ADR-016 adds a global
+  backstop for `QueryException` only, and answers this record's two objections to a
+  global handler (context loss, leaking internals) rather than setting them aside.

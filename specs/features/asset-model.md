@@ -3,7 +3,7 @@
 ```yaml
 id: asset-model
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -98,10 +98,10 @@ Asset:
   size: int
   width / height: int|null
   thumbnail_s3_key / resize_{s,m,l}_s3_key: string|null
-  alt_text / caption: string|null
+  alt_text / caption: text|null    # TEXT, not varchar — rules cap characters, see input-validation.md
   license_type: enum      # see Asset::licenseTypes()
   license_expiry_date: date|null   # cast 'date'
-  copyright / copyright_source: string|null
+  copyright / copyright_source: string(500)|null   # widened from 255 — input-validation.md REQ-5
   user_id: int            # belongsTo User (uploader)
   last_modified_by: int|null   # belongsTo User (modifier())
   parent_id: int|null     # nullable self-FK, nullOnDelete

@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Asset;
+use App\Models\Tag;
 use App\Services\CsvImportService;
+use App\Support\ColumnLimits;
 
 // ─── parseCsv() ──────────────────────────────────────────────────────────────
 
@@ -195,4 +197,67 @@ test('validateRow returns two errors for both invalid license_type and invalid d
     ]);
 
     expect($errors)->toHaveCount(2);
+});
+
+// ─── validateRow() length limits ─────────────────────────────────────────────
+// CSV is the one write path with no FormRequest behind it. Before these checks an over-long cell
+// reached the driver and turned the whole import into a 500 that named no row.
+// See specs/features/input-validation.md REQ-6.
+
+test('validateRow flags a cell longer than its column', function (string $field) {
+    $service = new CsvImportService;
+
+    $errors = $service->validateRow([
+        $field => str_repeat('a', ColumnLimits::for('assets', $field) + 1),
+    ]);
+
+    expect($errors)->toHaveCount(1)
+        ->and($errors[0])->toContain($field)
+        ->and($errors[0])->toContain((string) ColumnLimits::for('assets', $field));
+})->with(['copyright', 'copyright_source', 'filename']);
+
+test('validateRow accepts a cell at exactly the column limit', function (string $field) {
+    $service = new CsvImportService;
+
+    expect($service->validateRow([$field => str_repeat('a', ColumnLimits::for('assets', $field))]))->toBe([]);
+})->with(['copyright', 'copyright_source', 'filename']);
+
+test('validateRow counts characters, not bytes', function () {
+    $service = new CsvImportService;
+
+    // MySQL's varchar(N) counts characters; "©" costs two bytes. Byte-counting would reject a
+    // copyright line that fits perfectly well.
+    $atTheLimit = str_repeat('©', ColumnLimits::for('assets', 'copyright'));
+
+    expect($service->validateRow(['copyright' => $atTheLimit]))->toBe([])
+        ->and($service->validateRow(['copyright' => $atTheLimit.'©']))->toHaveCount(1);
+});
+
+test('validateRow does not bound a TEXT column', function () {
+    $service = new CsvImportService;
+
+    // alt_text and caption are TEXT (65 535 bytes); a long CSV cell there is not an error.
+    expect($service->validateRow([
+        'alt_text' => str_repeat('a', 5000),
+        'caption' => str_repeat('a', 5000),
+    ]))->toBe([]);
+});
+
+test('validateRow flags a tag name longer than Tag::MAX_NAME_LENGTH', function (string $field) {
+    $service = new CsvImportService;
+
+    // TagInputParser::parse() silently *drops* an over-length name, so without this the row
+    // reported as updated and the tag simply never appeared.
+    $errors = $service->validateRow([
+        $field => 'short-one,'.str_repeat('b', Tag::MAX_NAME_LENGTH + 1),
+    ]);
+
+    expect($errors)->toHaveCount(1)
+        ->and($errors[0])->toContain((string) Tag::MAX_NAME_LENGTH);
+})->with(['user_tags', 'reference_tags']);
+
+test('validateRow accepts a tag name at exactly the limit', function () {
+    $service = new CsvImportService;
+
+    expect($service->validateRow(['user_tags' => 'a,'.str_repeat('b', Tag::MAX_NAME_LENGTH)]))->toBe([]);
 });

@@ -323,6 +323,8 @@ specs/
     api-docs-admin.md      ·  /api-docs admin dashboard, tokens, JWT secrets
     # — platform / cross-cutting —
     settings.md            ·  Setting key-value model, 1h cache, groups
+    input-validation.md    ·  ColumnLimits as the source of truth; the rule↔column audit
+    error-handling.md      ·  QueryException → keyed 422, error reference id, no bare 500s
     localization.md        ·  SetLocale, nl.json ownership, JS translation channels
     security-headers.md    ·  SecurityHeaders middleware (nosniff, XFO, HSTS)
     security-invariants.md ·  self-auditing route/policy/source invariants + exploit probes
@@ -374,6 +376,7 @@ specs/
     adr-013-wordpress-plugin-separate-stream.md ·  WP plugin is a separate release stream
     adr-014-playwright-e2e-real-stack.md        ·  Playwright E2E on a real stack (MinIO)
     adr-015-guided-demos-server-declared.md     ·  demos declared in PHP; spotlight hand-rolled
+    adr-016-database-errors-are-user-errors.md  ·  driver rejections → keyed 422 (amends adr-010)
 ```
 
 > This map grows as the backfill lands (see `_backfill-status.md` while it exists).

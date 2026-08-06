@@ -3,6 +3,8 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import { applyShiftSelect } from './shift-select';
+// Not an Alpine module — a plain DOM behaviour that wires every <x-char-counter> on the page.
+import './char-counter';
 
 import './alpine/asset-grid';
 import './alpine/asset-detail';

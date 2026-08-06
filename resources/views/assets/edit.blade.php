@@ -47,11 +47,12 @@
                            name="filename"
                            id="filename"
                            value="{{ old('filename', $asset->filename) }}"
-                           maxlength="255"
+                           maxlength="{{ \App\Support\ColumnLimits::for('assets', 'filename') }}"
                            class="w-full px-4 py-2 focus:ring-2 focus:ring-orca-black border border-gray-300 rounded-lg">
                     @error('filename')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                    <x-char-counter for="filename" :max="\App\Support\ColumnLimits::for('assets', 'filename')" />
                 </div>
 
                 <!-- Preview -->
@@ -237,6 +238,9 @@
                     @error('alt_text')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                    {{-- alt_text/caption are TEXT columns: these caps are product decisions, not
+                         column widths, so they stay literal and match UpdateAssetRequest. --}}
+                    <x-char-counter for="alt_text" :max="500" />
                 </div>
 
                 <!-- Caption -->
@@ -253,6 +257,7 @@
                     @error('caption')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                    <x-char-counter for="caption" :max="1000" />
                 </div>
 
                 <!-- License Type -->
@@ -298,12 +303,13 @@
                            id="copyright"
                            name="copyright"
                            value="{{ old('copyright', $asset->copyright) }}"
-                           maxlength="500"
+                           maxlength="{{ \App\Support\ColumnLimits::for('assets', 'copyright') }}"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent"
                            placeholder="{{ __('e.g., © 2024 Company Name, or copyright holder information') }}">
                     @error('copyright')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                    <x-char-counter for="copyright" :max="\App\Support\ColumnLimits::for('assets', 'copyright')" />
                 </div>
 
                 <!-- Copyright Source -->
@@ -316,12 +322,13 @@
                            id="copyright_source"
                            name="copyright_source"
                            value="{{ old('copyright_source', $asset->copyright_source) }}"
-                           maxlength="500"
+                           maxlength="{{ \App\Support\ColumnLimits::for('assets', 'copyright_source') }}"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent"
                            placeholder="{{ __('e.g., https://example.com/license or original source reference') }}">
                     @error('copyright_source')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                    <x-char-counter for="copyright_source" :max="\App\Support\ColumnLimits::for('assets', 'copyright_source')" />
                 </div>
             </div>
 

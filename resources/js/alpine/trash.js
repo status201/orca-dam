@@ -1,3 +1,5 @@
+import { throwHttpError } from '../http-errors';
+
 function trashPage() {
     return {
         viewMode: localStorage.getItem('orcaTrashViewMode') || 'grid',
@@ -88,10 +90,7 @@ function trashPage() {
                     }),
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to restore assets');
-                }
+                if (!response.ok) await throwHttpError(response, translations.bulkRestoreFailed);
 
                 const data = await response.json();
                 window.showToast(data.message, 'success');
@@ -104,7 +103,7 @@ function trashPage() {
                 }
             } catch (error) {
                 console.error('Bulk restore failed:', error);
-                window.showToast(translations.bulkRestoreFailed || 'Failed to restore assets', 'error');
+                window.showToast(error.message || translations.bulkRestoreFailed || 'Failed to restore assets', 'error');
             } finally {
                 this.bulkRestoring = false;
             }
@@ -150,10 +149,7 @@ function trashPage() {
                     }),
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to delete assets');
-                }
+                if (!response.ok) await throwHttpError(response, translations.bulkForceDeleteFailed);
 
                 const data = await response.json();
                 window.showToast(data.message, 'success');
@@ -166,7 +162,7 @@ function trashPage() {
                 }
             } catch (error) {
                 console.error('Bulk force delete failed:', error);
-                window.showToast(translations.bulkForceDeleteFailed || 'Failed to permanently delete assets', 'error');
+                window.showToast(error.message || translations.bulkForceDeleteFailed || 'Failed to permanently delete assets', 'error');
             } finally {
                 this.bulkDeleting = false;
             }

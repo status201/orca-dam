@@ -3,7 +3,7 @@
 ```yaml
 id: chunked-upload
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -85,10 +85,15 @@ row; marks the session `completed`.
 `abortMultipartUpload` + session status `aborted`.
 
 Controller validation: `initiate` — `filename` (required, `AllowedUploadExtension`),
-`mime_type`, `file_size` (max 500MB in bytes), `folder`, `keep_original_filename`;
-also gated by `api_upload_enabled` setting for non-web-guard callers. `complete`
-validates the same `metadata_*` shape as the direct-upload path (REQ-5 of
-[`asset-upload.md`](asset-upload.md)) and, on success, runs
+`mime_type`, `file_size` (max 500MB in bytes), `folder` (max 100),
+`keep_original_filename`; also gated by `api_upload_enabled` setting for
+non-web-guard callers. `complete` validates the same `metadata_*` shape as the
+direct-upload path **through the shared `UploadMetadataRules::rules()`**, not a
+copy of it (REQ-5 of [`asset-upload.md`](asset-upload.md); the duplicate is what
+let the copyright cap drift past its column — [`input-validation.md`](input-validation.md)
+REQ-4). It validates inline rather than via a `FormRequest` so that
+`authorize('create', Asset::class)` still runs first. On success it
+runs
 `AssetProcessingService::processImageAsset()` +
 `AssetProcessingService::applyUploadMetadata()` — identical post-processing to
 the direct path.

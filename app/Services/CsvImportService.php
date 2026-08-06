@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Asset;
+use App\Models\Tag;
+use App\Support\ColumnLimits;
 
 class CsvImportService
 {
@@ -107,6 +109,54 @@ class CsvImportService
             $date = trim($row['license_expiry_date']);
             if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || ! strtotime($date)) {
                 $errors[] = __('Invalid date format: ":value". Use YYYY-MM-DD.', ['value' => $date]);
+            }
+        }
+
+        // CSV is the one write path with no FormRequest behind it, so nothing else caps these
+        // cells. Without this check an over-long copyright reached the driver and turned the
+        // whole import into a 500 that named no row. alt_text/caption are TEXT columns and are
+        // absent from ColumnLimits::CHARS, so they are skipped rather than bounded here.
+        foreach (self::UPDATABLE_FIELDS as $field) {
+            if (! isset($row[$field]) || trim($row[$field]) === '') {
+                continue;
+            }
+
+            if (! isset(ColumnLimits::CHARS['assets'][$field])) {
+                continue;
+            }
+
+            $limit = ColumnLimits::for('assets', $field);
+            // mb_strlen, not strlen: MySQL counts characters, and "©" in a copyright line
+            // costs two bytes — byte-counting would reject values that fit.
+            $length = mb_strlen(trim($row[$field]));
+
+            if ($length > $limit) {
+                $errors[] = __('The :field value is too long (:length characters, maximum :max).', [
+                    'field' => $field,
+                    'length' => $length,
+                    'max' => $limit,
+                ]);
+            }
+        }
+
+        // Tag cells are the one place an over-length value did not error — TagInputParser::parse()
+        // silently *drops* a name longer than Tag::MAX_NAME_LENGTH, so the row reported as updated
+        // and the tag simply never appeared. Report it instead.
+        foreach (['user_tags', 'reference_tags'] as $field) {
+            if (! isset($row[$field]) || trim($row[$field]) === '') {
+                continue;
+            }
+
+            foreach (explode(',', $row[$field]) as $name) {
+                $name = trim($name);
+
+                if ($name !== '' && mb_strlen($name) > Tag::MAX_NAME_LENGTH) {
+                    $errors[] = __('The tag ":value" is too long (:length characters, maximum :max).', [
+                        'value' => mb_substr($name, 0, 30).'…',
+                        'length' => mb_strlen($name),
+                        'max' => Tag::MAX_NAME_LENGTH,
+                    ]);
+                }
             }
         }
 

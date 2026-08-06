@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Tools;
 
 use App\Models\Asset;
+use App\Support\ColumnLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -19,8 +20,9 @@ abstract class ToolUploadRequest extends FormRequest
     public function rules(): array
     {
         return array_merge([
-            'filename' => ['required', 'string', 'max:255'],
-            'folder' => ['nullable', 'string', 'max:255'],
+            'filename' => ['required', 'string', 'max:'.ColumnLimits::for('assets', 'filename')],
+            // 100, matching FolderController's creation cap — see StoreAssetRequest.
+            'folder' => ['nullable', 'string', 'max:100'],
             'caption' => ['nullable', 'string', 'max:1000'],
         ], $this->extraRules());
     }

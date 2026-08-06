@@ -6,6 +6,7 @@ use App\Models\UploadSession;
 use App\Models\User;
 use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
+use App\Support\ColumnLimits;
 use Illuminate\Support\Str;
 
 function makeUploadSession(User $user, array $overrides = []): UploadSession
@@ -117,13 +118,13 @@ test('chunked upload complete rejects invalid license type', function () {
     $response->assertJsonValidationErrors('metadata_license_type');
 });
 
-test('chunked upload complete rejects metadata_copyright over 500 chars', function () {
+test('chunked upload complete rejects a metadata_copyright over the column limit', function () {
     $user = User::factory()->create();
     $session = makeUploadSession($user);
 
     $response = $this->actingAs($user)->postJson(route('chunked-upload.complete'), [
         'session_token' => $session->session_token,
-        'metadata_copyright' => str_repeat('a', 501),
+        'metadata_copyright' => str_repeat('a', ColumnLimits::for('assets', 'copyright') + 1),
     ]);
 
     $response->assertStatus(422);

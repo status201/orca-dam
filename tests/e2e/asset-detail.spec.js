@@ -29,6 +29,27 @@ test.describe('asset detail and editing', () => {
         await expect(page.locator(testid('asset-detail'))).toContainText('Alt text from the browser suite');
     });
 
+    test('a copyright at the full documented length saves and displays in full', async ({ page }) => {
+        // The reported bug's journey end to end: the form promises 500 characters via maxlength,
+        // so a 500-character value must survive the round trip rather than 500'ing at the driver.
+        // Note database/e2e.sqlite is as blind to varchar length as the unit DB — this proves the
+        // promise, it cannot prove the column is wide enough. That is what the rule↔column audit
+        // in tests/Feature/ValidationLimitsTest.php is for. See specs/features/input-validation.md.
+        const copyright = `© ORCA e2e ${'abcdefghij'.repeat(50)}`.slice(0, 500);
+
+        await gotoAssets(page, { search: 'e2e-detail-gamma' });
+        await assetCard(page, 'e2e-detail-gamma.png').click();
+        await page.click(testid('asset-detail-edit'));
+
+        await page.fill('#copyright', copyright);
+        // The counter makes the limit visible instead of letting maxlength truncate in silence.
+        await expect(page.locator(testid('char-counter-copyright'))).toContainText('500 / 500');
+
+        await page.click(testid('asset-edit-save'));
+
+        await expect(page.locator(testid('asset-detail'))).toContainText(copyright);
+    });
+
     test('a tag added on the edit page ends up on the asset', async ({ page }) => {
         await gotoAssets(page, { search: 'e2e-detail-alpha' });
         await assetCard(page, 'e2e-detail-alpha.png').click();

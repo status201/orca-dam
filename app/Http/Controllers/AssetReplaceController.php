@@ -8,6 +8,7 @@ use App\Services\AssetProcessingService;
 use App\Services\CloudflareService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
+use App\Support\ErrorAudience;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -198,7 +199,8 @@ class AssetReplaceController extends Controller
         } catch (\Exception $e) {
             Log::error("Manual AI tagging failed for {$asset->filename}: ".$e->getMessage());
 
-            $detail = Auth::user()?->isApiUser() ? '' : $e->getMessage();
+            // ErrorAudience rather than an inline isApiUser() check — one rule, one place.
+            $detail = ErrorAudience::detail($e) ?? '';
 
             return redirect()->route('assets.edit', $asset)
                 ->with('error', trim(__('Failed to generate AI tags: ').$detail));

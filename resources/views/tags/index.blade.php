@@ -212,7 +212,7 @@
                            id="editTagName" data-testid="tag-edit-name"
                            x-model="editingTagName"
                            required
-                           maxlength="50"
+                           maxlength="{{ \App\Models\Tag::MAX_NAME_LENGTH }}"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
                 </div>
 

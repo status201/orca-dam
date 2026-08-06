@@ -57,9 +57,6 @@
 
         </div>
 
-        <!-- Toast Container -->
-        <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
-
         <!-- Guided demo overlay — renders nothing unless ?demo= arms one -->
         @include('layouts.guided-demo')
 
@@ -67,35 +64,19 @@
         window.appTranslations = {
             urlCopied: @js(__('URL copied to clipboard!')),
             copyFailed: @js(__('Failed to copy URL')),
+            sessionExpired: @js(__('Your session expired. Reload the page and try again.')),
+            payloadTooLarge: @js(__('That upload is too large for the server to accept.')),
+            requestFailed: @js(__('The request could not be completed. Try again.')),
         };
-
-        // Toast notification system
-        window.showToast = function(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-
-            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
-            const icon = type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle';
-
-            toast.className = `${bgColor} attention text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3 transform transition-all duration-300 translate-x-full opacity-0`;
-            toast.innerHTML = `
-                <i class="fas ${icon}"></i>
-                <span>${message}</span>
-            `;
-
-            container.appendChild(toast);
-
-            // Animate in
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full', 'opacity-0');
-            }, 10);
-
-            // Remove after 5 seconds
-            setTimeout(() => {
-                toast.classList.add('translate-x-full', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
-        };
+        {{--
+            window.showToast lives in resources/js/app.js — one definition, using textContent.
+            There used to be a second copy here (and in embed.blade.php) that interpolated the
+            message into innerHTML. It was dead only because @vite's deferred module overwrote it
+            after this inline script ran; now that server-supplied messages reach toasts
+            (specs/features/error-handling.md REQ-11), that ordering accident was the only thing
+            standing between us and an HTML-injection sink. Both copies are gone, along with the
+            #toast-container they appended to — app.js appends to <body>.
+        --}}
         </script>
 
         @stack('scripts')

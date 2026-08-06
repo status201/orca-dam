@@ -50,14 +50,14 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1132 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1198 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
 
 npm run test:e2e:install                 # once: Chromium + OS deps
 npm run e2e:up                           # MinIO on :9000 (skip → S3 specs skip)
-npm run test:e2e                         # 132 Playwright tests, 21 spec files
+npm run test:e2e                         # 133 Playwright tests, 21 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # rebuild database/e2e.sqlite
 npm run e2e:down
@@ -236,8 +236,8 @@ orca-dam/
 ├── routes/                                # web.php, api.php, auth.php, console.php
 ├── scripts/                               # sdd-guard.mjs, spec-lint.mjs
 ├── specs/                                 # the behavioural source of truth
-│   ├── features/                          # 47 feature specs
-│   ├── decisions/                         # 16 ADRs
+│   ├── features/                          # 49 feature specs
+│   ├── decisions/                         # 17 ADRs
 │   └── recipes/                           # repeatable how-tos
 ├── tests/
 │   ├── Feature/                           # incl. Auth/, Console/, Middleware/
