@@ -3,7 +3,7 @@
 ```yaml
 id: localization
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -86,7 +86,12 @@ the controller, so every `__()` call and the `<html lang="...">` attribute in
   (`resources/views/assets/partials/grid.blade.php`), shared between the index and
   embed pages.
 - `window.appTranslations` — the base layout (`resources/views/layouts/app.blade.php`),
-  currently `urlCopied` / `copyFailed` for the global toast system.
+  currently `urlCopied` / `copyFailed` for the global toast system, plus
+  `sessionExpired` / `payloadTooLarge` / `requestFailed` for `resources/js/http-errors.js`
+  ([`error-handling.md`](error-handling.md) REQ-11), whose fallbacks are the only strings a
+  failed request can show when the server's own body carries none. `layouts/embed.blade.php`
+  defines the three error keys as well, because the embedded view shares that helper; the
+  helper guards for a missing `window.appTranslations` regardless.
 
 The base layout also contributes `window.__pageData.guidedDemo` — a namespaced key on the
 first channel, like `tagConfig`, not a fourth channel — carrying the active walkthrough's

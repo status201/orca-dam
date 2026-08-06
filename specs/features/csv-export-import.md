@@ -3,7 +3,7 @@
 ```yaml
 id: csv-export-import
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -42,10 +42,15 @@ mistakes before an `import` mutates anything.
   `reference_tags` columns are additive (`syncTagsWithAttribution`'s
   `syncWithoutDetaching` semantics), and only non-empty CSV cells overwrite a
   field (`UPDATABLE_FIELDS`) — an empty cell leaves the current value alone.
-- **REQ-5** — A row failing `validateRow()` (invalid `license_type` or
-  `license_expiry_date` format) is skipped entirely during `import` (no
-  partial field updates for that row), and reported in the response's
-  `errors[]`.
+- **REQ-5** — A row failing `validateRow()` (invalid `license_type`, malformed
+  `license_expiry_date`, or a cell longer than its target column) is skipped
+  entirely during `import` (no partial field updates for that row), and reported
+  in the response's `errors[]`. The length check compares `mb_strlen` against
+  `ColumnLimits` for every bounded `UPDATABLE_FIELDS` cell — CSV is the one write
+  path with no `FormRequest`, so without it an over-long cell reached the driver
+  and turned the whole import into a 500 that named no row
+  ([`input-validation.md`](input-validation.md) REQ-6). `alt_text`/`caption` are
+  `TEXT` and are not bounded here.
 - **REQ-6** — `preview` and `import` use the *same* `CsvImportService` methods
   (`parseCsv`, `calculateChanges`/`validateRow`), so the preview a user
   approves is guaranteed to match what `import` actually does.

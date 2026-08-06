@@ -224,6 +224,15 @@ Passkey / GameScore
 - **Services swallow + log + return `null`/`[]`.** Controllers validate and map to
   status codes; API-role users get generic messages via `Controller::clientError()`,
   admins/editors see detail. See [ADR-010](decisions/adr-010-services-swallow-controllers-map.md).
+  **One backstop sits behind that:** a `QueryException` has no service to swallow it, so
+  it is handled globally and turned into the keyed validation error it should have been,
+  never a bare 500. Every error response carries an `ErrorId` reference.
+  See [ADR-016](decisions/adr-016-database-errors-are-user-errors.md) and
+  [`features/error-handling.md`](features/error-handling.md).
+- **A validation rule may never permit more characters than its column accepts.**
+  `App\Support\ColumnLimits` is the one place a `varchar` width is declared, read by the
+  migration, the rules and the `maxlength=`; a test asserts no rule outruns its column,
+  because SQLite tests cannot. See [`features/input-validation.md`](features/input-validation.md).
 - **Tests always run after `php artisan config:clear`.** A stale
   `bootstrap/cache/config.php` can point `RefreshDatabase` at the dev DB and wipe it.
   See [ADR-008](decisions/adr-008-sqlite-tests.md).
@@ -258,16 +267,17 @@ The *why* behind the choices above — and the alternatives each rejected — li
 - [ADR-013](decisions/adr-013-wordpress-plugin-separate-stream.md) — WordPress plugin is a separate release stream.
 - [ADR-014](decisions/adr-014-playwright-e2e-real-stack.md) — browser E2E against a real stack (MinIO for S3).
 - [ADR-015](decisions/adr-015-guided-demos-server-declared.md) — guided demos declared in PHP; spotlight hand-rolled.
+- [ADR-016](decisions/adr-016-database-errors-are-user-errors.md) — a driver rejection is a user error: one global backstop behind the controllers (amends ADR-010).
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1132 tests,
-  91 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
+- `php artisan config:clear && php artisan test` — the full Pest suite (1198 tests,
+  94 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security
   invariants and exploit probes on their own, as the CI job runs them. See
   [security-invariants.md](features/security-invariants.md).
-- `npm run test:e2e` — the Playwright browser suite (132 tests across 21 spec files)
+- `npm run test:e2e` — the Playwright browser suite (133 tests across 21 spec files)
   against a real `artisan serve` + MinIO. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus

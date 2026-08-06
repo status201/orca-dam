@@ -144,7 +144,9 @@ class TagController extends Controller
         }
 
         $request->validate([
-            'name' => 'required|string|max:50|unique:tags,name,'.$tag->id,
+            // Tag::MAX_NAME_LENGTH, not 50: every creation path allows 100, so a 51-100
+            // character tag used to be unrenamable — its own current name failed this rule.
+            'name' => 'required|string|max:'.Tag::MAX_NAME_LENGTH.'|unique:tags,name,'.$tag->id,
         ]);
 
         $tag->update([

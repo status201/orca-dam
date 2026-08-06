@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\ColumnLimits;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 
@@ -1066,4 +1067,50 @@ test('api assets show response includes url', function () {
 
     $response->assertOk();
     $response->assertJsonPath('url', fn ($url) => is_string($url) && str_contains($url, 'assets/test.jpg'));
+});
+
+test('api update rejects a copyright longer than the column accepts', function () {
+    // Same UpdateAssetRequest as the web path, but a different middleware stack — and this is the
+    // route an integration would hit. See specs/features/input-validation.md.
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->patchJson("/api/assets/{$asset->id}", [
+        'copyright' => str_repeat('a', ColumnLimits::for('assets', 'copyright') + 1),
+    ]);
+
+    $response->assertStatus(422)->assertJsonValidationErrors('copyright');
+});
+
+test('api update stores a copyright at exactly the column limit in full', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $asset = Asset::factory()->create(['user_id' => $user->id]);
+    $limit = ColumnLimits::for('assets', 'copyright');
+
+    $this->patchJson("/api/assets/{$asset->id}", [
+        'copyright' => str_repeat('a', $limit),
+        'copyright_source' => str_repeat('b', $limit),
+    ])->assertOk();
+
+    $asset->refresh();
+
+    // Length, not equality: a truncating column would still match a prefix comparison.
+    expect(mb_strlen($asset->copyright))->toBe($limit)
+        ->and(mb_strlen($asset->copyright_source))->toBe($limit);
+});
+
+test('api rejects an s3_key longer than the column, since it can never match a row', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson('/api/reference-tags', [
+        's3_key' => str_repeat('a', ColumnLimits::for('assets', 's3_key') + 1),
+        'tag_names' => ['crm-1234'],
+    ]);
+
+    $response->assertStatus(422)->assertJsonValidationErrors('s3_key');
 });

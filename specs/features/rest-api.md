@@ -3,7 +3,7 @@
 ```yaml
 id: rest-api
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -55,7 +55,15 @@ responses, and a role split on error verbosity.
   additionally gated by `api_meta_endpoint_enabled`.
 - **REQ-6** — Error responses are role-aware: `Controller::clientError()` gives
   `api`-role users a generic message and admins/editors the exception detail
-  (see [ADR-010](../decisions/adr-010-services-swallow-controllers-map.md)).
+  (see [ADR-010](../decisions/adr-010-services-swallow-controllers-map.md)). The
+  role rule itself lives in `App\Support\ErrorAudience`, which `clientError()`
+  delegates to, so the global handler can apply the same rule; for a
+  `QueryException` even a trusted caller gets the driver's sentence and never the
+  SQL-with-bindings. A write the driver rejects returns a **keyed 422** with the
+  same body shape as a `FormRequest` failure — never a bare 500 — and a 5xx body
+  carries an `error_id` reference and is scrubbed for `api`-role callers
+  regardless of `app.debug` ([`error-handling.md`](error-handling.md),
+  [ADR-016](../decisions/adr-016-database-errors-are-user-errors.md)).
 - **REQ-7** — Chunked upload endpoints (`/api/chunked-upload/*`) are declared in
   `routes/web.php`, **not** `routes/api.php` — they run under
   `auth.multi:web,sanctum,jwt` (session auth is the primary caller, the web

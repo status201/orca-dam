@@ -5,6 +5,7 @@ use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\S3Service;
+use App\Support\ColumnLimits;
 use Illuminate\Http\UploadedFile;
 
 test('guests cannot access assets index', function () {
@@ -976,12 +977,12 @@ test('store rejects invalid metadata_license_type', function () {
     $response->assertJsonValidationErrors('metadata_license_type');
 });
 
-test('store rejects metadata_copyright longer than 500 characters', function () {
+test('store rejects a metadata_copyright longer than the column accepts', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->postJson(route('assets.store'), [
         'files' => [UploadedFile::fake()->image('photo.jpg')],
-        'metadata_copyright' => str_repeat('a', 501),
+        'metadata_copyright' => str_repeat('a', ColumnLimits::for('assets', 'copyright') + 1),
     ]);
 
     $response->assertStatus(422);

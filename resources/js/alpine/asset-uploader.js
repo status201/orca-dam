@@ -1,3 +1,4 @@
+import { throwHttpError } from '../http-errors';
 import { generatePdfThumbnail, generateVideoThumbnail, uploadThumbnail } from './thumbnail-generator';
 import { uploadMetadata } from './upload-metadata';
 
@@ -189,9 +190,7 @@ export function assetUploader() {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error(pageData.translations.failedToScanFolders);
-                }
+                if (!response.ok) await throwHttpError(response, pageData.translations.failedToScanFolders);
 
                 window.showToast(pageData.translations.foldersRefreshed);
                 setTimeout(() => window.location.reload(), 500);
@@ -221,10 +220,7 @@ export function assetUploader() {
                     }),
                 });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.message || pageData.translations.failedToCreateFolder);
-                }
+                if (!response.ok) await throwHttpError(response, pageData.translations.failedToCreateFolder);
 
                 const data = await response.json();
                 this.selectedFolder = data.folder;
@@ -429,9 +425,7 @@ export function assetUploader() {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error(pageData.translations.restoreFailed);
-                }
+                if (!response.ok) await throwHttpError(response, pageData.translations.restoreFailed);
 
                 // Mutate the row in place: clear trash flags, surface a working show URL.
                 const updatedPayload = {
@@ -594,10 +588,7 @@ export function assetUploader() {
                 }),
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || pageData.translations.failedToInitUpload);
-            }
+            if (!response.ok) await throwHttpError(response, pageData.translations.failedToInitUpload);
 
             return await response.json();
         },
@@ -631,10 +622,7 @@ export function assetUploader() {
                 body: formData,
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || pageData.translations.chunkUploadFailed);
-            }
+            if (!response.ok) await throwHttpError(response, pageData.translations.chunkUploadFailed);
 
             return await response.json();
         },
@@ -664,10 +652,7 @@ export function assetUploader() {
                 return { duplicate: payload };
             }
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || pageData.translations.failedToCompleteUpload);
-            }
+            if (!response.ok) await throwHttpError(response, pageData.translations.failedToCompleteUpload);
 
             return await response.json();
         },

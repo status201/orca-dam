@@ -191,6 +191,12 @@ Scenario: Reference tags are renamable in the web UI
   Then the rename succeeds (200) and the tag's name is updated
 # pinned by: tests/Feature/TagTest.php
 
+Scenario: A tag at the full name length can still be renamed
+  Given a user tag whose name is Tag::MAX_NAME_LENGTH characters long
+  When PATCH /tags/{tag} renames it to another name of that length
+  Then the rename succeeds — the rename cap is Tag::MAX_NAME_LENGTH, not a tighter literal
+# pinned by: tests/Feature/TagTest.php
+
 Scenario: AI tags cannot be renamed
   Given an AI-typed tag
   When PATCH /tags/{tag} attempts to rename it

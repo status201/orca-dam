@@ -107,7 +107,7 @@
         {{-- Copyright Information --}}
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Copyright Information') }}</label>
-            <input type="text" x-model="metadataCopyright" maxlength="500" data-testid="batch-metadata-copyright"
+            <input type="text" x-model="metadataCopyright" maxlength="{{ \App\Support\ColumnLimits::for('assets', 'copyright') }}" data-testid="batch-metadata-copyright"
                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent text-sm"
                    placeholder="{{ __('e.g., © 2024 Company Name, or copyright holder information') }}">
         </div>
@@ -118,7 +118,7 @@
                 {{ __('Copyright Source') }}
                 <span class="text-gray-500 font-normal">{{ __('(URL or reference)') }}</span>
             </label>
-            <input type="text" x-model="metadataCopyrightSource" maxlength="500" data-testid="batch-metadata-copyright-source"
+            <input type="text" x-model="metadataCopyrightSource" maxlength="{{ \App\Support\ColumnLimits::for('assets', 'copyright_source') }}" data-testid="batch-metadata-copyright-source"
                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent text-sm"
                    placeholder="{{ __('e.g., https://example.com/license or original source reference') }}">
         </div>

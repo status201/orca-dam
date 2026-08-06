@@ -31,6 +31,7 @@ the old one rather than rewriting it. An ADR's `status` is its own lifecycle —
 | [013](adr-013-wordpress-plugin-separate-stream.md) | The WordPress plugin is a separate release stream (`wp-v*` tags) | accepted |
 | [014](adr-014-playwright-e2e-real-stack.md) | Browser E2E with Playwright against a real stack (MinIO for S3) | accepted |
 | [015](adr-015-guided-demos-server-declared.md) | Guided demos are declared server-side and rendered by hand | accepted |
+| [016](adr-016-database-errors-are-user-errors.md) | A driver rejection is a user error: one global backstop behind the controllers | accepted |
 
 New ADRs copy [`_adr-template.md`](_adr-template.md) to `adr-NNN-<slug>.md`, numbered
 contiguously. Keep this index and the folder map in [`../README.md`](../README.md) in

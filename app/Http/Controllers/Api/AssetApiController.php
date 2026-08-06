@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\Tag;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
+use App\Support\ColumnLimits;
 use App\Support\TagInputParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -474,9 +475,12 @@ class AssetApiController extends Controller
             'asset_id' => 'integer|exists:assets,id',
             'asset_ids' => 'array|max:500',
             'asset_ids.*' => 'integer|exists:assets,id',
-            's3_key' => 'string|max:1024',
+            // The column width, not a round number: a key longer than assets.s3_key can
+            // never match a row, so advertising 1024 was a wrong contract even though
+            // these are read-only lookups that could not overflow anything.
+            's3_key' => 'string|max:'.ColumnLimits::for('assets', 's3_key'),
             's3_keys' => 'array|max:500',
-            's3_keys.*' => 'string|max:1024',
+            's3_keys.*' => 'string|max:'.ColumnLimits::for('assets', 's3_key'),
         ];
     }
 

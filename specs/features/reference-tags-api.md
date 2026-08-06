@@ -3,7 +3,7 @@
 ```yaml
 id: reference-tags-api
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -77,8 +77,8 @@ php artisan reference-tag:create {names?*}          # pre-create without attachi
 request:
   asset_id: int?            # exists:assets,id
   asset_ids: int[]?         # max 500, each exists:assets,id
-  s3_key: string?           # max 1024
-  s3_keys: string[]?        # max 500, each max 1024
+  s3_key: string?           # max 255 — the assets.s3_key column width (ColumnLimits)
+  s3_keys: string[]?        # max 500, each max 255
   tags: string[]            # required, min 1, max 100, each max 100 chars
 response_200:
   message: string           # "Reference tags added to N asset(s)"

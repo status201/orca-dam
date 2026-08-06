@@ -136,6 +136,9 @@ class E2eSeeder extends Seeder
             'copyright' => 'ORCA E2E',
         ]);
         $this->image('e2e-detail-beta.png', $admin);
+        // Gamma exists only so the copyright-length test has an asset the rename test has not
+        // touched — beta is renamed by the time it would run.
+        $this->image('e2e-detail-gamma.png', $editor);
 
         // Trash lifecycle: -04 starts soft-deleted so trash has a row before any
         // test deletes anything.

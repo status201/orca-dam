@@ -3,6 +3,7 @@
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\ColumnLimits;
 
 // --- Authorization ---
 
@@ -527,4 +528,44 @@ test('import preserves existing reference tags', function () {
     $refTags = $asset->tags->where('type', 'reference');
     expect($refTags)->toHaveCount(2);
     expect($refTags->pluck('name')->sort()->values()->all())->toBe(['existing-ref', 'new-ref']);
+});
+
+test('import skips a row whose copyright exceeds the column and reports it', function () {
+    // The reported bug through the CSV door: before the length check this row reached the driver
+    // and 500'd the whole import, naming no row. See specs/features/input-validation.md REQ-6.
+    $admin = User::factory()->create(['role' => 'admin']);
+    $asset = Asset::factory()->create(['s3_key' => 'assets/img.jpg', 'copyright' => '© original']);
+
+    $tooLong = str_repeat('a', ColumnLimits::for('assets', 'copyright') + 1);
+    $csv = "s3_key,copyright\nassets/img.jpg,{$tooLong}";
+
+    $response = $this->actingAs($admin)->postJson(route('import.import'), [
+        'csv_data' => $csv,
+        'match_field' => 's3_key',
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('updated', 0)
+        ->assertJsonPath('skipped', 1);
+
+    expect($response->json('errors'))->toHaveCount(1)
+        // Nothing partial was written — the row is skipped entirely (csv-export-import.md REQ-5).
+        ->and($asset->fresh()->copyright)->toBe('© original');
+});
+
+test('preview flags an over-long copyright before anything is written', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Asset::factory()->create(['s3_key' => 'assets/img.jpg']);
+
+    $tooLong = str_repeat('a', ColumnLimits::for('assets', 'copyright') + 1);
+    $csv = "s3_key,copyright\nassets/img.jpg,{$tooLong}";
+
+    $response = $this->actingAs($admin)->postJson(route('import.preview'), [
+        'csv_data' => $csv,
+        'match_field' => 's3_key',
+    ]);
+
+    $response->assertOk();
+
+    expect($response->json('results.0.errors'))->toHaveCount(1);
 });

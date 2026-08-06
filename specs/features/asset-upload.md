@@ -3,7 +3,7 @@
 ```yaml
 id: asset-upload
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -61,11 +61,15 @@ supplied alongside the files.
 `AssetController::store(StoreAssetRequest $request)` — `POST /assets`
 (`assets.store`, web-authenticated). Validation
 (`StoreAssetRequest::rules()`): `files.*` (required, file, max 500000KB,
-`AllowedUploadExtension`), `folder` (nullable string), `keep_original_filename`
-(nullable bool), plus the shared upload-metadata rules
-(`HasUploadMetadataRules` trait — `metadata_tags.*` max
-`Tag::MAX_NAME_LENGTH`, `metadata_license_type` in `Asset::licenseTypes()` keys,
-`metadata_copyright`/`metadata_copyright_source` max 500).
+`AllowedUploadExtension`), `folder` (nullable string, max 100 — matching
+`FolderController`'s creation cap, since folder + filename both feed the
+`varchar(255)` `s3_key`), `keep_original_filename` (nullable bool), plus the
+shared upload-metadata rules (`UploadMetadataRules::rules()`, reached through the
+`HasUploadMetadataRules` trait — `metadata_tags.*` max `Tag::MAX_NAME_LENGTH`,
+`metadata_license_type` in `Asset::licenseTypes()` keys,
+`metadata_copyright`/`metadata_copyright_source` capped at
+`ColumnLimits::for('assets', 'copyright')` / `…'copyright_source'` rather than a
+literal — see [`input-validation.md`](input-validation.md) REQ-1).
 
 `AssetProcessingService::processImageAsset(Asset $asset, bool $dispatchAiTagging = true): void`
 — no-ops for non-images; generates thumbnail via

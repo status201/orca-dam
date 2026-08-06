@@ -1,3 +1,5 @@
+import { errorMessageFrom } from '../http-errors';
+
 function importMetadata() {
     const pageData = window.__pageData?.import || {};
 
@@ -52,16 +54,6 @@ function importMetadata() {
             reader.readAsText(file);
         },
 
-        extractError(data) {
-            if (data.error) return data.error;
-            if (data.errors) {
-                const firstField = Object.keys(data.errors)[0];
-                if (firstField) return data.errors[firstField][0];
-            }
-            if (data.message) return data.message;
-            return pageData.translations.unexpectedError;
-        },
-
         async previewImport() {
             this.loading = true;
             this.errorMessage = '';
@@ -81,12 +73,8 @@ function importMetadata() {
                 });
 
                 if (!response.ok) {
-                    try {
-                        const data = await response.json();
-                        this.errorMessage = this.extractError(data);
-                    } catch {
-                        this.errorMessage = pageData.translations.unexpectedError + ' (' + response.status + ')';
-                    }
+                    this.errorMessage = await errorMessageFrom(response, pageData.translations.unexpectedError + ' (' + response.status + ')');
+
                     return;
                 }
 
@@ -118,12 +106,8 @@ function importMetadata() {
                 });
 
                 if (!response.ok) {
-                    try {
-                        const data = await response.json();
-                        this.errorMessage = this.extractError(data);
-                    } catch {
-                        this.errorMessage = pageData.translations.unexpectedError + ' (' + response.status + ')';
-                    }
+                    this.errorMessage = await errorMessageFrom(response, pageData.translations.unexpectedError + ' (' + response.status + ')');
+
                     return;
                 }
 

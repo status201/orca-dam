@@ -70,7 +70,14 @@
         </div>
         <h1 class="text-6xl font-bold text-gray-300 mb-4">500</h1>
         <p class="text-lg text-gray-600 mb-2">{{ __('Server Error') }}</p>
-        <p class="text-sm text-gray-400 mb-8">{{ __('Something went wrong on our end. Please try again later.') }}</p>
+        <p class="text-sm text-gray-400 mb-4">{{ __('Something went wrong on our end. Please try again later.') }}</p>
+        {{-- The reference is the actionable part of an otherwise unactionable page: it is on the
+             log line for this exact request, so a user can quote six characters and an operator
+             can find it. Request-scoped (App\Support\ErrorId), not derived from $exception, which
+             here is the HttpException wrapper rather than the original failure. --}}
+        <p class="text-xs text-gray-400 mb-8">
+            {{ __('Reference') }}: <code class="font-mono text-gray-500 select-all">{{ \App\Support\ErrorId::current() }}</code>
+        </p>
         <a href="{{ url('/') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
             {{ __('Back to Home') }}
         </a>

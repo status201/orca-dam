@@ -10,11 +10,12 @@ use App\Rules\AllowedUploadExtension;
 use App\Services\AssetProcessingService;
 use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
+use App\Support\ColumnLimits;
+use App\Support\UploadMetadataRules;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 class ChunkedUploadController extends Controller
 {
@@ -45,10 +46,12 @@ class ChunkedUploadController extends Controller
         $this->authorize('create', Asset::class);
 
         $request->validate([
-            'filename' => ['required', 'string', 'max:255', new AllowedUploadExtension],
+            'filename' => ['required', 'string', 'max:'.ColumnLimits::for('assets', 'filename'), new AllowedUploadExtension],
             'mime_type' => 'required|string',
             'file_size' => 'required|integer|min:1|max:524288000', // 500MB in bytes
-            'folder' => 'nullable|string|max:255',
+            // 100, matching FolderController's creation cap: folder and filename both feed the
+            // varchar(255) s3_key, and the derived thumbnails/resize keys are longer still.
+            'folder' => 'nullable|string|max:100',
             'keep_original_filename' => 'nullable|boolean',
         ]);
 
@@ -148,19 +151,15 @@ class ChunkedUploadController extends Controller
     {
         $this->authorize('create', Asset::class);
 
-        $request->validate([
-            'session_token' => 'required|string',
-            'metadata_tags' => 'nullable|array',
-            'metadata_tags.*' => 'string|max:100',
-            'metadata_reference_tag_ids' => 'nullable|array',
-            'metadata_reference_tag_ids.*' => [
-                'integer',
-                Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
-            ],
-            'metadata_license_type' => ['nullable', 'string', Rule::in(array_keys(Asset::licenseTypes()))],
-            'metadata_copyright' => 'nullable|string|max:500',
-            'metadata_copyright_source' => 'nullable|string|max:500',
-        ]);
+        // The shared rule set, not a copy of it. This array used to be a hand-copied duplicate of
+        // the upload-metadata rules, which is how the copyright cap drifted past its column here
+        // as well as in UpdateAssetRequest. Validating inline rather than via a FormRequest is
+        // deliberate: a FormRequest validates before the controller body, which would move the
+        // authorize() above it and change which failure a caller sees first.
+        $request->validate(array_merge(
+            ['session_token' => 'required|string'],
+            UploadMetadataRules::rules(),
+        ));
 
         // Declared before the try because the DuplicateAssetException handler below reads it, and
         // the assignment inside the try is itself a throwing call — without this, the `?? null`

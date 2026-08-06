@@ -1,3 +1,4 @@
+import { throwHttpError } from '../http-errors';
 import { tagInputCore } from './tag-input-core';
 
 export function assetGrid() {
@@ -324,7 +325,7 @@ export function assetGrid() {
                     body: JSON.stringify(payload),
                 });
 
-                if (!response.ok) throw new Error('Failed to add tags');
+                if (!response.ok) await throwHttpError(response, window.assetTranslations?.tagAddFailed);
 
                 const data = await response.json();
                 window.showToast(data.message, 'success');
@@ -334,7 +335,7 @@ export function assetGrid() {
                 setTimeout(() => window.location.reload(), 800);
             } catch (error) {
                 console.error('Bulk add tag failed:', error);
-                window.showToast(window.assetTranslations?.tagAddFailed || 'Failed to add tag', 'error');
+                window.showToast(error.message || window.assetTranslations?.tagAddFailed || 'Failed to add tag', 'error');
             } finally {
                 this.bulkLoading = false;
             }
@@ -392,10 +393,7 @@ export function assetGrid() {
                     }),
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to move assets');
-                }
+                if (!response.ok) await throwHttpError(response, translations.moveFailed);
 
                 const data = await response.json();
                 window.showToast(data.message, 'success');
@@ -408,7 +406,7 @@ export function assetGrid() {
                 }
             } catch (error) {
                 console.error('Bulk move failed:', error);
-                window.showToast(translations.moveFailed || 'Failed to move assets', 'error');
+                window.showToast(error.message || translations.moveFailed || 'Failed to move assets', 'error');
             } finally {
                 this.bulkMoving = false;
                 this.bulkMoveOpen = false;
@@ -456,10 +454,7 @@ export function assetGrid() {
                     }),
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to delete assets');
-                }
+                if (!response.ok) await throwHttpError(response, translations.forceDeleteFailed);
 
                 const data = await response.json();
                 window.showToast(data.message, 'success');
@@ -472,7 +467,7 @@ export function assetGrid() {
                 }
             } catch (error) {
                 console.error('Bulk force delete failed:', error);
-                window.showToast(translations.forceDeleteFailed || 'Failed to permanently delete assets', 'error');
+                window.showToast(error.message || translations.forceDeleteFailed || 'Failed to permanently delete assets', 'error');
             } finally {
                 this.bulkDeleting = false;
             }
@@ -519,10 +514,7 @@ export function assetGrid() {
                     }),
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to move assets to trash');
-                }
+                if (!response.ok) await throwHttpError(response, translations.bulkTrashFailed);
 
                 const data = await response.json();
                 window.showToast(data.message, 'success');
@@ -530,7 +522,7 @@ export function assetGrid() {
                 setTimeout(() => window.location.reload(), 800);
             } catch (error) {
                 console.error('Bulk trash failed:', error);
-                window.showToast(translations.bulkTrashFailed || 'Failed to move assets to trash', 'error');
+                window.showToast(error.message || translations.bulkTrashFailed || 'Failed to move assets to trash', 'error');
             } finally {
                 this.bulkTrashing = false;
             }
@@ -596,7 +588,7 @@ export function assetGrid() {
                     }),
                 });
 
-                if (!response.ok) throw new Error('Failed to remove tag');
+                if (!response.ok) await throwHttpError(response, window.assetTranslations?.tagRemoveFailed);
 
                 const data = await response.json();
                 window.showToast(data.message, 'success');
@@ -604,7 +596,7 @@ export function assetGrid() {
                 setTimeout(() => window.location.reload(), 800);
             } catch (error) {
                 console.error('Bulk remove tag failed:', error);
-                window.showToast(window.assetTranslations?.tagRemoveFailed || 'Failed to remove tag', 'error');
+                window.showToast(error.message || window.assetTranslations?.tagRemoveFailed || 'Failed to remove tag', 'error');
             } finally {
                 this.bulkLoading = false;
             }
@@ -785,16 +777,14 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to remove tag');
-                }
+                if (!response.ok) await throwHttpError(response, translations.tagRemoveFailed);
 
                 // Remove tag from local array
                 this.tags = this.tags.filter(t => t.id !== tag.id);
                 this.showToast(translations.tagRemoved || 'Tag removed successfully', 'success');
             } catch (error) {
                 console.error('Failed to remove tag:', error);
-                this.showToast(translations.tagRemoveFailed || 'Failed to remove tag', 'error');
+                this.showToast(error.message || translations.tagRemoveFailed || 'Failed to remove tag', 'error');
             } finally {
                 this.loading = false;
             }
@@ -821,9 +811,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                     body: JSON.stringify({ tags: names }),
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to add tag');
-                }
+                if (!response.ok) await throwHttpError(response, translations.tagAddFailed);
 
                 const data = await response.json();
 
@@ -843,7 +831,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                 this.selectedSuggestionIndex = -1;
             } catch (error) {
                 console.error('Failed to add tag:', error);
-                this.showToast(translations.tagAddFailed || 'Failed to add tag', 'error');
+                this.showToast(error.message || translations.tagAddFailed || 'Failed to add tag', 'error');
             } finally {
                 this.loading = false;
             }
@@ -876,11 +864,10 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                     body: formData,
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    console.error('Update failed:', errorData);
-                    throw new Error(errorData.message || 'Failed to update license');
-                }
+                // The route this hits (PATCH /assets/{id}) is the one that used to answer an
+                // over-length copyright with a bare 500. It now answers with a keyed 422 — so the
+                // server's message is the one worth showing, not translations.licenseUpdateFailed.
+                if (!response.ok) await throwHttpError(response, translations.licenseUpdateFailed);
 
                 const data = await response.json();
                 // Update previousLicense to the new value after successful save
@@ -888,7 +875,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                 this.showToast(translations.licenseUpdated || 'License updated successfully', 'success');
             } catch (error) {
                 console.error('Failed to update license:', error);
-                this.showToast(translations.licenseUpdateFailed || 'Failed to update license', 'error');
+                this.showToast(error.message || translations.licenseUpdateFailed || 'Failed to update license', 'error');
                 // Revert to previous value on error
                 this.license = oldLicense;
             } finally {
@@ -913,9 +900,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to delete asset');
-                }
+                if (!response.ok) await throwHttpError(response, translations.assetDeleteFailed);
 
                 this.showToast(translations.assetDeleted || 'Asset deleted successfully', 'success');
 
@@ -925,7 +910,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
                 }, 1000);
             } catch (error) {
                 console.error('Failed to delete asset:', error);
-                this.showToast(translations.assetDeleteFailed || 'Failed to delete asset', 'error');
+                this.showToast(error.message || translations.assetDeleteFailed || 'Failed to delete asset', 'error');
                 this.loading = false;
             }
         }

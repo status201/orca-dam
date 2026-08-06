@@ -1,3 +1,4 @@
+import { errorMessageFrom } from '../http-errors';
 import { tagInputCore } from './tag-input-core';
 
 async function refreshPreviewThumbnail(thumbnailUrl) {
@@ -422,14 +423,14 @@ export function aiTagManager() {
                     }
                 });
 
-                const data = await response.json();
+                if (!response.ok) {
+                    window.showToast(await errorMessageFrom(response, pageData.translations.failedToRemoveAiTag), 'error');
 
-                if (response.ok) {
-                    window.showToast(pageData.translations.aiTagRemovedSuccess);
-                    window.location.reload();
-                } else {
-                    window.showToast(data.message || pageData.translations.failedToRemoveAiTag, 'error');
+                    return;
                 }
+
+                window.showToast(pageData.translations.aiTagRemovedSuccess);
+                window.location.reload();
             } catch (error) {
                 console.error('Remove AI tag error:', error);
                 window.showToast(pageData.translations.failedToRemoveAiTag, 'error');

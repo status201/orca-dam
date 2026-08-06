@@ -2,31 +2,22 @@
 
 namespace App\Http\Requests\Concerns;
 
-use App\Models\Asset;
-use Illuminate\Validation\Rule;
+use App\Support\UploadMetadataRules;
 
 /**
- * Shared validation rules + accessor for the batch upload-metadata fields
- * (metadata_tags, metadata_reference_tag_ids, metadata_license_type,
- * metadata_copyright, metadata_copyright_source) used by the upload and tool
- * endpoints. Centralised here so the rules live in one place.
+ * The batch upload-metadata rules + accessor for the FormRequests that carry them
+ * (metadata_tags, metadata_reference_tag_ids, metadata_license_type, metadata_copyright,
+ * metadata_copyright_source).
+ *
+ * The rules themselves live in App\Support\UploadMetadataRules, because
+ * ChunkedUploadController::complete needs the same set but is not a FormRequest — it validates
+ * inline so its authorize() still runs first. This trait adds only the request-shaped accessor.
  */
 trait HasUploadMetadataRules
 {
     protected function uploadMetadataRules(): array
     {
-        return [
-            'metadata_tags' => 'nullable|array',
-            'metadata_tags.*' => 'string|max:100',
-            'metadata_reference_tag_ids' => 'nullable|array',
-            'metadata_reference_tag_ids.*' => [
-                'integer',
-                Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
-            ],
-            'metadata_license_type' => ['nullable', 'string', Rule::in(array_keys(Asset::licenseTypes()))],
-            'metadata_copyright' => 'nullable|string|max:500',
-            'metadata_copyright_source' => 'nullable|string|max:500',
-        ];
+        return UploadMetadataRules::rules();
     }
 
     /**
