@@ -50,7 +50,7 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1215 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1216 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"

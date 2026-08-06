@@ -205,6 +205,9 @@ class VerifySchemaCommand extends Command
      * cannot do is add up the bytes. Measuring every index means the next person to widen an
      * indexed column is told before they deploy, instead of discovering errno 1071 in production —
      * which is the whole class of bug this command is here for, not one instance of it.
+     *
+     * "Every index" means every B-tree index: see isKeyLengthLimited(). Exempt ones are listed
+     * rather than dropped, because an exemption nobody sees reads exactly like a check that passed.
      */
     private function checkIndexKeyBudget(): void
     {
@@ -212,7 +215,7 @@ class VerifySchemaCommand extends Command
         $this->line('<options=bold>Index key budget</> <fg=gray>(InnoDB limit '.self::MAX_INDEX_KEY_BYTES.' bytes)</>');
 
         $rows = DB::select(
-            'select table_name, index_name, seq_in_index, column_name, sub_part
+            'select table_name, index_name, index_type, seq_in_index, column_name, sub_part
              from information_schema.statistics
              where table_schema = database() and index_name != \'PRIMARY\'
              order by table_name, index_name, seq_in_index'
@@ -229,7 +232,19 @@ class VerifySchemaCommand extends Command
             return;
         }
 
+        // Widest label, so the byte column lines up instead of colliding with a long index name.
+        $width = max(array_map(strlen(...), array_keys($indexes))) + 2;
+        $skipped = [];
+
         foreach ($indexes as $key => $parts) {
+            $type = strtoupper((string) $parts[0]->index_type);
+
+            if (! self::isKeyLengthLimited($type)) {
+                $skipped[$key] = $type;
+
+                continue;
+            }
+
             $bytes = 0;
             $shape = [];
 
@@ -246,12 +261,35 @@ class VerifySchemaCommand extends Command
                     : $part->column_name;
             }
 
-            $label = str_pad($key, 46).str_pad($bytes.' bytes', 12).implode(', ', $shape);
+            $label = str_pad($key, $width).str_pad($bytes.' bytes', 12).' '.implode(', ', $shape);
 
             $bytes <= self::MAX_INDEX_KEY_BYTES
                 ? $this->reportPass($label, '')
                 : $this->reportFail($label, 'over the '.self::MAX_INDEX_KEY_BYTES.'-byte limit');
         }
+
+        // Named, not silently dropped: an unreported exemption is indistinguishable from coverage.
+        foreach ($skipped as $key => $type) {
+            $this->line('  <fg=gray>–</> '.str_pad($key, $width).'<fg=gray>not key-length limited ('.$type.')</>');
+        }
+    }
+
+    /**
+     * Whether InnoDB's 3072-byte key-prefix limit applies to an index of this type.
+     *
+     * It applies to B-tree indexes, and only to those. A FULLTEXT index is an inverted index over
+     * tokens with an entirely different on-disk structure and no such cap — measuring one means
+     * summing the declared width of every column in it, which for `assets_fulltext` over two TEXT
+     * columns produced a nonsense 131072 bytes and a false failure. SPATIAL indexes (R-tree) are
+     * likewise exempt.
+     *
+     * The empirical proof is stronger than the documentation: `assets_fulltext` exists on the live
+     * server. MySQL refuses to create an index that breaches the limit, so an index that is present
+     * cannot be breaching one.
+     */
+    public static function isKeyLengthLimited(string $indexType): bool
+    {
+        return strtoupper($indexType) === 'BTREE';
     }
 
     /**

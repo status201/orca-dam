@@ -85,6 +85,20 @@ test('a nullable column costs one byte more than the same column not null', func
         ->toBe(VerifySchemaCommand::keyBytes($notNull, null) + 1);
 });
 
+test('only b-tree indexes are held to the key-length limit', function () {
+    // Regression: the first run against a real MariaDB failed on assets_fulltext. A FULLTEXT index
+    // is an inverted index over tokens with no key-prefix cap, so measuring it meant summing two
+    // TEXT columns to 131072 bytes and reporting a schema that MySQL had accepted as broken. The
+    // proof it is exempt is that the index exists at all: MySQL refuses to create one that breaches
+    // the limit, so a present index cannot be breaching it.
+    expect(VerifySchemaCommand::isKeyLengthLimited('BTREE'))->toBeTrue()
+        ->and(VerifySchemaCommand::isKeyLengthLimited('FULLTEXT'))->toBeFalse()
+        ->and(VerifySchemaCommand::isKeyLengthLimited('SPATIAL'))->toBeFalse();
+
+    // information_schema's casing is not contractual.
+    expect(VerifySchemaCommand::isKeyLengthLimited('btree'))->toBeTrue();
+});
+
 test('an unknown column type is charged the widest fixed width rather than nothing', function () {
     // Guessing zero would let an index of unmeasured columns report as comfortably inside the
     // limit. The fallback errs upward, which is the safe direction for a budget check.

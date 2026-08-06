@@ -116,7 +116,10 @@ db:verify-schema:
   # Reads information_schema and compares the LIVE schema against what the application
   # believes: every ColumnLimits::CHARS varchar width, every TEXT_BYTES capacity, the
   # row format (DYNAMIC, or the index and row-size limits collapse), and the byte size
-  # of every non-PRIMARY index against InnoDB's 3072-byte key limit.
+  # of every non-PRIMARY B-TREE index against InnoDB's 3072-byte key limit. FULLTEXT and
+  # SPATIAL indexes are exempt from that limit — measuring assets_fulltext summed two TEXT
+  # columns to 131072 bytes and failed a schema MySQL had accepted — so they are listed as
+  # exempt rather than dropped, since an unreported exemption reads like a check that passed.
   # The index check is deliberately generic rather than a list of the known indexes:
   # those are already pinned by name in tests/Feature/S3KeyWidthTest.php, which SQLite
   # can run. What SQLite cannot do is add up the bytes — so this is what tells the next
