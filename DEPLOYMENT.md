@@ -7,7 +7,8 @@ This guide covers deploying ORCA DAM to a production environment.
 - PHP 8.3+ (8.4 recommended) with required extensions (GD, SQLite/MySQL, curl, mbstring, xml, zip)
 - Composer
 - Node.js & NPM (for asset compilation)
-- Web server (Nginx or Apache)
+- Web server (Nginx or Apache). The Nginx config below uses the `http2` directive,
+  which needs **Nginx 1.25.1+**; it carries a note for older versions.
 - Supervisor (for queue workers)
 - AWS S3 bucket with proper IAM credentials
 - (Optional) AWS Rekognition for AI tagging
@@ -375,8 +376,16 @@ server {
 }
 
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+
+    # HTTP/2 is its own directive since nginx 1.25.1; the old `listen ... http2`
+    # form still works but warns on every reload.
+    # On nginx < 1.25.1 (Ubuntu 24.04 LTS still ships 1.24) this directive does
+    # not exist and nginx will REFUSE TO START — there, delete the line below
+    # and use `listen 443 ssl http2;` / `listen [::]:443 ssl http2;` above.
+    http2 on;
+
     server_name your-domain.com;
     root /var/www/orca-dam/public;
 
@@ -403,6 +412,38 @@ server {
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
+
+    # --- Static asset caching -------------------------------------------
+    # Without these, nothing static sends Cache-Control and browsers fall back
+    # to heuristic caching (~10% of the file's age), replaying stale copies
+    # without revalidating. The two directories need opposite policies.
+    #
+    # NOTE: nginx only inherits `add_header` from the server block when a
+    # location declares none of its own. Both blocks below therefore repeat the
+    # three security headers — omit them and these paths silently lose
+    # nosniff/X-Frame-Options, which matters most for the JS they serve.
+
+    # Vite output: content-hashed filenames (app-D0CG0Rrn.js), so a changed file
+    # is a different URL and an old one can never be wrongly reused.
+    location ^~ /build/ {
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Easter-egg game bundle: STABLE filenames (orca-music.js), so the same URL
+    # must return new bytes after a deploy. `no-cache` means "revalidate before
+    # use", not "do not store" — ETag turns it into a cheap 304.
+    location ^~ /games/ {
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+    }
+    # --------------------------------------------------------------------
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; }

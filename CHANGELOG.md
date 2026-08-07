@@ -7,6 +7,12 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Changed
+- **The documented Nginx config used `listen ... ssl http2`, deprecated since Nginx 1.25.1**, which warns on every reload. It now uses the separate `http2 on;` directive. Carefully, though: on older Nginx that directive does not exist and the server **refuses to start**, which is a worse failure than the warning it replaces — and Ubuntu 24.04 LTS still ships 1.24. The config carries an inline note giving the old form for those versions, and Prerequisites now states the 1.25.1 requirement, since no Nginx version was pinned there before.
+
+### Fixed
+- **Static assets were served with no `Cache-Control` header at all, so a deploy did not reliably reach anyone.** Neither the documented nginx config nor `public/.htaccess` set any cache policy, which leaves browsers on *heuristic* caching — roughly 10% of the file's age — replaying a stale copy without revalidating. v1.7.2 shipped a rewritten Feeding Frenzy soundtrack that returning players would simply not have heard, and the release notes could only document that rather than fix it. The two directories need opposite policies, which is why one rule would not have done. `/build/` is Vite output with **content-hashed filenames** (`app-D0CG0Rrn.js`), so a changed file is a different URL and the old one can never be wrongly reused — it gets `max-age=31536000, immutable`, which is also a straight performance win it was never getting. `/games/` is the easter-egg bundle with **stable filenames** (`orca-music.js`), so the same URL must return new bytes after a deploy — it gets `no-cache`, which means *revalidate before use*, not *do not store*; the server already sends `ETag`, so that costs a 304 rather than a re-download. Both server options are covered, since `DEPLOYMENT.md` offers nginx or Apache: location blocks for the former, `mod_setenvif` + `mod_headers` for the latter, each wrapped in `<IfModule>` so a missing module degrades instead of 500ing. One nginx trap is called out in a comment where someone will hit it: `add_header` is inherited from the server block **only** when a location declares none of its own, so both new blocks repeat the three security headers — without that, these paths would silently lose `nosniff` and `X-Frame-Options`, which matter most on exactly the JS they serve. The documented server block was extracted and run through `nginx -t` rather than eyeballed.
+
 ---
 
 ## [v1.7.2] — 2026-08 — Whitefin
