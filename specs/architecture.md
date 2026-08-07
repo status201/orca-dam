@@ -72,7 +72,7 @@ auth_passkeys: laravel/passkeys # 0.2.1 (WebAuthn / FIDO2)
 auth_jwt: firebase/php-jwt      # 7
 mfa: pragmarx/google2fa-laravel # 3 ; bacon/bacon-qr-code 3
 svg: enshrined/svg-sanitize     # 0.22
-js_libs:                        # pdfjs-dist 5.5, sortablejs 1.15, gif.js 0.2
+js_libs:                        # pdfjs-dist 6.2, sortablejs 1.15, gif.js 0.2
 commands:
   dev: php artisan serve  /  npm run dev
   build: npm run build

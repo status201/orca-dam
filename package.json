@@ -6,7 +6,7 @@
         "dev": "vite",
         "build": "vite build",
         "spec:lint": "node scripts/spec-lint.mjs",
-    "spec:version": "node scripts/sdd-guard.mjs version",
+        "spec:version": "node scripts/sdd-guard.mjs version",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
         "test:e2e:headed": "playwright test --headed",
@@ -31,7 +31,7 @@
         "@fortawesome/fontawesome-free": "^6.4.0",
         "@laravel/passkeys": "^0.2.0",
         "gif.js": "^0.2.0",
-        "pdfjs-dist": "^5.5.207",
+        "pdfjs-dist": "^6.2.108",
         "sortablejs": "^1.15.7"
     }
 }
