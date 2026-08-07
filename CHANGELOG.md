@@ -7,6 +7,9 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Security
+- **`league/commonmark` 2.8.3 → 2.9.0, clearing six advisories.** It is a transitive dependency of `laravel/framework` (`^2.8.1`) and `laravel-lang/publisher` (`^2.4.1`), both of whose constraints already allowed 2.9.0, so this is a lock bump with no constraint change and nothing else moving. **None of the six was reachable here.** Five are denial of service via crafted Markdown, and the only two call sites — `AboutController::index()` and `SystemController::documentation()` — convert repo-owned files behind a fixed eight-name allowlist, so attacker-supplied Markdown never reaches the parser. The sixth is an `AttributesExtension` `href`/`src` filter bypass, and `GithubFlavoredMarkdownConverter` does not load that extension. Taken anyway because `composer audit --locked` is a CI gate (`tests.yml`) and was failing every build from the moment the advisories landed. Rendered output is byte-identical across all nine documents the app can serve, verified by hashing 2.8.3's HTML against 2.9.0's rather than assuming a patch release is inert.
+
 ---
 
 ## [v1.7.1] — 2026-08 — Remora
