@@ -751,6 +751,8 @@
             const el = document.createElement('div');
             el.className = 'game-shark';
             el.innerHTML = svgCache.shark;
+            // Offset the chomp so a pack doesn't bite in lockstep (negative delay starts mid-cycle)
+            el.style.setProperty('--chomp-delay', (-Math.random() * 1.1).toFixed(2) + 's');
 
             const w = SHARK_W;
             const h = SHARK_H;
