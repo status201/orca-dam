@@ -197,6 +197,20 @@
             window.__orcaMusicLoading = true;
             const s = document.createElement('script');
             s.src = basePath + 'orca-music.js';
+            // A fast Space press can beat this script to the punch: bootMusic()
+            // and start() would both no-op and the whole round plays silent.
+            // If that happened, pick the music up as soon as it lands. The
+            // page already has user activation from that keypress, so the
+            // AudioContext is still allowed to resume.
+            s.onload = () => {
+                window.__orcaMusicLoading = false;
+                if (!window.__orcaMusicPending || !window.OrcaMusic) return;
+                window.__orcaMusicPending = false;
+                if (!running) return;
+                window.OrcaMusic.init();
+                window.OrcaMusic.start();
+                updateMuteButton();
+            };
             document.head.appendChild(s);
         }
 
@@ -406,6 +420,9 @@
             if (window.OrcaMusic && window.OrcaMusic.isSupported && window.OrcaMusic.isSupported()) {
                 window.OrcaMusic.init();
                 updateMuteButton();
+            } else if (window.__orcaMusicLoading) {
+                // Module still in flight — the loader's onload starts it.
+                window.__orcaMusicPending = true;
             }
         }
         function onStart(e) {
@@ -651,7 +668,10 @@
         for (const ent of entities) {
             if (ent.type === 'shark' || ent.type === 'swordfish') threats++;
         }
-        const danger = threats >= 2 ? 2 : (threats >= 1 ? 1 : 0);
+        // Frenzy needs 3+ threats, not 2. At 2 it fired often enough that the
+        // chase stopped being an event — tense now covers 1–2, which is the
+        // common case, so the guitar arriving still means something.
+        const danger = threats >= 3 ? 2 : (threats >= 1 ? 1 : 0);
         if (danger !== lastDangerLevel) {
             lastDangerLevel = danger;
             if (window.OrcaMusic) window.OrcaMusic.setDanger(danger);
@@ -751,6 +771,8 @@
             const el = document.createElement('div');
             el.className = 'game-shark';
             el.innerHTML = svgCache.shark;
+            // Offset the chomp so a pack doesn't bite in lockstep (negative delay starts mid-cycle)
+            el.style.setProperty('--chomp-delay', (-Math.random() * 1.1).toFixed(2) + 's');
 
             const w = SHARK_W;
             const h = SHARK_H;

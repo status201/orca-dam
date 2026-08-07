@@ -1,43 +1,84 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -8 110 52" width="130" height="52">
-  <!-- Tail fin — wider asymmetric crescent, upper lobe larger -->
-  <path d="M92,20 Q90,12 100,2 Q94,14 96,20 Q94,26 100,38 Q90,28 92,20 Z" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 52" width="120" height="52">
+  <!-- Geometry notes for anyone editing this:
+       - Faces left (head at low x) like every other entity; they all move right-to-left.
+       - viewBox is 120x52, matching the .game-shark CSS box, so 1 unit == 1 px and the
+         jaw's CSS transform-origin (30,26 -> see orca-game.css) is literal.
+       - The mouth is a notch cut out of the body: the body's front-bottom edge stops at the
+         upper jaw line, and the cavity + hinged chin fill the gap. Nothing strokes the throat
+         edge, so the chin reads as continuous with the belly instead of a pasted-on slab.
+       - The chin must stay thicker than r*sin(gape) so it hides the cavity when closed.
+         At r~26 and a 16deg gape that is ~7.2 units. Widening the gape means fattening the chin. -->
 
-  <!-- Body — sleek fusiform, flat top, curved belly -->
-  <path d="M4,20 Q4,10 20,8 L54,8 Q74,9 84,15 L92,20 L84,25 Q74,32 54,33 L20,33 Q4,31 4,20 Z" fill="#6e849c" stroke="#3e5a74" stroke-width="1"/>
+  <!-- Tail fin — asymmetric crescent, large upper lobe -->
+  <path d="M93,23 Q91,13 105,1 Q99,14 100,23 Q99,31 106,41 Q91,32 93,23 Z" fill="#4a6884" stroke="#33506d" stroke-width="0.7" stroke-linejoin="round"/>
 
-  <!-- Body top highlight -->
-  <path d="M6,16 Q14,8 22,8.5 L54,8.5 Q72,10 82,16" fill="#8a9eb4" opacity="0.4"/>
+  <!-- Body fill — unstroked; the outline is a separate open path that skips the throat notch -->
+  <path d="M3,19
+           Q4,11 15,8
+           Q30,4 47,6.5
+           Q69,9 87,17
+           L96,23
+           L87,29
+           Q70,36 50,37.5
+           Q38,38 33,33
+           L31,26
+           Q18,32 5,23.5
+           Q3.2,22.5 3,19 Z" fill="#5c7994"/>
 
-  <!-- Belly — lighter underside -->
-  <path d="M6,24 Q12,30 21,33 L58,33 Q76,31 82,25 L72,26 Q46,34 18,24 Z" fill="#d0c8c0" opacity="0.65"/>
+  <!-- Dark back -->
+  <path d="M6,15 Q18,8 40,7 Q68,8.5 88,17.5 L96,23 Q72,13 44,11 Q20,10 6,15 Z" fill="#46617e" opacity="0.55"/>
+  <!-- Dorsal ridge highlight — kept soft; a hard streak reads as a crease on the head -->
+  <path d="M8,15.5 Q19,9.5 38,8.8 Q24,11.8 14,16 Z" fill="#7d97ae" opacity="0.2"/>
 
-  <!-- Dorsal fin — large, prominent, swept back -->
-  <path d="M32,9 L46,-6 L50,9" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.8" stroke-linejoin="round"/>
+  <!-- Mouth cavity — its top edge IS the upper jaw line, so no stroke is needed there -->
+  <path d="M5,23.5 Q18,32 31,26 L32.5,30 Q19,38.5 5.5,33.5 Z" fill="#3a1116"/>
+  <!-- Gullet -->
+  <path d="M9,30 Q18,35 28,30.5 Q18,33.5 9,31.6 Z" fill="#6b1f28" opacity="0.8"/>
 
-  <!-- Small rear dorsal -->
-  <path d="M70,12 L75,6 L76,12" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.5"/>
+  <!-- Upper teeth — roots on the jaw line, tips shortest at the mouth corner -->
+  <path d="M5,23.5 L7.6,27.3 L10.2,25.3 L12.8,30.3 L15.4,27 L18,31.6 L20.6,27.5 L23.2,31.1 L25.8,26.8 L28.4,28.6 L31,26 Q18,32 5,23.5 Z"
+        fill="#fdfdfb" stroke="#c9cfd6" stroke-width="0.3" stroke-linejoin="round"/>
 
-  <!-- Pectoral fin — large, angled down and back -->
-  <path d="M26,29 L24,40 L36,33" fill="#4e6a84" stroke="#3e5a74" stroke-width="0.6" stroke-linejoin="round"/>
-
-  <!-- Gill slits -->
-  <line x1="24" y1="14" x2="24" y2="27" stroke="#3e5a74" stroke-width="0.7" opacity="0.45"/>
-  <line x1="27" y1="13.5" x2="27" y2="27.5" stroke="#3e5a74" stroke-width="0.6" opacity="0.35"/>
-  <line x1="30" y1="13" x2="30" y2="28" stroke="#3e5a74" stroke-width="0.5" opacity="0.25"/>
-
-  <!-- Mouth interior — dark gap -->
-  <path d="M4,16 Q10,22 19,21 L18,26 Q10,26.5 4,24 Z" fill="#1a0808" opacity="0.85"/>
-
-  <!-- === LOWER JAW — animated via CSS === -->
+  <!-- === LOWER JAW — hinged at (31,26); see orca-game.css .shark-jaw === -->
   <g class="shark-jaw">
-    <!-- Lower jaw shape -->
-    <path d="M4,26 Q10,25 18,26 Q19,28 6,27.5 Q1,26 4,24 Z" fill="#c0b8b0" stroke="#3e5a74" stroke-width="0.5"/>
-    <!-- Lower teeth — cartoon zigzag -->
-    <path d="M4,25.2 L6,19 L9,24.5 L11,21 L13,24.5 L15,22 L17,24.5" fill="white" stroke="#ccc" stroke-width="0.4" stroke-linejoin="round"/>
+    <!-- Chin fill, unstroked: its rear tucks under the belly countershade drawn after it -->
+    <path d="M31,26 Q18,34.5 5,26.5 Q2.0,28.4 3.2,32 Q4.6,36.4 16,36.8 Q28,36.6 36,32 Z" fill="#e6ded2"/>
+    <!-- Chin outline — front and underside only -->
+    <path d="M5,26.5 Q2.0,28.4 3.2,32 Q4.6,36.4 16,36.8 Q28,36.6 36,32" fill="none" stroke="#33506d" stroke-width="0.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- Dark gum band: the lower teeth need to read as white-on-dark, not white-on-cream -->
+    <path d="M5,26.5 Q18,34.5 31,26 L31,27.6 Q18,38 5.5,29 Z" fill="#3a1116"/>
+    <!-- Lower teeth — interlock with the upper row through the closed mouth -->
+    <path d="M5,26.5 L7.6,25.7 L10.2,29 L12.8,26.8 L15.4,30.2 L18,27.2 L20.6,30.2 L23.2,26.8 L25.8,28.7 L28.4,26 L31,26 Q18,34.5 5,26.5 Z"
+          fill="#fdfdfb" stroke="#c9cfd6" stroke-width="0.3" stroke-linejoin="round"/>
   </g>
 
-  <!-- Eye — solid black with glint -->
-  <circle cx="14" cy="15" r="2.5" fill="#1a1a2e" stroke="#111" stroke-width="0.5"/>
-  <!-- Glint -->
-  <circle cx="14.6" cy="14" r="0.55" fill="white" opacity="0.75"/>
+  <!-- Countershade belly — same cream as the chin, and drawn after it so the jaw's rear
+       tab disappears under it at every point in the chomp -->
+  <path d="M31,26 Q36,29 46,29.5 Q64,31 82,26 L96,23 L87,29 Q70,36 50,37.5 Q38,38 33,33 Z" fill="#e6ded2"/>
+  <path d="M32,28.5 Q37,30.5 46,31 Q64,32.5 82,27.5 L96,23 Q78,30 56,32.6 Q40,33.6 32,30.8 Z" fill="#cfc5b6" opacity="0.5"/>
+
+  <!-- Body outline — open path: starts at the mouth corner, skips the throat notch entirely -->
+  <path d="M5,23.5 Q3.2,22.5 3,19 Q4,11 15,8 Q30,4 47,6.5 Q69,9 87,17 L96,23 L87,29 Q70,36 50,37.5 Q38,38 33,33"
+        fill="none" stroke="#33506d" stroke-width="0.9" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Dorsal fin — large, swept back, concave trailing edge -->
+  <path d="M42,7.5 Q46,1.5 56,0.6 Q55,5.5 63,10.5 Z" fill="#4a6884" stroke="#33506d" stroke-width="0.8" stroke-linejoin="round"/>
+  <!-- Second dorsal -->
+  <path d="M72,13.5 Q76,8.5 79,8 Q78,11.5 80,14.8 Z" fill="#4a6884" stroke="#33506d" stroke-width="0.5" stroke-linejoin="round"/>
+  <!-- Anal fin -->
+  <path d="M70,34.5 Q68,39.5 66,41.5 Q72,39 77,35 Z" fill="#4a6884" stroke="#33506d" stroke-width="0.5" stroke-linejoin="round"/>
+
+  <!-- Gill slits -->
+  <path d="M36,13 Q33.5,21 36,29" fill="none" stroke="#33506d" stroke-width="0.9" opacity="0.5"/>
+  <path d="M39.5,12.3 Q37,20.8 39.5,29.6" fill="none" stroke="#33506d" stroke-width="0.85" opacity="0.45"/>
+  <path d="M43,11.9 Q40.5,20.6 43,30" fill="none" stroke="#33506d" stroke-width="0.8" opacity="0.4"/>
+  <path d="M46.5,11.8 Q44,20.6 46.5,30.2" fill="none" stroke="#33506d" stroke-width="0.75" opacity="0.34"/>
+  <path d="M50,12 Q47.5,20.8 50,30.2" fill="none" stroke="#33506d" stroke-width="0.7" opacity="0.28"/>
+
+  <!-- Pectoral fin — long, swept down and back -->
+  <path d="M33,31.5 Q28,39.5 24,45.5 Q36,41.5 44,33 Z" fill="#4a6884" stroke="#33506d" stroke-width="0.6" stroke-linejoin="round"/>
+
+  <!-- Eye — beady, solid black -->
+  <circle cx="16" cy="17" r="2.4" fill="#141820"/>
+  <circle cx="16.8" cy="15.9" r="0.6" fill="#ffffff" opacity="0.7"/>
 </svg>
