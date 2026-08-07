@@ -404,6 +404,38 @@ server {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
+    # --- Static asset caching -------------------------------------------
+    # Without these, nothing static sends Cache-Control and browsers fall back
+    # to heuristic caching (~10% of the file's age), replaying stale copies
+    # without revalidating. The two directories need opposite policies.
+    #
+    # NOTE: nginx only inherits `add_header` from the server block when a
+    # location declares none of its own. Both blocks below therefore repeat the
+    # three security headers — omit them and these paths silently lose
+    # nosniff/X-Frame-Options, which matters most for the JS they serve.
+
+    # Vite output: content-hashed filenames (app-D0CG0Rrn.js), so a changed file
+    # is a different URL and an old one can never be wrongly reused.
+    location ^~ /build/ {
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Easter-egg game bundle: STABLE filenames (orca-music.js), so the same URL
+    # must return new bytes after a deploy. `no-cache` means "revalidate before
+    # use", not "do not store" — ETag turns it into a cheap 304.
+    location ^~ /games/ {
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+    }
+    # --------------------------------------------------------------------
+
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; }
 

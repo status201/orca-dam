@@ -23,3 +23,25 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Static asset caching. Without these, neither directory sends Cache-Control at
+# all, so browsers fall back to *heuristic* caching — roughly 10% of the file's
+# age — and will replay a stale copy without revalidating. The two directories
+# need opposite policies, because their filenames work differently.
+<IfModule mod_setenvif.c>
+    # Vite output: filenames are content-hashed (app-D0CG0Rrn.js), so a changed
+    # file is a different URL and the old one can never be wrongly reused.
+    SetEnvIf Request_URI "^/build/" ORCA_IMMUTABLE=1
+
+    # Easter-egg game bundle: filenames are STABLE (orca-music.js), so the same
+    # URL must return new bytes after a deploy. no-cache does not mean "do not
+    # store" — it means "revalidate before use", which ETag turns into a cheap
+    # 304. Without it, players keep the old game until heuristic freshness
+    # expires, which is how a shipped soundtrack fails to reach anyone.
+    SetEnvIf Request_URI "^/games/" ORCA_REVALIDATE=1
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=31536000, immutable" env=ORCA_IMMUTABLE
+    Header set Cache-Control "no-cache" env=ORCA_REVALIDATE
+</IfModule>
