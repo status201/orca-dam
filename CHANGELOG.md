@@ -7,6 +7,40 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+---
+
+## [v1.7.2] — 2026-08 — Whitefin
+
+### Notes for upgrading from v1.7.1 Remora
+- **Nothing here needs a maintenance window.** There are **no migrations** — unlike v1.7.1,
+  which had three and wanted one. No `php artisan migrate`, no `db:verify-schema` run, and no
+  changes under `app/`, `routes/` or `config/` at all. The whole release is two dependency
+  bumps, a static easter-egg bundle in `public/games/`, and docs.
+- **`composer install`** picks up `league/commonmark` 2.9.0. Lock only — no constraint moved.
+- **`npm ci && npm run build` is required, not optional.** `pdfjs-dist` went 5 → 6, a major
+  version, Vite bundles it, and `public/build` is gitignored — so the new worker chunk exists
+  only after a build. Building needs **Node ≥ 22.13**, which pdfjs v6 requires; CI pins
+  `node-version: '22'`, which satisfies it.
+- **`composer install` alone does not close the vulnerability this release exists for.** That
+  is the one thing here that can bite. GHSA-hq66-cqwq-w95j is *client-side*: it fires when a
+  browser opens a malicious PDF through `thumbnail-generator.js` or `asset-editor.js`. Until
+  the assets are rebuilt **and served**, users are still running the vulnerable renderer, no
+  matter what `composer audit` says. A deploy that treats a security release as a PHP job
+  will report clean and remain exposed.
+- **Returning players will keep the old easter egg.** `public/games/**` is served with **no
+  `Cache-Control` header at all**, so browsers fall back to heuristic caching and happily
+  replay a stale `orca-music.js`, `orca-game.js` or `shark.svg` without revalidating. This
+  release does not change that. A hard reload or a CDN purge is the workaround; adding cache
+  headers to the static bundle is the real fix and is deliberately out of scope here. Worth
+  knowing before "the new soundtrack didn't ship" arrives as a bug report.
+- **No spec versions moved**, so in-flight branches can merge normally rather than rebase —
+  the opposite of v1.7.1, where twelve moved. The only `specs/` change is a one-line
+  `pdfjs-dist` version comment in `architecture.md`, caught by `spec-lint`'s manifest
+  cross-check rather than by review.
+- **`PDFDocumentProxy.destroy()` no longer exists** in pdfjs v6. Nothing in `resources/js/`
+  ever called it, so nothing broke here, but any in-flight branch adding PDF cleanup code
+  needs to know before it rebases onto this.
+
 ### Changed
 - **The Feeding Frenzy shark is redrawn, and its jaw now hinges on its jaw rather than on its eye.** The chomp had never worked: `shark.svg` carried `viewBox="0 -8 110 52"` — a *negative* `min-y` — while the CSS pivoted the lower jaw at `transform-origin: 18px 23px`. Under `transform-box: view-box`, the browser default for an SVG child, those pixels resolve against the viewBox origin, so the real pivot was user-space **(18, 15)**: the eye socket. The jaw was swinging around the shark's face, which is the kind of bug that looks like bad artwork rather than a wrong number, and is why it read as "the shark doesn't look good" instead of as a broken animation. The new `viewBox` is `0 0 120 52`, matching the `.game-shark` box exactly, so one user unit is one pixel and the pivot is now literal — and the artwork stops being letterboxed, which the old 2.115 aspect inside a 2.31 box had been costing it about five pixels of dead space on each side. Three things in the redraw are load-bearing rather than decorative, and each is commented where it lives. The mouth is a **notch cut out of the body** — the body path's front-bottom edge stops at the upper jaw line and the cavity plus hinged chin fill the gap — because the obvious alternative, a complete body silhouette with a jaw drawn on top, gives the shark a second chin the moment the jaw drops. Neither the body nor the chin strokes its throat edge: both are a fill plus a separate *open* outline path, since a closed stroked path draws a seam right where the two meet and the chin then reads as a slab pasted onto the head. And the gape is capped at **16°** by geometry, not taste: a static cavity is only hidden when closed if the chin is thicker than `r·sin(gape)`, so widening the bite means fattening the chin, which is recorded next to the keyframes so the next person to reach for a bigger number knows what else has to move. The teeth needed one non-obvious fix — white teeth on a cream chin are nearly the same value and dissolved into a pale smear at the size the shark is actually drawn, so a dark gum band sits behind the lower row and they read as white-on-dark. Colours stay in the cold blue-grey the game uses to mean *threat* (warm means food), pushed to higher contrast because `#orca-game-area` desaturates the whole scene by 65% and the old belly washed out under it; they are also kept clear of the gold fish's palette, since `colorizeFish()` recolours by naive string replacement over the raw SVG text and a shared hex would repaint the shark. Finally, sharks spawn in packs and shared one animation clock, so a pack bit in perfect unison — each now gets a random negative `animation-delay`, which starts it mid-cycle. **None of this is covered by anything:** the spec puts the client game bundle outside its contract, no browser test touches the game, and the visuals were checked by screenshotting the real `spawnShark()` output against the running app.
 - **Feeding Frenzy's soundtrack has a real melody now, and shark attacks get their own music.** The old lead was one rhythmic idea repeated — every bar the same off-beat eighths, ~8 notes wall to wall, never dropping below B4, and a bug that accented ~90% of notes, which is the same as accenting none. It is now a 16-bar clavinet tune in A A′ B A″ form with composed per-bar dynamics, roughly half the note density, and a soft chord pad underneath. The wah that made it grate (`Q = 7`, peaking at 2.1 kHz — dead centre of where the ear is most sensitive) is tamed, and `clavNote()` rolls the sawtooth back as pitch rises, which is what makes the high notes usable rather than stabby. The lead also reacts to threats on screen, where before it noodled cheerfully straight through a shark attack: at 1–2 threats it thins to its skeleton, at 3+ it hands over to an 8-bar 70s chase riff on overdriven wah guitar with chord stabs on the off-beats. That riff is deliberately sparse — 64% of its steps silent — and never repeats exactly: its ornaments carry probabilities and alternate pitches (~10¹¹ realisations of the cycle) while its identity notes stay fixed, so it keeps evolving without losing the tune. The bassline everyone liked is untouched, byte-for-byte, in all three states. Audition the lot at `public/games/music-lab.html`.
