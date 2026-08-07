@@ -141,3 +141,19 @@ laravel-lang. To refresh them, run `php artisan lang:safe-update` — never raw
 ## Security issues
 
 Do not open public issues for vulnerabilities — see [SECURITY.md](SECURITY.md).
+
+## The music lab
+
+`public/games/music-lab.html` is a mixing desk for the Feeding Frenzy
+soundtrack — the easter egg you get by double-clicking the ORCA logo. Open
+`/games/music-lab.html` on your local site to play the score without the game,
+switch danger levels on demand, and shove the wah around.
+
+It exists because the alternative way to audition the shark music is to let
+three sharks corner you, which is a slow and demoralising way to check whether
+a filter cutoff is 200 Hz too bright. The soundtrack is synthesised from
+nothing — no audio files, just `orca-music.js` and some oscillators — so every
+note is a number somebody can argue with.
+
+Yes, this is more tooling than the easter egg strictly warrants. No, it is not
+up for debate.

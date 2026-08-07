@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ORCA Feeding Frenzy — Music Lab</title>
+<style>
+  :root {
+    --bg: #0b1a24; --panel: #122c3c; --line: #1e4459;
+    --ink: #e8f4f8; --dim: #8fb3c4; --accent: #37c2f0; --accent2: #f0b429;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1rem 4rem;
+    background: radial-gradient(ellipse at top, #14384c, var(--bg));
+    color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  .sub { color: var(--dim); margin: 0 0 1.75rem; font-size: .9rem; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 1.1rem 1.25rem; margin-bottom: 1rem;
+  }
+  .panel h2 {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--dim); margin: 0 0 .8rem; font-weight: 600;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: .5rem; }
+  button {
+    font: inherit; font-weight: 600; color: var(--ink);
+    background: #1b3a4d; border: 1px solid var(--line);
+    padding: .55rem 1rem; border-radius: 8px; cursor: pointer;
+    transition: background .12s, border-color .12s, transform .08s;
+  }
+  button:hover { background: #24506a; }
+  button:active { transform: translateY(1px); }
+  button[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent); color: #06222e;
+  }
+  button.primary { background: var(--accent2); border-color: var(--accent2); color: #2b1d00; }
+  button.primary:hover { filter: brightness(1.08); }
+  .theme-btn { flex: 1; min-width: 150px; text-align: left; padding: .7rem 1rem; }
+  .theme-btn small { display: block; font-weight: 400; opacity: .75; font-size: .78rem; }
+  label.toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; padding: .3rem 0; }
+  .slider { display: grid; grid-template-columns: 5.5rem 1fr 2.5rem; align-items: center; gap: .6rem; margin: .4rem 0; }
+  .slider span:first-child { color: var(--dim); font-size: .85rem; }
+  .slider output { font-variant-numeric: tabular-nums; color: var(--dim); font-size: .85rem; text-align: right; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=checkbox] { accent-color: var(--accent); width: 1.05rem; height: 1.05rem; }
+  .readout {
+    display: flex; gap: 1.75rem; align-items: baseline;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout div { display: flex; flex-direction: column; gap: .15rem; }
+  .readout .k { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  .readout .v { font-size: 1.25rem; font-weight: 700; }
+  .bars { display: flex; gap: 3px; margin-top: .85rem; }
+  .bars i {
+    flex: 1; height: 26px; border-radius: 3px; background: #17384a;
+    border: 1px solid transparent; font-style: normal;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .6rem; color: #4d7a91;
+  }
+  .bars i.sec-A { background: #1d4a63; }
+  .bars i.sec-B { background: #163b4f; }
+  .bars i.on { background: var(--accent); border-color: #9fe4ff; }
+  .hint { color: var(--dim); font-size: .82rem; margin: .7rem 0 0; }
+  .unsupported { color: #ff9f9f; }
+  code { background: #0d2431; padding: .1rem .35rem; border-radius: 4px; font-size: .85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ORCA Feeding Frenzy — Music Lab</h1>
+  <p class="sub">
+    Audition harness for <code>orca-music.js</code> — Deep Funk, E minor.
+    Switch danger level <em>while it plays</em> to hear the lead hand over between
+    the tune, its thinned skeleton, and the chase riff.
+  </p>
+
+  <div class="panel">
+    <h2>Transport</h2>
+    <div class="row">
+      <button id="play" class="primary">▶ Play</button>
+      <button id="stop">■ Stop</button>
+      <button id="mute" aria-pressed="false">🔊 Mute</button>
+    </div>
+    <div class="readout" style="margin-top:1rem">
+      <div><span class="k">Bar</span><span class="v" id="rBar">–</span></div>
+      <div><span class="k">Section</span><span class="v" id="rSec">–</span></div>
+      <div><span class="k">Articulation</span><span class="v" id="rDyn">–</span></div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <p class="hint">
+      Let it run <strong>two full loops (~60 s)</strong> — melodies only wear out on repeat,
+      which is the whole point of the test. The tune is 16 bars; the chase riff is 8.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Sharks (danger level)</h2>
+    <div class="row">
+      <button data-danger="0" aria-pressed="true">Calm — no threats</button>
+      <button data-danger="1" aria-pressed="false">Tense — 1–2 threats</button>
+      <button data-danger="2" aria-pressed="false">Frenzy — 3+ threats</button>
+    </div>
+    <p class="hint">
+      The bassline switches to the JAWS half-step exactly as it does today.
+      <strong>Frenzy</strong> hands the lead to an 8-bar chase riff on <em>overdriven
+      wah guitar</em> (Schifrin/Shaft territory), punctuated by chord stabs on the
+      "and" of 2 and 4 — the wah runs faster, sharper and wider open throughout.
+      <strong>Tense</strong> thins the main clavinet tune to its skeleton notes.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Arrangement</h2>
+    <label class="toggle"><input type="checkbox" id="pad" checked> Chord pad (harmonic bed under the melody)</label>
+    <label class="toggle"><input type="checkbox" id="reactive" checked> Lead reacts to danger</label>
+    <div class="slider">
+      <span>Wah</span>
+      <input type="range" id="wah" min="0" max="100" value="60">
+      <output id="wahOut">60%</output>
+    </div>
+    <div class="slider">
+      <span>Volume</span>
+      <input type="range" id="vol" min="0" max="60" value="18">
+      <output id="volOut">0.18</output>
+    </div>
+  </div>
+
+  <p class="hint" id="status"></p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var status = document.getElementById('status');
+
+  // Herd serves public/ with no Cache-Control header at all, so browsers fall
+  // back to heuristic caching and will happily replay a stale orca-music.js
+  // without revalidating — which silently audition the OLD soundtrack. Fetch
+  // it with cache:'reload' to force a revalidation instead of hanging a
+  // version query string off the URL.
+  fetch('orca-music.js', { cache: 'reload' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function (src) {
+      var s = document.createElement('script');
+      s.textContent = src;
+      document.head.appendChild(s);
+      boot();
+    })
+    .catch(function (e) {
+      status.className = 'hint unsupported';
+      status.textContent = 'Could not load orca-music.js — ' + e.message;
+    });
+
+function boot() {
+  var M = window.OrcaMusic;
+
+  if (!M || !M.isSupported || !M.isSupported()) {
+    status.className = 'hint unsupported';
+    status.textContent = 'Web Audio is not available in this browser — nothing to audition.';
+    return;
+  }
+  if (typeof M.getBar !== 'function' || typeof M.setLeadReactive !== 'function') {
+    status.className = 'hint unsupported';
+    status.textContent = 'Loaded an orca-music.js without the lab hooks — a stale copy is still cached. Hard-reload with Ctrl+Shift+R.';
+    return;
+  }
+
+  function press(nodes, match) {
+    nodes.forEach(function (b) { b.setAttribute('aria-pressed', String(match(b))); });
+  }
+
+  // --- Danger ---
+  var dangerBtns = Array.prototype.slice.call(document.querySelectorAll('[data-danger]'));
+  dangerBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      M.setDanger(Number(b.dataset.danger));
+      press(dangerBtns, function (x) { return x === b; });
+    });
+  });
+
+  // --- Transport ---
+  document.getElementById('play').addEventListener('click', function () {
+    M.init();            // must run inside the user gesture (autoplay policy)
+    if (M.isMuted()) { M.setMuted(false); syncMute(); }
+    M.start();
+  });
+  document.getElementById('stop').addEventListener('click', function () { M.stop(); });
+
+  var muteBtn = document.getElementById('mute');
+  function syncMute() {
+    var m = M.isMuted();
+    muteBtn.setAttribute('aria-pressed', String(m));
+    muteBtn.textContent = m ? '🔇 Muted' : '🔊 Mute';
+  }
+  muteBtn.addEventListener('click', function () { M.setMuted(!M.isMuted()); syncMute(); });
+  syncMute();
+
+  // --- Arrangement ---
+  document.getElementById('pad').addEventListener('change', function (e) {
+    M.setPadEnabled(e.target.checked);
+  });
+  document.getElementById('reactive').addEventListener('change', function (e) {
+    M.setLeadReactive(e.target.checked);
+  });
+
+  var wah = document.getElementById('wah'), wahOut = document.getElementById('wahOut');
+  wah.addEventListener('input', function () {
+    M.setWahAmount(wah.value / 100);
+    wahOut.textContent = wah.value + '%';
+  });
+
+  var vol = document.getElementById('vol'), volOut = document.getElementById('volOut');
+  vol.addEventListener('input', function () {
+    var v = vol.value / 100;
+    M.setVolume(v);
+    volOut.textContent = v.toFixed(2);
+  });
+
+  // --- Bar / section readout ---
+  var barsEl = document.getElementById('bars');
+  for (var i = 0; i < 16; i++) {
+    var cell = document.createElement('i');
+    cell.className = i >= 8 && i < 12 ? 'sec-B' : 'sec-A';
+    cell.textContent = String(i + 1);
+    barsEl.appendChild(cell);
+  }
+  var cells = barsEl.children;
+  var rBar = document.getElementById('rBar'),
+      rSec = document.getElementById('rSec'),
+      rDyn = document.getElementById('rDyn');
+
+  setInterval(function () {
+    var s = M.getBar();
+    rBar.textContent = s.bar;
+    rSec.textContent = s.section;
+    rDyn.textContent = s.dynamics;
+    for (var i = 0; i < cells.length; i++) {
+      cells[i].classList.toggle('on', i === s.bar - 1);
+    }
+  }, 80);
+
+  // --- Keyboard: q/w/e set danger, Space plays ---
+  document.addEventListener('keydown', function (e) {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'q') dangerBtns[0].click();
+    else if (e.key === 'w') dangerBtns[1].click();
+    else if (e.key === 'e') dangerBtns[2].click();
+    else if (e.code === 'Space') { e.preventDefault(); document.getElementById('play').click(); }
+  });
+
+  status.textContent = 'Keys: q w e set danger · Space plays. Module loaded fresh (cache bypassed).';
+}
+})();
+</script>
+</body>
+</html>
