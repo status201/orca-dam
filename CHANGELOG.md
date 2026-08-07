@@ -7,6 +7,9 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Security
+- **`pdfjs-dist` 6.2.108 closes a high-severity arbitrary-JavaScript-execution hole (GHSA-hq66-cqwq-w95j), up from 5.7.284.** Unlike most advisory noise this one was **genuinely reachable**: the app renders user-uploaded PDFs client-side in `thumbnail-generator.js` and `asset-editor.js`, which is exactly the “opening a malicious PDF” path the advisory describes, and a DAM takes PDFs from anyone who can upload. No patched 5.x exists — that line ended at the vulnerable release — so the only fix is the major bump, which is why this changes a `package.json` constraint rather than nudging a lockfile. The upgrade was verified rather than assumed, a major version of a rendering library being exactly where things break quietly: the app touches seven pdfjs APIs (`GlobalWorkerOptions`, `getDocument`, `numPages`, `getPage`, `getViewport`, `render`, and the `build/pdf.worker.mjs` worker path), and all seven were exercised against a generated PDF under both versions — identical page count, identical viewport (612×792), identical scaled thumbnail geometry (320×414), identical extracted text. The one step Node cannot reach, `render()` to a real canvas, was then driven in headless Chromium against both versions and came out **pixel-identical**: same 320×414 canvas, same 273 ink pixels, same 3031-byte JPEG data URL, no page errors. That check earned its keep, because the E2E suite names PDFs only as seeded filenames and never rasterises one — nothing in CI would have caught a rendering regression. The probe did surface one real removal, `PDFDocumentProxy.destroy()`, gone in v6 — harmless here only because nothing in `resources/js/` ever called it, and worth knowing before anyone adds cleanup code. v6 requires Node ≥ 22.13; CI pins `node-version: '22'`.
+
 ---
 
 ## [v1.7.1] — 2026-08 — Remora
