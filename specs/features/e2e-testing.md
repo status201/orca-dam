@@ -3,7 +3,7 @@
 ```yaml
 id: e2e-testing
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -20,9 +20,11 @@ related:
   - iframe-embedding
   - ../recipes/write-an-e2e-test
   - ../decisions/adr-014-playwright-e2e-real-stack
+  - ../decisions/adr-017-rustfs-replaces-minio
 source:
   - playwright.config.js
   - tests/e2e/
+  - scripts/e2e-storage.mjs
   - database/seeders/E2eSeeder.php
   - docker-compose.e2e.yml
   - .env.e2e
@@ -40,10 +42,12 @@ in a browser. The WordPress plugin already had a Playwright suite
 separate stream); this spec brings the same coverage to the Laravel app itself.
 
 The suite drives a **real** stack — `php artisan serve` against a throwaway
-SQLite file and a MinIO bucket standing in for S3 — rather than mocking the
+SQLite file and a RustFS bucket standing in for S3 — rather than mocking the
 backend, so an upload genuinely round-trips bytes to object storage and back
 through `S3Service`. The reasoning and the rejected alternatives are in
-[ADR-014](../decisions/adr-014-playwright-e2e-real-stack.md).
+[ADR-014](../decisions/adr-014-playwright-e2e-real-stack.md); the storage engine
+itself was re-picked in [ADR-017](../decisions/adr-017-rustfs-replaces-minio.md)
+when MinIO was archived upstream.
 
 ## Requirements
 
@@ -51,11 +55,47 @@ through `S3Service`. The reasoning and the rejected alternatives are in
   started and torn down by Playwright's `webServer`, never against the developer's
   dev database or the production S3 bucket. `.env.e2e` is the only environment the
   suite reads, and it points `DB_DATABASE` at `database/e2e.sqlite` and `AWS_*` at
-  the local MinIO endpoint.
-- **REQ-2** — Object storage is a local MinIO bucket reached through
+  the local RustFS endpoint.
+
+  `TMP`, `TEMP` and `TMPDIR` are added to
+  `Illuminate\Foundation\Console\ServeCommand::$passthroughVariables` in
+  `AppServiceProvider::boot()`. Passing `--env=` — which this suite must —
+  switches `serve` from inheriting the environment to passing through only a
+  fixed allowlist, explicitly *unsetting* everything else in the server process.
+  None of the temp-directory variables are on that list, so on Windows
+  `GetTempPath()` falls through to the Windows directory, which is not writable,
+  and **every** multipart request dies at request startup with
+  `PHP Request Startup: File upload error - unable to create a temporary file`,
+  reaching the caller as a 422 from validation with no exception and nothing in
+  the log. That is a plain `artisan serve` bug rather than a test one — it breaks
+  uploads for any Windows developer who serves with `--env` — but it is invisible
+  on Linux, where PHP falls back to `/tmp`, so the browser suite is where it
+  shows up.
+- **REQ-2** — Object storage is a local **RustFS** bucket reached through
   `AWS_ENDPOINT` + `AWS_USE_PATH_STYLE_ENDPOINT`. This is why `S3Service` honours
   those two config keys (see [`s3-storage.md`](s3-storage.md) REQ-7) — without
   them the suite could only talk to real AWS.
+
+  `npm run e2e:up` (`scripts/e2e-storage.mjs`) brings it up **either** through
+  `docker-compose.e2e.yml` **or**, on a machine with no container runtime, from a
+  RustFS binary it downloads into `storage/e2e/` and verifies against a pinned
+  SHA-256 before running. The version is pinned in one place and moves only by
+  hand. Either way the bucket is created and opened to anonymous `s3:GetObject`
+  by `tests/e2e/support/bucket.js`, which signs the two requests itself — so
+  local and CI provision the bucket by the same code path, and the provisioning
+  step asserts the anonymous read actually took rather than discovering it later
+  as a missing thumbnail. Anonymous read is not optional: the browser loads asset
+  and thumbnail URLs straight from `AWS_URL`, exactly as it would from S3 behind
+  the CDN.
+
+  The endpoint is on port **9100**, not the conventional 9000. 9000 is routinely
+  already bound on a developer machine (PhpStorm), and — before
+  [`s3-storage.md`](s3-storage.md) REQ-8 bounded the S3 client's waits — an
+  endpoint that accepted the connection and never answered hung the single-process
+  dev server for PHP's entire `max_execution_time`, which surfaced as unrelated
+  specs timing out. The port is stated in `.env.e2e` and read from there by the
+  harness (`fixtures.js` derives the browser's network allowlist from it), so it
+  exists in one place plus the compose port mapping.
 - **REQ-3** — Every browser context is authenticated from a saved `storageState`,
   one per role (`admin`, `editor`, `api`), produced by the `setup` project logging
   in through the real login form. The default project uses the `admin` state;
@@ -82,10 +122,10 @@ through `S3Service`. The reasoning and the rejected alternatives are in
   [`../recipes/write-an-e2e-test.md`](../recipes/write-an-e2e-test.md).
 - **REQ-8** — Specs that need real bytes in object storage (upload, replace,
   download, thumbnail generation) are guarded by `requiresS3()` and **skip** when
-  no MinIO endpoint answers, so a developer without a container runtime can still
-  run the other ~95% of the suite. Under `CI` the absence of an endpoint is a hard
-  error instead: a MinIO that failed to start must fail the job, not quietly skip
-  the storage coverage.
+  no storage endpoint reports itself ready, so a developer who cannot start one at
+  all can still run the other ~95% of the suite. Under `CI` the absence of an
+  endpoint is a hard error instead: a backend that failed to start must fail the
+  job, not quietly skip the storage coverage.
 
   The `AWS_ENDPOINT` read out of `.env.e2e` is validated before it is probed: the
   protocol must be `http`/`https` and the host must be `127.0.0.1` or `localhost`,
@@ -93,7 +133,7 @@ through `S3Service`. The reasoning and the rejected alternatives are in
   than from the parsed text. A malformed or non-loopback value counts as "no
   endpoint", so it skips locally and fails the job in CI. `E2E_S3_ENDPOINT` is the
   deliberate exception and is used as given — it is the escape hatch for a remote
-  MinIO or a tunnel, and an environment variable is not file data. This came from
+  bucket or a tunnel, and an environment variable is not file data. This came from
   CodeQL's `js/file-access-to-http` (see
   [static-analysis.md](static-analysis.md) REQ-2), which was reporting a real
   dataflow from `readFileSync` into `fetch`; the committed `.env.e2e` made it
@@ -145,9 +185,8 @@ test:e2e:         playwright test                       # the suite
 test:e2e:ui:      playwright test --ui                  # interactive runner
 test:e2e:headed:  playwright test --headed
 test:e2e:install: playwright install --with-deps chromium
-e2e:up:           docker compose -f docker-compose.e2e.yml up -d --wait minio
-                  && docker compose -f docker-compose.e2e.yml run --rm minio-init
-e2e:down:         docker compose -f docker-compose.e2e.yml down -v
+e2e:up:           node scripts/e2e-storage.mjs up      # start RustFS + provision the bucket
+e2e:down:         node scripts/e2e-storage.mjs down
 e2e:reset:        node tests/e2e/support/reseed.mjs      # migrate:fresh + E2eSeeder
 
 # playwright.config.js
@@ -170,7 +209,7 @@ assetCard(page, filename) / assetRow(page, filename)   # locate one fixture
 waitForAlpine(page)               # resolves once no [x-cloak] remains (REQ-12)
 expectToast(page, /re/)           # assert a `.toast` message
 acceptConfirm(page)               # accept the next window.confirm()
-requiresS3(test?)                 # skip the enclosing file/describe without MinIO
+requiresS3(test?)                 # skip the enclosing file/describe without a bucket
 # fixtures the extended `test` provides
 page                              # network-isolated + icon-CSS stub (REQ-11)
 api(role): APIRequestContext      # Bearer-authenticated request context per role
@@ -185,6 +224,17 @@ ensureRuntimeDirs(): void         # create the gitignored storage/* dirs (REQ-5)
 probeS3(): Promise<boolean>       # called once by the config; result in E2E_S3
 hasS3(): boolean                  # what requiresS3() consults
 endpoint(): ?string               # AWS_ENDPOINT parsed out of .env.e2e
+
+# tests/e2e/support/bucket.js — SigV4 by hand; no client library, no second image
+bucketConfig(): ?object           # {origin, bucket, region, accessKey, secretKey} from .env.e2e
+createBucket(config): Promise<'created'|'exists'>
+putPublicReadPolicy(config): Promise<void>   # anonymous s3:GetObject on the bucket
+assertAnonymousRead(config): Promise<void>   # throws if the policy did not take
+
+# scripts/e2e-storage.mjs — `npm run e2e:up` / `e2e:down`
+up      # Docker Compose when docker resolves, else the downloaded binary; then the bucket
+down    # compose down -v and/or kill the detached process, dropping its data
+bucket  # provision only, against a backend that is already up
 
 # tests/e2e/support/files.js
 pngFixture(name, {color?}): {name, mimeType, buffer}   # valid PNG, no fixture files
@@ -209,9 +259,9 @@ AWS_ACCESS_KEY_ID: orca-e2e
 AWS_SECRET_ACCESS_KEY: orca-e2e-secret
 AWS_DEFAULT_REGION: us-east-1
 AWS_BUCKET: orca-e2e
-AWS_ENDPOINT: http://127.0.0.1:9000
+AWS_ENDPOINT: http://127.0.0.1:9100
 AWS_USE_PATH_STYLE_ENDPOINT: true
-AWS_URL: http://127.0.0.1:9000/orca-e2e
+AWS_URL: http://127.0.0.1:9100/orca-e2e
 AWS_REKOGNITION_ENABLED: false        # no AWS calls from a test run
 CLOUDFLARE_ENABLED: false
 
@@ -245,7 +295,7 @@ e2e-ai-tag / e2e-reference-tag # type badges + "AI tags can't be renamed"
 ### Layer touchpoints & ordering
 
 ```
-npm run e2e:up                      MinIO up, bucket created + anonymous read
+npm run e2e:up                      RustFS up (Docker or binary), bucket created + anonymous read
         │
 playwright.config.js
         ├── refuse to run without .env.e2e
@@ -280,9 +330,9 @@ tests/e2e/.auth/*.json         # one saved storageState per role
 test-results/, playwright-report/
 ```
 
-The MinIO bucket (`orca-e2e`) is *not* cleaned between runs — uploads use
-`uniqueName()` so an orphaned object never collides, and `npm run e2e:down -v`
-drops the volume.
+The bucket (`orca-e2e`) is *not* cleaned between runs — uploads use
+`uniqueName()` so an orphaned object never collides, and `npm run e2e:down` drops
+the backing store (the compose volume, or `storage/e2e/rustfs-data/`).
 
 ## Visual aids
 
@@ -292,8 +342,12 @@ Tools and versions:
   copy in `wordpress-plugin/package.json` and is versioned independently
   ([ADR-013](../decisions/adr-013-wordpress-plugin-separate-stream.md)), so the
   two suites each download their own browser build.
-- MinIO (`minio/minio`, `RELEASE.2025-04-22T22-12-26Z`) + `minio/mc` for bucket
-  setup, wired in `docker-compose.e2e.yml`.
+- RustFS `1.0.0-rc.6` — the image `rustfs/rustfs:1.0.0-rc.6` in
+  `docker-compose.e2e.yml`, or the release binary of the same version fetched by
+  `scripts/e2e-storage.mjs`, which pins that version and the SHA-256 of each
+  platform's archive. Nothing bumps either automatically. It replaced MinIO,
+  which was archived upstream ([ADR-017](../decisions/adr-017-rustfs-replaces-minio.md));
+  bucket setup no longer needs a second image at all.
 - Node 22 in CI (matching the `phpunit` and `sdd` jobs).
 
 ## Scenarios (BDD)
@@ -330,12 +384,31 @@ Scenario: One storageState is saved per role and reused by every spec
   And specs adopt one by declaring asAdmin / asEditor / asApi
 # pinned by: tests/e2e/global.setup.js, tests/e2e/support/fixtures.js
 
-Scenario: The S3-dependent specs skip cleanly when MinIO is absent
-  Given no MinIO on :9000
-  When playwright.config.js probes /minio/health/live before test collection
+Scenario: The S3-dependent specs skip cleanly when no bucket is there
+  Given nothing answering on the endpoint .env.e2e names
+  When playwright.config.js probes /health/ready before test collection
   Then E2E_S3 is unset and requiresS3() skips those specs
   But in CI the missing bucket is a hard failure instead
 # pinned by: tests/e2e/support/s3.js
+
+Scenario: A multipart upload survives the dev server's environment filtering
+  Given the app served by artisan serve with an explicit --env
+  When a spec uploads a file
+  Then PHP can still create its upload temp file and the request reaches validation
+# pinned by: tests/Feature/ServeCommandEnvironmentTest.php, tests/e2e/asset-upload.spec.js
+
+Scenario: The storage stand-in starts without a container runtime
+  Given a machine with no docker on PATH
+  When npm run e2e:up runs
+  Then the pinned RustFS binary is downloaded, checksum-verified and started detached
+  And the bucket is created and opened to anonymous reads by the same code CI uses
+# pinned by: scripts/e2e-storage.mjs, tests/e2e/support/bucket.js
+
+Scenario: A bucket that is not anonymously readable fails at provisioning time
+  Given a storage backend that refuses the public-read policy
+  When npm run e2e:up provisions the bucket
+  Then it fails there, rather than later as a thumbnail that never loads
+# pinned by: tests/e2e/support/bucket.js
 
 Scenario: A navigation cancelled by the app's own reload is retried, not failed
   Given a spec that has just run a bulk action, which reloads the page ~800ms later
@@ -382,7 +455,7 @@ Scenario: A spec can reach a state no HTTP route exposes
 ```bash
 npm ci && npm run build            # the @vite manifest must exist
 npm run test:e2e:install           # once — Chromium + OS deps
-npm run e2e:up                     # MinIO on :9000 (skippable, see REQ-8)
+npm run e2e:up                     # RustFS on :9100 (skippable, see REQ-8)
 npm run test:e2e                   # boots artisan serve itself
 npm run test:e2e -- tests/e2e/asset-grid.spec.js   # one file
 npm run e2e:down
@@ -399,7 +472,7 @@ total. Two guarantees come with that: the counter has fixtures checked on every 
 number), and a loop it cannot size is an **error**, not a silent 1. Generated tests must
 therefore iterate an array literal or a named `const` — `for (const x of xs.filter(…))`
 will be rejected.
-~4 minutes serialized; 7 tests skip without MinIO (4 upload, 1 replace, 2 discovery):
+~4 minutes serialized; 7 tests skip without a bucket (4 upload, 1 replace, 2 discovery):
 
 ```
 auth · asset-grid · asset-detail · asset-upload(S3) · asset-trash ·

@@ -117,8 +117,8 @@ suite — it is a blocking CI job:
 
 ```bash
 npm run test:e2e:install     # once: Chromium + OS deps
-npm run e2e:up               # MinIO stands in for S3 (needs Docker; without it the
-npm run test:e2e             #   storage specs skip and the rest still run)
+npm run e2e:up               # RustFS stands in for S3 — Docker if you have it, else a
+npm run test:e2e             #   downloaded binary; without either, the storage specs skip
 ```
 
 Conventions (locate by `data-testid`, reseed per spec file):

@@ -1,7 +1,7 @@
-// MinIO availability probe. Specs that need real bytes in object storage are
+// Storage availability probe. Specs that need real bytes in object storage are
 // guarded by `requiresS3()`, so a developer without a container runtime can still
 // run the rest of the suite (specs/features/e2e-testing.md REQ-8). CI always has
-// MinIO, so nothing is silently skipped there.
+// the bucket, so nothing is silently skipped there.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ROOT } from './db.js';
@@ -26,7 +26,7 @@ const PROBE_HOSTS = ['127.0.0.1', 'localhost'];
  * and in CI playwright.config.js turns that into a hard error, so this cannot quietly drop coverage.
  *
  * E2E_S3_ENDPOINT is deliberately *not* restricted this way: it is the documented escape hatch for a
- * non-standard setup (a remote MinIO, a tunnel), and an environment variable is not file data.
+ * non-standard setup (a remote bucket, a tunnel), and an environment variable is not file data.
  */
 function loopbackOrigin(raw) {
     let url;
@@ -62,6 +62,12 @@ export function endpoint() {
 }
 
 /**
+ * The probe is /health/ready, RustFS's own readiness endpoint (ADR-017) — not
+ * /health, which answers as soon as the HTTP listener is up while the storage layer
+ * is still assembling quorum and every S3 call still 503s. RustFS does keep MinIO's
+ * /minio/health/live as a compatibility alias, but a probe that can report "there is
+ * a bucket here" before there is one would only move the failure later.
+ *
  * Called once from playwright.config.js (before test collection) and recorded in
  * `E2E_S3`, which worker processes inherit — the check itself is async, but
  * `requiresS3()` has to be synchronous at collection time.
@@ -77,7 +83,7 @@ export async function probeS3() {
     try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 2000);
-        const response = await fetch(`${base}/minio/health/live`, { signal: controller.signal });
+        const response = await fetch(`${base}/health/ready`, { signal: controller.signal });
         clearTimeout(timer);
 
         return response.ok;

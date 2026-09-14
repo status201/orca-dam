@@ -13,6 +13,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Policies\SystemPolicy;
+use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -85,5 +86,17 @@ class AppServiceProvider extends ServiceProvider
         // Append-only trail of user create / re-role / delete — an UPDATE that flips
         // `role` otherwise leaves no trace. See specs/features/user-audit-log.md.
         User::observe(UserObserver::class);
+
+        // `artisan serve --env=X` passes through only an allowlist of environment
+        // variables and explicitly unsets the rest in the server process. The temp
+        // directory is not on that list, so on Windows PHP's GetTempPath() falls
+        // through to the Windows directory — unwritable — and every multipart
+        // request dies at request startup with "unable to create a temporary file",
+        // surfacing as a 422 with no exception and nothing in the log. Harmless on
+        // Linux, where PHP falls back to /tmp. See specs/features/e2e-testing.md REQ-1.
+        ServeCommand::$passthroughVariables = array_values(array_unique(array_merge(
+            ServeCommand::$passthroughVariables,
+            ['TMP', 'TEMP', 'TMPDIR'],
+        )));
     }
 }

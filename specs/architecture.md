@@ -268,19 +268,20 @@ The *why* behind the choices above — and the alternatives each rejected — li
 - [ADR-012](decisions/adr-012-reference-tags-api-only.md) — reference tags are API-created only.
 - [ADR-013](decisions/adr-013-wordpress-plugin-separate-stream.md) — WordPress plugin is a separate release stream.
 - [ADR-014](decisions/adr-014-playwright-e2e-real-stack.md) — browser E2E against a real stack (MinIO for S3).
+- [ADR-017](decisions/adr-017-rustfs-replaces-minio.md) — RustFS replaces the archived MinIO as that stand-in.
 - [ADR-015](decisions/adr-015-guided-demos-server-declared.md) — guided demos declared in PHP; spotlight hand-rolled.
 - [ADR-016](decisions/adr-016-database-errors-are-user-errors.md) — a driver rejection is a user error: one global backstop behind the controllers (amends ADR-010).
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1232 tests,
-  96 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
+- `php artisan config:clear && php artisan test` — the full Pest suite (1235 tests,
+  97 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security
   invariants and exploit probes on their own, as the CI job runs them. See
   [security-invariants.md](features/security-invariants.md).
 - `npm run test:e2e` — the Playwright browser suite (136 tests across 21 spec files)
-  against a real `artisan serve` + MinIO. See [e2e-testing.md](features/e2e-testing.md).
+  against a real `artisan serve` + a local RustFS bucket. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus
   the documented-fact checks: dependency versions and hand-counted totals in the specs

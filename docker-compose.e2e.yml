@@ -1,40 +1,41 @@
-# MinIO standing in for S3 during the Playwright E2E suite
-# (specs/features/e2e-testing.md — ADR-014). `npm run e2e:up` / `e2e:down`.
+# RustFS standing in for S3 during the Playwright E2E suite
+# (specs/features/e2e-testing.md — ADR-017, amending ADR-014). Driven by
+# `npm run e2e:up` / `e2e:down`, which fall back to a downloaded RustFS binary
+# on a machine with no Docker — see scripts/e2e-storage.mjs.
 #
 # Credentials and bucket name mirror .env.e2e. Nothing here is reachable from
 # outside localhost and nothing in it is a secret.
+#
+# The host port is 9100, not the conventional 9000: that one is routinely already
+# taken on a developer machine (PhpStorm binds it), and an endpoint that accepts
+# the connection without ever answering is worse than one that is simply absent.
+# It must stay in step with AWS_ENDPOINT / AWS_URL in .env.e2e. Inside the
+# container RustFS stays on its default 9000.
+#
+# No `command:` and no healthcheck, both deliberate. The image's entrypoint takes
+# the binary name as its command and reads the data directory from RUSTFS_VOLUMES
+# (already `/data` in the image), so overriding the command breaks the entrypoint.
+# And the image carries no shell tooling to probe itself with, so
+# scripts/e2e-storage.mjs polls /health/ready from the outside — the same
+# readiness check the binary path uses.
 
 services:
-  minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    command: server /data --console-address ":9001"
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.6
     environment:
-      MINIO_ROOT_USER: orca-e2e
-      MINIO_ROOT_PASSWORD: orca-e2e-secret
+      RUSTFS_ACCESS_KEY: orca-e2e
+      RUSTFS_SECRET_KEY: orca-e2e-secret
+      RUSTFS_REGION: us-east-1
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_OBS_LOGGER_LEVEL: error
     ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
+      - "127.0.0.1:9100:9000"
+      - "127.0.0.1:9101:9001"
     volumes:
-      - minio-e2e:/data
-
-  # Creates the bucket and makes it anonymously readable — the browser loads
-  # asset/thumbnail URLs straight from AWS_URL, so public read is required.
-  minio-init:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set e2e http://minio:9000 orca-e2e orca-e2e-secret &&
-      mc mb --ignore-existing e2e/orca-e2e &&
-      mc anonymous set download e2e/orca-e2e
-      "
+      - rustfs-e2e:/data
 
 volumes:
-  minio-e2e:
+  rustfs-e2e:
