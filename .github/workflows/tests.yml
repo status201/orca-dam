@@ -272,7 +272,7 @@ jobs:
             -p 9000:9000 \
             -e MINIO_ROOT_USER=orca-e2e \
             -e MINIO_ROOT_PASSWORD=orca-e2e-secret \
-            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+            minio/minio:RELEASE.2024-12-13T22-33-32Z server /data
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:9000/minio/health/live && break
             sleep 2
