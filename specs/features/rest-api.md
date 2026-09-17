@@ -3,7 +3,7 @@
 ```yaml
 id: rest-api
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -101,7 +101,7 @@ GET    /api/tags/search:     TagController::search
 GET    /api/tags/{ids}:      TagController::show              # single id or comma-list, max 200
 GET    /api/folders:         FolderController::index           # see folder-management.md
 
-# routes/web.php — chunked upload, auth.multi:web,sanctum,jwt, throttle:100,1
+# routes/web.php — chunked upload, auth.multi:web,sanctum,jwt, throttle:chunked-upload (100/min)
 POST /api/chunked-upload/init | chunk | complete | abort
 ```
 

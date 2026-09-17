@@ -13,9 +13,12 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Policies\SystemPolicy;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passkeys\Events\PasskeyRegistered;
@@ -85,5 +88,24 @@ class AppServiceProvider extends ServiceProvider
         // Append-only trail of user create / re-role / delete — an UPDATE that flips
         // `role` otherwise leaves no trace. See specs/features/user-audit-log.md.
         User::observe(UserObserver::class);
+
+        $this->configureRateLimiting();
+    }
+
+    /**
+     * Named limiters for the heavy web routes. A bare `throttle:N,1` keys its counter on the
+     * user id alone, so every such route would share one per-user budget — naming each gives it
+     * its own. See specs/features/upload-policy.md REQ-7.
+     */
+    private function configureRateLimiting(): void
+    {
+        $perUser = fn (Request $request): string => (string) ($request->user()?->id ?: $request->ip());
+
+        RateLimiter::for('bulk-download', fn (Request $request) => Limit::perMinute(20)->by($perUser($request)));
+        RateLimiter::for('ai-tag', fn (Request $request) => Limit::perMinute(30)->by($perUser($request)));
+        RateLimiter::for('chunked-upload', fn (Request $request) => Limit::perMinute(100)->by($perUser($request)));
+
+        // Read per request, not at boot, so the limit follows config (and tests can override it).
+        RateLimiter::for('tikz-render', fn (Request $request) => Limit::perMinute((int) config('tikz.render_rate_limit', 60))->by($perUser($request)));
     }
 }

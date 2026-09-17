@@ -237,6 +237,7 @@
             <textarea
                 x-model="tikzCode"
                 x-ref="tikzInput"
+                data-testid="tikz-code-input"
                 rows="16"
                 spellcheck="false"
                 wrap="off"
@@ -457,6 +458,7 @@
             <button
                 @click="render()"
                 :disabled="rendering || !tikzCode.trim() || !compilerAvailable"
+                data-testid="tikz-render-button"
                 class="inline-flex items-center gap-2 px-6 py-2.5 bg-orca-teal text-white text-sm font-semibold rounded-lg hover:bg-orca-teal-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
                 <template x-if="rendering">
                     <i class="fas fa-spinner fa-spin"></i>
@@ -482,16 +484,30 @@
             </button>
 
             <template x-if="rendering">
-                <span class="text-sm text-gray-500 ml-auto">
-                    <i class="fas fa-spinner fa-spin mr-1"></i>
-                    {{ __('Compiling on server. This may take a few seconds…') }}<span x-text="renderProgress.total ? ' (' + renderProgress.current + '/' + renderProgress.total + ')' : ''"></span>
+                <span class="flex items-center gap-3 text-sm text-gray-500 ml-auto">
+                    <span x-show="rateLimitWait === 0">
+                        <i class="fas fa-spinner fa-spin mr-1"></i>
+                        {{ __('Compiling on server. This may take a few seconds…') }}<span x-text="renderProgress.total ? ' (' + renderProgress.current + '/' + renderProgress.total + ')' : ''"></span>
+                    </span>
+                    <span x-show="rateLimitWait > 0" class="text-amber-600" data-testid="tikz-render-rate-limit">
+                        <i class="fas fa-hourglass-half mr-1"></i>
+                        <span x-text="rateLimitMessage"></span><span x-text="renderProgress.total ? ' (' + renderProgress.current + '/' + renderProgress.total + ')' : ''"></span>
+                    </span>
+                    <button
+                        @click="cancelRender()"
+                        :disabled="renderCancelled"
+                        data-testid="tikz-render-stop"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-medium rounded-lg hover:border-red-400 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <i class="fas fa-stop"></i>
+                        {{ __('Stop') }}
+                    </button>
                 </span>
             </template>
         </div>
 
         {{-- Render error --}}
         <template x-if="renderError">
-            <div class="flex items-start gap-2 p-3 mt-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <div data-testid="tikz-render-error" class="flex items-start gap-2 p-3 mt-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 <i class="fas fa-exclamation-circle mt-0.5"></i>
                 <div>
                     <span x-text="renderError"></span>
@@ -635,7 +651,7 @@
             {{-- Result cards --}}
             <div class="space-y-6 mb-12">
                 <template x-for="(result, rIdx) in results" :key="rIdx">
-                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="border border-gray-200 rounded-lg overflow-hidden" data-testid="tikz-result">
                         {{-- Snippet header --}}
                         <div class="bg-gray-50 px-4 py-2.5 border-b border-gray-100">
                             <span class="text-sm font-medium text-gray-700" x-text="'{{ __('Diagram') }} ' + (rIdx + 1)"></span>
@@ -912,6 +928,8 @@ window.__pageData = {
         gifEncodingFailed: @js(__('GIF encoding failed: :error')),
         noVariantsSelected: @js(__('No variants selected')),
         uploadFailed: @js(__('Upload failed: :error')),
+        rateLimitResuming: @js(__('Rate limit reached — resuming in :seconds s…')),
+        rateLimited: @js(__('Too many render requests. Wait a minute and try again.')),
     },
 };
 </script>
