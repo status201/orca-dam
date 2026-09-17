@@ -102,6 +102,13 @@ function extract(archive, into) {
  * The digest is verified before anything is unpacked, let alone run: this fetches
  * an executable over the network, and a pinned version with an unpinned payload
  * would only be pretending to be pinned.
+ *
+ * CodeQL flags the writeFileSync below as js/http-to-file-access and is right
+ * about the dataflow; the alert is dismissed as used_in_tests. The digest check
+ * above it is the mitigation, the write cannot be avoided (tar needs a real file
+ * and Node cannot unpack a zip in memory unaided), and moving the download out
+ * to curl would only hide the flow while letting unverified bytes reach disk
+ * first. Full reasoning in ADR-017 → Consequences.
  */
 async function ensureBinary() {
     const binary = path.join(BIN_DIR, process.platform === 'win32' ? 'rustfs.exe' : 'rustfs');

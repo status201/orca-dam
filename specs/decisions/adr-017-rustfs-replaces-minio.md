@@ -101,6 +101,28 @@ was bad — see the trade-off below.
   release. The SHA-256 of each platform's archive is pinned next to the version
   and verified before anything is unpacked, because a pinned version with an
   unpinned payload is only pretending to be pinned.
+
+  CodeQL reports this as
+  [`js/http-to-file-access`](https://github.com/status201/orca-dam/security/code-scanning/18)
+  ("network data written to file") against the `writeFileSync` in `ensureBinary()`,
+  and it is right about the dataflow: bytes arrive over HTTP and land on disk.
+  The alert is **dismissed as `used_in_tests`** rather than fixed, which is the
+  opposite of how the mirror-image finding (`js/file-access-to-http`, on the S3
+  probe) was handled, so the reasoning belongs here rather than in a dashboard:
+
+  - The digest check is the mitigation and it runs *before* the write, so nothing
+    unverified is ever unpacked or executed. CodeQL has no sanitizer concept for
+    a checksum comparison, so no arrangement of this code clears the rule.
+  - The write itself is unavoidable: `tar` needs a real file, and the archives
+    are zips, which Node cannot unpack in-memory without a dependency.
+  - `scripts/e2e-storage.mjs` is E2E tooling. It is never shipped, never loaded
+    by the app, and runs only when a developer or CI asks for a bucket — which is
+    what `used_in_tests` means, exactly.
+
+  What would *not* be an improvement: shelling the download out to `curl` so the
+  network-to-file flow leaves JavaScript. That hides the finding from the
+  analyzer while making the situation genuinely worse, because the file would
+  then reach disk before anything verified it.
 - **Trade-off:** we own a SigV4 implementation. It signs two requests against a
   local server and is exercised on every `e2e:up`, so it cannot rot unnoticed —
   but it is ours to fix.
