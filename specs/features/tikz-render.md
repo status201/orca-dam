@@ -3,7 +3,7 @@
 ```yaml
 id: tikz-render
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -19,6 +19,7 @@ source:
   - app/Http/Requests/Tools/StoreTexTemplateRequest.php
   - config/tikz.php
   - resources/js/alpine/tools-tikz-server.js
+  - resources/views/assets/show.blade.php
 ```
 
 ## Background / Why
@@ -82,6 +83,20 @@ inclusion of any kind, and every render runs in a throwaway temp directory.
   shown while rendering, ends the batch after the current request or countdown and
   keeps the results so far. No non-compile failure may surface as
   "Compilation failed": the response's `error`, then `message`, is shown first.
+- **REQ-9** — A `.tex` asset opens in the tool in one click. Asset Show renders an
+  **Open in TikZ Tool** link as the first entry of its Actions card whenever
+  `Asset::isTex()` is true (shown regardless of TeX Live availability — the tool
+  page carries its own "compiler unavailable" notice), pointing at
+  `tools/tikz-server?template={asset id}` in the same tab. On init, the tikz-server
+  page loads a numeric `template` query parameter through the same
+  `loadFromOrca()` path as the template browser — so the parent link (REQ-7), the
+  modified-snapshot and the success/error toast all behave identically — and then
+  strips the parameter with `history.replaceState`, so it is a one-shot action
+  rather than state a later reload replays over the user's edits.
+  `loadTexTemplate` accepts an asset when `isTex()` is true **or** its filename
+  ends in `.tex`/`.txt`: the button is gated on `isTex()` (mime type or `s3_key`
+  extension), and a `.tex` asset whose display filename was edited must not show a
+  button that then answers 422.
 
 ## Technical design
 
@@ -105,13 +120,13 @@ ToolUploadService:
     # temp file always unlinked, even on exception
 
 ToolsController (TikZ-relevant):
-  tikzServer()                    # GET  tools/tikz-server            — view: folders, rootFolder, compilerAvailable, fontPackages, colorPackage(Name)
+  tikzServer()                    # GET  tools/tikz-server[?template={id}] — view: folders, rootFolder, compilerAvailable, fontPackages, colorPackage(Name); `template` is read client-side (REQ-9)
   renderTikzServer(Request)       # POST tools/tikz-server/render     — throttle:tikz-render (60/min default)
   uploadTikzSvg(StoreTikzSvgRequest)             # POST tools/tikz-svg/upload
   uploadTikzSvgFonts(StoreTikzSvgFontsRequest)   # POST tools/tikz-svg-fonts/upload
   uploadTikzPng(StoreTikzPngRequest)             # POST tools/tikz-png/upload  — content is base64 (data: URL prefix stripped)
   searchTexTemplates(Request)     # GET  tools/tikz-server/templates          — Asset::search() over filename/s3_key LIKE '%.tex'
-  loadTexTemplate(Asset)          # GET  tools/tikz-server/templates/{asset}  — rejects non .tex/.txt via extension check
+  loadTexTemplate(Asset)          # GET  tools/tikz-server/templates/{asset}  — 422 unless isTex() or filename ends .tex/.txt
   uploadTexTemplate(StoreTexTemplateRequest) # POST tools/tikz-server/templates/upload — process:false (no thumbnail/resize/AI)
   bakomaFont(string $name)        # GET  tools/bakoma-font/{name}     — proxies+caches (24h) BaKoMa TTFs from tikzjax.com, name whitelisted to [a-z0-9]+
 ```
@@ -335,6 +350,26 @@ Scenario: Loading a .tex template rejects non-.tex/.txt assets
   Then the response is 422
 # pinned by: tests/Feature/ToolsTest.php
 
+Scenario: A .tex asset whose filename lost its extension still loads (REQ-9)
+  Given an asset with s3_key "assets/renamed.tex" and filename "renamed"
+  When loadTexTemplate is requested for it
+  Then the response is 200 with the file content
+# pinned by: tests/Feature/ToolsTest.php
+
+Scenario: Asset Show offers "Open in TikZ Tool" only for .tex assets (REQ-9)
+  Given a .tex asset and an image asset
+  When each detail page is rendered
+  Then the .tex page links to tools/tikz-server?template={its id}
+  And the image page has no such link
+# pinned by: tests/Feature/AssetTest.php
+
+Scenario: A ?template= link loads that template and cleans the URL (REQ-9)
+  Given the template-load endpoint answers for asset 4242
+  When /tools/tikz-server?template=4242 is opened
+  Then the editor holds that template's content
+  And the address bar no longer carries the template parameter
+# pinned by: tests/e2e/tools.spec.js
+
 Scenario: ToolUploadService always deletes its temp file, even on success
   When store() is called and completes normally
   Then the underlying temp file no longer exists on disk
@@ -354,8 +389,13 @@ Scenario: ToolUploadService skips processing and metadata when process is false
 - Feature: `tests/Feature/ToolsTest.php` (render endpoint, template search/load/
   upload, SVG/PNG upload with metadata), `tests/Feature/SecurityRemediationTest.php`
   (render limit, `429` + `Retry-After`) — `php artisan config:clear && php artisan test`
+- Feature: `tests/Feature/AssetTest.php` (REQ-9 — the detail-page button appears
+  for `.tex` assets only)
 - E2E: `tests/e2e/tools.spec.js` (REQ-8 pause/resume/Stop against a mocked render
-  endpoint — the harness ships no TeX Live) — `npm run test:e2e -- tests/e2e/tools.spec.js`
+  endpoint — the harness ships no TeX Live; REQ-9 `?template=` deep link against a
+  mocked template-load endpoint) — `npm run test:e2e -- tests/e2e/tools.spec.js`.
+  No `.tex` asset is seeded for the button itself: `application/x-tex` is a
+  `document`, and the grid/embed/export specs pin exact document counts.
 - Manual (REQ-6 + REQ-8 against real TeX Live): set `TIKZ_RENDER_RATE_LIMIT=3`,
   `php artisan config:clear`, render six `tikzpicture` blocks on `/tools/tikz-server`
   — expect three results, a countdown, then all six.

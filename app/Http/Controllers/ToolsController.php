@@ -308,7 +308,7 @@ class ToolsController extends Controller
     public function loadTexTemplate(Asset $asset)
     {
         $ext = strtolower(pathinfo($asset->filename, PATHINFO_EXTENSION));
-        if (! in_array($ext, ['tex', 'txt'])) {
+        if (! $asset->isTex() && ! in_array($ext, ['tex', 'txt'])) {
             return response()->json(['error' => __('Not a .tex or .txt file')], 422);
         }
 

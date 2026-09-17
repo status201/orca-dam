@@ -177,3 +177,34 @@ test.describe('tikz server render rate limit', () => {
         expect(bodies).toHaveLength(3);
     });
 });
+
+// specs/features/tikz-render.md REQ-9. The "Open in TikZ Tool" button on a .tex asset's detail page
+// links to ?template={id}. The template-load endpoint is mocked: fetching the real one needs the
+// object in the bucket, and seeding a .tex row would shift the document counts other specs pin.
+test.describe('tikz server template deep link', () => {
+    test('a ?template= link loads that template into the editor and cleans the URL', async ({ page }) => {
+        const CONTENT = String.raw`\begin{tikzpicture}\draw (0,0) circle (1);\end{tikzpicture}`;
+        const requested = [];
+        await page.route('**/tools/tikz-server/templates/4242', (route) => {
+            requested.push(route.request().url());
+            return route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({ content: CONTENT, filename: 'e2e-linked.tex', id: 4242 }),
+            });
+        });
+
+        await page.goto('/tools/tikz-server?template=4242');
+        await expect(page.locator(testid('tool-tikz-server'))).toBeVisible();
+
+        await expect(page.locator(testid('tikz-code-input'))).toHaveValue(CONTENT);
+        expect(requested).toHaveLength(1);
+        await expect(page).not.toHaveURL(/template=/);
+
+        // Loaded through the same path as the template browser, so the render parent link is set.
+        const linkedId = await page.evaluate(
+            () => window.Alpine.$data(document.querySelector('[data-testid="tool-tikz-server"]')).templateAssetId
+        );
+        expect(linkedId).toBe(4242);
+    });
+});

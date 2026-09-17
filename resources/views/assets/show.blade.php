@@ -471,6 +471,13 @@
                 <h3 class="text-lg font-semibold mb-4">{{ __('Actions') }}</h3>
 
                 <div class="space-y-3">
+                    @if($asset->isTex())
+                    <a href="{{ route('tools.tikz-server', ['template' => $asset->id]) }}" data-testid="asset-detail-open-tikz"
+                       class="block w-full px-4 py-2 bg-orca-teal text-white text-center rounded-lg hover:bg-orca-teal-hover">
+                        <i class="fas fa-server mr-2"></i> {{ __('Open in TikZ Tool') }}
+                    </a>
+                    @endif
+
                     @can('update', $asset)
                     <a href="{{ route('assets.edit', $asset) }}" data-testid="asset-detail-edit"
                        class="block w-full px-4 py-2 bg-orca-black text-white text-center rounded-lg hover:bg-orca-black-hover">

@@ -10,7 +10,7 @@ export function tagManager() {
         editingTagName: '',
         searchQuery: '',
         activeSearch: '',
-        type: config.type || '',
+        type: config.type || 'user',
         sort: config.sort || 'name_asc',
         typeCounts: config.typeCounts || { all: 0, user: 0, ai: 0, reference: 0 },
 
@@ -122,7 +122,8 @@ export function tagManager() {
 
         updateUrl() {
             const params = new URLSearchParams();
-            if (this.type) params.set('type', this.type);
+            // 'user' is the default tab, so it keeps the URL bare; 'all' must be explicit.
+            if (this.type && this.type !== 'user') params.set('type', this.type);
             if (this.sort && this.sort !== 'name_asc') params.set('sort', this.sort);
             const qs = params.toString();
             history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));

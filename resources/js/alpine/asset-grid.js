@@ -33,7 +33,7 @@ export function assetGrid() {
         perPage: config.perPage || '24',
         tagSearch: '',
         tagSort: 'name_asc',
-        tagType: '',
+        tagType: 'user', // '' = all types; user first so reference tags don't crowd the list
         folderCount: config.folderCount || 1,
 
         // Lazy-loaded tag filter state

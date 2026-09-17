@@ -208,6 +208,8 @@ Tags are labels that help you organize and find assets. They come in three types
 
 **Bulk tagging:** Select multiple assets (use Shift+click for ranges), then use the bulk tag toolbar to add or remove tags across all selected assets at once.
 
+**Browsing tags:** The Tags page opens on **User Tags**, followed by the **AI Tags** and **Reference Tags** tabs; **All Tags** is the last tab. The **Filter Tags** panel on the Assets page works the same way: its type dropdown starts on User Tags, with All Tags as the last option. This keeps the many machine-named reference tags out of the way until you ask for them.
+
 **Bulk delete tags:** On the Tags page, select tags with checkboxes (Shift+click for ranges), then click **Delete selected** in the toolbar to remove them all at once. This removes the tags from all assets they were attached to.
 
 **Tag attribution:** Each tag on an asset shows who last assigned it — "User" (manually added) or "AI" (auto-generated). This is visible on the asset detail and edit pages.
@@ -471,7 +473,7 @@ Compile TikZ diagrams on the server using a full TeX Live installation. Requires
 5. Compare variants using the tabs, then select which ones to upload to ORCA
 6. Choose a destination folder and click **Upload selected**
 
-**Template management:** Save your TikZ code as a `.tex` file in ORCA with **Save as .tex**, or load existing templates with **Load from ORCA**.
+**Template management:** Save your TikZ code as a `.tex` file in ORCA with **Save as .tex**, or load existing templates with **Load from ORCA**. On a `.tex` asset's detail page, **Open in TikZ Tool** (top of the Actions panel) opens the tool with that template already loaded and linked.
 
 **Template links (parent/child):** Once a `.tex` template is loaded or saved, any renders you upload in that session are linked to it as **derived assets**. The asset detail page of the `.tex` shows all its derived renders, and each render shows its source `.tex`. A link badge in the toolbar shows the linked template name; small edits keep the link (shown as *modified*), and the × button on the badge unlinks it if you want the next upload to stand alone.
 
