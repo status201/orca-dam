@@ -258,6 +258,30 @@ test('authenticated users can view asset detail', function () {
     $response->assertSee($asset->filename);
 });
 
+test('asset detail offers Open in TikZ Tool for tex assets only', function () {
+    $user = User::factory()->create();
+    $tex = Asset::factory()->create([
+        'filename' => 'diagram.tex',
+        's3_key' => 'assets/diagram.tex',
+        'mime_type' => 'application/x-tex',
+    ]);
+    $image = Asset::factory()->create([
+        'filename' => 'photo.jpg',
+        's3_key' => 'assets/photo.jpg',
+        'mime_type' => 'image/jpeg',
+    ]);
+
+    $this->actingAs($user)->get(route('assets.show', $tex))
+        ->assertOk()
+        ->assertSee('data-testid="asset-detail-open-tikz"', false)
+        ->assertSee(route('tools.tikz-server', ['template' => $tex->id]), false)
+        ->assertSee('Open in TikZ Tool');
+
+    $this->actingAs($user)->get(route('assets.show', $image))
+        ->assertOk()
+        ->assertDontSee('asset-detail-open-tikz', false);
+});
+
 test('authenticated users can access edit form', function () {
     $user = User::factory()->create();
     $asset = Asset::factory()->create();

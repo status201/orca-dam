@@ -61,29 +61,29 @@
     <!-- Filter tabs -->
     <div class="mb-6 border-b border-gray-200">
         <nav class="-mb-px flex space-x-8">
-            <button @click="changeType('')"
-               :class="type === '' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-               class="py-4 px-1 border-b-2 font-medium text-sm">
-                {{ __('All Tags') }} <span x-show="type === ''" x-cloak>(<span x-text="total"></span>)</span>
-                <span x-show="type !== ''" x-cloak>(<span x-text="typeCounts.all"></span>)</span>
-            </button>
-            <button @click="changeType('user')"
+            <button @click="changeType('user')" data-testid="tags-tab-user"
                :class="type === 'user' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                class="attention py-4 px-1 border-b-2 font-medium text-sm">
                 {{ __('User Tags') }} <span x-show="type === 'user'" x-cloak>(<span x-text="total"></span>)</span>
                 <span x-show="type !== 'user'" x-cloak>(<span x-text="typeCounts.user"></span>)</span>
             </button>
-            <button @click="changeType('ai')"
+            <button @click="changeType('ai')" data-testid="tags-tab-ai"
                :class="type === 'ai' ? 'border-purple-500 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                class="attention py-4 px-1 border-b-2 font-medium text-sm">
                 {{ __('AI Tags') }} <span x-show="type === 'ai'" x-cloak>(<span x-text="total"></span>)</span>
                 <span x-show="type !== 'ai'" x-cloak>(<span x-text="typeCounts.ai"></span>)</span>
             </button>
-            <button @click="changeType('reference')"
+            <button @click="changeType('reference')" data-testid="tags-tab-reference"
                :class="type === 'reference' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                class="attention py-4 px-1 border-b-2 font-medium text-sm">
                 {{ __('Reference Tags') }} <span x-show="type === 'reference'" x-cloak>(<span x-text="total"></span>)</span>
                 <span x-show="type !== 'reference'" x-cloak>(<span x-text="typeCounts.reference"></span>)</span>
+            </button>
+            <button @click="changeType('all')" data-testid="tags-tab-all"
+               :class="type === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+               class="py-4 px-1 border-b-2 font-medium text-sm">
+                {{ __('All Tags') }} <span x-show="type === 'all'" x-cloak>(<span x-text="total"></span>)</span>
+                <span x-show="type !== 'all'" x-cloak>(<span x-text="typeCounts.all"></span>)</span>
             </button>
         </nav>
     </div>
@@ -276,7 +276,7 @@
 <script>
 window.__pageData = window.__pageData || {};
 window.__pageData.tagConfig = {
-    type: @json(request('type', '')),
+    type: @json($activeType),
     sort: @json(request('sort', 'name_asc')),
     typeCounts: @json($typeCounts)
 };

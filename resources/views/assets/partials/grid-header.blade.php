@@ -111,12 +111,12 @@
                         <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                     </div>
                     <!-- Tag type filter -->
-                    <select x-model="tagType" @change="onFilterTagTypeChange()"
+                    <select x-model="tagType" @change="onFilterTagTypeChange()" data-testid="grid-tag-type"
                             class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
-                        <option value="">{{ __('All Tags') }}</option>
                         <option value="user">{{ __('User Tags') }}</option>
                         <option value="ai">{{ __('AI Tags') }}</option>
                         <option value="reference">{{ __('Reference Tags') }}</option>
+                        <option value="">{{ __('All Tags') }}</option>
                     </select>
                     <!-- Tag sort dropdown -->
                     <select x-model="tagSort" @change="onFilterTagSortChange()"

@@ -7,7 +7,7 @@ test.describe('tags page', () => {
     test.beforeAll(reseed);
 
     test('the seeded tags are listed with their type badges', async ({ page }) => {
-        await page.goto('/tags');
+        await page.goto('/tags?type=all');
         await expect(page.locator(testid('tags-page'))).toBeVisible();
 
         await expect(tagCard(page, 'e2e-shared')).toBeVisible();
@@ -15,8 +15,35 @@ test.describe('tags page', () => {
         await expect(tagCard(page, 'e2e-reference-tag')).toContainText('ref');
     });
 
-    test('an ai tag offers no rename control', async ({ page }) => {
+    // specs/features/tags.md REQ-7 — machine-named reference tags must not crowd the default view.
+    test('the tabs lead with user tags and end with all', async ({ page }) => {
         await page.goto('/tags');
+
+        const tabs = await page.locator('[data-testid^="tags-tab-"]')
+            .evaluateAll((els) => els.map((el) => el.dataset.testid));
+        expect(tabs).toEqual(['tags-tab-user', 'tags-tab-ai', 'tags-tab-reference', 'tags-tab-all']);
+
+        await expect(tagCard(page, 'e2e-shared')).toBeVisible();
+        await expect(tagCard(page, 'e2e-ai-tag')).toHaveCount(0);
+        await expect(tagCard(page, 'e2e-reference-tag')).toHaveCount(0);
+
+        await page.click(testid('tags-tab-all'));
+        await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
+        await expect(tagCard(page, 'e2e-reference-tag')).toBeVisible();
+        await expect(page).toHaveURL(/[?&]type=all\b/);
+
+        // The URL is the state: a reload stays on All.
+        await page.reload();
+        await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
+
+        // And back to the default leaves a bare URL.
+        await page.click(testid('tags-tab-user'));
+        await expect(tagCard(page, 'e2e-ai-tag')).toHaveCount(0);
+        await expect(page).not.toHaveURL(/type=/);
+    });
+
+    test('an ai tag offers no rename control', async ({ page }) => {
+        await page.goto('/tags?type=all');
 
         await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
         await expect(tagCard(page, 'e2e-ai-tag').locator(testid('tag-card-edit'))).toHaveCount(0);

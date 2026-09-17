@@ -85,6 +85,16 @@ function tikzServer() {
             this.$watch('tikzCode', () => this.updateLineNumbers());
             this.$nextTick(() => this.updateLineNumbers());
             this.parsePaletteColors();
+
+            // Deep link from an asset's detail page: ?template={id} loads that .tex once,
+            // then leaves the URL so a reload doesn't replay it over the user's edits.
+            var templateId = new URLSearchParams(window.location.search).get('template');
+            if (templateId && /^\d+$/.test(templateId)) {
+                this.loadFromOrca(templateId);
+                var url = new URL(window.location.href);
+                url.searchParams.delete('template');
+                history.replaceState(null, '', url.pathname + url.search + url.hash);
+            }
         },
 
         updateLineNumbers() {

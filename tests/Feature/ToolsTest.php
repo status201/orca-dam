@@ -231,6 +231,24 @@ test('load tex template returns content for tex files', function () {
     ]);
 });
 
+test('load tex template accepts a tex asset whose filename lost its extension', function () {
+    $user = User::factory()->create(['role' => 'editor']);
+
+    // isTex() reads the immutable s3_key, so the detail page's "Open in TikZ Tool"
+    // button still shows after a rename — the load must not 422 behind it.
+    $asset = Asset::factory()->create(['filename' => 'renamed', 's3_key' => 'assets/renamed.tex']);
+
+    $s3Mock = Mockery::mock(S3Service::class)->makePartial();
+    $s3Mock->shouldReceive('getObjectContent')
+        ->with('assets/renamed.tex')
+        ->andReturn('\\begin{tikzpicture}\\end{tikzpicture}');
+    $this->app->instance(S3Service::class, $s3Mock);
+
+    $this->actingAs($user)->getJson(route('tools.tikz-server.templates.load', $asset))
+        ->assertOk()
+        ->assertJson(['content' => '\\begin{tikzpicture}\\end{tikzpicture}', 'id' => $asset->id]);
+});
+
 test('load tex template returns 500 when s3 content unavailable', function () {
     $user = User::factory()->create(['role' => 'editor']);
 

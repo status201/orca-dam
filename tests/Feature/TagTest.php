@@ -209,6 +209,38 @@ test('tags index web view returns type counts', function () {
     ]);
 });
 
+test('tags index web view opens on user tags and honours type=all', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get(route('tags.index'))
+        ->assertOk()
+        ->assertViewHas('activeType', 'user');
+
+    $this->actingAs($user)->get(route('tags.index', ['type' => 'all']))
+        ->assertViewHas('activeType', 'all');
+
+    $this->actingAs($user)->get(route('tags.index', ['type' => 'reference']))
+        ->assertViewHas('activeType', 'reference');
+
+    // A stale or hand-edited value falls back to the default rather than an empty tab.
+    $this->actingAs($user)->get(route('tags.index', ['type' => 'bogus']))
+        ->assertViewHas('activeType', 'user');
+});
+
+test('tags index JSON treats type=all as unfiltered', function () {
+    $user = User::factory()->create();
+    Tag::factory()->user()->create();
+    Tag::factory()->ai()->create();
+    Tag::factory()->reference()->create();
+
+    $response = $this->actingAs($user)->getJson(route('tags.index', ['type' => 'all']));
+
+    $response->assertOk();
+    $response->assertJsonPath('total', 3);
+    expect(collect($response->json('data'))->pluck('type')->sort()->values()->all())
+        ->toBe(['ai', 'reference', 'user']);
+});
+
 test('tags by-ids returns correct tags', function () {
     $user = User::factory()->create();
     $tag1 = Tag::factory()->create(['name' => 'alpha']);

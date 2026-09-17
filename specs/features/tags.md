@@ -3,7 +3,7 @@
 ```yaml
 id: tags
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -15,6 +15,8 @@ source:
   - app/Http/Controllers/AssetController.php
   - app/Http/Controllers/AssetBulkController.php
   - database/factories/TagFactory.php
+  - resources/js/alpine/tags.js
+  - resources/js/alpine/asset-grid.js
 ```
 
 ## Background / Why
@@ -50,6 +52,16 @@ data model per tag origin.
 - **REQ-6** — Resolving a tag name to an ID never changes an existing tag's
   `type`. `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` reuse an
   existing tag of any type if the name already exists.
+- **REQ-7** — Tag-type pickers lead with **User** tags. Reference tags are
+  machine-named (`00213478-7efb-…`) and numerous, so an "all types" list sorted by
+  name opens on a wall of them. The Tags page tabs and the asset grid's
+  *Filter Tags* type dropdown are ordered **User → AI → Reference → All**, and
+  both default to **User**. On the Tags page, `/tags` means User and `?type=all`
+  means All (an unrecognised `type` falls back to User); switching tabs rewrites
+  the URL the same way, omitting `type` for the default. `GET /tags` as JSON treats
+  `type=all` exactly like an absent `type` (unfiltered), so existing JSON callers
+  are unaffected. The CSV Export page's tag-type selector is deliberately left
+  as-is (all types first, the default).
 
 ## Technical design
 
@@ -70,7 +82,8 @@ Asset (app/Models/Asset.php):
   syncTagsWithAttribution(array $tagIds, string $attachedBy): void
 
 TagController:
-  index(Request)          # GET /tags — paginated JSON (expectsJson) or type-counts view
+  index(Request)          # GET /tags — paginated JSON (expectsJson; ?type=user|ai|reference, 'all'/absent = unfiltered)
+                          #   or view with typeCounts + activeType (user|ai|reference|all, default user)
   search(Request)          # GET /tags/search — autocomplete, ?type= or ?types=a,b
   show(string $ids)        # GET /tags/{ids} — single object (1 id) or array (2-200 ids)
   byIds(Request)           # POST /tags/by-ids — resolve ids[] to Tag rows
@@ -222,6 +235,12 @@ Scenario: Bulk add/remove/list operate across multiple assets and require authen
   And each endpoint returns 401 for an unauthenticated request
 # pinned by: tests/Feature/TagTest.php
 
+Scenario: The tags page opens on user tags; type=all selects every type (REQ-7)
+  When GET /tags is rendered with no type, with type=all, and with type=bogus
+  Then the view's activeType is "user", "all" and "user" respectively
+  And GET /tags as JSON with type=all returns tags of every type
+# pinned by: tests/Feature/TagTest.php
+
 # — browser-level (see e2e-testing.md for the harness) —
 
 Scenario: Tags can be renamed and deleted from the tags page
@@ -235,6 +254,22 @@ Scenario: The tags page shows type badges and protects ai tags from rename
   Then each is listed with its type badge
   And the ai tag offers no rename control
 # pinned by: tests/e2e/tags.spec.js
+
+Scenario: The tags page tabs lead with User and end with All (REQ-7)
+  Given seeded user, ai and reference tags
+  When the tags page opens
+  Then the tabs read User, AI, Reference, All
+  And only user tags are listed
+  When the All tab is clicked
+  Then the ai and reference tags are listed too and the URL carries type=all
+# pinned by: tests/e2e/tags.spec.js
+
+Scenario: The grid's tag filter lists user tags until All is chosen (REQ-7)
+  Given the asset grid's tag filter panel is open
+  Then its type dropdown is on User and the seeded ai tag is not listed
+  When All is chosen
+  Then the ai tag is listed
+# pinned by: tests/e2e/asset-grid.spec.js
 
 Scenario: A tag card links into the filtered asset library
   Given a tag with attached assets
@@ -258,7 +293,7 @@ Scenario: A tag added on the edit page appears on the asset and is removable inl
   tag-attach endpoints, `tests/Feature/TagAttributionTest.php` — `attached_by`
   semantics end-to-end (web, API, CSV import, `applyUploadMetadata`).
 - Run: `php artisan config:clear && php artisan test tests/Feature/TagTest.php tests/Feature/TagAttributionTest.php tests/Unit/TagTest.php`
-- E2E: `tests/e2e/tags.spec.js` (rename/delete/type badges) and `tests/e2e/asset-detail.spec.js` (edit-page + inline row tag input).
+- E2E: `tests/e2e/tags.spec.js` (rename/delete/type badges, tab order + User default), `tests/e2e/asset-grid.spec.js` (tag-filter type dropdown default) and `tests/e2e/asset-detail.spec.js` (edit-page + inline row tag input).
 
 ## Open questions / future
 

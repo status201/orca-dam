@@ -47,13 +47,13 @@ class TagController extends Controller
      */
     public function index(Request $request)
     {
-        $type = $request->input('type'); // 'user' or 'ai' or 'reference' or null for all
+        $type = $request->input('type'); // 'user' or 'ai' or 'reference'; 'all' or null for all
         $sort = $request->input('sort', 'name_asc');
         $search = $request->input('search');
 
         $query = Tag::withCount('assets');
 
-        if ($type) {
+        if ($type && $type !== 'all') {
             $query->where('type', $type);
         }
 
@@ -86,7 +86,11 @@ class TagController extends Controller
             'reference' => $counts->get('reference', 0),
         ];
 
-        return view('tags.index', compact('typeCounts'));
+        // The page opens on user tags: machine-named reference tags would otherwise
+        // crowd the top of an all-types list sorted by name.
+        $activeType = in_array($type, ['user', 'ai', 'reference', 'all'], true) ? $type : 'user';
+
+        return view('tags.index', compact('typeCounts', 'activeType'));
     }
 
     /**

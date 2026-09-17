@@ -118,9 +118,21 @@ test.describe('asset grid', () => {
     test('the tag filter panel lists the seeded tags and filters by one', async ({ page }) => {
         await gotoAssets(page);
         await page.click(testid('grid-filter-tags'));
-        await expect(page.locator(testid('grid-tag-filter-panel'))).toBeVisible();
+        const panel = page.locator(testid('grid-tag-filter-panel'));
+        await expect(panel).toBeVisible();
 
-        const tag = page.locator(testid('grid-tag-filter-panel')).getByText('e2e-shared', { exact: true });
+        // specs/features/tags.md REQ-7: the type dropdown opens on user tags, with All last.
+        await expect(page.locator(testid('grid-tag-type'))).toHaveValue('user');
+        const optionValues = await page.locator(`${testid('grid-tag-type')} option`)
+            .evaluateAll((els) => els.map((el) => el.value));
+        expect(optionValues).toEqual(['user', 'ai', 'reference', '']);
+        await expect(panel.getByText('e2e-shared', { exact: true })).toBeVisible();
+        await expect(panel.getByText('e2e-ai-tag', { exact: true })).toHaveCount(0);
+
+        await page.selectOption(testid('grid-tag-type'), '');
+        await expect(panel.getByText('e2e-ai-tag', { exact: true })).toBeVisible();
+
+        const tag = panel.getByText('e2e-shared', { exact: true });
         await expect(tag).toBeVisible();
         await tag.click();
 

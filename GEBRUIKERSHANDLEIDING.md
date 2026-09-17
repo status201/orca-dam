@@ -208,6 +208,8 @@ Tags zijn labels waarmee je assets organiseert en vindt. Er zijn drie typen:
 
 **Bulksgewijs taggen:** Selecteer meerdere assets (gebruik Shift+klik voor reeksen) en gebruik de bulktag-werkbalk om tags toe te voegen aan of te verwijderen van alle geselecteerde assets tegelijk.
 
+**Tags bekijken:** De Tags-pagina opent op **Gebruikerstags**, gevolgd door de tabbladen **AI-tags** en **Referentietags**; **Alle tags** is het laatste tabblad. Het paneel **Tags filteren** op de Assets-pagina werkt net zo: de type-keuzelijst begint bij Gebruikerstags, met Alle tags als laatste optie. Zo blijven de vele automatisch benoemde referentietags uit beeld tot je erom vraagt.
+
 **Bulksgewijs tags verwijderen:** Op de Tags-pagina selecteer je tags met checkboxes (Shift+klik voor reeksen) en klik je op **Selectie verwijderen** in de werkbalk om ze allemaal tegelijk te verwijderen. Dit verwijdert de tags van alle assets waaraan ze gekoppeld waren.
 
 **Tag-toekenning:** Elke tag op een asset toont wie deze het laatst heeft toegekend — "Gebruiker" (handmatig toegevoegd) of "AI" (automatisch gegenereerd). Dit is zichtbaar op de asset-detail- en bewerkpagina's.
@@ -471,7 +473,7 @@ Compileer TikZ-diagrammen op de server met een volledige TeX Live-installatie. V
 5. Vergelijk varianten via de tabbladen en selecteer welke je wilt uploaden naar ORCA
 6. Kies een doelmap en klik op **Upload selected**
 
-**Templatebeheer:** Sla je TikZ-code op als `.tex`-bestand in ORCA met **Save as .tex**, of laad bestaande templates met **Load from ORCA**.
+**Templatebeheer:** Sla je TikZ-code op als `.tex`-bestand in ORCA met **Save as .tex**, of laad bestaande templates met **Load from ORCA**. Op de detailpagina van een `.tex`-asset opent **Openen in TikZ-tool** (bovenaan het Acties-paneel) de tool met die template al geladen en gekoppeld.
 
 **Templatekoppeling (ouder/kind):** Zodra een `.tex`-template is geladen of opgeslagen, worden alle renders die je tijdens die sessie uploadt gekoppeld als **afgeleide assets**. De detailpagina van het `.tex`-bestand toont alle afgeleide renders, en elke render toont zijn bron-`.tex`. Een koppeling-badge in de toolbar toont de naam van de gekoppelde template; kleine aanpassingen behouden de koppeling (weergegeven als *gewijzigd*), en de ×-knop op de badge verbreekt de koppeling als je wilt dat de volgende upload los staat.
 
