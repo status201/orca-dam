@@ -3,7 +3,7 @@
 ```yaml
 id: ai-tagging
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -53,7 +53,8 @@ being English.
   attempt because AWS is unreachable.
 - **REQ-8** — Tagging can be triggered two ways: automatically after upload
   (background, `afterResponse()` dispatch) and manually per-asset via
-  `POST /assets/{asset}/ai-tag` (throttled `30,1`).
+  `POST /assets/{asset}/ai-tag` (named limiter `ai-tag`, 30/min per user — see
+  [`upload-policy.md`](upload-policy.md) REQ-7).
 
 ## Technical design
 
@@ -80,7 +81,7 @@ App\Services\AssetProcessingService::processImageAsset(Asset $asset, bool $dispa
     #   GenerateAiTags::dispatch($asset)->afterResponse()
 
 App\Http\Controllers\AssetReplaceController::generateAiTags(Asset $asset)
-    # POST /assets/{asset}/ai-tag  (route: assets.ai-tag, throttle:30,1)
+    # POST /assets/{asset}/ai-tag  (route: assets.ai-tag, throttle:ai-tag — 30/min)
     # authorize('update', $asset); 302 + flash 'error' if !isImage() or !rekognitionService->isEnabled()
     # calls autoTagAsset() SYNCHRONOUSLY (not queued) and redirects with a success/warning/error flash
 ```

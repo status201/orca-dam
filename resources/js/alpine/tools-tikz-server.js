@@ -19,6 +19,8 @@ function tikzServer() {
         clipToCanvas: false,
         rendering: false,
         renderProgress: { current: 0, total: 0 },
+        rateLimitWait: 0,
+        renderCancelled: false,
         totalSnippets: 0,
         renderError: '',
         renderLog: '',
@@ -1035,6 +1037,23 @@ function tikzServer() {
             }
         },
 
+        // Counts rateLimitWait down once a second; returns early when Stop is pressed.
+        async waitForRateLimit(seconds) {
+            for (this.rateLimitWait = seconds; this.rateLimitWait > 0; this.rateLimitWait--) {
+                if (this.renderCancelled) break;
+                await new Promise(function (resolve) { setTimeout(resolve, 1000); });
+            }
+            this.rateLimitWait = 0;
+        },
+
+        cancelRender() {
+            this.renderCancelled = true;
+        },
+
+        get rateLimitMessage() {
+            return (t.rateLimitResuming || 'Rate limit reached — resuming in :seconds s…').replace(':seconds', this.rateLimitWait);
+        },
+
         async render() {
             var snippets = this.parseSnippets();
             if (snippets.length === 0) {
@@ -1059,8 +1078,11 @@ function tikzServer() {
             this.gifUploadedAsset = null;
 
             var preamble = this.parsePreamble();
+            var rateLimitedInARow = 0;
+            this.renderCancelled = false;
 
             for (var i = 0; i < snippets.length; i++) {
+                if (this.renderCancelled) break;
                 this.renderProgress = { current: i + 1, total: snippets.length };
                 try {
                     var body = {
@@ -1093,10 +1115,24 @@ function tikzServer() {
                         body: JSON.stringify(body),
                     });
 
+                    // One request per snippet can outrun the per-minute limit: wait it out and
+                    // retry the same snippet rather than ending the batch.
+                    if (res.status === 429) {
+                        if (++rateLimitedInARow >= 3) {
+                            this.renderError = t.rateLimited || 'Too many render requests. Wait a minute and try again.';
+                            break;
+                        }
+                        var retryAfter = parseInt(res.headers.get('Retry-After'), 10);
+                        await this.waitForRateLimit(retryAfter > 0 ? retryAfter : 60);
+                        i--;
+                        continue;
+                    }
+                    rateLimitedInARow = 0;
+
                     var data = await res.json();
 
                     if (!res.ok) {
-                        this.renderError = data.error || 'Compilation failed';
+                        this.renderError = data.error || data.message || 'Compilation failed';
                         if (data.log) this.renderLog = data.log;
                         break;
                     }
@@ -1133,10 +1169,11 @@ function tikzServer() {
             }
 
             this.rendering = false;
+            this.rateLimitWait = 0;
             this.renderProgress = { current: 0, total: 0 };
 
             // If the Animated GIF variant is active and we have enough PNG frames, auto-encode it.
-            if (this.enabledVariants.animated_gif && !this.renderError && this.canEncodeGif) {
+            if (this.enabledVariants.animated_gif && !this.renderError && !this.renderCancelled && this.canEncodeGif) {
                 try {
                     await this.encodeAnimatedGif();
                 } catch (e) {

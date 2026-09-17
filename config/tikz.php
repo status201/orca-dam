@@ -43,4 +43,16 @@ return [
     */
     'png_dpi' => (int) env('TIKZ_PNG_DPI', 300),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Render Rate Limit
+    |--------------------------------------------------------------------------
+    |
+    | Render requests allowed per user per minute (the `tikz-render` limiter).
+    | The tool sends one request per tikzpicture; a batch that exceeds this
+    | pauses until the limit resets, then carries on.
+    |
+    */
+    'render_rate_limit' => (int) env('TIKZ_RENDER_RATE_LIMIT', 60),
+
 ];

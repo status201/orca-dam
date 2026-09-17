@@ -3,7 +3,7 @@
 ```yaml
 id: chunked-upload
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -54,8 +54,9 @@ chunk. See [ADR-005](../decisions/adr-005-chunked-above-10mb.md) for the
 
 ### Contract / public interface
 
-Routes (`routes/web.php`, `auth.multi:web,sanctum,jwt` + `throttle:100,1`,
-prefix `api/chunked-upload`):
+Routes (`routes/web.php`, `auth.multi:web,sanctum,jwt` + `throttle:chunked-upload` — 100/min per user,
+its own counter per [`upload-policy.md`](upload-policy.md) REQ-7 — prefix
+`api/chunked-upload`):
 
 ```yaml
 POST init:     ChunkedUploadController::initiate      # chunked-upload.init

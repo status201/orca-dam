@@ -78,7 +78,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('assets/bulk/force-delete', [AssetBulkController::class, 'bulkForceDelete'])->name('assets.bulk.force-delete');
     Route::post('assets/bulk/trash', [AssetTrashController::class, 'bulkTrash'])->name('assets.bulk.trash');
     Route::post('assets/bulk/download', [AssetBulkController::class, 'bulkDownload'])
-        ->middleware('throttle:20,1')
+        ->middleware('throttle:bulk-download')
         ->name('assets.bulk.download');
 
     // Asset embed (iframe-friendly, no header/footer)
@@ -112,7 +112,7 @@ Route::middleware(['auth'])->group(function () {
 
     // AI tagging
     Route::post('assets/{asset}/ai-tag', [AssetReplaceController::class, 'generateAiTags'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:ai-tag')
         ->name('assets.ai-tag');
 
     // Video thumbnail
@@ -181,7 +181,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('tools/gif-maker/upload', [ToolsController::class, 'uploadGif'])->name('tools.gif-maker.upload');
     Route::get('tools/tikz-server', [ToolsController::class, 'tikzServer'])->name('tools.tikz-server');
     Route::post('tools/tikz-server/render', [ToolsController::class, 'renderTikzServer'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:tikz-render')
         ->name('tools.tikz-server.render');
     Route::get('tools/tikz-server/templates', [ToolsController::class, 'searchTexTemplates'])->name('tools.tikz-server.templates');
     Route::get('tools/tikz-server/templates/{asset}', [ToolsController::class, 'loadTexTemplate'])->name('tools.tikz-server.templates.load');
@@ -232,7 +232,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Chunked upload endpoints (web routes for session auth, also supports API token auth via auth.multi)
-Route::middleware(['auth.multi:web,sanctum,jwt', 'throttle:100,1'])->prefix('api/chunked-upload')->group(function () {
+Route::middleware(['auth.multi:web,sanctum,jwt', 'throttle:chunked-upload'])->prefix('api/chunked-upload')->group(function () {
     Route::post('init', [ChunkedUploadController::class, 'initiate'])->name('chunked-upload.init');
     Route::post('chunk', [ChunkedUploadController::class, 'uploadChunk'])->name('chunked-upload.chunk');
     Route::post('complete', [ChunkedUploadController::class, 'complete'])->name('chunked-upload.complete');

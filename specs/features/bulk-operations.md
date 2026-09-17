@@ -3,7 +3,7 @@
 ```yaml
 id: bulk-operations
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -68,7 +68,7 @@ POST   assets/bulk/tags/remove:   bulkRemoveTags       # assets.bulk.tags.remove
 POST   assets/bulk/tags/list:     bulkGetTags          # assets.bulk.tags.list
 POST   assets/bulk/move:          bulkMove             # assets.bulk.move — admin + maintenance_mode
 DELETE assets/bulk/force-delete:  bulkForceDelete       # assets.bulk.force-delete — admin + maintenance_mode
-POST   assets/bulk/download:      bulkDownload          # rate-limited (see CLAUDE.md)
+POST   assets/bulk/download:      bulkDownload          # throttle:bulk-download (20/min) — upload-policy.md REQ-7
 ```
 
 (`bulkTrash`/`bulkRestore`/`bulkForceDeleteTrashed` live on

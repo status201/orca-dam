@@ -93,3 +93,87 @@ test.describe('tools', () => {
         });
     }
 });
+
+// specs/features/tikz-render.md REQ-8. The page sends one render request per tikzpicture, so a big
+// batch outruns the per-minute limit; a 429 must pause the batch, not end it. The render endpoint is
+// mocked — the E2E stack ships no TeX Live — which is also why compilerAvailable is forced on: with
+// it false the Render button stays disabled.
+test.describe('tikz server render rate limit', () => {
+    const SNIPPETS = [
+        String.raw`\begin{tikzpicture}\draw (0,0) -- (1,0);\end{tikzpicture}`,
+        String.raw`\begin{tikzpicture}\draw (0,0) -- (0,1);\end{tikzpicture}`,
+    ];
+    const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>';
+
+    // `answers` is called with the 1-based call number and returns 'ok' or a Retry-After in seconds.
+    async function mockRender(page, answers) {
+        const bodies = [];
+        await page.route('**/tools/tikz-server/render', (route) => {
+            bodies.push(route.request().postDataJSON().tikz_code);
+            const answer = answers(bodies.length);
+
+            return answer === 'ok'
+                ? route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ variants: [{ type: 'svg_paths', content: SVG, size: SVG.length, mime: 'image/svg+xml' }], log: '' }),
+                })
+                : route.fulfill({
+                    status: 429,
+                    headers: { 'Retry-After': String(answer) },
+                    contentType: 'application/json',
+                    body: JSON.stringify({ message: 'Too Many Attempts.' }),
+                });
+        });
+
+        return bodies;
+    }
+
+    async function startBatch(page) {
+        await page.goto('/tools/tikz-server');
+        await expect(page.locator(testid('tool-tikz-server'))).toBeVisible();
+        await page.evaluate(() => {
+            window.Alpine.$data(document.querySelector('[data-testid="tool-tikz-server"]')).compilerAvailable = true;
+        });
+        await page.fill(testid('tikz-code-input'), SNIPPETS.join('\n\n'));
+        await page.click(testid('tikz-render-button'));
+    }
+
+    test('a 429 pauses the batch, then retries the same snippet and finishes', async ({ page }) => {
+        const bodies = await mockRender(page, (call) => (call === 2 ? 1 : 'ok'));
+
+        await startBatch(page);
+
+        await expect(page.locator(testid('tikz-render-rate-limit'))).toBeVisible();
+        await expect(page.locator(testid('tikz-result'))).toHaveCount(2);
+        await expect(page.locator(testid('tikz-render-stop'))).toHaveCount(0);
+        await expect(page.locator(testid('tikz-render-error'))).toHaveCount(0);
+        expect(bodies).toEqual([SNIPPETS[0], SNIPPETS[1], SNIPPETS[1]]);
+    });
+
+    test('Stop during the pause ends the batch and keeps the earlier results', async ({ page }) => {
+        const bodies = await mockRender(page, (call) => (call === 1 ? 'ok' : 30));
+
+        await startBatch(page);
+
+        await expect(page.locator(testid('tikz-render-rate-limit'))).toBeVisible();
+        await page.click(testid('tikz-render-stop'));
+
+        // Well inside the 30s Retry-After: Stop is honoured on the next one-second tick.
+        await expect(page.locator(testid('tikz-render-stop'))).toHaveCount(0, { timeout: 5_000 });
+        await expect(page.locator(testid('tikz-result'))).toHaveCount(1);
+        await expect(page.locator(testid('tikz-render-error'))).toHaveCount(0);
+        expect(bodies).toHaveLength(2);
+    });
+
+    test('three 429s in a row end the batch with the rate-limit message', async ({ page }) => {
+        const bodies = await mockRender(page, () => 1);
+
+        await startBatch(page);
+
+        const message = await page.evaluate(() => window.__pageData.translations.rateLimited);
+        await expect(page.locator(testid('tikz-render-error'))).toContainText(message);
+        await expect(page.locator(testid('tikz-result'))).toHaveCount(0);
+        expect(bodies).toHaveLength(3);
+    });
+});

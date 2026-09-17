@@ -3,7 +3,7 @@
 ```yaml
 id: tikz-render
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -18,6 +18,7 @@ source:
   - app/Http/Requests/Tools/StoreTikzSvgFontsRequest.php
   - app/Http/Requests/Tools/StoreTexTemplateRequest.php
   - config/tikz.php
+  - resources/js/alpine/tools-tikz-server.js
 ```
 
 ## Background / Why
@@ -62,8 +63,10 @@ inclusion of any kind, and every render runs in a throwaway temp directory.
 - **REQ-5** — SVG element IDs are made unique per render (`uniquifySvgIds()`,
   random 4-hex prefix) so multiple inline SVGs on the same results page don't
   collide on shared glyph-definition IDs and silently reuse the wrong glyph.
-- **REQ-6** — `ToolsController::renderTikzServer` is rate-limited
-  (`throttle:30,1`) and returns `503` up front via
+- **REQ-6** — `ToolsController::renderTikzServer` is rate-limited through the
+  named `tikz-render` limiter — `config('tikz.render_rate_limit')` requests per
+  minute per user (`TIKZ_RENDER_RATE_LIMIT`, default 60), on its own counter (see
+  [upload-policy.md](upload-policy.md) REQ-7) — and returns `503` up front via
   `TikzCompilerService::isAvailable()` (checks both `latex` and `dvisvgm` binaries
   on `PATH`) when TeX Live isn't installed, rather than attempting a compile that
   can only fail.
@@ -71,6 +74,14 @@ inclusion of any kind, and every render runs in a throwaway temp directory.
   uploaded (`uploadTikzSvg`/`uploadTikzSvgFonts`/`uploadTikzPng`), via
   `ToolUploadService::store()`, which also accepts `parent_asset_id` to link a
   rendered asset back to the source `.tex` template it was rendered from.
+- **REQ-8** — The tikz-server page renders a batch as one request per
+  `tikzpicture`, so a large batch can outrun REQ-6's limit. A `429` pauses the
+  batch instead of ending it: the page reads `Retry-After` (60s if absent), shows a
+  per-second "resuming in Ns" countdown, and then retries **the same** snippet.
+  Three consecutive `429`s end the batch with a rate-limit message. A Stop button,
+  shown while rendering, ends the batch after the current request or countdown and
+  keeps the results so far. No non-compile failure may surface as
+  "Compilation failed": the response's `error`, then `message`, is shown first.
 
 ## Technical design
 
@@ -95,7 +106,7 @@ ToolUploadService:
 
 ToolsController (TikZ-relevant):
   tikzServer()                    # GET  tools/tikz-server            — view: folders, rootFolder, compilerAvailable, fontPackages, colorPackage(Name)
-  renderTikzServer(Request)       # POST tools/tikz-server/render     — throttle:30,1
+  renderTikzServer(Request)       # POST tools/tikz-server/render     — throttle:tikz-render (60/min default)
   uploadTikzSvg(StoreTikzSvgRequest)             # POST tools/tikz-svg/upload
   uploadTikzSvgFonts(StoreTikzSvgFontsRequest)   # POST tools/tikz-svg-fonts/upload
   uploadTikzPng(StoreTikzPngRequest)             # POST tools/tikz-png/upload  — content is base64 (data: URL prefix stripped)
@@ -119,6 +130,9 @@ extra_libraries: nullable|string|max:500
 force_canvas: nullable|boolean
 canvas_width_cm / canvas_height_cm: nullable|numeric|min:0.5|max:100
 clip_to_canvas: nullable|boolean
+
+# config/tikz.php
+render_rate_limit: int   # TIKZ_RENDER_RATE_LIMIT, default 60 — requests/minute/user for tikz-render
 
 # compile() variant entry
 type: svg_standard|svg_embedded|svg_paths|png
@@ -183,6 +197,10 @@ POST /tools/tikz-server/render
        -> png requested? convert paths-svg via rsvg-convert (or inkscape fallback)
        -> cleanup(tmpDir) in finally
   <- {variants: [...], log}
+
+tikzServer.render()  — one POST per tikzpicture, sequential
+  429 -> wait Retry-After (countdown) -> retry same snippet   (3 in a row -> stop, rate-limit message)
+  Stop -> finish current request/countdown -> keep results so far
 
 POST /tools/tikz-svg/upload (separate call, user picks a variant to keep)
   -> ToolUploadService::store() -> S3 -> Asset (parent_id = source .tex, if any)
@@ -256,6 +274,35 @@ Scenario: The render endpoint returns 503 when TeX Live is unavailable
   Then the response is 503
 # pinned by: tests/Feature/ToolsTest.php
 
+Scenario: The render endpoint answers 429 with Retry-After once the configured limit is spent (REQ-6)
+  Given tikz.render_rate_limit is 2
+  When an editor POSTs tools/tikz-server/render three times within a minute
+  Then the third response is 429 and carries a Retry-After header
+# pinned by: tests/Feature/SecurityRemediationTest.php
+
+Scenario: The render limit defaults to 60 per minute (REQ-6)
+  Given TIKZ_RENDER_RATE_LIMIT is unset
+  Then config('tikz.render_rate_limit') is 60
+# pinned by: tests/Feature/SecurityRemediationTest.php
+
+Scenario: A rate-limited batch pauses, then retries the same snippet (REQ-8)
+  Given a two-snippet batch whose second render request is answered 429 with Retry-After: 1
+  When the Render button is clicked
+  Then the rate-limit countdown shows, the second snippet is sent again, and both results render with no error
+# pinned by: tests/e2e/tools.spec.js
+
+Scenario: Stop during a rate-limit pause keeps the earlier results (REQ-8)
+  Given the first snippet renders and the next request is answered 429 with Retry-After: 30
+  When Stop is clicked during the countdown
+  Then the batch ends within seconds with one result and no error
+# pinned by: tests/e2e/tools.spec.js
+
+Scenario: Three consecutive 429s end the batch with the rate-limit message (REQ-8)
+  Given every render request is answered 429
+  When the Render button is clicked
+  Then after the third request the error shows the rate-limit message, not "Compilation failed"
+# pinned by: tests/e2e/tools.spec.js
+
 Scenario: The render endpoint validates dpi/border ranges
   When an editor POSTs png_dpi=9999 and border_pt=100
   Then both fields report validation errors
@@ -305,7 +352,13 @@ Scenario: ToolUploadService skips processing and metadata when process is false
   canvas injection, SVG ID uniquification, font packages — all without requiring
   TeX Live to be installed), `tests/Unit/Services/ToolUploadServiceTest.php`
 - Feature: `tests/Feature/ToolsTest.php` (render endpoint, template search/load/
-  upload, SVG/PNG upload with metadata) — `php artisan config:clear && php artisan test`
+  upload, SVG/PNG upload with metadata), `tests/Feature/SecurityRemediationTest.php`
+  (render limit, `429` + `Retry-After`) — `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/tools.spec.js` (REQ-8 pause/resume/Stop against a mocked render
+  endpoint — the harness ships no TeX Live) — `npm run test:e2e -- tests/e2e/tools.spec.js`
+- Manual (REQ-6 + REQ-8 against real TeX Live): set `TIKZ_RENDER_RATE_LIMIT=3`,
+  `php artisan config:clear`, render six `tikzpicture` blocks on `/tools/tikz-server`
+  — expect three results, a countdown, then all six.
 
 ## Open questions / future
 

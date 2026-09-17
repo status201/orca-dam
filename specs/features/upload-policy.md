@@ -3,7 +3,7 @@
 ```yaml
 id: upload-policy
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -45,8 +45,15 @@ of truth so validation (`AllowedUploadExtension`) and storage decisions
   defense-in-depth against active markup or MIME-sniffing even for allowlisted
   types.
 - **REQ-6** — Expensive or publicly reachable routes carry rate limiting: bulk
-  download, AI tagging (`assets.ai-tag`), the TikZ server-render tool, and the
-  public API surface all declare `throttle` middleware.
+  download, AI tagging (`assets.ai-tag`), the TikZ server-render tool, chunked
+  upload, and the public API surface all declare `throttle` middleware.
+- **REQ-7** — The four heavy web routes throttle through **named** limiters
+  registered in `AppServiceProvider::boot()`, so each keeps its own counter. A bare
+  `throttle:N,1` keys the counter on the user id alone — no route in the key — so
+  every such route spends one shared per-user budget: twenty TikZ renders would
+  lock a user out of bulk download for the rest of the minute. Each named limiter is
+  keyed per user (IP when unauthenticated), and still answers `429` with
+  `Retry-After`.
 
 ## Technical design
 
@@ -59,6 +66,12 @@ UploadPolicy::isAllowed(string $filename): bool
 UploadPolicy::isInline(string $filename): bool          # config('uploads.inline_extensions')
 UploadPolicy::isSvg(string $filename): bool
 AllowedUploadExtension implements ValidationRule         # validate(attribute, value, fail)
+
+# Named rate limiters (AppServiceProvider::boot) — per minute, by user id ?: ip
+bulk-download:  20                                   # assets.bulk.download
+ai-tag:         30                                   # assets.ai-tag
+tikz-render:    config('tikz.render_rate_limit')     # tools.tikz-server.render — default 60
+chunked-upload: 100                                  # chunked-upload.init|chunk|complete|abort
 ```
 
 ### Data shapes
@@ -134,16 +147,22 @@ Scenario: Replace extension matching is case-insensitive and keyed off s3_key, n
 # pinned by: tests/Feature/AssetTest.php
 
 Scenario: Heavy and public routes are rate-limited
-  Given the named routes assets.bulk.download, assets.ai-tag, tools.tikz-server.render
+  Given the named routes assets.bulk.download, assets.ai-tag, tools.tikz-server.render, chunked-upload.init
   When their registered middleware is inspected
-  Then each declares a throttle middleware
+  Then each declares its own named throttle limiter
+# pinned by: tests/Feature/SecurityRemediationTest.php
+
+Scenario: Throttled heavy routes keep separate counters (REQ-7)
+  Given an editor who has sent 20 TikZ render and 20 AI-tag requests this minute
+  When they POST to assets.bulk.download (limit 20)
+  Then the response is not 429
 # pinned by: tests/Feature/SecurityRemediationTest.php
 ```
 
 ## Tests & verification
 
 - Feature: `tests/Feature/SecurityRemediationTest.php` (extension allowlist on
-  direct + chunked-init, SVG acceptance, rate-limit presence),
+  direct + chunked-init, SVG acceptance, rate-limit presence and per-route counters),
   `tests/Feature/AssetTest.php` (replace-path extension matching, incl. case and
   s3_key-vs-filename disagreement)
 - Run: `php artisan config:clear && php artisan test`

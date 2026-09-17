@@ -140,13 +140,51 @@ test('embed CSP ignores malformed domains and keeps valid ones', function () {
 
 // ─── F4/F6: rate limiting present on heavy/public routes ──────────────────────
 
-test('heavy and public routes declare throttle middleware', function () {
+test('heavy and public routes declare their own named throttle limiter', function () {
     $routes = app('router')->getRoutes();
 
-    $hasThrottle = fn (string $name) => collect($routes->getByName($name)?->gatherMiddleware() ?? [])
-        ->contains(fn ($m) => str_starts_with($m, 'throttle'));
+    $middleware = fn (string $name) => $routes->getByName($name)?->gatherMiddleware() ?? [];
 
-    expect($hasThrottle('assets.bulk.download'))->toBeTrue();
-    expect($hasThrottle('assets.ai-tag'))->toBeTrue();
-    expect($hasThrottle('tools.tikz-server.render'))->toBeTrue();
+    // A bare `throttle:N,1` would share one per-user counter across all of these (upload-policy REQ-7).
+    expect($middleware('assets.bulk.download'))->toContain('throttle:bulk-download');
+    expect($middleware('assets.ai-tag'))->toContain('throttle:ai-tag');
+    expect($middleware('tools.tikz-server.render'))->toContain('throttle:tikz-render');
+
+    foreach (['init', 'chunk', 'complete', 'abort'] as $step) {
+        expect($middleware("chunked-upload.{$step}"))->toContain('throttle:chunked-upload');
+    }
+});
+
+test('tikz renders and ai tagging do not spend the bulk-download budget', function () {
+    $editor = User::factory()->create(['role' => 'editor']);
+    $asset = Asset::factory()->pdf()->create();
+
+    // Invalid payloads still count: the throttle runs before validation. Twenty hits is the
+    // whole bulk-download budget, so on a shared counter the next bulk download would be a 429.
+    for ($i = 0; $i < 20; $i++) {
+        $this->actingAs($editor)->postJson(route('tools.tikz-server.render'), [])->assertStatus(422);
+    }
+    $this->actingAs($editor)->postJson(route('assets.bulk.download'), [])->assertStatus(422);
+
+    for ($i = 0; $i < 20; $i++) {
+        expect($this->actingAs($editor)->post(route('assets.ai-tag', $asset))->status())->not->toBe(429);
+    }
+    $this->actingAs($editor)->postJson(route('assets.bulk.download'), [])->assertStatus(422);
+});
+
+test('tikz render answers 429 with Retry-After once the configured limit is spent', function () {
+    config(['tikz.render_rate_limit' => 2]);
+    $editor = User::factory()->create(['role' => 'editor']);
+
+    $this->actingAs($editor)->postJson(route('tools.tikz-server.render'), [])->assertStatus(422);
+    $this->actingAs($editor)->postJson(route('tools.tikz-server.render'), [])->assertStatus(422);
+
+    $response = $this->actingAs($editor)->postJson(route('tools.tikz-server.render'), []);
+
+    $response->assertStatus(429);
+    expect((int) $response->headers->get('Retry-After'))->toBeGreaterThan(0);
+});
+
+test('tikz render limit defaults to 60 per minute', function () {
+    expect(config('tikz.render_rate_limit'))->toBe(60);
 });
