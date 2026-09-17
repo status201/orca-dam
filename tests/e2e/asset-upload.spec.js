@@ -1,10 +1,11 @@
-// Direct upload through the browser into MinIO — pins specs/features/asset-upload.md,
+// Direct upload through the browser into RustFS — pins specs/features/asset-upload.md,
 // specs/features/duplicate-detection.md and the storage boundary of
 // specs/features/s3-storage.md. Needs real object storage (requiresS3).
 import {
     assetCard,
     expect,
     gotoAssets,
+    gotoStable,
     requiresS3,
     reseed,
     test,
@@ -17,10 +18,13 @@ import { pngFixture, uniqueColor, uniqueName } from './support/files.js';
  * Stage one file and submit, resolving with the POST /assets response.
  *
  * A fully clean batch redirects to the library ~1s later, so the "Uploaded" badge
- * is not a stable thing to assert on — the response is.
+ * is not a stable thing to assert on — the response is. That same redirect is why
+ * the navigation below is `gotoStable`: the duplicate specs upload twice in a row,
+ * and the second call lands inside the window where the first upload's redirect
+ * cancels it with ERR_ABORTED (REQ-14).
  */
 async function upload(page, file, { keepOriginalFilename = false } = {}) {
-    await page.goto('/assets/create');
+    await gotoStable(page, '/assets/create');
     await expect(page.locator(testid('upload-page'))).toBeVisible();
 
     if (keepOriginalFilename) {
@@ -88,7 +92,7 @@ test.describe('asset upload', () => {
     });
 
     test('identical bytes under a different name are a duplicate even when keeping the filename', async ({ page }) => {
-        // The reported bug, against a real MinIO etag — the only place in the suite where the etag
+        // The reported bug, against a real RustFS etag — the only place in the suite where the etag
         // is computed from the bytes rather than stipulated by a mock. The dedup check used to be
         // gated on the keep-filename flag rather than on an actual s3_key collision, so ticking the
         // box turned dedup off entirely and this second upload became a second asset.
@@ -109,7 +113,7 @@ test.describe('asset upload', () => {
     test('an upload lands in the selected folder', async ({ page }) => {
         const name = uniqueName('e2e-folder');
 
-        await page.goto('/assets/create');
+        await gotoStable(page, '/assets/create');
         await page.selectOption(testid('upload-folder'), 'assets/e2e');
         await page.setInputFiles(testid('upload-input'), pngFixture(name, { color: uniqueColor() }));
         await expect(page.locator(testid('upload-submit'))).toBeVisible();

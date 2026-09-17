@@ -190,7 +190,7 @@ Scenario: Select all and deselect all drive the import button
 
 - Feature: `tests/Feature/DiscoverTest.php`
 - Unit: `tests/Unit/Jobs/ProcessDiscoveredAssetTest.php`
-- E2E: `tests/e2e/discover.spec.js` — scan → select → import against real MinIO,
+- E2E: `tests/e2e/discover.spec.js` — scan → select → import against a real bucket,
   guarded by `requiresS3()`. The guard is load-bearing, not defensive:
   `S3Service::listObjects` swallows its exceptions and returns `[]`, so without a
   bucket a scan reports nothing unmapped and the assertions would pass for the

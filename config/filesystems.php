@@ -56,6 +56,12 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            // Read by S3Service (s3-storage.md REQ-8). Without them the AWS SDK
+            // waits indefinitely for a response, so an endpoint that accepts the
+            // connection and then goes quiet holds the request until PHP's own
+            // max_execution_time kills it.
+            'connect_timeout' => env('AWS_CONNECT_TIMEOUT', 5),
+            'timeout' => env('AWS_REQUEST_TIMEOUT', 120),
             'throw' => false,
             'report' => false,
         ],

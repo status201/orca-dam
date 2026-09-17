@@ -1,7 +1,7 @@
 // S3 discovery — pins the browser half of specs/features/discovery-import.md.
 //
 // The whole file needs the bucket, and the guard is not optional here:
-// S3Service::listObjects swallows its exceptions and returns [], so without MinIO
+// S3Service::listObjects swallows its exceptions and returns [], so without a bucket
 // a scan reports zero unmapped objects and any assertion about scan results would
 // pass for entirely the wrong reason.
 //
@@ -15,7 +15,7 @@
 // database — every reseed orphans whatever earlier spec files uploaded — so "all
 // clear" is not a state this suite can arrange. Assertions here are scoped to the
 // one object the test made itself.
-import { acceptConfirm, expect, expectToast, requiresS3, reseed, test, testid, tinker } from './support/fixtures.js';
+import { acceptConfirm, expect, expectToast, gotoStable, requiresS3, reseed, test, testid, tinker } from './support/fixtures.js';
 import { pngFixture, uniqueColor, uniqueName } from './support/files.js';
 
 /**
@@ -29,7 +29,9 @@ import { pngFixture, uniqueColor, uniqueName } from './support/files.js';
 async function orphanAnObject(page) {
     const name = uniqueName('e2e-discover');
 
-    await page.goto('/assets/create');
+    // gotoStable: a preceding upload redirects to the library ~1s after its POST
+    // resolves, which cancels this navigation with ERR_ABORTED (REQ-14).
+    await gotoStable(page, '/assets/create');
     await expect(page.locator(testid('upload-page'))).toBeVisible();
     await page.setInputFiles(testid('upload-input'), pngFixture(name, { color: uniqueColor() }));
     await expect(page.locator(testid('upload-row'))).toHaveCount(1);
@@ -61,7 +63,7 @@ test.describe('s3 discovery', () => {
         const key = await orphanAnObject(page);
         const rowForKey = (p) => p.locator(`${testid('discover-row')}[data-object-key="${key}"]`);
 
-        await page.goto('/discover');
+        await gotoStable(page, '/discover');
         await expect(page.locator(testid('discover-page'))).toBeVisible();
 
         await page.click(testid('discover-scan'));
@@ -90,7 +92,7 @@ test.describe('s3 discovery', () => {
     test('selecting all then deselecting all clears the import button', async ({ page }) => {
         await orphanAnObject(page);
 
-        await page.goto('/discover');
+        await gotoStable(page, '/discover');
         await page.click(testid('discover-scan'));
         await expect(page.locator(testid('discover-results'))).toBeVisible();
 

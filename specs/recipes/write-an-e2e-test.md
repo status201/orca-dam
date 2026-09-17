@@ -92,7 +92,7 @@ test.use({ storageState: asEditor });
 ```
 
 For behaviour that needs real bytes in object storage, guard the block — it then
-skips cleanly on a machine with no MinIO:
+skips cleanly on a machine with no bucket:
 
 ```js
 requiresS3(test);        // first line inside the describe
@@ -101,7 +101,7 @@ requiresS3(test);        // first line inside the describe
 ### 4. Verify
 
 ```bash
-npm run e2e:up                                       # MinIO (once per session)
+npm run e2e:up                                       # RustFS (once per session)
 npm run test:e2e -- tests/e2e/<area>.spec.js         # the new file
 npm run test:e2e                                     # the whole suite before you're done
 ```
@@ -113,7 +113,7 @@ spec's `## Tests & verification`. Run `npm run spec:lint`: every path named in a
 must resolve, whether it is on a pin line or in a bullet.
 
 **Do not add it to [`e2e-testing.md`](../features/e2e-testing.md).** That spec owns the
-*harness* — reseeding, saved role sessions, the MinIO skip, the disposable artefacts —
+*harness* — reseeding, saved role sessions, the no-bucket skip, the disposable artefacts —
 and nothing else. Application behaviour is specified once, by its owning feature spec.
 A behaviour with no owning spec means the spec is missing; write it first (`/feature`).
 

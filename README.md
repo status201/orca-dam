@@ -21,7 +21,7 @@ copy that is **not** listed below is the one to delete.
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow and the spec-before-code gate | Contributors |
 | [CHANGELOG.md](CHANGELOG.md) | Release history | Everyone |
 
-`specs/` is the source of truth for behaviour: 49 feature specs, 17 ADRs, and recipes.
+`specs/` is the source of truth for behaviour: 49 feature specs, 18 ADRs, and recipes.
 Prose docs describe *usage*; specs define *behaviour*. When they disagree, the spec wins.
 
 ## Features
@@ -130,7 +130,7 @@ endpoints can be switched off at runtime via **API Docs → Dashboard → Upload
 ## Testing
 
 ```bash
-php artisan config:clear && php artisan test    # 1235 tests, in-memory SQLite
+php artisan config:clear && php artisan test    # 1238 tests, in-memory SQLite
 php artisan test --testsuite=Security          # security invariants + exploit probes only
 npm run test:e2e                               # 139 Playwright tests against a real stack
 ./vendor/bin/phpstan analyse                    # static analysis (Larastan, level 2, no baseline)
@@ -142,7 +142,7 @@ not a required local dependency — see [CONTRIBUTING.md](CONTRIBUTING.md) if yo
 
 Always `config:clear` first: a stale `bootstrap/cache/config.php` can point
 `RefreshDatabase` at the development database. Admins can also run the Pest suite from
-the browser via **System → Tests**. Full command set and the E2E prerequisites (MinIO,
+the browser via **System → Tests**. Full command set and the E2E prerequisites (RustFS,
 Chromium) are in [QUICK_REFERENCE.md](QUICK_REFERENCE.md) and
 [specs/features/e2e-testing.md](specs/features/e2e-testing.md).
 

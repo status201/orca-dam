@@ -6,7 +6,7 @@ ORCA DAM (ORCA Retrieves Cloud Assets) — Laravel 13 Digital Asset Management w
 
 ## Specs (Spec-Driven Development)
 
-`specs/` is the architectural/behavioural source of truth — read [`specs/README.md`](specs/README.md) (the method) and [`specs/architecture.md`](specs/architecture.md) (system overview) before non-trivial work. It holds 49 feature specs, 17 ADRs (the *why*), and recipes. Specs **link** to this file for conventions; they don't restate it.
+`specs/` is the architectural/behavioural source of truth — read [`specs/README.md`](specs/README.md) (the method) and [`specs/architecture.md`](specs/architecture.md) (system overview) before non-trivial work. It holds 49 feature specs, 18 ADRs (the *why*), and recipes. Specs **link** to this file for conventions; they don't restate it.
 
 **The gate is enforced.** A change that edits production code — `app/**`, `routes/**`, `database/migrations/**`, `config/**` (except Laravel-published framework configs), `resources/js/**` (except `resources/js/vendor/**`) — **must create/update a spec under `specs/` in the same change**. `scripts/sdd-guard.mjs` enforces it (PreToolUse + Stop hooks in `.claude/settings.json`, plus a CI job). Write the spec first — use `/feature`, `/fix`, `/spec`. Exempt: views, CSS, `lang/**`, factories/seeders, `tests/**`, `public/**`, `wordpress-plugin/**`, all `*.md`. Bypass a genuinely trivial production tweak with `touch .sdd-skip` (local), or `[skip-sdd]` in a commit message / the `skip-sdd` PR label (CI). The same guard enforces a second rule: a feature spec whose `## Requirements` or `## Technical design` changes **must increment its `version:`** (integer, counts contract revisions). Editing scenarios, tests, background or open questions must *not* — a bug fix's regression scenario is the case that keeps free. Run it alone with `npm run spec:version`; same bypass. `scripts/spec-lint.mjs` (`npm run spec:lint`) validates spec structure + index completeness; that every feature spec carries an integer `version` (so the gate above cannot be disabled by deleting the key); that every test path a spec names — in a `# pinned by:` line *or* a `## Tests & verification` bullet — resolves, and that the section exists at all; and that documented facts still match the tree: dependency versions against `composer.json` / `package.json`, hand-counted totals (specs, ADRs, Alpine modules, services, console commands, test files, Pest tests, E2E tests — matched in every phrasing the docs use, prose `all N commands` as much as a file-tree comment, and across a line wrap), the `QUICK_REFERENCE.md` file tree against `app/Services/`, `app/Console/Commands/` and the top-level dirs, and `GEBRUIKERSHANDLEIDING.md`'s heading structure against `USER_MANUAL.md`. It reads the root docs, not just `specs/**` + this file. `CHANGELOG.md` is only checked inside `[Unreleased]` — released entries are history.
 
@@ -25,7 +25,7 @@ vendor/bin/phpunit --filter=test_name
 
 # Browser E2E (Playwright — boots `artisan serve --env=e2e` itself; see specs/features/e2e-testing.md)
 npm run test:e2e:install                 # once: Chromium + OS deps
-npm run e2e:up                           # MinIO on :9000 (stands in for S3; skip → S3 specs skip)
+npm run e2e:up                           # RustFS on :9100 (stands in for S3; skip → S3 specs skip)
 npm run test:e2e                         # whole suite
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # migrate:fresh + E2eSeeder on database/e2e.sqlite
@@ -96,7 +96,7 @@ Variables and defaults: `.env.example` plus the `env()` calls in `config/*.php`.
 
 Pest with in-memory SQLite (`phpunit.xml`). Factories in `database/factories/`.
 
-**Browser E2E**: Playwright specs in `tests/e2e/` drive the real app (`artisan serve --env=e2e`) against `database/e2e.sqlite` + a local MinIO bucket, seeded by `database/seeders/E2eSeeder.php`. Locate elements by `data-testid` (the UI renders in `en` *and* `nl`), reseed per spec file, `workers: 1`. Contract: [`specs/features/e2e-testing.md`](specs/features/e2e-testing.md); how-to: [`specs/recipes/write-an-e2e-test.md`](specs/recipes/write-an-e2e-test.md). The separate WordPress-plugin suite (`wordpress-plugin/tests/e2e/`) is unrelated and runs against a mock ORCA.
+**Browser E2E**: Playwright specs in `tests/e2e/` drive the real app (`artisan serve --env=e2e`) against `database/e2e.sqlite` + a local RustFS bucket, seeded by `database/seeders/E2eSeeder.php`. Locate elements by `data-testid` (the UI renders in `en` *and* `nl`), reseed per spec file, `workers: 1`. Contract: [`specs/features/e2e-testing.md`](specs/features/e2e-testing.md); how-to: [`specs/recipes/write-an-e2e-test.md`](specs/recipes/write-an-e2e-test.md). The separate WordPress-plugin suite (`wordpress-plugin/tests/e2e/`) is unrelated and runs against a mock ORCA.
 
 ## Integration & Deployment
 

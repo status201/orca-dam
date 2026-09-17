@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -56,12 +56,23 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   land without regenerating them.
 - **REQ-7** — The `S3Client` is built from the `s3` disk config *including*
   `endpoint` and `use_path_style_endpoint` when they are set, so the service can
-  be pointed at any S3-compatible endpoint (the MinIO bucket the E2E suite runs
+  be pointed at any S3-compatible endpoint (the RustFS bucket the E2E suite runs
   against — [`e2e-testing.md`](e2e-testing.md) REQ-2 — or an R2/Wasabi-style
   provider). Both keys already existed in `config/filesystems.php` for the
   Flysystem disk; the service simply stopped ignoring them. When `endpoint` is
   unset the client is constructed exactly as before (region + credentials only),
   so real-AWS behaviour is unchanged.
+- **REQ-8** — The `S3Client` carries an explicit `connect_timeout` and `timeout`
+  (`AWS_CONNECT_TIMEOUT`, default 5s; `AWS_REQUEST_TIMEOUT`, default 120s; both
+  read from the `s3` disk config). The SDK's own default is to wait indefinitely
+  for a response, so an endpoint that completes the TCP handshake and then never
+  answers — a half-open proxy, or an unrelated service listening on the
+  configured port — holds the request until PHP's `max_execution_time` ends it,
+  occupying a worker for minutes over something that is already broken. A
+  bounded wait is what lets the service do what
+  [ADR-010](../decisions/adr-010-services-swallow-controllers-map.md) says it
+  should: log and return `null`. A deployment that moves genuinely large objects
+  can raise `AWS_REQUEST_TIMEOUT`.
 
 ## Technical design
 
@@ -190,9 +201,15 @@ Scenario: listFolders paginates common prefixes across pages
 # pinned by: tests/Unit/Services/S3ServiceTest.php
 
 Scenario: A configured endpoint points the client at an S3-compatible service
-  Given filesystems.disks.s3.endpoint is http://127.0.0.1:9000 with path-style enabled
+  Given filesystems.disks.s3.endpoint is http://127.0.0.1:9100 with path-style enabled
   When S3Service is constructed
   Then its S3Client targets that endpoint and uses path-style addressing
+# pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
+
+Scenario: An endpoint that accepts the connection and never answers fails in seconds
+  Given an S3 endpoint that completes the handshake but sends no response
+  When S3Service issues a request against it
+  Then the client gives up after the configured timeout rather than running until max_execution_time
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 
 Scenario: No endpoint config leaves AWS addressing untouched
@@ -201,10 +218,10 @@ Scenario: No endpoint config leaves AWS addressing untouched
   Then its S3Client resolves the regional AWS endpoint and is not path-style
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 
-# — browser-level (see e2e-testing.md for the harness; skips without MinIO) —
+# — browser-level (see e2e-testing.md for the harness; skips without a bucket) —
 
 Scenario: Bytes round-trip through a real S3-compatible bucket
-  Given a MinIO bucket standing in for S3
+  Given a RustFS bucket standing in for S3
   When a PNG is uploaded through the browser
   Then the object is stored under assets/{folder}/ and is publicly fetchable
   And its generated thumbnail is fetchable under thumbnails/
@@ -217,7 +234,7 @@ Scenario: Bytes round-trip through a real S3-compatible bucket
   `tests/Unit/Services/S3ServiceEndpointTest.php`
 - Run: `php artisan config:clear && php artisan test`
 - E2E: the streaming/hardening core the unit tests only reach indirectly is
-  exercised for real against MinIO by `tests/e2e/asset-upload.spec.js`
+  exercised for real against RustFS by `tests/e2e/asset-upload.spec.js`
   (see [`e2e-testing.md`](e2e-testing.md)).
 
 ## Open questions / future
