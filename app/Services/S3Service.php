@@ -34,10 +34,19 @@ class S3Service
                 'key' => config('filesystems.disks.s3.key'),
                 'secret' => config('filesystems.disks.s3.secret'),
             ],
+            // Bounded waits (REQ-8). The SDK's default is to wait indefinitely for
+            // a response, so an endpoint that completes the handshake and then goes
+            // quiet — a half-open proxy, an unrelated service on the configured
+            // port — holds the request until PHP's max_execution_time ends it.
+            // Failing in seconds is what lets the callers below log and return null.
+            'http' => [
+                'connect_timeout' => (float) config('filesystems.disks.s3.connect_timeout', 5),
+                'timeout' => (float) config('filesystems.disks.s3.timeout', 120),
+            ],
         ];
 
         // An explicit endpoint points the client at an S3-compatible service
-        // (the MinIO bucket the E2E suite runs against, an R2/Wasabi-style
+        // (the RustFS bucket the E2E suite runs against, an R2/Wasabi-style
         // provider) instead of AWS. Left unset, addressing is unchanged.
         $endpoint = config('filesystems.disks.s3.endpoint');
         if (! empty($endpoint)) {

@@ -35,6 +35,7 @@ storage/framework/views/
 /bootstrap/cache/
 /database/database.sqlite
 /database/e2e.sqlite
+/database/e2e.sqlite-journal
 /storage/e2e/
 /tests/e2e/.auth/
 /test-results/

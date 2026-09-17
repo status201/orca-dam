@@ -263,32 +263,16 @@ jobs:
             playwright-${{ runner.os }}-
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-      # MinIO stands in for S3 (ADR-014). A service container can't override the
-      # image's command (`server /data`), so it runs as a plain docker step.
-      # Credentials/bucket mirror .env.e2e — nothing here is a secret.
-      - name: Start MinIO
-        run: |
-          docker run -d --name minio-e2e \
-            -p 9000:9000 \
-            -e MINIO_ROOT_USER=orca-e2e \
-            -e MINIO_ROOT_PASSWORD=orca-e2e-secret \
-            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
-          for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:9000/minio/health/live && break
-            sleep 2
-          done
-      # Public read: the browser fetches asset/thumbnail URLs straight from the
-      # bucket, exactly as it would from S3 behind the CDN.
-      - name: Create the bucket
-        env:
-          AWS_ACCESS_KEY_ID: orca-e2e
-          AWS_SECRET_ACCESS_KEY: orca-e2e-secret
-          AWS_DEFAULT_REGION: us-east-1
-        run: |
-          aws --endpoint-url http://127.0.0.1:9000 s3 mb s3://orca-e2e
-          aws --endpoint-url http://127.0.0.1:9000 s3api put-bucket-policy \
-            --bucket orca-e2e \
-            --policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::orca-e2e/*"]}]}'
+      # RustFS stands in for S3 (ADR-017, amending ADR-014). This is the same one
+      # command a developer runs: it starts the pinned container — or, on a machine
+      # with no container runtime, the pinned binary — waits for /health/ready, then
+      # creates the bucket and opens it to anonymous reads. The browser fetches
+      # asset/thumbnail URLs straight from the bucket, exactly as it would from S3
+      # behind the CDN, so public read is required and `e2e:up` verifies it took.
+      # Credentials and bucket name come from the committed .env.e2e (nothing in it
+      # is a secret); they used to be restated here and in docker-compose.e2e.yml.
+      - name: Start RustFS and provision the bucket
+        run: npm run e2e:up
       # Playwright boots `artisan serve --env=e2e` itself and reseeds the fixtures.
       - name: Run Playwright
         run: npm run test:e2e
@@ -304,3 +288,6 @@ jobs:
       - name: Laravel log on failure
         if: failure()
         run: tail -n 200 storage/logs/laravel.log || true
+      - name: Stop RustFS
+        if: always()
+        run: npm run e2e:down || true

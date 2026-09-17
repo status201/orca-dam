@@ -129,7 +129,7 @@ Scenario: Deleting an asset moves it to trash and restoring brings it back
 ```
 
 [`features/e2e-testing.md`](features/e2e-testing.md) specifies only the **harness** —
-reseeding, saved role sessions, the MinIO skip, the disposable artefacts. It does not
+reseeding, saved role sessions, the no-bucket skip, the disposable artefacts. It does not
 restate application behaviour, so nothing is specified twice. See
 [`recipes/write-an-e2e-test.md`](recipes/write-an-e2e-test.md).
 
@@ -336,7 +336,7 @@ specs/
     guided-demos.md        ·  interactive onboarding walkthroughs (spotlight, cross-page)
     queue-jobs.md          ·  the 5 queued jobs and their dispatch
     # — system & tools —
-    e2e-testing.md         ·  Playwright browser suite: roles, seeding, MinIO, CI
+    e2e-testing.md         ·  Playwright browser suite: roles, seeding, storage, CI
     static-analysis.md     ·  arch bans, Semgrep rules, CodeQL — and what each cannot see
     system-admin.md        ·  /system dashboard, queue, logs, web test runner
     maintenance-commands.md ·  the 18 console commands + contracts
@@ -375,6 +375,7 @@ specs/
     adr-012-reference-tags-api-only.md          ·  reference tags API-created only
     adr-013-wordpress-plugin-separate-stream.md ·  WP plugin is a separate release stream
     adr-014-playwright-e2e-real-stack.md        ·  Playwright E2E on a real stack (MinIO)
+    adr-017-rustfs-replaces-minio.md            ·  RustFS replaces the archived MinIO
     adr-015-guided-demos-server-declared.md     ·  demos declared in PHP; spotlight hand-rolled
     adr-016-database-errors-are-user-errors.md  ·  driver rejections → keyed 422 (amends adr-010)
 ```

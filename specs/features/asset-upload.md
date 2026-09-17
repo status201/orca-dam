@@ -191,10 +191,10 @@ Scenario: applyUploadMetadata is a no-op when everything is null/empty
   Then the asset is left unchanged
 # pinned by: tests/Unit/AssetProcessingServiceTest.php
 
-# — browser-level (see e2e-testing.md for the harness; these skip without MinIO) —
+# — browser-level (see e2e-testing.md for the harness; these skip without a bucket) —
 
 Scenario: Uploading an image stores it in S3 and it renders in the grid
-  Given the upload page and a MinIO bucket
+  Given the upload page and a RustFS bucket
   When a PNG is selected and uploaded
   Then the row reports "Uploaded"
   And the asset appears in the grid with a generated thumbnail that loads
@@ -219,7 +219,7 @@ Scenario: A disallowed file type is rejected in the browser
   `php artisan config:clear && php artisan test`
 - Unit: `tests/Unit/AssetProcessingServiceTest.php`, `tests/Unit/Jobs/GenerateAiTagsTest.php`
 - Duplicate handling is pinned separately — see [`duplicate-detection.md`](duplicate-detection.md).
-- E2E: `tests/e2e/asset-upload.spec.js` — a real browser upload that round-trips bytes to the MinIO bucket and back as a thumbnail.
+- E2E: `tests/e2e/asset-upload.spec.js` — a real browser upload that round-trips bytes to the RustFS bucket and back as a thumbnail.
 
 ## Open questions / future
 

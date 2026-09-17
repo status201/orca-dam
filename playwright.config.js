@@ -2,7 +2,7 @@
 // Contract: specs/features/e2e-testing.md · Decision: specs/decisions/adr-014-playwright-e2e-real-stack.md
 //
 // The suite boots the app itself (`artisan serve --env=e2e`) against
-// database/e2e.sqlite + the MinIO bucket from docker-compose.e2e.yml. It never
+// database/e2e.sqlite + the RustFS bucket `npm run e2e:up` provisions. It never
 // reads .env — see .env.e2e.
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -26,15 +26,15 @@ ensureRuntimeDirs();
 const PORT = Number(process.env.E2E_PORT || 8100);
 const BASE_URL = process.env.E2E_BASE_URL || `http://127.0.0.1:${PORT}`;
 
-// Probe MinIO once, here, because `requiresS3()` has to be synchronous at test
+// Probe the bucket once, here, because `requiresS3()` has to be synchronous at test
 // collection time. Worker processes inherit this env var. Force it with
 // E2E_S3=0|1 to skip the probe (REQ-8).
 process.env.E2E_S3 = (await probeS3()) ? '1' : '0';
 
-// In CI the bucket is mandatory: otherwise a MinIO that failed to start would
+// In CI the bucket is mandatory: otherwise a RustFS that failed to start would
 // silently skip the upload/storage specs and the job would still go green.
 if (process.env.CI && process.env.E2E_S3 !== '1') {
-    throw new Error('No S3 endpoint answered — the storage specs would silently skip. Check the MinIO step.');
+    throw new Error('No S3 endpoint answered — the storage specs would silently skip. Check the `e2e:up` step.');
 }
 
 export default defineConfig({
@@ -55,12 +55,12 @@ export default defineConfig({
         trace: 'retain-on-failure',
         video: 'retain-on-failure',
         screenshot: 'only-on-failure',
-        // Thumbnails/originals load from MinIO over plain HTTP on another port.
+        // Thumbnails/originals load from RustFS over plain HTTP on another port.
         ignoreHTTPSErrors: true,
     },
     projects: [
         {
-            // Reseeds the DB, probes MinIO, then logs in as each role.
+            // Reseeds the DB, probes the bucket, then logs in as each role.
             name: 'setup',
             testMatch: /global\.setup\.js/,
         },

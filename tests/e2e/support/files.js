@@ -73,7 +73,7 @@ export function pngFixture(name, { color, width, height } = {}) {
 let counter = 0;
 
 /**
- * Collision-free upload name. The MinIO bucket is not emptied between runs, so
+ * Collision-free upload name. The bucket is not emptied between runs, so
  * upload specs must never reuse a filename across runs.
  */
 export function uniqueName(prefix, extension = 'png') {

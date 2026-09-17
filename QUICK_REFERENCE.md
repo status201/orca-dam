@@ -50,13 +50,13 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1232 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1235 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
 
 npm run test:e2e:install                 # once: Chromium + OS deps
-npm run e2e:up                           # MinIO on :9000 (skip → S3 specs skip)
+npm run e2e:up                           # RustFS on :9100 (skip → S3 specs skip)
 npm run test:e2e                         # 136 Playwright tests, 21 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # rebuild database/e2e.sqlite
@@ -237,10 +237,10 @@ orca-dam/
 │       ├── layouts/
 │       └── ...
 ├── routes/                                # web.php, api.php, auth.php, console.php
-├── scripts/                               # sdd-guard.mjs, spec-lint.mjs
+├── scripts/                               # sdd-guard.mjs, spec-lint.mjs, e2e-storage.mjs
 ├── specs/                                 # the behavioural source of truth
 │   ├── features/                          # 49 feature specs
-│   ├── decisions/                         # 17 ADRs
+│   ├── decisions/                         # 18 ADRs
 │   └── recipes/                           # repeatable how-tos
 ├── tests/
 │   ├── Feature/                           # incl. Auth/, Console/, Middleware/
@@ -254,7 +254,7 @@ orca-dam/
 ├── artisan
 ├── phpunit.xml
 ├── playwright.config.js
-└── docker-compose.e2e.yml                 # MinIO for the E2E suite
+└── docker-compose.e2e.yml                 # RustFS for the E2E suite
 ```
 
 ---

@@ -2,8 +2,20 @@
 // the handful of helpers that keep locators stable and waits explicit.
 // Contract: specs/features/e2e-testing.md · How-to: specs/recipes/write-an-e2e-test.md
 import { expect, test as base } from '@playwright/test';
-import { hasS3 } from './s3.js';
+import { endpoint, hasS3 } from './s3.js';
 import { reseed, tinker, tokens } from './db.js';
+
+// The bucket the browser is allowed to reach, taken from the endpoint `.env.e2e`
+// names rather than restated here — the port moved once already (9000 was in use
+// on a developer machine) and a second copy of it would have gone stale silently.
+const BUCKET_HOSTS = (() => {
+    const origin = endpoint();
+    if (!origin) return [];
+
+    const { port } = new URL(origin);
+
+    return [`127.0.0.1:${port}`, `localhost:${port}`];
+})();
 
 /** Saved sessions produced by global.setup.js — pass to `test.use({ storageState })`. */
 export const asAdmin = 'tests/e2e/.auth/admin.json';
@@ -32,7 +44,7 @@ export const test = base.extend({
      * served by the app or the local bucket is aborted.
      */
     page: async ({ page, baseURL }, use) => {
-        const allowed = new Set([new URL(baseURL).host, '127.0.0.1:9000', 'localhost:9000']);
+        const allowed = new Set([new URL(baseURL).host, ...BUCKET_HOSTS]);
 
         await page.route('**/*', (route) => (
             allowed.has(new URL(route.request().url()).host) ? route.continue() : route.abort()
@@ -86,11 +98,11 @@ export const test = base.extend({
 export { expect, reseed, tinker, tokens, hasS3 };
 
 /**
- * Skip the enclosing file/describe when no MinIO endpoint answered at startup.
+ * Skip the enclosing file/describe when no storage endpoint answered at startup.
  * Call as the first statement inside the describe (or at file scope).
  */
 export function requiresS3(t = test) {
-    t.skip(!hasS3(), 'needs the MinIO bucket — run `npm run e2e:up`');
+    t.skip(!hasS3(), 'needs the RustFS bucket — run `npm run e2e:up`');
 }
 
 /**

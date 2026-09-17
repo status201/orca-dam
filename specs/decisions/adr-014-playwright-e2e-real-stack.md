@@ -12,7 +12,12 @@ related:
   - adr-007-blade-alpine-over-spa
   - adr-008-sqlite-tests
   - adr-013-wordpress-plugin-separate-stream
+  - adr-017-rustfs-replaces-minio
 ```
+
+> **Amended by [ADR-017](adr-017-rustfs-replaces-minio.md)** on one point: MinIO was
+> archived upstream, so the S3 stand-in is now RustFS. Everything else below still
+> holds, which is why this record stays `accepted` rather than superseded.
 
 ## Context / Forces
 

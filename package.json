@@ -11,8 +11,8 @@
         "test:e2e:ui": "playwright test --ui",
         "test:e2e:headed": "playwright test --headed",
         "test:e2e:install": "playwright install --with-deps chromium",
-        "e2e:up": "docker compose -f docker-compose.e2e.yml up -d --wait minio && docker compose -f docker-compose.e2e.yml run --rm minio-init",
-        "e2e:down": "docker compose -f docker-compose.e2e.yml down -v",
+        "e2e:up": "node scripts/e2e-storage.mjs up",
+        "e2e:down": "node scripts/e2e-storage.mjs down",
         "e2e:reset": "node tests/e2e/support/reseed.mjs"
     },
     "devDependencies": {

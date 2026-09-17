@@ -210,7 +210,7 @@ Scenario: Discovery import skips a duplicate etag without queuing a job
   Then it is skipped, not queued for ProcessDiscoveredAsset
 # pinned by: tests/Feature/DiscoverTest.php
 
-# — browser-level (see e2e-testing.md for the harness; skips without MinIO) —
+# — browser-level (see e2e-testing.md for the harness; skips without a bucket) —
 
 Scenario: Re-uploading identical bytes is reported as a duplicate, not stored twice
   Given a PNG that was already uploaded
@@ -225,7 +225,7 @@ Scenario: Re-uploading identical bytes is reported as a duplicate, not stored tw
 - Feature: `tests/Feature/DuplicatePreventionTest.php`, `tests/Feature/DuplicatePayloadTest.php`,
   `tests/Feature/DiscoverTest.php`, `tests/Feature/ChunkedUploadTest.php`
 - Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/asset-upload.spec.js` — re-uploading identical bytes through the browser, against real etags from the bucket, with and without `keep_original_filename`. This is the **only** place an etag is derived from the bytes rather than stipulated by a mock, so it is the only test that could ever have caught REQ-2's failure end to end. It needs MinIO (`npm run e2e:up`) and skips silently without it; CI provisions it.
+- E2E: `tests/e2e/asset-upload.spec.js` — re-uploading identical bytes through the browser, against real etags from the bucket, with and without `keep_original_filename`. This is the **only** place an etag is derived from the bytes rather than stipulated by a mock, so it is the only test that could ever have caught REQ-2's failure end to end. It needs the bucket (`npm run e2e:up`) and skips silently without it; CI provisions it.
 
 ## Open questions / future
 
