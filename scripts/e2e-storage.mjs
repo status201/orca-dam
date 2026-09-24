@@ -31,20 +31,22 @@ import { assertAnonymousRead, bucketConfig, createBucket, putPublicReadPolicy } 
 // under you turns an unrelated PR red. Nothing bumps this automatically — it
 // moves when someone edits the constants below together with the image tag in
 // docker-compose.e2e.yml, re-recording the digests from the release's SHA256SUMS.
-const VERSION = '1.0.0-rc.6';
+const VERSION = '1.0.0';
 const RELEASE = `https://github.com/rustfs/rustfs/releases/download/${VERSION}`;
 
-// asset name → sha256, from https://github.com/rustfs/rustfs/releases/download/1.0.0-rc.6/SHA256SUMS
+// asset name → sha256, from https://github.com/rustfs/rustfs/releases/download/1.0.0/SHA256SUMS
 const BINARIES = {
-    'win32-x64': ['rustfs-windows-x86_64-v1.0.0-rc.6.zip', 'e9f4ad57ea8596a41d0e5879c565784021663ecca32c40e69527cf575f107f97'],
-    'linux-x64': ['rustfs-linux-x86_64-gnu-v1.0.0-rc.6.zip', '68d0df70b4c7b377e1bb9a2681b7325ffd00d6a78e3acb61e65d30d257459ae9'],
-    'linux-arm64': ['rustfs-linux-aarch64-gnu-v1.0.0-rc.6.zip', 'ceaf1496f057d829e95e3c0e0ee11d4b7b3a590326e4b24b4f06f8a2791e3f3b'],
-    'darwin-arm64': ['rustfs-macos-aarch64-v1.0.0-rc.6.zip', 'eb3c2b8a6f4bbe2734f9545413922604ba8bc00e50a6463cef3a321c4ca988e7'],
+    'win32-x64': ['rustfs-windows-x86_64-v1.0.0.zip', '4ccf5858ce8e6f70f01af2394c8cc0e0878ee77faa6c20d3179153476554b7d8'],
+    'linux-x64': ['rustfs-linux-x86_64-gnu-v1.0.0.zip', '2d5059501745682664c3d345b22274b66079c952fbec7e1ce66980ef4515cd42'],
+    'linux-arm64': ['rustfs-linux-aarch64-gnu-v1.0.0.zip', '780e832d68e0148dc042f05647796056fe014e7cf1a8f195e3e83b22a3bb988f'],
+    'darwin-arm64': ['rustfs-macos-aarch64-v1.0.0.zip', '06e32a681c16930fb5414df64c96151fe3370321fab0403a83a83a015874c39a'],
 };
 
 const COMPOSE_FILE = path.join(ROOT, 'docker-compose.e2e.yml');
 const STATE_DIR = path.join(ROOT, 'storage', 'e2e');
-const BIN_DIR = path.join(STATE_DIR, 'bin');
+// One directory per version, so a bump downloads afresh instead of silently
+// reusing whatever binary an earlier pin left behind.
+const BIN_DIR = path.join(STATE_DIR, 'bin', VERSION);
 const DATA_DIR = path.join(STATE_DIR, 'rustfs-data');
 const PID_FILE = path.join(STATE_DIR, 'rustfs.pid');
 const LOG_FILE = path.join(STATE_DIR, 'rustfs.log');
@@ -117,7 +119,7 @@ async function ensureBinary() {
     const { asset, sha256 } = binaryForThisPlatform();
     mkdirSync(BIN_DIR, { recursive: true });
 
-    log(`Downloading RustFS ${VERSION} (${asset}) — once; it is cached in storage/e2e/bin/.`);
+    log(`Downloading RustFS ${VERSION} (${asset}) — once; it is cached in storage/e2e/bin/${VERSION}/.`);
     const response = await fetch(`${RELEASE}/${asset}`);
     if (!response.ok) throw new Error(`Download failed: HTTP ${response.status} for ${RELEASE}/${asset}`);
 

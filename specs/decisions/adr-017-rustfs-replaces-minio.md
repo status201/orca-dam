@@ -46,6 +46,9 @@ when Docker is available and otherwise downloads the RustFS release binary into
 runs it detached — so the storage specs can run on a machine with no container
 runtime, which was never possible with MinIO.
 
+> **2026-09-24:** the pin moved to the first stable release, `1.0.0`. The current
+> version is owned by [e2e-testing](../features/e2e-testing.md) → Tools and versions.
+
 The bucket is created and opened to anonymous `s3:GetObject` by
 `tests/e2e/support/bucket.js`, which signs the two S3 requests (`PUT /{bucket}`,
 `PUT /{bucket}?policy`) with AWS SigV4 over `node:crypto`. That replaces both the
@@ -91,7 +94,8 @@ was bad — see the trade-off below.
 - **Good:** one provisioning path for local and CI. The MinIO setup used `mc`
   locally and the runner's `aws` CLI in the workflow, so the local path was the
   only one anyone exercised and the CI path was the only one that mattered.
-- **Trade-off:** RustFS is pre-1.0 (`1.0.0-rc.*`). It is pinned exactly, so it
+- **Trade-off:** RustFS was pre-1.0 (`1.0.0-rc.*`) when this was decided; it
+  shipped stable `1.0.0` on 2026-09-16 and the pin followed. It is pinned exactly, so it
   cannot move under a PR, but nothing bumps it automatically either — Dependabot
   has no manifest to watch for a docker tag in a compose file or a version
   constant in a script, so it moves when someone edits

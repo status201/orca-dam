@@ -342,11 +342,12 @@ Tools and versions:
   copy in `wordpress-plugin/package.json` and is versioned independently
   ([ADR-013](../decisions/adr-013-wordpress-plugin-separate-stream.md)), so the
   two suites each download their own browser build.
-- RustFS `1.0.0-rc.6` — the image `rustfs/rustfs:1.0.0-rc.6` in
+- RustFS `1.0.0` — the image `rustfs/rustfs:1.0.0` in
   `docker-compose.e2e.yml`, or the release binary of the same version fetched by
   `scripts/e2e-storage.mjs`, which pins that version and the SHA-256 of each
-  platform's archive. Nothing bumps either automatically. It replaced MinIO,
-  which was archived upstream ([ADR-017](../decisions/adr-017-rustfs-replaces-minio.md));
+  platform's archive, and caches the binary per version under
+  `storage/e2e/bin/{version}/` so a bump never silently reuses the old one.
+  Nothing bumps either automatically. It replaced MinIO, which was archived upstream ([ADR-017](../decisions/adr-017-rustfs-replaces-minio.md));
   bucket setup no longer needs a second image at all.
 - Node 22 in CI (matching the `phpunit` and `sdd` jobs).
 
