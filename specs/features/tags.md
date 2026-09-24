@@ -3,7 +3,7 @@
 ```yaml
 id: tags
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -52,7 +52,7 @@ data model per tag origin.
 - **REQ-6** — Resolving a tag name to an ID never changes an existing tag's
   `type`. `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` reuse an
   existing tag of any type if the name already exists.
-- **REQ-7** — Tag-type pickers lead with **User** tags. Reference tags are
+- **REQ-tag-pickers-lead-with-user-tags** — Tag-type pickers lead with **User** tags. Reference tags are
   machine-named (`00213478-7efb-…`) and numerous, so an "all types" list sorted by
   name opens on a wall of them. The Tags page tabs and the asset grid's
   *Filter Tags* type dropdown are ordered **User → AI → Reference → All**, and
@@ -235,7 +235,7 @@ Scenario: Bulk add/remove/list operate across multiple assets and require authen
   And each endpoint returns 401 for an unauthenticated request
 # pinned by: tests/Feature/TagTest.php
 
-Scenario: The tags page opens on user tags; type=all selects every type (REQ-7)
+Scenario: The tags page opens on user tags; type=all selects every type (REQ-tag-pickers-lead-with-user-tags)
   When GET /tags is rendered with no type, with type=all, and with type=bogus
   Then the view's activeType is "user", "all" and "user" respectively
   And GET /tags as JSON with type=all returns tags of every type
@@ -255,7 +255,7 @@ Scenario: The tags page shows type badges and protects ai tags from rename
   And the ai tag offers no rename control
 # pinned by: tests/e2e/tags.spec.js
 
-Scenario: The tags page tabs lead with User and end with All (REQ-7)
+Scenario: The tags page tabs lead with User and end with All (REQ-tag-pickers-lead-with-user-tags)
   Given seeded user, ai and reference tags
   When the tags page opens
   Then the tabs read User, AI, Reference, All
@@ -264,7 +264,7 @@ Scenario: The tags page tabs lead with User and end with All (REQ-7)
   Then the ai and reference tags are listed too and the URL carries type=all
 # pinned by: tests/e2e/tags.spec.js
 
-Scenario: The grid's tag filter lists user tags until All is chosen (REQ-7)
+Scenario: The grid's tag filter lists user tags until All is chosen (REQ-tag-pickers-lead-with-user-tags)
   Given the asset grid's tag filter panel is open
   Then its type dropdown is on User and the seeded ai tag is not listed
   When All is chosen

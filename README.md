@@ -21,7 +21,7 @@ copy that is **not** listed below is the one to delete.
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow and the spec-before-code gate | Contributors |
 | [CHANGELOG.md](CHANGELOG.md) | Release history | Everyone |
 
-`specs/` is the source of truth for behaviour: 49 feature specs, 18 ADRs, and recipes.
+`specs/` is the source of truth for behaviour: 49 feature specs, 19 ADRs, and recipes.
 Prose docs describe *usage*; specs define *behaviour*. When they disagree, the spec wins.
 
 ## Features

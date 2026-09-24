@@ -33,6 +33,7 @@ the old one rather than rewriting it. An ADR's `status` is its own lifecycle —
 | [015](adr-015-guided-demos-server-declared.md) | Guided demos are declared server-side and rendered by hand | accepted |
 | [016](adr-016-database-errors-are-user-errors.md) | A driver rejection is a user error: one global backstop behind the controllers | accepted |
 | [017](adr-017-rustfs-replaces-minio.md) | RustFS replaces the archived MinIO as the E2E S3 stand-in (amends 014) | accepted |
+| [018](adr-018-slug-requirement-ids.md) | New requirements get a kebab-case slug ID; numeric IDs are frozen | accepted |
 
 New ADRs copy [`_adr-template.md`](_adr-template.md) to `adr-NNN-<slug>.md`, numbered
 contiguously. Keep this index and the folder map in [`../README.md`](../README.md) in

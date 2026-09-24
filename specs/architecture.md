@@ -271,6 +271,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 - [ADR-017](decisions/adr-017-rustfs-replaces-minio.md) — RustFS replaces the archived MinIO as that stand-in.
 - [ADR-015](decisions/adr-015-guided-demos-server-declared.md) — guided demos declared in PHP; spotlight hand-rolled.
 - [ADR-016](decisions/adr-016-database-errors-are-user-errors.md) — a driver rejection is a user error: one global backstop behind the controllers (amends ADR-010).
+- [ADR-018](decisions/adr-018-slug-requirement-ids.md) — new requirements get a kebab-case slug ID; numeric IDs are frozen.
 
 ## Tests & verification
 

@@ -1,0 +1,436 @@
+{
+  "ai-tagging": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8"
+  ],
+  "api-docs-admin": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "api-tokens-sanctum": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "architecture": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "asset-cycle-navigation": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7"
+  ],
+  "asset-model": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "asset-replace": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "asset-search": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "asset-trash": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "asset-upload": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "authentication": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8",
+    "REQ-9"
+  ],
+  "authorization-policies": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "bulk-operations": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7"
+  ],
+  "chunked-upload": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "client-side-tools": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7"
+  ],
+  "cloudflare-purge": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "csv-export-import": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7"
+  ],
+  "dashboard": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-3a",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "discovery-import": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "duplicate-detection": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "e2e-testing": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8",
+    "REQ-9",
+    "REQ-10",
+    "REQ-11",
+    "REQ-12",
+    "REQ-13",
+    "REQ-14"
+  ],
+  "easter-egg-game": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4"
+  ],
+  "error-handling": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-4a",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8",
+    "REQ-9",
+    "REQ-10",
+    "REQ-11",
+    "REQ-12"
+  ],
+  "folder-management": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "guided-demos": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-6a",
+    "REQ-7",
+    "REQ-7a",
+    "REQ-8",
+    "REQ-8a",
+    "REQ-9",
+    "REQ-10",
+    "REQ-11",
+    "REQ-12",
+    "REQ-13"
+  ],
+  "iframe-embedding": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "image-processing": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4"
+  ],
+  "input-validation": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8",
+    "REQ-9",
+    "REQ-10",
+    "REQ-11",
+    "REQ-12",
+    "REQ-13"
+  ],
+  "jwt-auth": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "localization": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4"
+  ],
+  "maintenance-commands": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "passkeys": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7"
+  ],
+  "queue-jobs": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4"
+  ],
+  "reference-tags-api": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7"
+  ],
+  "rest-api": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8"
+  ],
+  "s3-integrity": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "s3-storage": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8"
+  ],
+  "security-headers": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "security-invariants": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8",
+    "REQ-9"
+  ],
+  "settings": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "static-analysis": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "system-admin": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "tag-input": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "tags": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "tikz-render": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8"
+  ],
+  "two-factor-auth": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ],
+  "upload-policy": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7"
+  ],
+  "user-audit-log": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6",
+    "REQ-7",
+    "REQ-8"
+  ],
+  "user-management": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5"
+  ],
+  "user-preferences": [
+    "REQ-1",
+    "REQ-2",
+    "REQ-3",
+    "REQ-4",
+    "REQ-5",
+    "REQ-6"
+  ]
+}

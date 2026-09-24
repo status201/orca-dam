@@ -121,7 +121,7 @@ test.describe('asset grid', () => {
         const panel = page.locator(testid('grid-tag-filter-panel'));
         await expect(panel).toBeVisible();
 
-        // specs/features/tags.md REQ-7: the type dropdown opens on user tags, with All last.
+        // specs/features/tags.md REQ-tag-pickers-lead-with-user-tags: the type dropdown opens on user tags, with All last.
         await expect(page.locator(testid('grid-tag-type'))).toHaveValue('user');
         const optionValues = await page.locator(`${testid('grid-tag-type')} option`)
             .evaluateAll((els) => els.map((el) => el.value));

@@ -31,11 +31,14 @@ source:                      # the code that implements this spec
 
 ## Requirements
 
-<!-- The design broken into discrete, testable pieces. -->
+<!-- The design broken into discrete, testable pieces. Each ID is a kebab-case slug
+     that summarises the requirement: lowercase, ≥2 words, starts with a letter,
+     ≤60 chars, unique across all specs — e.g. REQ-example-thumbnail-regenerated-on-replace
+     (the `example-` prefix is reserved for illustrations like this one). Never a new
+     number: numeric IDs are frozen in specs/.legacy-req-ids.json (ADR-018). -->
 
-- **REQ-1** — …
-- **REQ-2** — …
-- **REQ-3** — …
+- **REQ-<kebab-slug>** — …
+- **REQ-<kebab-slug>** — …
 
 ## Technical design
 

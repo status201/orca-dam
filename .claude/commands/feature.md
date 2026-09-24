@@ -11,7 +11,7 @@ expected).
 
 1. **Spec first** — create or update `specs/features/<name>.md` from
    `specs/features/_feature-template.md`, `status: draft`. Fill: background/why, requirements
-   (`REQ-n`), contract/public interface, data shapes (flat YAML if nested >3 deep),
+   (`REQ-<kebab-slug>` — see specs/README.md → "Requirement IDs"), contract/public interface, data shapes (flat YAML if nested >3 deep),
    and BDD scenarios (Given/When/Then), each naming the test that will pin it.
    Reuse existing patterns — read `specs/architecture.md` and the nearest existing
    feature spec first.
