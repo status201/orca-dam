@@ -15,7 +15,7 @@ test.describe('tags page', () => {
         await expect(tagCard(page, 'e2e-reference-tag')).toContainText('ref');
     });
 
-    // specs/features/tags.md REQ-7 — machine-named reference tags must not crowd the default view.
+    // specs/features/tags.md REQ-tag-pickers-lead-with-user-tags — machine-named reference tags must not crowd the default view.
     test('the tabs lead with user tags and end with all', async ({ page }) => {
         await page.goto('/tags');
 

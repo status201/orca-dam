@@ -36,6 +36,10 @@
 //     app/Console/Commands/ and top-level directory entry, and nothing that is gone
 //   • USER_MANUAL.md and GEBRUIKERSHANDLEIDING.md share one heading-level sequence,
 //     so the Dutch manual cannot silently fall behind the English one
+// Plus requirement IDs (see "Requirement IDs" below): every requirement is a
+// `- **REQ-<id>** — …` bullet; a numeric ID must be frozen in specs/.legacy-req-ids.json
+// (new ones use a kebab-case slug), slugs are unique repo-wide, and every `REQ-<slug>`
+// reference in specs, docs, code and tests resolves to one.
 // `version` not being a positive integer is a warning, not a failure.
 
 import { execFileSync } from 'node:child_process';
@@ -960,6 +964,144 @@ function checkManualParity(errors) {
   }
 }
 
+// ── Requirement IDs ──────────────────────────────────────────────────────────
+// New requirements get a kebab-case slug ID (`REQ-example-thumbnail-regenerated-on-replace`);
+// the numeric IDs that existed when slugs were introduced are frozen in
+// specs/.legacy-req-ids.json and nothing may add to that list (see ADR-018). A numbered
+// ID collides when two branches both add "the next" one, forces `REQ-3a` inserts, and
+// says nothing at the ~200 places that cite it. The manifest is written once and only
+// shrinks — a stale entry is an error, so a deleted `REQ-7` cannot return meaning
+// something else. There is deliberately no mode here that regenerates it.
+
+const LEGACY_REQ_MANIFEST = path.join(SPECS, '.legacy-req-ids.json');
+const LEGACY_REQ_ID = /^\d+[a-z]?$/;
+const SLUG_MAX = 60;
+// Reserved for illustrations in docs and templates: never resolved, never definable.
+const EXAMPLE_SLUG_PREFIX = 'example-';
+// A slug reference anywhere in the repo. Two words minimum, so prose placeholders like
+// `REQ-n` never match, and `REQ-<kebab-slug>` never does either.
+const SLUG_REF = /(?<![\w-])REQ-([a-z][a-z0-9]*(?:-[a-z0-9]+)+)(?![\w-])/g;
+const REQ_DEFINITION = /^- \*\*REQ-([^*]+)\*\* — /;
+const REF_SCAN_DIRS = ['app/', 'routes/', 'tests/', 'resources/', 'database/', 'scripts/', 'config/'];
+const REF_SCAN_EXT = /\.(php|js|mjs|cjs|ts|vue|md|json|ya?ml)$/;
+
+/** Why `slug` is not a valid requirement slug, or null when it is. */
+function slugProblem(slug) {
+  if (/[A-Z]/.test(slug)) return 'must be lowercase';
+  if (/[^a-z0-9-]/.test(slug)) return 'may only contain a-z, 0-9 and hyphens';
+  if (!/^[a-z]/.test(slug)) return 'must start with a letter';
+  if (/--|-$/.test(slug)) return 'words must be separated by single hyphens';
+  if (!slug.includes('-')) return 'needs at least two words';
+  if (slug.length > SLUG_MAX) return `is ${slug.length} chars (max ${SLUG_MAX})`;
+  if (slug.startsWith(EXAMPLE_SLUG_PREFIX)) return `\`${EXAMPLE_SLUG_PREFIX}\` is reserved for documentation examples`;
+  return null;
+}
+
+/** Specs that define requirements: every feature spec, plus the system invariants. */
+function requirementSpecs(allMd) {
+  return allMd.filter((f) => {
+    const r = rel(f);
+    if (r === 'specs/architecture.md') return true;
+    return r.startsWith('specs/features/') && !path.basename(f).startsWith('_');
+  });
+}
+
+/** `[{ id, line }]` for each top-level bullet under the `## Requirements…` heading. */
+function requirementDefinitions(text, err) {
+  const defs = [];
+  let inReqs = false;
+  text.split('\n').forEach((raw, i) => {
+    const line = raw.replace(/\r$/, '');
+    const heading = line.match(/^## +(.+?) *$/);
+    if (heading) inReqs = /^Requirements(\s|$)/.test(heading[1]);
+    if (!inReqs || !line.startsWith('- ')) return;
+    const m = line.match(REQ_DEFINITION);
+    // A requirement in any other shape would be invisible to every check below.
+    if (!m) err(i + 1, 'requirement bullet is not `- **REQ-<id>** — …`');
+    else defs.push({ id: m[1], line: i + 1 });
+  });
+  return defs;
+}
+
+function checkRequirementIds(errors, allMd) {
+  let manifest = {};
+  try {
+    manifest = JSON.parse(readFileSync(LEGACY_REQ_MANIFEST, 'utf8'));
+  } catch {
+    errors.push(`${rel(LEGACY_REQ_MANIFEST)}: missing or not valid JSON`);
+    return;
+  }
+
+  const slugs = new Map(); // slug → [ "file:line", … ]
+  const malformed = new Set(); // already reported at their definition
+  const specIds = new Set();
+
+  for (const file of requirementSpecs(allMd)) {
+    const r = rel(file);
+    const text = readFileSync(file, 'utf8');
+    const specId = topKey(metadataBlock(text) || '', 'id') || path.basename(file, '.md');
+    specIds.add(specId);
+    const legacy = new Set(manifest[specId] || []);
+    const at = (line) => `${r}:${line}`;
+
+    const defs = requirementDefinitions(text, (line, msg) => errors.push(`${at(line)}: ${msg}`));
+    const seen = new Set();
+    for (const { id, line } of defs) {
+      const full = `REQ-${id}`;
+      if (seen.has(full)) errors.push(`${at(line)}: ${full} is defined twice in this spec`);
+      seen.add(full);
+
+      if (LEGACY_REQ_ID.test(id)) {
+        if (!legacy.has(full)) {
+          errors.push(`${at(line)}: ${full} — new requirements use a slug ID (\`REQ-<kebab-slug>\`);`
+            + ' numeric IDs are frozen in specs/.legacy-req-ids.json (see ADR-018)');
+        }
+        continue;
+      }
+      const problem = slugProblem(id);
+      if (problem) {
+        errors.push(`${at(line)}: ${full} — slug ${problem}`);
+        malformed.add(id);
+        continue;
+      }
+      slugs.set(id, [...(slugs.get(id) || []), at(line)]);
+    }
+
+    for (const id of legacy) {
+      if (!seen.has(id)) {
+        errors.push(`${rel(LEGACY_REQ_MANIFEST)}: ${specId} ${id} is no longer defined in ${r}`
+          + ' — remove it from the manifest (a frozen ID is never reused)');
+      }
+    }
+  }
+
+  for (const key of Object.keys(manifest)) {
+    if (!specIds.has(key)) errors.push(`${rel(LEGACY_REQ_MANIFEST)}: \`${key}\` is not a spec that defines requirements`);
+  }
+
+  // One definition per slug repo-wide, so a bare `REQ-<slug>` in code names one spec.
+  for (const [slug, where] of slugs) {
+    if (where.length > 1) errors.push(`REQ-${slug} is defined more than once: ${where.join(', ')}`);
+  }
+
+  // Every slug reference must resolve — a rename otherwise strands its citations.
+  const scan = new Set([
+    ...allMd.filter((f) => !path.basename(f).startsWith('_')),
+    ...rootDocs(),
+    ...repoFiles()
+      .filter((f) => REF_SCAN_DIRS.some((d) => f.startsWith(d)) && REF_SCAN_EXT.test(f))
+      .filter((f) => !f.startsWith('resources/js/vendor/'))
+      .map((f) => path.join(ROOT, f)),
+  ]);
+  for (const file of scan) {
+    const text = checkableText(file);
+    for (const m of text.matchAll(SLUG_REF)) {
+      if (m[1].startsWith(EXAMPLE_SLUG_PREFIX) || slugs.has(m[1]) || malformed.has(m[1])) continue;
+      errors.push(`${rel(file)}:${lineOf(text, m.index)}: REQ-${m[1]} does not match any defined requirement`);
+    }
+  }
+}
+
 function lint(failExit) {
   const errors = [];
   const warnings = [];
@@ -1064,6 +1206,7 @@ function lint(failExit) {
   checkCounts(errors, docFiles);
   checkDocTree(errors);
   checkManualParity(errors);
+  checkRequirementIds(errors, allMd);
 
   if (warnings.length) {
     process.stdout.write(`spec-lint: ${warnings.length} warning(s):\n` +

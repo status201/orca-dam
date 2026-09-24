@@ -19,8 +19,10 @@ Every feature spec aims to cover, in roughly this order:
 
 - **Background / the "why"** — the context behind the "what", so a reader (or
   agent) can reason ahead about the steps they'll need.
-- **Requirements** — the design broken into discrete, numbered pieces (`REQ-1`,
-  `REQ-2`, …), not a vague one-liner.
+- **Requirements** — the design broken into discrete pieces, each with a kebab-case
+  slug ID (`REQ-<kebab-slug>`), not a vague one-liner. Older specs still carry
+  numeric IDs (`REQ-1`, `REQ-2`, …); those are frozen, and new requirements are never
+  numbered (see "Requirement IDs" below).
 - **Technical design** — the public **contract/interface** (routes, controller
   actions, service methods, model scopes, policy abilities, JSON shapes), the
   **data shapes** (DB columns, payloads, responses), the **layer touchpoints**
@@ -174,7 +176,7 @@ exemptions"). By kind of change:
 **Feature / any behaviour change**
 1. **Spec first** — create/update `specs/features/<name>.md` from
    `features/_feature-template.md` (`status: draft`): background, requirements
-   (`REQ-n`), contract, data shapes, BDD scenarios.
+   (`REQ-<kebab-slug>`), contract, data shapes, BDD scenarios.
 2. **Review** — a human reads the spec (plan-approval / PR). `status: active`.
 3. **Implement** the code to satisfy the spec.
 4. **Test** — add tests mapping to each Gherkin scenario.
@@ -227,6 +229,20 @@ worth knowing: `recipes/` carry a `version:` but follow the leaner playbook shap
 contract section for the rule to read, and ADRs carry no `version:` at all (they are
 superseded, not revised). `spec-lint` requires the key on every feature spec, so the gate
 cannot be disabled by deleting it.
+
+**Requirement IDs.** A new requirement gets a kebab-case slug that summarises it:
+`- **REQ-<kebab-slug>** — …`. The slug is lowercase, at least two words, starts
+with a letter, is at most 60 characters, and is unique across all specs, so a bare
+citation in a code comment names exactly one requirement. The numeric IDs that existed
+when slugs were introduced stay as they are, frozen in `.legacy-req-ids.json`; no new
+number may be added, and `REQ-3a`-style inserts are no longer needed. The manifest is
+never regenerated, only shrunk (a stale entry fails), so a deleted number can't come
+back meaning something else. `spec-lint` enforces all of this and also resolves every
+`REQ-<slug>` citation in specs, root docs, `app/`, `routes/`, `config/`,
+`database/`, `resources/`, `tests/` and `scripts/`. Legacy numeric citations are
+not resolved. For an illustration in docs, use the reserved `example-` prefix,
+which is never resolved and can't be defined. Renaming a slug is a contract change,
+so it bumps `version:`. See [ADR-018](decisions/adr-018-slug-requirement-ids.md).
 
 **Gated (needs a spec):** `app/**`, `routes/**`, `database/migrations/**`,
 `config/**` (except Laravel-published framework configs), `resources/js/**`
@@ -378,6 +394,8 @@ specs/
     adr-017-rustfs-replaces-minio.md            ·  RustFS replaces the archived MinIO
     adr-015-guided-demos-server-declared.md     ·  demos declared in PHP; spotlight hand-rolled
     adr-016-database-errors-are-user-errors.md  ·  driver rejections → keyed 422 (amends adr-010)
+    adr-018-slug-requirement-ids.md             ·  new REQs get slug IDs; numeric ones frozen
+  .legacy-req-ids.json ← the frozen numeric REQ IDs (lint-checked; only ever shrinks)
 ```
 
 > This map grows as the backfill lands (see `_backfill-status.md` while it exists).

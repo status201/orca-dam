@@ -178,7 +178,7 @@ test.describe('tikz server render rate limit', () => {
     });
 });
 
-// specs/features/tikz-render.md REQ-9. The "Open in TikZ Tool" button on a .tex asset's detail page
+// specs/features/tikz-render.md REQ-tex-asset-opens-in-tikz-tool. The "Open in TikZ Tool" button on a .tex asset's detail page
 // links to ?template={id}. The template-load endpoint is mocked: fetching the real one needs the
 // object in the bucket, and seeding a .tex row would shift the document counts other specs pin.
 test.describe('tikz server template deep link', () => {
