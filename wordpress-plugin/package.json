@@ -13,25 +13,21 @@
     "test:e2e:install": "playwright install --with-deps chromium"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
-    "@wordpress/env": "^11.15.0",
-    "@wordpress/scripts": "^35.0.0"
+    "@playwright/test": "^1.63.0",
+    "@wordpress/env": "^11.16.0",
+    "@wordpress/scripts": "^36.0.0"
   },
   "dependencies": {
-    "@wordpress/components": "^34.0.0",
-    "@wordpress/element": "^7.0.0",
-    "@wordpress/i18n": "^6.0.0"
+    "@wordpress/components": "^41.0.0",
+    "@wordpress/element": "^8.8.0",
+    "@wordpress/i18n": "^6.29.0"
   },
   "overrides": {
-    "qs": "^6.15.2",
+    "qs": "^6.16.0",
     "serialize-javascript": "^7.0.5",
-    "minimatch": "^10.0.0",
     "uuid": "^11.1.1",
-    "webpack-dev-server": "^5.2.5",
-    "http-proxy-middleware": "^2.0.10",
-    "ws": "^8.21.0",
-    "@wp-playground/blueprints": {
-      "ajv": "^8.17.2"
+    "markdownlint-cli": {
+      "js-yaml": "^5.4.2"
     }
   }
 }
