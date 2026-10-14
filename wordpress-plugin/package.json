@@ -27,8 +27,16 @@
     "serialize-javascript": "^7.0.5",
     "uuid": "^11.1.1",
     "markdownlint-cli": {
-      "js-yaml": "^5.4.2"
+      "js-yaml": "^5.4.2",
+      "smol-toml": "^1.9.1"
     },
-    "postcss-selector-parser": "^7.1.6"
+    "postcss-selector-parser": "^7.1.6",
+    "http-cache-semantics": "^4.3.0",
+    "katex": "^0.18.2",
+    "@wordpress/env": {
+      "js-yaml": {
+        "argparse": "^2.0.1"
+      }
+    }
   }
 }
