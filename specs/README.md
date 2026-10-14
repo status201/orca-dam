@@ -395,6 +395,7 @@ specs/
     adr-015-guided-demos-server-declared.md     ·  demos declared in PHP; spotlight hand-rolled
     adr-016-database-errors-are-user-errors.md  ·  driver rejections → keyed 422 (amends adr-010)
     adr-018-slug-requirement-ids.md             ·  new REQs get slug IDs; numeric ones frozen
+    adr-019-tailwind-4-css-first.md             ·  Tailwind v4, CSS-first config; v3 defaults kept
   .legacy-req-ids.json ← the frozen numeric REQ IDs (lint-checked; only ever shrinks)
 ```
 

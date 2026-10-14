@@ -240,7 +240,7 @@ orca-dam/
 ├── scripts/                               # sdd-guard.mjs, spec-lint.mjs, e2e-storage.mjs, npm-audit.mjs
 ├── specs/                                 # the behavioural source of truth
 │   ├── features/                          # 49 feature specs
-│   ├── decisions/                         # 19 ADRs
+│   ├── decisions/                         # 20 ADRs
 │   └── recipes/                           # repeatable how-tos
 ├── tests/
 │   ├── Feature/                           # incl. Auth/, Console/, Middleware/
