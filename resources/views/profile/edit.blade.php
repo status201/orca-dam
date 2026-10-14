@@ -11,22 +11,22 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Left Column -->
                 <div class="space-y-6">
-                    <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                    <div class="p-4 sm:p-8 bg-white shadow-sm sm:rounded-lg">
                         @include('profile.partials.update-profile-information-form')
                     </div>
 
-                    <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                    <div class="p-4 sm:p-8 bg-white shadow-sm sm:rounded-lg">
                         @include('profile.partials.update-password-form')
                     </div>
 
                     @if (auth()->user()->canEnableTwoFactor())
-                        <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                        <div class="p-4 sm:p-8 bg-white shadow-sm sm:rounded-lg">
                             @include('profile.partials.two-factor-authentication-form')
                         </div>
                     @endif
 
                     @if (auth()->user()->canEnablePasskeys())
-                        <div id="passkeys-section" class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                        <div id="passkeys-section" class="p-4 sm:p-8 bg-white shadow-sm sm:rounded-lg">
                             @include('profile.partials.passkeys-form')
                         </div>
                     @endif
@@ -34,11 +34,11 @@
 
                 <!-- Right Column -->
                 <div class="flex flex-col gap-6">
-                    <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                    <div class="p-4 sm:p-8 bg-white shadow-sm sm:rounded-lg">
                         @include('profile.partials.update-preferences-form')
                     </div>
 
-                    <div class="mt-auto p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                    <div class="mt-auto p-4 sm:p-8 bg-white shadow-sm sm:rounded-lg">
                         @include('profile.partials.delete-user-form')
                     </div>
                 </div>

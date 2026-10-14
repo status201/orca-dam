@@ -1,5 +1,5 @@
 <!-- Footer with waves -->
-<footer id="orca-footer" class="wave-footer mt-auto pt-[8rem] pb-6">
+<footer id="orca-footer" class="wave-footer mt-auto pt-32 pb-6">
     <div id="footer-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div class="flex items-center justify-center mb-4">
             <div id="orca-logo-container" class="footer-orca-bg rounded-full p-[0.4rem] shadow-lg footer-logo-container"

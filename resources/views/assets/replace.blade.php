@@ -43,7 +43,7 @@
                         @if($asset->isImage())
                             <img src="{{ $asset->thumbnail_url ?? $asset->url }}"
                                  alt="{{ $asset->filename }}"
-                                 class="max-w-full max-h-64 rounded-lg shadow">
+                                 class="max-w-full max-h-64 rounded-lg shadow-sm">
                         @elseif($asset->isMathMl())
                             <x-mml-preview :asset="$asset" size="full" />
                         @else
@@ -207,7 +207,7 @@
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
-                 class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                 class="fixed inset-0 bg-gray-500/75 transition-opacity"
                  @click="showConfirmation = false"></div>
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
@@ -222,7 +222,7 @@
                  x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                  class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
                 <div class="sm:flex sm:items-start">
-                    <div class="warning mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <div class="warning mx-auto shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 sm:mx-0 sm:h-10 sm:w-10">
                         <i class="fas fa-exclamation-triangle text-amber-600"></i>
                     </div>
                     <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
@@ -241,13 +241,13 @@
                     <button @click="uploadFile()"
                             type="button"
                             data-testid="replace-confirm"
-                            class="attention w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            class="attention w-full inline-flex justify-center rounded-md border border-transparent shadow-xs px-4 py-2 bg-amber-600 text-base font-medium text-white hover:bg-amber-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:ml-3 sm:w-auto sm:text-sm">
                         <i class="fas fa-shuffle mr-2"></i> {{ __('Yes, Replace') }}
                     </button>
                     <button @click="showConfirmation = false"
                             type="button"
                             data-testid="replace-cancel"
-                            class="attention mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm">
+                            class="attention mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-xs px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm">
                         {{ __('Cancel') }}
                     </button>
                 </div>

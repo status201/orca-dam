@@ -62,7 +62,7 @@ map outcomes to status codes (see
 ```yaml
 language: PHP                   # 8.3+ (CI runs 8.4)
 framework: laravel/framework    # ^13
-frontend: Blade + Alpine.js     # Alpine 3.4, Tailwind 3.1, Font Awesome 6.4
+frontend: Blade + Alpine.js     # Alpine 3.4, Tailwind 4.3 (CSS-first, ADR-019), Font Awesome 6.7 (bundled)
 build: Vite                     # 8
 tests: pestphp/pest             # 4 (on PHPUnit 12) — in-memory SQLite, sync queue
 style: laravel/pint             # 1.13

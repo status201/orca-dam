@@ -148,11 +148,11 @@
                 <div class="mb-2">
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
                         <template x-for="tag in pinnedTags" :key="'pinned-' + tag.id">
-                            <label class="flex items-start space-x-2 p-2 bg-blue-50 hover:bg-blue-100 rounded cursor-pointer border border-blue-200">
+                            <label class="flex items-start space-x-2 p-2 bg-blue-50 hover:bg-blue-100 rounded-sm cursor-pointer border border-blue-200">
                                 <input type="checkbox"
                                        :value="tag.id"
                                        x-model="selectedTags"
-                                       class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                       class="rounded-sm text-blue-600 focus:ring-orca-black shrink-0 mt-0.5">
                                 <div class="flex flex-col gap-1 min-w-0 flex-1">
                                     <span class="text-sm font-medium truncate" x-text="tag.name"></span>
                                     <div class="flex items-center gap-1.5">
@@ -178,11 +178,11 @@
                 <div x-show="!filterTagsLoading">
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
                         <template x-for="tag in displayTags" :key="tag.id">
-                            <label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer border border-gray-200">
+                            <label class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded-sm cursor-pointer border border-gray-200">
                                 <input type="checkbox"
                                        :value="tag.id"
                                        x-model="selectedTags"
-                                       class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                       class="rounded-sm text-blue-600 focus:ring-orca-black shrink-0 mt-0.5">
                                 <div class="flex flex-col gap-1 min-w-0 flex-1">
                                     <span class="text-sm font-medium truncate" x-text="tag.name"></span>
                                     <div class="flex items-center gap-1.5">

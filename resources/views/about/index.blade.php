@@ -10,13 +10,13 @@
                 {{-- Sticky TOC Sidebar (lg+) --}}
                 @if(!empty($toc))
                 <nav id="about-toc" class="invert-scrollbar-colors hidden lg:block w-96 shrink-0" style="position: sticky; top: 5rem; max-height: calc(100vh - 5rem); overflow-y: auto;">
-                    <div class="bg-white shadow sm:rounded-lg p-4 pb-6">
+                    <div class="bg-white shadow-sm sm:rounded-lg p-4 pb-6">
                         <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">{{ __('Contents') }}</p>
                         <ul class="space-y-1">
                             @foreach($toc as $entry)
                             <li>
                                 <a href="#{{ $entry['id'] }}"
-                                   class="toc-link block text-sm text-gray-600 hover:text-orca-teal rounded px-2 py-0.5 transition-colors duration-100
+                                   class="toc-link block text-sm text-gray-600 hover:text-orca-teal rounded-sm px-2 py-0.5 transition-colors duration-100
                                           {{ $entry['level'] === 2 ? 'pl-4' : 'pl-2' }}">
                                     {{ $entry['text'] }}
                                 </a>
@@ -29,7 +29,7 @@
 
                 {{-- Main content --}}
                 <div class="min-w-0 flex-1">
-                    <div class="bg-white shadow sm:rounded-lg p-8 pb-12">
+                    <div class="bg-white shadow-sm sm:rounded-lg p-8 pb-12">
                         <div class="prose-doc" id="about-doc-content" onclick="handleAboutDocClick(event)">
                             {!! $content !!}
                         </div>

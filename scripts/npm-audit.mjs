@@ -17,17 +17,12 @@
 
 import { spawnSync } from 'node:child_process';
 
-/** Advisories with no fix to upgrade to. Each says why it can't be reached and what removes it. */
-const ADVISORY_ALLOWLIST = {
-  'GHSA-vfj7-8cjw-p6xm': {
-    package: 'braces',
-    reason:
-      'No patched release (affects <= 3.0.3, the latest). Build-time only: reached through '
-      + 'Tailwind 3 content-glob matching (chokidar, micromatch, fast-glob), whose patterns are '
-      + 'the fixed `content` globs in tailwind.config.js, never input.',
-    removedBy: 'the Tailwind 4 migration (its dependency tree has no braces)',
-  },
-};
+/**
+ * Advisories with no fix to upgrade to. Each says why it can't be reached and what removes it:
+ *   'GHSA-xxxx-xxxx-xxxx': { package: '…', reason: '…', removedBy: '…' },
+ * Empty since the Tailwind v4 migration (ADR-019) removed braces, its only entry so far.
+ */
+const ADVISORY_ALLOWLIST = {};
 
 const FAILING_SEVERITIES = new Set(['high', 'critical']);
 
@@ -74,7 +69,8 @@ function selfTest() {
     url: `https://github.com/advisories/${ghsa}`,
   });
   const braces = advisory('braces', 'GHSA-vfj7-8cjw-p6xm', 'high');
-  const allow = { 'GHSA-vfj7-8cjw-p6xm': ADVISORY_ALLOWLIST['GHSA-vfj7-8cjw-p6xm'] };
+  // A self-contained entry: the fixtures must not depend on what the real allowlist holds.
+  const allow = { 'GHSA-vfj7-8cjw-p6xm': { package: 'braces', reason: 'fixture', removedBy: 'fixture' } };
   const report = (vulnerabilities) => ({ auditReportVersion: 2, vulnerabilities, metadata: {} });
   const chain = {
     braces: { severity: 'high', via: [braces] },

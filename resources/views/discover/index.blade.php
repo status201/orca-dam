@@ -15,7 +15,7 @@
         <div class="flex flex-col md:flex-row md:items-center gap-4">
             <select x-model="selectedFolder"
                     data-testid="discover-folder"
-                    class="flex-1 max-w-md rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
+                    class="flex-1 max-w-md rounded-lg border-gray-300 shadow-xs focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
                 <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
             </select>
 
@@ -110,7 +110,7 @@
                                 <input type="checkbox"
                                        @change="$event.target.checked ? selectAll() : deselectAll()"
                                        :checked="selectedObjects.length === unmappedObjects.length && unmappedObjects.length > 0"
-                                       class="rounded text-blue-600 focus:ring-blue-500">
+                                       class="rounded-sm text-blue-600 focus:ring-blue-500">
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 {{ __('Preview') }}
@@ -139,16 +139,16 @@
                                            data-testid="discover-row-select"
                                            :checked="selectedObjects.includes(object.key)"
                                            @click="shiftToggle(object.key, $event)"
-                                           class="rounded text-blue-600 focus:ring-blue-500">
+                                           class="rounded-sm text-blue-600 focus:ring-blue-500">
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <template x-if="object.mime_type.startsWith('image/')">
                                         <img :src="object.url"
                                              :alt="object.filename"
-                                             class="w-16 h-16 object-cover rounded">
+                                             class="w-16 h-16 object-cover rounded-sm">
                                     </template>
                                     <template x-if="!object.mime_type.startsWith('image/')">
-                                        <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+                                        <div class="w-16 h-16 bg-gray-100 rounded-sm flex items-center justify-center">
                                             <i class="fas text-5xl opacity-60"
                                                :class="[getFileIcon(object.mime_type, object.filename), getFileIconColor(getFileIcon(object.mime_type, object.filename))]"></i>
                                         </div>
@@ -172,7 +172,7 @@
                                     </template>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded" x-text="object.mime_type"></span>
+                                    <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-sm" x-text="object.mime_type"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" x-text="formatFileSize(object.size)">
                                 </td>

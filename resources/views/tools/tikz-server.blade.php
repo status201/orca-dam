@@ -43,7 +43,7 @@
     {{-- ============================================================ --}}
     {{-- CODE EDITOR CARD                                              --}}
     {{-- ============================================================ --}}
-    <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
         {{-- Card header --}}
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4 flex-wrap relative">
             <h2 class="text-lg font-semibold text-gray-900">
@@ -82,7 +82,7 @@
 
                 {{-- Template browser panel --}}
                 <div x-show="templateBrowserOpen" x-transition @click.outside="closeTemplateBrowser()"
-                    class="absolute right-0 top-full mt-2 w-96 lg:w-[32rem] bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    class="absolute right-0 top-full mt-2 w-96 lg:w-lg bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div class="p-3 border-b border-gray-100">
                         <div class="flex items-center gap-2">
                             <input
@@ -90,7 +90,7 @@
                                 x-model="templateSearchQuery"
                                 @input.debounce.300ms="searchTemplates()"
                                 placeholder="{{ __('Search templates…') }}"
-                                class="flex-1 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal"
+                                class="flex-1 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-orca-teal focus:border-orca-teal"
                                 x-ref="templateSearchInput"
                                 @keydown.escape="closeTemplateBrowser()">
                             <button @click="closeTemplateBrowser()" class="text-gray-400 hover:text-gray-600">
@@ -140,7 +140,7 @@
             <div class="flex items-start justify-between gap-4 mb-3 relative">
                 <p class="text-xs text-gray-500">
                     <i class="fas fa-info-circle mr-1 text-gray-400"></i>
-                    {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded">\begin{tikzpicture}...\end{tikzpicture}</code>
+                    {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded-sm">\begin{tikzpicture}...\end{tikzpicture}</code>
                     {{ __('blocks will be extracted and rendered separately.') }}
                     {{ __('You can also paste a full LaTeX document — the preamble (colors, packages, commands) will be applied to each diagram.') }}
                 </p>
@@ -203,9 +203,9 @@
                                 @mousedown.stop
                                 @keydown.escape="colorPaletteOpen = false"
                                 placeholder="{{ __('Search colors…') }}"
-                                class="mt-2 w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal">
+                                class="mt-2 w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-orca-teal focus:border-orca-teal">
                         </div>
-                        <div class="max-h-[17rem] overflow-y-auto invert-scrollbar-colors">
+                        <div class="max-h-68 overflow-y-auto invert-scrollbar-colors">
                             <template x-for="color in filteredPaletteColors" :key="color.name">
                                 <button
                                     @click="copyColorName(color.name)"
@@ -241,7 +241,7 @@
                 rows="16"
                 spellcheck="false"
                 wrap="off"
-                class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-lg pl-12 pr-3 py-3 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
+                class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-lg pl-12 pr-3 py-3 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
                 placeholder="{{ __('Paste TikZ code or a full LaTeX document here…') }}">
             </textarea>
 
@@ -270,7 +270,7 @@
     {{-- ============================================================ --}}
     {{-- RENDER SETTINGS CARD                                          --}}
     {{-- ============================================================ --}}
-    <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
         <button @click="showSettings = !showSettings"
             class="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors">
             <h2 class="text-lg font-semibold text-gray-900">
@@ -288,24 +288,24 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Output variants') }}</label>
                     <div class="flex flex-wrap gap-x-5 gap-y-2">
                         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" x-model="enabledVariants.svg_standard" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            <input type="checkbox" x-model="enabledVariants.svg_standard" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                             SVG
                         </label>
                         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" x-model="enabledVariants.svg_embedded" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            <input type="checkbox" x-model="enabledVariants.svg_embedded" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                             SVG ({{ __('embedded fonts') }})
                         </label>
                         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" x-model="enabledVariants.svg_paths" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            <input type="checkbox" x-model="enabledVariants.svg_paths" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                             SVG ({{ __('text as paths') }})
                         </label>
                         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer"
                                :title="enabledVariants.animated_gif ? '{{ __('PNG is required while Animated GIF is enabled.') }}' : ''">
-                            <input type="checkbox" x-model="enabledVariants.png" :disabled="enabledVariants.animated_gif" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
+                            <input type="checkbox" x-model="enabledVariants.png" :disabled="enabledVariants.animated_gif" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
                             PNG
                         </label>
                         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" x-model="enabledVariants.animated_gif" @change="onAnimatedGifToggle()" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            <input type="checkbox" x-model="enabledVariants.animated_gif" @change="onAnimatedGifToggle()" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                             {{ __('Animated GIF') }}
                         </label>
                     </div>
@@ -314,12 +314,12 @@
                             <label class="block text-xs text-gray-500 mb-1">{{ __('Frame delay') }}</label>
                             <div class="relative">
                                 <input type="number" x-model.number="gifDelayMs" min="20" max="10000" step="20"
-                                    class="w-28 text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8">
+                                    class="w-28 text-sm rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal pr-8">
                                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">ms</span>
                             </div>
                         </div>
                         <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer pb-2">
-                            <input type="checkbox" x-model="gifLoopInfinite" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            <input type="checkbox" x-model="gifLoopInfinite" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                             {{ __('Loop forever') }}
                         </label>
                         <p class="text-xs text-gray-400 basis-full">
@@ -336,7 +336,7 @@
                     <select
                         x-model="fontPackage"
                         :disabled="isFullDocument()"
-                        class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
+                        class="w-full text-sm rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
                         @foreach($fontPackages as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
                         @endforeach
@@ -356,7 +356,7 @@
                                 min="0"
                                 max="50"
                                 step="1"
-                                class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8 disabled:cursor-not-allowed">
+                                class="w-full text-sm rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal pr-8 disabled:cursor-not-allowed">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">pt</span>
                         </div>
                     </div>
@@ -368,7 +368,7 @@
                             min="72"
                             max="600"
                             step="1"
-                            class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal">
+                            class="w-full text-sm rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal">
                     </div>
                 </div>
             </div>
@@ -376,7 +376,7 @@
             {{-- Force canvas size --}}
             <div class="pt-2 border-t border-gray-100">
                 <label class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide cursor-pointer">
-                    <input type="checkbox" x-model="forceCanvas" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                    <input type="checkbox" x-model="forceCanvas" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                     {{ __('Force canvas size for all') }}
                 </label>
                 <div x-show="forceCanvas" x-collapse class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -384,7 +384,7 @@
                         <label class="block text-xs text-gray-500 mb-1">{{ __('Width') }}</label>
                         <div class="relative">
                             <input type="number" x-model.number="canvasWidthCm" min="0.5" max="100" step="0.5"
-                                class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8">
+                                class="w-full text-sm rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal pr-8">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">cm</span>
                         </div>
                     </div>
@@ -392,12 +392,12 @@
                         <label class="block text-xs text-gray-500 mb-1">{{ __('Height') }}</label>
                         <div class="relative">
                             <input type="number" x-model.number="canvasHeightCm" min="0.5" max="100" step="0.5"
-                                class="w-full text-sm rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal pr-8">
+                                class="w-full text-sm rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal pr-8">
                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">cm</span>
                         </div>
                     </div>
                     <label class="inline-flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer pb-2">
-                        <input type="checkbox" x-model="clipToCanvas" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                        <input type="checkbox" x-model="clipToCanvas" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                         {{ __('Clip to canvas') }}
                     </label>
                     <p class="md:col-span-3 text-xs text-gray-400" x-text="canvasPixelPreview()"></p>
@@ -413,7 +413,7 @@
                  :class="{ 'opacity-50': isFullDocument() }"
                  :title="isFullDocument() ? '{{ __('Set packages in the document preamble for full LaTeX documents.') }}' : ''">
                 <label class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide cursor-pointer">
-                    <input type="checkbox" x-model="extraLibraries" :disabled="isFullDocument()" class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
+                    <input type="checkbox" x-model="extraLibraries" :disabled="isFullDocument()" class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal disabled:cursor-not-allowed">
                     {{ __('Additional TikZ libraries') }}
                 </label>
                 <div x-show="extraLibraries" x-collapse class="mt-2">
@@ -421,7 +421,7 @@
                         type="text"
                         x-model="extraLibrariesText"
                         :disabled="isFullDocument()"
-                        class="w-full text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent disabled:cursor-not-allowed"
+                        class="w-full text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent disabled:cursor-not-allowed"
                         placeholder="pgfplots,automata,...">
                     <p class="text-xs text-gray-400 mt-1">
                         {{ __('Comma-separated.') }}
@@ -438,7 +438,7 @@
                 <input
                     type="text"
                     x-model="namingTemplate"
-                    class="w-full text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent"
+                    class="w-full text-sm font-mono border border-gray-300 rounded-lg px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent"
                     placeholder="diagram-{count}-{variant}.{extension}">
                 <p class="text-xs text-gray-400 mt-1">
                     <span class="font-mono">{count}</span> = {{ __('diagram number (01, 02, …)') }},
@@ -453,13 +453,13 @@
     {{-- ============================================================ --}}
     {{-- ACTION BAR                                                    --}}
     {{-- ============================================================ --}}
-    <div class="bg-white rounded-lg shadow mb-6 px-6 py-4">
+    <div class="bg-white rounded-lg shadow-sm mb-6 px-6 py-4">
         <div class="flex items-center gap-3 flex-wrap">
             <button
                 @click="render()"
                 :disabled="rendering || !tikzCode.trim() || !compilerAvailable"
                 data-testid="tikz-render-button"
-                class="inline-flex items-center gap-2 px-6 py-2.5 bg-orca-teal text-white text-sm font-semibold rounded-lg hover:bg-orca-teal-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+                class="inline-flex items-center gap-2 px-6 py-2.5 bg-orca-teal text-white text-sm font-semibold rounded-lg hover:bg-orca-teal-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs">
                 <template x-if="rendering">
                     <i class="fas fa-spinner fa-spin"></i>
                 </template>
@@ -523,7 +523,7 @@
     {{-- COMPILATION LOG (collapsible)                                 --}}
     {{-- ============================================================ --}}
     <template x-if="renderLog">
-        <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
             <button
                 @click="showLog = !showLog"
                 class="w-full flex items-center gap-3 px-6 py-3.5 text-left hover:bg-gray-50 transition-colors">
@@ -540,7 +540,7 @@
     {{-- ============================================================ --}}
     {{-- RESULTS CARD                                                  --}}
     {{-- ============================================================ --}}
-    <div x-show="results.length > 0" class="bg-white rounded-lg shadow overflow-hidden">
+    <div x-show="results.length > 0" class="bg-white rounded-lg shadow-sm overflow-hidden">
         {{-- Results header --}}
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900">
@@ -595,7 +595,7 @@
                             <input
                                 type="text"
                                 x-model="gifFilename"
-                                class="flex-1 min-w-[200px] font-mono text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal">
+                                class="flex-1 min-w-[200px] font-mono text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal focus:border-orca-teal">
                             <button
                                 @click="downloadAnimatedGif()"
                                 class="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 text-gray-700 text-xs font-medium rounded-md hover:border-orca-teal hover:text-orca-teal transition-colors">
@@ -606,7 +606,7 @@
                                 <select
                                     x-model="uploadFolder"
                                     title="{{ __('Destination folder') }}"
-                                    class="appearance-none bg-none pl-7 pr-7 py-1.5 font-mono text-xs border border-gray-200 rounded bg-white hover:border-orca-teal focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal cursor-pointer max-w-[200px] truncate">
+                                    class="appearance-none bg-none pl-7 pr-7 py-1.5 font-mono text-xs border border-gray-200 rounded-sm bg-white hover:border-orca-teal focus:outline-hidden focus:ring-1 focus:ring-orca-teal focus:border-orca-teal cursor-pointer max-w-[200px] truncate">
                                     <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                                 </select>
                                 <i class="fas fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
@@ -695,13 +695,13 @@
                                         type="checkbox"
                                         x-model="result.variants[type].selected"
                                         :disabled="!!result.variants[type].uploaded"
-                                        class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                                        class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                                     <span class="text-xs text-gray-500">{{ __('Upload') }}</span>
                                     <input
                                         type="text"
                                         x-model="result.variants[type].name"
                                         :disabled="!!result.variants[type].uploaded"
-                                        class="flex-1 min-w-0 font-mono text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal disabled:bg-gray-50 disabled:text-gray-400">
+                                        class="flex-1 min-w-0 font-mono text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal focus:border-orca-teal disabled:bg-gray-50 disabled:text-gray-400">
 
                                     {{-- Dimensions for PNG --}}
                                     <template x-if="type === 'png' && result.variants[type].width">
@@ -739,7 +739,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
                         <select
                             x-model="uploadFolder"
-                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
+                            class="w-full rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
                             <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                         </select>
                     </div>
@@ -821,7 +821,7 @@
                         type="text"
                         x-model="saveTemplateName"
                         @keydown.enter.prevent="confirmSaveToOrca()"
-                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm"
+                        class="w-full rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal font-mono text-sm"
                         placeholder="template.tex">
                 </div>
 
@@ -829,7 +829,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
                     <select
                         x-model="saveTemplateFolder"
-                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
+                        class="w-full rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
                         <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                     </select>
                 </div>

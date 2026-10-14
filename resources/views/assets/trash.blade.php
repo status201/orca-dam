@@ -53,7 +53,7 @@
         </button>
 
         <!-- Fit Mode Toggle -->
-        <div class="inline-flex rounded-md shadow-sm" role="group">
+        <div class="inline-flex rounded-md shadow-xs" role="group">
             <button @click="fitMode = 'cover'; saveFitMode()"
                     :class="fitMode === 'cover' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors"
@@ -69,7 +69,7 @@
         </div>
 
         <!-- View Mode Toggle -->
-        <div class="inline-flex rounded-md shadow-sm" role="group">
+        <div class="inline-flex rounded-md shadow-xs" role="group">
             <button @click="viewMode = 'grid'; saveViewMode()" data-testid="trash-view-grid"
                     :class="viewMode === 'grid' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors">
@@ -86,14 +86,14 @@
     <!-- Grid view -->
     <div x-show="viewMode === 'grid'" x-cloak class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-4">
         @foreach($assets as $asset)
-        <div data-testid="trash-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"
+        <div data-testid="trash-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow overflow-hidden"
              @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.toggle({{ $asset->id }}); }">
             <!-- Selection checkbox -->
             <div data-testid="trash-card-checkbox" class="absolute top-2 left-2 z-20"
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                  @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
                 <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
-                     class="w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
+                     class="w-6 h-6 rounded-sm border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
                     <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
                 </div>
             </div>
@@ -134,7 +134,7 @@
                 </div>
 
                 <!-- Overlay with actions -->
-                <div class="actions absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <div class="actions absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <button @click.stop="restoreAsset({{ $asset->id }})" data-testid="trash-card-restore"
                             class="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors mr-2"
                             title="{{ __('Restore') }}">
@@ -182,7 +182,7 @@
     </div>
 
     <!-- List view -->
-    <div x-show="viewMode === 'list'" x-cloak class="bg-white rounded-lg shadow overflow-hidden">
+    <div x-show="viewMode === 'list'" x-cloak class="bg-white rounded-lg shadow-sm overflow-hidden">
         <div class="overflow-x-auto invert-scrollbar-colors">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -190,7 +190,7 @@
                         <th class="px-4 py-3 text-center w-10">
                             <div @click="$store.bulkSelection.toggleSelectAll()"
                                  :class="$store.bulkSelection.allOnPageSelected ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
-                                 class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
+                                 class="w-5 h-5 rounded-sm border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
                                 <i x-show="$store.bulkSelection.allOnPageSelected" class="fas fa-check text-white text-xs"></i>
                             </div>
                         </th>
@@ -222,7 +222,7 @@
                         <td class="px-4 py-3 text-center">
                             <div data-testid="trash-row-checkbox" @click="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)"
                                  :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
-                                 class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
+                                 class="w-5 h-5 rounded-sm border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
                                 <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
                             </div>
                         </td>
@@ -230,7 +230,7 @@
                         <!-- Thumbnail -->
                         <td class="px-4 py-3">
                             <a href="{{ $asset->url }}" target="_blank" title="{{ __('Open in new tab') }}" class="block">
-                                <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orca-500 transition-all relative">
+                                <div class="w-16 h-16 bg-gray-100 rounded-sm flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orca-500 transition-all relative">
                                     @if($asset->isImage() && $asset->thumbnail_url)
                                         <img src="{{ $asset->thumbnail_url }}"
                                              alt="{{ $asset->filename }}"
@@ -426,7 +426,7 @@
                 <textarea readonly
                           data-testid="trash-restore-summary-list"
                           :value="bulkRestoreSummaryText"
-                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
+                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-hidden"
                           @focus="$event.target.select()"></textarea>
                 <div class="mt-4 flex justify-end gap-3">
                     <button @click="bulkRestoreCopySummary()"
@@ -494,7 +494,7 @@
                 <textarea readonly
                           data-testid="trash-delete-summary-list"
                           :value="bulkDeleteSummaryText"
-                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
+                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-hidden"
                           @focus="$event.target.select()"></textarea>
                 <div class="mt-4 flex justify-end gap-3">
                     <button @click="bulkDeleteCopySummary()"

@@ -9,7 +9,7 @@
         <p class="text-gray-600 mt-2">{{ __('Update user information and role') }}</p>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white rounded-lg shadow-sm p-6">
         <form action="{{ route('users.update', $user) }}" method="POST">
             @csrf
             @method('PATCH')
@@ -83,7 +83,7 @@
             $passkeyCount = $user->passkeys()->count();
         @endphp
         @if ($passkeyCount > 0)
-            <div class="mt-6 bg-white rounded-lg shadow p-6 border border-amber-200">
+            <div class="mt-6 bg-white rounded-lg shadow-sm p-6 border border-amber-200">
                 <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ __('Passkeys') }}</h2>
                 <p class="text-sm text-gray-600 mb-1">
                     {{ __(':name has :count passkey(s) registered. Use this if they have lost access to all of their passkey-bearing devices.', ['name' => $user->name, 'count' => $passkeyCount]) }}

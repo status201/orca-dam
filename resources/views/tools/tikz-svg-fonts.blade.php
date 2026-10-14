@@ -30,7 +30,7 @@
     </div>
 
     {{-- Input card --}}
-    <div class="bg-white rounded-lg shadow p-6 mb-6 flex flex-col gap-4">
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6 flex flex-col gap-4">
         <h2 class="text-base font-semibold text-gray-900">
             <i class="fas fa-pen mr-2 text-gray-400"></i>{{ __('TikZ Input') }}
         </h2>
@@ -42,7 +42,7 @@
                 <template x-for="ex in examples" :key="ex.label">
                     <button
                         @click="loadExample(ex.code)"
-                        class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors"
+                        class="px-2 py-1 text-xs rounded-sm border border-gray-200 text-gray-600 hover:border-orca-teal hover:text-orca-teal transition-colors"
                         x-text="ex.label">
                     </button>
                 </template>
@@ -51,7 +51,7 @@
 
         <p class="text-xs text-gray-500">
             <i class="fas fa-info-circle mr-1"></i>
-            {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded">\begin{tikzpicture}...\end{tikzpicture}</code>
+            {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded-sm">\begin{tikzpicture}...\end{tikzpicture}</code>
             {{ __('blocks will be extracted and rendered separately.') }}
         </p>
 
@@ -59,7 +59,7 @@
         <textarea
             x-model="tikzCode"
             rows="12"
-            class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
+            class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
             placeholder="{{ __('Paste TikZ code or a full LaTeX document here…') }}">
         </textarea>
 
@@ -93,7 +93,7 @@
                     min="0"
                     max="50"
                     step="1"
-                    class="w-16 text-sm border border-gray-300 rounded-md px-2 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                    class="w-16 text-sm border border-gray-300 rounded-md px-2 py-2 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
             </div>
             <template x-if="rendering">
                 <span class="text-sm text-gray-500">{{ __('TikZJax is processing your diagrams. This may take a moment on first load.') }}</span>
@@ -113,7 +113,7 @@
     <iframe id="tikz-fonts-iframe" style="display:none" sandbox="allow-scripts allow-same-origin"></iframe>
 
     {{-- Results section --}}
-    <div x-show="results.length > 0" class="bg-white rounded-lg shadow p-6">
+    <div x-show="results.length > 0" class="bg-white rounded-lg shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-base font-semibold text-gray-900">
                 <i class="fas fa-images mr-2 text-gray-400"></i>
@@ -140,17 +140,17 @@
                             type="checkbox"
                             x-model="result.selected"
                             :disabled="!!result.uploaded"
-                            class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                         <input
                             type="text"
                             x-model="result.name"
                             :disabled="!!result.uploaded"
-                            class="flex-1 min-w-0 font-mono text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal disabled:bg-gray-50 disabled:text-gray-400"
+                            class="flex-1 min-w-0 font-mono text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal focus:border-orca-teal disabled:bg-gray-50 disabled:text-gray-400"
                             placeholder="diagram-1.svg">
                     </div>
 
                     {{-- SVG preview --}}
-                    <div class="flex items-center justify-center min-h-[120px] bg-gray-50 rounded border border-gray-100 p-2 overflow-hidden">
+                    <div class="flex items-center justify-center min-h-[120px] bg-gray-50 rounded-sm border border-gray-100 p-2 overflow-hidden">
                         <div x-html="result.svg" class="max-w-full [&>svg]:max-w-full [&>svg]:h-auto"></div>
                     </div>
 
@@ -181,7 +181,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
                     <select
                         x-model="uploadFolder"
-                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
+                        class="w-full rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
                         <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                     </select>
                 </div>
@@ -222,9 +222,9 @@
                 <h4 class="font-semibold text-amber-800 mb-1"><i class="attention fas fa-font mr-1.5 text-amber-500"></i>{{ __('Font embedding') }}</h4>
                 <p class="text-amber-800">
                     {{ __('Unlike the standard TikZ to SVG tool, this version embeds the TeX fonts (BaKoMa TTF) directly into each SVG as base64-encoded') }}
-                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">@font-face</code>
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded-sm text-xs font-mono">@font-face</code>
                     {{ __('rules. This makes each SVG fully self-contained — it will render correctly everywhere, including in') }}
-                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">&lt;img&gt;</code>
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded-sm text-xs font-mono">&lt;img&gt;</code>
                     {{ __('tags, design tools, and when served from S3 without external font dependencies.') }}
                 </p>
             </div>
@@ -240,8 +240,8 @@
                 <h4 class="font-semibold text-amber-800 mb-1"><i class="attention fas fa-triangle-exclamation mr-1.5 text-amber-500"></i>{{ __('AMS Font Warnings') }}</h4>
                 <p class="text-amber-800">
                     {{ __('You may see console warnings like') }}
-                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">U/msa/m/n</code> {{ __('or') }}
-                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">U/msb/m/n</code>.
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded-sm text-xs font-mono">U/msa/m/n</code> {{ __('or') }}
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded-sm text-xs font-mono">U/msb/m/n</code>.
                     {{ __('These are harmless — the original TikZJax virtual filesystem only ships 4 files and does not include AMS font definitions. Standard TikZ diagrams render correctly despite these warnings.') }}
                 </p>
             </div>

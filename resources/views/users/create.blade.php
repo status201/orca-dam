@@ -10,7 +10,7 @@
         <p class="text-gray-600 mt-2">{{ __('Add a new user to the system') }}</p>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-white rounded-lg shadow-sm p-6">
         <form action="{{ route('users.store') }}" method="POST">
             @csrf
 

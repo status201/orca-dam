@@ -15,7 +15,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Upload to Folder') }}</label>
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <select x-model="selectedFolder" data-testid="upload-folder"
-                        class="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
+                        class="flex-1 rounded-lg border-gray-300 shadow-xs focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">
                     <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                 </select>
 
@@ -78,7 +78,7 @@
                        :checked="keepOriginalFilename"
                        @change="toggleKeepOriginalFilename($event)"
                        :disabled="uploading"
-                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500">
+                       class="rounded-sm border-gray-300 text-blue-600 shadow-xs focus:ring-blue-500">
                 <span class="ml-2 text-sm font-medium text-gray-700">{{ __('Use filename in the URL') }}</span>
             </label>
             <p class="mt-1 text-xs text-gray-500">{{ __('The download gets the original name of the file from your computer') }}</p>
@@ -129,7 +129,7 @@
                     <div data-testid="upload-row" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
                             <template x-if="filePreviews[index]">
-                                <img :src="filePreviews[index]" class="w-10 h-10 object-cover rounded flex-shrink-0" alt="">
+                                <img :src="filePreviews[index]" class="w-10 h-10 object-cover rounded-sm shrink-0" alt="">
                             </template>
                             <template x-if="!filePreviews[index]">
                                 <i class="fas fa-file text-gray-400"></i>
@@ -221,7 +221,7 @@
                         <input type="checkbox"
                                :checked="duplicateEntries().length > 0 && duplicateEntries().every(d => selectedDuplicates[d.index])"
                                @change="toggleAllDuplicates()"
-                               class="mr-2 rounded border-amber-400 text-amber-700 focus:ring-amber-500">
+                               class="mr-2 rounded-sm border-amber-400 text-amber-700 focus:ring-amber-500">
                         {{ __('Select all') }}
                     </label>
                 </div>
@@ -231,13 +231,13 @@
                             <input type="checkbox"
                                    :checked="selectedDuplicates[dupe.index]"
                                    @change="selectedDuplicates[dupe.index] ? delete selectedDuplicates[dupe.index] : selectedDuplicates[dupe.index] = true"
-                                   class="mt-1 rounded border-amber-400 text-amber-700 focus:ring-amber-500">
+                                   class="mt-1 rounded-sm border-amber-400 text-amber-700 focus:ring-amber-500">
 
                             <!-- Existing asset thumbnail -->
                             <a :href="duplicateShowUrl(dupe) || '#'"
                                :target="dupe.show_url ? '_blank' : '_self'"
                                :class="dupe.show_url ? 'cursor-pointer' : 'cursor-not-allowed pointer-events-none'"
-                               class="flex-shrink-0 w-20 h-20 bg-white rounded border border-amber-200 overflow-hidden flex items-center justify-center">
+                               class="shrink-0 w-20 h-20 bg-white rounded-sm border border-amber-200 overflow-hidden flex items-center justify-center">
                                 <template x-if="dupe.thumbnail_url">
                                     <img :src="dupe.thumbnail_url" class="w-full h-full object-cover" alt="">
                                 </template>
@@ -269,7 +269,7 @@
                                     <template x-if="dupe.show_url">
                                         <a :href="duplicateShowUrl(dupe)"
                                            target="_blank"
-                                           class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-amber-900 bg-white border border-amber-300 rounded hover:bg-amber-100">
+                                           class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-amber-900 bg-white border border-amber-300 rounded-sm hover:bg-amber-100">
                                             <i class="fas fa-external-link-alt mr-1.5"></i>
                                             {{ __('View existing') }}
                                         </a>
@@ -277,7 +277,7 @@
 
                                     <button @click="copyUrl(dupe.index, dupe.public_url)"
                                             type="button"
-                                            class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-amber-900 bg-white border border-amber-300 rounded hover:bg-amber-100">
+                                            class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-amber-900 bg-white border border-amber-300 rounded-sm hover:bg-amber-100">
                                         <template x-if="!uploadResults[dupe.index]?.copied">
                                             <span><i class="fas fa-link mr-1.5"></i> {{ __('Copy URL') }}</span>
                                         </template>
@@ -287,14 +287,14 @@
                                     </button>
 
                                     <template x-if="dupe.is_trashed">
-                                        <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-red-800 bg-red-100 rounded">
+                                        <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-red-800 bg-red-100 rounded-sm">
                                             <i class="fas fa-trash mr-1.5"></i> {{ __('In trash') }}
                                         </span>
                                     </template>
                                     <template x-if="dupe.is_trashed && dupe.can_restore">
                                         <button @click="restoreDuplicate(dupe.index)"
                                                 type="button"
-                                                class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-white bg-amber-600 rounded hover:bg-amber-700">
+                                                class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-white bg-amber-600 rounded-sm hover:bg-amber-700">
                                             <i class="fas fa-trash-restore mr-1.5"></i> {{ __('Restore from trash') }}
                                         </button>
                                     </template>
@@ -309,7 +309,7 @@
                     <button @click="copySelectedUrls()"
                             type="button"
                             :title="bulkCopyLabel()"
-                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-900 bg-white border border-amber-300 rounded hover:bg-amber-50">
+                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-amber-900 bg-white border border-amber-300 rounded-sm hover:bg-amber-50">
                         <i class="fas fa-copy mr-1.5"></i>
                         <span x-text="bulkCopyLabel()"></span>
                     </button>
@@ -317,7 +317,7 @@
                     <button @click="revealDuplicatesInLibrary()" data-testid="upload-reveal-duplicates"
                             type="button"
                             :title="{{ "'" }}{{ __('Reveal in library') }}{{ "'" }}"
-                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-amber-700 rounded hover:bg-amber-800">
+                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-amber-700 rounded-sm hover:bg-amber-800">
                         <i class="fas fa-search-plus mr-1.5"></i>
                         {{ __('Reveal in library') }}
                         <i class="fas fa-external-link-alt ml-1.5 text-[10px]"></i>
@@ -346,7 +346,7 @@
                             </div>
                             <button @click="retryFailed(failure.index)"
                                     type="button"
-                                    class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 flex-shrink-0">
+                                    class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-white bg-red-600 rounded-sm hover:bg-red-700 shrink-0">
                                 <i class="fas fa-redo mr-1.5"></i> {{ __('Retry') }}
                             </button>
                         </li>

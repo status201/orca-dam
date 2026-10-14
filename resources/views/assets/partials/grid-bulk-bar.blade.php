@@ -88,7 +88,7 @@
                                 <button @click="bulkRemoveTag(tag.id)" data-testid="bulk-remove-tag-chip"
                                         :disabled="bulkLoading"
                                         :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200')"
-                                        class="attention inline-flex items-center px-2 py-1 rounded text-xs font-medium disabled:opacity-50 transition-colors">
+                                        class="attention inline-flex items-center px-2 py-1 rounded-sm text-xs font-medium disabled:opacity-50 transition-colors">
                                     <span x-text="tag.name"></span>
                                     <span class="ml-1 text-[0.65rem] opacity-70" x-text="'(' + tag.count + ')'"></span>
                                     <i class="fas fa-times ml-1.5 text-xs"></i>

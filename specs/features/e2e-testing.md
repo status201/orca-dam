@@ -3,7 +3,7 @@
 ```yaml
 id: e2e-testing
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -150,14 +150,14 @@ when MinIO was archived upstream.
   kept on the `push` trigger, where nothing is gated. The cost is a few wasted
   minutes on the rare plugin-only PR.
 - **REQ-11** — The browser is **network-isolated**: the `page` fixture aborts every
-  request whose host is neither the app nor the bucket. The layouts load Font
-  Awesome from cdnjs and the Figtree webfont from fonts.bunny.net, which otherwise
-  makes each page load depend on egress (locally it turned a 7-second run into an
-  hour). Because Font Awesome then can't size the icon-only controls — a
-  `<button><i class="fas fa-trash">` collapses to 0×0 and is unclickable — the
-  fixture injects a minimal `.fas{width:1em;height:1em}` rule. It is injected, not
-  served via `route.fulfill`, because the `<link>` carries an SRI `integrity` hash
-  that rejects a substituted body.
+  request whose host is neither the app nor the bucket. The layouts load the
+  Figtree webfont from fonts.bunny.net, which otherwise makes each page load depend
+  on egress (locally it turned a 7-second run into an hour). Font Awesome is part
+  of the Vite bundle ([ADR-019](../decisions/adr-019-tailwind-4-css-first.md)), so
+  icon-only controls such as `<button><i class="fas fa-trash">` render at their
+  real size and need no stub. Until then it came from cdnjs, was blocked here, and
+  the fixture had to inject a `.fas{width:1em;height:1em}` rule so those buttons
+  had a hit box.
 - **REQ-12** — Interactions wait for **Alpine hydration**, not just for the
   server-rendered element. Alpine strips every `x-cloak` attribute as it
   initialises, so "no `[x-cloak]` left in the DOM" is the hydration signal

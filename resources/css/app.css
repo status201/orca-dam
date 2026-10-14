@@ -1,37 +1,235 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+  Layer order. Font Awesome comes first so every Tailwind layer outranks it, as in v3, where
+  Tailwind's stylesheet loaded after Font Awesome's. Loaded unlayered (the old CDN <link>), its
+  `line-height: 1` on icons beat Tailwind's layered utilities, e.g. the line-height `text-2xl`
+  sets (ADR-019).
+*/
+@layer fontawesome, theme, base, components, utilities;
 
-/* Default: force light color scheme, we set filter:invert(1) with custom styles in dark-mode */
-:root {
+@import '@fortawesome/fontawesome-free/css/all.min.css' layer(fontawesome);
+@import 'tailwindcss' source(none);
+
+/* What Tailwind scans for class names, mirroring v3's `content` globs (ADR-019). Pagination
+   views are published to resources/views/vendor, so the framework copy is not needed. */
+@source '../views';
+@source '../js';
+@source '../../app/Models';
+
+@plugin '@tailwindcss/forms';
+
+@theme {
+  --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --color-orca-black: #4d4d4d;
+  --color-orca-black-hover: #2d2d2d;
+  --color-orca-gray: #4a4a4a;
+  --color-orca-gray-light: #6b7280;
+  --color-orca-teal: #66b2b2;
+  --color-orca-teal-hover: #006666;
+
+  --breakpoint-xxl: 105rem; /* 1680px */
+
+  /* Tailwind v3's ring defaults: 3px blue-500 rather than v4's 1px currentcolor (ADR-019). */
+  --default-ring-width: 3px;
+  --default-ring-color: var(--color-blue-500);
+}
+
+/*
+  Tailwind v3 defaults the templates rely on (ADR-019). v4 changed a bare `border` to
+  currentcolor and dropped the pointer cursor on buttons. To retire a rule here, give every
+  element that depends on it an explicit utility first.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/*
+  ORCA grayscale theme: these colours are muted wherever they are used. Declared as utilities
+  with the core utility's own name, so the filter joins that utility and every variant of it
+  (`hover:bg-green-700` greys on hover too), as the v3 plugin did.
+*/
+@utility bg-blue-500 { filter: grayscale(0.65); }
+@utility bg-blue-600 { filter: grayscale(0.65); }
+@utility bg-blue-700 { filter: grayscale(0.65); }
+@utility bg-blue-800 { filter: grayscale(0.65); }
+@utility bg-emerald-500 { filter: grayscale(0.65); }
+@utility bg-emerald-600 { filter: grayscale(0.65); }
+@utility bg-emerald-700 { filter: grayscale(0.65); }
+@utility bg-emerald-800 { filter: grayscale(0.65); }
+@utility bg-green-500 { filter: grayscale(0.65); }
+@utility bg-green-600 { filter: grayscale(0.65); }
+@utility bg-green-700 { filter: grayscale(0.65); }
+@utility bg-green-800 { filter: grayscale(0.65); }
+@utility bg-purple-500 { filter: grayscale(0.65); }
+@utility bg-purple-600 { filter: grayscale(0.65); }
+@utility bg-purple-700 { filter: grayscale(0.65); }
+@utility bg-purple-800 { filter: grayscale(0.65); }
+@utility bg-red-500 { filter: grayscale(0.65); }
+@utility bg-red-600 { filter: grayscale(0.65); }
+@utility bg-red-700 { filter: grayscale(0.65); }
+@utility bg-red-800 { filter: grayscale(0.65); }
+@utility bg-pink-500 { filter: grayscale(0.65); }
+@utility bg-pink-600 { filter: grayscale(0.65); }
+@utility bg-pink-700 { filter: grayscale(0.65); }
+@utility bg-pink-800 { filter: grayscale(0.65); }
+@utility bg-teal-500 { filter: grayscale(0.65); }
+@utility bg-teal-600 { filter: grayscale(0.65); }
+@utility bg-teal-700 { filter: grayscale(0.65); }
+@utility bg-teal-800 { filter: grayscale(0.65); }
+@utility bg-indigo-500 { filter: grayscale(0.65); }
+@utility bg-indigo-600 { filter: grayscale(0.65); }
+@utility bg-indigo-700 { filter: grayscale(0.65); }
+@utility bg-indigo-800 { filter: grayscale(0.65); }
+@utility bg-yellow-500 { filter: grayscale(0.65); }
+@utility bg-yellow-600 { filter: grayscale(0.65); }
+@utility bg-yellow-700 { filter: grayscale(0.65); }
+@utility bg-yellow-800 { filter: grayscale(0.65); }
+@utility bg-amber-500 { filter: grayscale(0.65); }
+@utility bg-amber-600 { filter: grayscale(0.65); }
+@utility bg-amber-700 { filter: grayscale(0.65); }
+@utility bg-amber-800 { filter: grayscale(0.65); }
+@utility bg-orange-500 { filter: grayscale(0.65); }
+@utility bg-orange-600 { filter: grayscale(0.65); }
+@utility bg-orange-700 { filter: grayscale(0.65); }
+@utility bg-orange-800 { filter: grayscale(0.65); }
+@utility bg-cyan-500 { filter: grayscale(0.65); }
+@utility bg-cyan-600 { filter: grayscale(0.65); }
+@utility bg-cyan-700 { filter: grayscale(0.65); }
+@utility bg-cyan-800 { filter: grayscale(0.65); }
+@utility text-blue-600 { filter: grayscale(0.65); }
+@utility text-blue-700 { filter: grayscale(0.65); }
+@utility text-blue-800 { filter: grayscale(0.65); }
+@utility text-blue-900 { filter: grayscale(0.65); }
+@utility text-emerald-600 { filter: grayscale(0.65); }
+@utility text-emerald-700 { filter: grayscale(0.65); }
+@utility text-emerald-800 { filter: grayscale(0.65); }
+@utility text-emerald-900 { filter: grayscale(0.65); }
+@utility text-green-600 { filter: grayscale(0.65); }
+@utility text-green-700 { filter: grayscale(0.65); }
+@utility text-green-800 { filter: grayscale(0.65); }
+@utility text-green-900 { filter: grayscale(0.65); }
+@utility text-purple-600 { filter: grayscale(0.65); }
+@utility text-purple-700 { filter: grayscale(0.65); }
+@utility text-purple-800 { filter: grayscale(0.65); }
+@utility text-purple-900 { filter: grayscale(0.65); }
+@utility text-red-600 { filter: grayscale(0.65); }
+@utility text-red-700 { filter: grayscale(0.65); }
+@utility text-red-800 { filter: grayscale(0.65); }
+@utility text-red-900 { filter: grayscale(0.65); }
+@utility text-pink-600 { filter: grayscale(0.65); }
+@utility text-pink-700 { filter: grayscale(0.65); }
+@utility text-pink-800 { filter: grayscale(0.65); }
+@utility text-pink-900 { filter: grayscale(0.65); }
+@utility text-teal-600 { filter: grayscale(0.65); }
+@utility text-teal-700 { filter: grayscale(0.65); }
+@utility text-teal-800 { filter: grayscale(0.65); }
+@utility text-teal-900 { filter: grayscale(0.65); }
+@utility text-indigo-600 { filter: grayscale(0.65); }
+@utility text-indigo-700 { filter: grayscale(0.65); }
+@utility text-indigo-800 { filter: grayscale(0.65); }
+@utility text-indigo-900 { filter: grayscale(0.65); }
+@utility text-yellow-600 { filter: grayscale(0.65); }
+@utility text-yellow-700 { filter: grayscale(0.65); }
+@utility text-yellow-800 { filter: grayscale(0.65); }
+@utility text-yellow-900 { filter: grayscale(0.65); }
+@utility text-amber-600 { filter: grayscale(0.65); }
+@utility text-amber-700 { filter: grayscale(0.65); }
+@utility text-amber-800 { filter: grayscale(0.65); }
+@utility text-amber-900 { filter: grayscale(0.65); }
+@utility text-orange-600 { filter: grayscale(0.65); }
+@utility text-orange-700 { filter: grayscale(0.65); }
+@utility text-orange-800 { filter: grayscale(0.65); }
+@utility text-orange-900 { filter: grayscale(0.65); }
+@utility text-cyan-600 { filter: grayscale(0.65); }
+@utility text-cyan-700 { filter: grayscale(0.65); }
+@utility text-cyan-800 { filter: grayscale(0.65); }
+@utility text-cyan-900 { filter: grayscale(0.65); }
+
+/*
+  Tailwind v3's space-x / space-y (ADR-019). v4 puts the gap on the *end* of every child but the
+  last, at zero specificity. Three things the templates relied on change with that:
+  - A trailing child hidden by x-show, or an <x-modal>, leaves a stray gap after the last
+    visible one (System queue/diagnostics, profile).
+  - A leading x-for <template> no longer pushes the first rendered item down.
+  - A child's own mt-* now adds to the gap instead of being overridden.
+  These restore v3: re-add v3's start margin with v3's selector and specificity here, and cancel
+  v4's end margin in the @layer utilities block below. The cancel has to stay at v4's own zero
+  specificity (so a child's mb-* still wins), which only works from a rule emitted after the
+  generated utilities. Values in use are integers and 0.5; no -reverse and no variants.
+*/
+@utility space-y-* {
+  & > :not([hidden]) ~ :not([hidden]) {
+    margin-block-start: calc(var(--spacing) * --value(number));
+    margin-block-end: 0;
+  }
+}
+
+@utility space-x-* {
+  & > :not([hidden]) ~ :not([hidden]) {
+    margin-inline-start: calc(var(--spacing) * --value(number));
+    margin-inline-end: 0;
+  }
+}
+
+@utility pr-dropdown {
+  /* Select dropdown arrow spacing */
+  padding-right: 2rem !important;
+}
+
+@layer utilities {
+  /* Cancels v4's space-x/y end margin; see the @utility space-y-* comment above. */
+  :where([class*='space-y-'] > :not(:last-child)) {
+    margin-block-end: 0;
+  }
+  :where([class*='space-x-'] > :not(:last-child)) {
+    margin-inline-end: 0;
+  }
+
+  /*
+    Tailwind v3's `transform` applied a real identity transform, and templates rely on its side
+    effects: a stacking context, painting in the positioned layer, and being the containing block
+    for fixed children. The replace page's confirmation panel only sits above its fixed backdrop
+    because of it. v4's `transform` composes rotate-x/y/z and skew variables, which nothing here
+    sets, so it computes to none (ADR-019). Emitted after the generated utility, so this wins.
+  */
+  .transform {
+    transform: translate(0, 0);
+  }
+
+  /* Default: force light color scheme, we set filter:invert(1) with custom styles in dark-mode */
+  :root {
     color-scheme: only light;
-}
+  }
 
-/* Smooth page transitions(?) */
-@view-transition {
+  /* Smooth page transitions(?) */
+  @view-transition {
     navigation: auto;
-}
+  }
 
-
-/* Custom SVG file-type icons – size like Font Awesome (1em tall, natural width from viewBox) */
-.file-type-icon {
+  /* Custom SVG file-type icons – size like Font Awesome (1em tall, natural width from viewBox) */
+  .file-type-icon {
     width: 0.75em; /* 384/512 aspect ratio, matches FA file-icon width */
     height: 1em;
     display: inline-block;
     vertical-align: -0.125em;
-}
+  }
 
-/* Alpine.js x-cloak - hide elements until Alpine is ready */
-[x-cloak] {
+  /* Alpine.js x-cloak - hide elements until Alpine is ready */
+  [x-cloak] {
     display: none !important;
-}
-
-@layer utilities {
-    /* Select dropdown arrow spacing */
-    .pr-dropdown {
-        padding-right: 2rem !important;
-    }
-
+  }
 }
 
 .image-container button,

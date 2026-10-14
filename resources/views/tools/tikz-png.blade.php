@@ -20,7 +20,7 @@
     </div>
 
     {{-- Input card --}}
-    <div class="bg-white rounded-lg shadow p-6 mb-6 flex flex-col gap-4">
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6 flex flex-col gap-4">
         <h2 class="text-base font-semibold text-gray-900">
             <i class="fas fa-image text-orca-teal mr-1"></i>
             {{ __('TikZ Input') }}
@@ -39,7 +39,7 @@
         </div>
 
         <p class="text-xs text-gray-500">
-            {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded">\begin{tikzpicture}...\end{tikzpicture}</code>
+            {{ __('All') }} <code class="font-mono bg-gray-100 px-1 rounded-sm">\begin{tikzpicture}...\end{tikzpicture}</code>
             {{ __('blocks will be extracted and rendered separately.') }}
         </p>
 
@@ -47,7 +47,7 @@
         <textarea
             x-model="tikzCode"
             rows="12"
-            class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
+            class="w-full invert-scrollbar-colors font-mono text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent resize-y"
             placeholder="{{ __('Paste TikZ code or a full LaTeX document here…') }}">
         </textarea>
 
@@ -73,7 +73,7 @@
             <div class="flex items-center gap-2 ml-auto">
                 <label class="text-xs text-gray-500">{{ __('Font') }}:</label>
                 <select x-model="fontFamily"
-                    class="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal">
+                    class="text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal">
                     <option value="default">{{ __('Default (Serif)') }}</option>
                     <option value="sans">{{ __('Sans Serif') }}</option>
                 </select>
@@ -82,13 +82,13 @@
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500">{{ __('Edge padding (pt)') }}</label>
                 <input type="number" x-model.number="viewBoxPadding" min="0" max="50" step="1"
-                    class="w-16 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal">
+                    class="w-16 text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal">
             </div>
 
             <div class="flex items-center gap-2">
                 <label class="text-xs text-gray-500">{{ __('Width') }}:</label>
                 <input type="number" x-model.number="pngWidth" min="200" max="4000" step="100"
-                    class="w-24 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal">
+                    class="w-24 text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal">
                 <span class="text-xs text-gray-400">px</span>
             </div>
 
@@ -98,7 +98,7 @@
                     <button
                         @click="pixelDensity = d"
                         :class="pixelDensity === d ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
-                        class="text-xs px-2 py-1 rounded border transition-colors"
+                        class="text-xs px-2 py-1 rounded-sm border transition-colors"
                         x-text="d + 'x'">
                     </button>
                 </template>
@@ -123,7 +123,7 @@
     <iframe id="tikz-png-iframe" style="display:none"></iframe>
 
     {{-- Results section --}}
-    <div x-show="results.length > 0" class="bg-white rounded-lg shadow p-6">
+    <div x-show="results.length > 0" class="bg-white rounded-lg shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-base font-semibold text-gray-900">
                 <i class="fas fa-images text-gray-400 mr-1"></i>
@@ -146,15 +146,15 @@
                     <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-100">
                         <input type="checkbox" x-model="result.selected"
                             :disabled="!!result.uploaded"
-                            class="rounded border-gray-300 text-orca-teal focus:ring-orca-teal">
+                            class="rounded-sm border-gray-300 text-orca-teal focus:ring-orca-teal">
                         <input type="text" x-model="result.name"
                             :disabled="!!result.uploaded"
-                            class="flex-1 min-w-0 font-mono text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal focus:border-orca-teal disabled:bg-gray-50 disabled:text-gray-400"
+                            class="flex-1 min-w-0 font-mono text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal focus:border-orca-teal disabled:bg-gray-50 disabled:text-gray-400"
                             placeholder="diagram-1.png">
                     </div>
 
                     {{-- PNG preview --}}
-                    <div class="flex items-center justify-center min-h-[120px] bg-gray-50 rounded border border-gray-100 p-2 overflow-hidden">
+                    <div class="flex items-center justify-center min-h-[120px] bg-gray-50 rounded-sm border border-gray-100 p-2 overflow-hidden">
                         <img :src="result.png" :alt="result.name" class="max-w-full h-auto" style="max-height: 300px;">
                     </div>
 
@@ -191,7 +191,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
                     <select
                         x-model="uploadFolder"
-                        class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
+                        class="w-full rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
                         <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                     </select>
                 </div>
@@ -236,7 +236,7 @@
                     {{ __('The fork\'s') }}
                     <a href="https://github.com/drgrice1/dvi2html" target="_blank" rel="noopener" class="font-medium text-amber-700 underline decoration-amber-300 hover:text-amber-900">dvi2html</a>
                     {{ __('library outputs non-standard character codes in SVG text elements. These SVGs only render correctly with the exact matching font loaded — they show squares (□) when viewed as standalone files or embedded via') }}
-                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">&lt;img&gt;</code>
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded-sm text-xs font-mono">&lt;img&gt;</code>
                     {{ __('tags. By rasterizing to PNG inside the browser (where the fonts are loaded), the output is a portable bitmap that displays correctly everywhere.') }}
                 </p>
             </div>
@@ -245,7 +245,7 @@
                 <h4 class="font-semibold text-amber-800 mb-1"><i class="attention fas fa-triangle-exclamation mr-1.5 text-amber-500"></i>{{ __('Console warnings') }}</h4>
                 <p class="text-amber-800">
                     {{ __('You may see a') }}
-                    <code class="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono">Permissions policy violation: unload</code>
+                    <code class="bg-amber-100 px-1.5 py-0.5 rounded-sm text-xs font-mono">Permissions policy violation: unload</code>
                     {{ __('warning in Chromium browsers. This is cosmetic — it comes from the fork\'s cleanup code and does not affect rendering. The diagrams render correctly despite this warning.') }}
                 </p>
             </div>
