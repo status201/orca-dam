@@ -210,9 +210,17 @@ class ChunkedUploadService
             // changes the ETag, so this must run before the dedup check below.
             if (UploadPolicy::isSvg($session->s3_key)) {
                 $newEtag = $this->s3Service->sanitizeStoredSvg($session->s3_key);
-                if ($newEtag !== null) {
-                    $etag = $newEtag;
+                if ($newEtag === null) {
+                    // The assembled object is still the raw upload, so it must not
+                    // survive or become an asset. In overwrite mode this also removes
+                    // an existing asset's original, but completeMultipartUpload has
+                    // already replaced that content with the raw upload.
+                    $this->s3Service->deleteFile($session->s3_key);
+                    $session->update(['status' => 'failed']);
+
+                    throw new \RuntimeException('SVG could not be sanitized.');
                 }
+                $etag = $newEtag;
             }
 
             // Check if an asset with this s3_key already exists (original filename mode)

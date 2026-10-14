@@ -7,6 +7,11 @@ use App\Models\User;
 use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
+use Aws\Command;
+use Aws\MockHandler;
+use Aws\Result;
+use Aws\S3\Exception\S3Exception;
+use Aws\S3\S3Client;
 use Illuminate\Support\Str;
 
 function makeUploadSession(User $user, array $overrides = []): UploadSession
@@ -162,4 +167,45 @@ test('chunked upload complete returns 409 on duplicate', function () {
 
     $response->assertStatus(409);
     $response->assertJsonFragment(['existing_asset_id' => $existing->id]);
+});
+
+test('chunked SVG that fails sanitization is deleted and creates no asset', function () {
+    config([
+        'filesystems.disks.s3.region' => 'us-east-1',
+        'filesystems.disks.s3.bucket' => 'test-bucket',
+        'filesystems.disks.s3.key' => 'test',
+        'filesystems.disks.s3.secret' => 'test',
+    ]);
+
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, [
+        'filename' => 'drawing.svg',
+        'mime_type' => 'image/svg+xml',
+        's3_key' => 'assets/drawing.svg',
+    ]);
+
+    // completeMultipartUpload succeeds; the post-failure abort is rejected the
+    // way real S3 rejects aborting an already-completed upload.
+    $handler = new MockHandler;
+    $handler->append(new Result(['ETag' => '"raw-etag"']));
+    $handler->append(new S3Exception('NoSuchUpload', new Command('AbortMultipartUpload')));
+
+    $s3Mock = Mockery::mock(S3Service::class);
+    $s3Mock->shouldReceive('sanitizeStoredSvg')->once()->with('assets/drawing.svg')->andReturnNull();
+    $s3Mock->shouldReceive('deleteFile')->once()->with('assets/drawing.svg')->andReturnTrue();
+
+    $service = new ChunkedUploadService($s3Mock);
+    $client = new ReflectionProperty(ChunkedUploadService::class, 's3Client');
+    $client->setValue($service, new S3Client([
+        'version' => 'latest',
+        'region' => 'us-east-1',
+        'credentials' => ['key' => 'test', 'secret' => 'test'],
+        'handler' => $handler,
+    ]));
+
+    expect(fn () => $service->completeUpload($session))
+        ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
+
+    expect(Asset::where('s3_key', 'assets/drawing.svg')->exists())->toBeFalse();
+    expect($session->fresh()->status)->toBe('failed');
 });

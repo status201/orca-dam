@@ -131,6 +131,18 @@ test('sanitizeSvg preserves benign vector markup', function () {
     expect($clean)->toContain('#1B4D8E');
 });
 
+test('sanitizeSvg throws for an SVG that declares a custom DTD entity', function () {
+    $service = app(S3Service::class);
+
+    // The entity expands to a script element once a browser resolves it.
+    $svg = '<?xml version="1.0"?>'
+        .'<!DOCTYPE svg [<!ENTITY payload "&#60;script&#62;alert(1)&#60;/script&#62;">]>'
+        .'<svg xmlns="http://www.w3.org/2000/svg">&payload;<rect width="1" height="1"/></svg>';
+
+    expect(fn () => $service->sanitizeSvg($svg))
+        ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
+});
+
 test('listFolders paginates common prefixes across pages', function () {
     Setting::set('s3_root_folder', 'assets', 'string', 'aws');
 
