@@ -130,5 +130,10 @@ templates depend on them, so the migration changes no pixels it does not have to
   - The CSS bundle grows from about 86 KB to 164 KB (39 KB gzipped), because Font Awesome's
     stylesheet is now inside it, and its fonts are served by the app.
   - Touch devices lose `hover:` styles, and colours shift slightly.
+  - `translate-*`, `scale-*` and `rotate-*` set the individual `translate`, `scale` and `rotate`
+    properties, not `transform`. Hand-written CSS that cancels one of them must name that
+    property. The guided demo's nav pin said `transform: none` and stopped pinning. Its E2E test
+    passed locally by timing alone and failed on CI; it now scrolls during the nav step and checks
+    the computed `translate`.
   - Tailwind v4's engine is a native binary, so the build host needs a supported platform and Node
     20 or newer. CI runs Node 22.

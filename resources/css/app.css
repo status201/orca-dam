@@ -546,9 +546,10 @@ html.dark-mode .orca-demo-veil {
 
 /* The nav hides itself on scroll-down (layouts/navigation.blade.php owns that state).
    Pin it while a demo runs, in CSS, so a nav step cannot scroll out from under its own
-   spotlight — and so nothing here has to reach into the nav's Alpine state. */
+   spotlight — and so nothing here has to reach into the nav's Alpine state. Tailwind v4's
+   -translate-y-full sets the `translate` property, not `transform` (ADR-019). */
 body.orca-demo-active nav[data-testid="app-nav"] {
-    transform: none !important;
+    translate: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
