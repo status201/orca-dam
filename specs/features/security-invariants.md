@@ -3,7 +3,7 @@
 ```yaml
 id: security-invariants
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -24,6 +24,7 @@ source:
   - tests/Security/Support/SourceScanner.php
   - database/seeders/AdminUserSeeder.php
   - config/orca.php
+  - scripts/npm-audit.mjs
 ```
 
 ## Background / Why
@@ -118,6 +119,14 @@ have noticed" into a required review step.
   has silently stopped matching produces the same empty result as a clean codebase, which is the
   exact failure mode this spec exists to prevent.
 
+  An advisory with **no patched release** may be ignored, one GHSA id at a time, in
+  `scripts/npm-audit.mjs`'s `ADVISORY_ALLOWLIST`; nothing else is ignored, and a package is never
+  ignored wholesale. Each entry records why the advisory is unreachable here and what removes it.
+  A finding passes only when *every* high/critical advisory beneath it is listed, so an unlisted
+  advisory in the same dependency chain still fails. An entry that no longer matches any advisory
+  in the audit **fails the step**, so the list cannot outlive its reason. The wrapper checks its
+  own filter against fixtures on every run, before trusting the real report.
+
 - **REQ-9** — **The bootstrap seeder cannot mint a published-credential admin.**
   `AdminUserSeeder` creates the first admin on a fresh installation and is a documented production
   step ([DEPLOYMENT.md](../../DEPLOYMENT.md), immediately after `migrate --force`). It used to
@@ -150,6 +159,7 @@ have noticed" into a required review step.
 suite: Security                       # phpunit.xml, alongside Unit and Feature
 harness: tests/Pest.php               # RefreshDatabase applied via ->in('Feature', 'Unit', 'Security')
 ci_job: .github/workflows/tests.yml   # job "security", a required status check
+npm_audit: scripts/npm-audit.mjs      # `npm audit --json` minus ADVISORY_ALLOWLIST; high/critical fail
 
 support:
   Tests\Security\Support\RouteInventory:   # read-only view of the route table
@@ -420,8 +430,12 @@ Scenario: Seeding twice leaves one admin
   `tests/Feature/Auth/RegistrationTest.php` was refactored onto `SourceScanner` rather than keeping
   its own copy of the paren-balancing scanner.
 - Run everything: `php artisan config:clear && php artisan test`
-- Advisories: `composer audit --locked` and `npm audit --audit-level=high` — both clean at the time
-  of writing, so the CI steps are blocking with no ignore list.
+- Advisories: `composer audit --locked` and `node scripts/npm-audit.mjs` (`npm audit --json`, failing
+  on high/critical like `--audit-level=high`). Both steps block. Composer has no ignore list. The
+  npm allowlist holds one entry, GHSA-vfj7-8cjw-p6xm (`braces` ≤ 3.0.3, with no fix released). It
+  reaches the build only through Tailwind 3's content-glob matching (`chokidar`, `micromatch`),
+  whose patterns come from `tailwind.config.js` rather than from input. Moving to the next Tailwind
+  major removes `braces`, and with it this entry.
 - Style: `./vendor/bin/pint --test`
 - Spec structure: `npm run spec:lint`
 
@@ -442,6 +456,9 @@ spec exists to catch:
 | Add `'role'` to `ProfileUpdateRequest::rules()` | REQ-6 contract test fails, and both REQ-5 profile probes fail — the editor really is promoted, so the probes catch the escalation itself and not merely the config change |
 | Remove `two_factor_secret` from `User::$hidden` | three REQ-6 tests fail: encrypted/hidden parity, the credential list, and the real serialisation |
 | Drop `->editor()` from `DatabaseSeeder` | REQ-4 audit fails, quoting the statement |
+| A second high advisory in the allowlisted `braces` chain | REQ-8 npm wrapper fails, naming it. Fixture, run on every invocation |
+| Allowlist entry for an advisory the audit no longer reports | REQ-8 npm wrapper fails as stale. Fixture, run on every invocation |
+| `npm audit` JSON without `auditReportVersion: 2` / `vulnerabilities` | REQ-8 npm wrapper refuses to judge it and fails. Fixture, run on every invocation |
 
 ## Open questions / future
 
