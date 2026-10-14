@@ -180,6 +180,14 @@ Scenario: sanitizeSvg preserves benign vector markup
   Then sanitizeSvg() returns equivalent markup
 # pinned by: tests/Unit/Services/S3ServiceTest.php
 
+Scenario: sanitizeSvg throws for an SVG that declares a custom DTD entity
+  Given an SVG whose internal DTD declares an entity it then references
+    (the GHSA-9rjx-3jch-6vjf vector; also older Illustrator exports' &ns_svg;)
+  When sanitizeSvg() runs
+  Then it throws instead of returning markup — svg-sanitize >= 1.0 strips the DTD
+    and rejects the now-undefined entity, and REQ-4 turns that into a failure
+# pinned by: tests/Unit/Services/S3ServiceTest.php
+
 Scenario: findUnmappedObjects excludes mapped, thumbnail, and zero-byte keys
   Given S3 objects that are already-mapped, under thumbnails/, or zero-byte folder markers
   Then findUnmappedObjects() excludes all three categories

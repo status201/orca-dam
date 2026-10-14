@@ -7,6 +7,13 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Security
+- **`enshrined/svg-sanitize` `^1.0.0` (was `^0.22.0`), clearing three advisories against ≤ 0.22.0**: GHSA-9rjx-3jch-6vjf (stored XSS: a custom DTD entity that collides with an HTML5 named character reference survives sanitizing), GHSA-m9xh-6747-9r6f (a mixed-case `xlink:HrEf` skipped the `<use>` nesting-DoS check) and GHSA-v383-3rw5-q8rf (a DTD attribute declaration crashed the sanitizer). This one is reachable: it is the library every SVG upload passes through (`S3Service::sanitizeSvg()`). The API is unchanged. **Behaviour change:** 1.0 strips the DTD before parsing, so an SVG that *references* a custom entity is now rejected rather than cleaned. That includes some older Adobe Illustrator exports (`xmlns="&ns_svg;"`), which now fail to upload with "SVG could not be sanitized." Re-exporting without the DTD (Illustrator's "SVG Tiny"/modern presets, Inkscape "Plain SVG", or an SVGO pass) fixes them. A `PUBLIC` doctype with no entity references still sanitizes normally. `composer audit --locked` is a CI gate.
+- **`postcss-selector-parser` forced to `^7.1.6` via npm `overrides`, in both the app and the WordPress plugin** (quadratic-time selector parsing, CPU exhaustion). This is build-time only. The app pulls it in through Tailwind 3 and the plugin through cssnano 6, and both pin `^6`. Dependabot's own fix was a Tailwind 4 major migration, which was declined. The compiled CSS (app) and `assets/build` (plugin) are byte-identical before and after.
+
+### Fixed
+- **A chunked (≥ 10MB) SVG that failed sanitization was stored raw.** `ChunkedUploadService::completeUpload()` ignored a failed `sanitizeStoredSvg()`: the unsanitized object kept its ETag and became an asset, breaking s3-storage REQ-4. The 1.0 upgrade above made that failure easy to trigger with a working script payload. The object is now deleted, the session is marked `failed`, and the upload errors. In `keep_original_filename` overwrite mode, this leaves the existing asset without an original, because S3 had already replaced it with the raw upload (see the open question in `specs/features/chunked-upload.md`).
+
 ---
 
 ## [v1.8.0] — 2026-10 — Saddle Patch

@@ -157,6 +157,16 @@ Scenario: Completing a chunked upload that duplicates an existing asset returns 
   Then the response is 409 with the same duplicate payload shape as the direct-upload path
 # pinned by: tests/Feature/ChunkedUploadTest.php, tests/Feature/DuplicatePayloadTest.php
 
+Scenario: A chunked SVG that fails sanitization is deleted, not stored raw (regression)
+  Given a chunked-upload session for an SVG whose assembled content cannot be sanitized
+    (e.g. it declares a custom DTD entity, which svg-sanitize >= 1.0 rejects)
+  When completeUpload() runs
+  Then the assembled S3 object is deleted and the session is marked failed
+  And completeUpload() throws, so no Asset row is created or updated
+# Regression: sanitizeStoredSvg() returning null used to be ignored — the raw
+# upload kept its original ETag and became an asset, breaking s3-storage REQ-4.
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
 Scenario: Stale upload sessions are aborted by the cleanup command
   Given an upload_sessions row inactive past the cleanup threshold
   When uploads:cleanup runs
@@ -179,3 +189,9 @@ Scenario: Stale upload sessions are aborted by the cleanup command
   `complete` endpoint. Session-lifecycle and idempotency scenarios above (REQ-2,
   REQ-6) are documented from source but currently unpinned — a gap worth
   closing with dedicated tests.
+- A sanitization failure in `keep_original_filename` overwrite mode deletes the
+  object an existing asset points at: `completeMultipartUpload` has already
+  replaced that content with the raw upload, so deleting it is the only way to
+  avoid serving unsanitized SVG, and the existing `Asset` row is left without an
+  original. Avoiding that would mean assembling to a temporary key and only
+  copying over the existing one after sanitization succeeds.

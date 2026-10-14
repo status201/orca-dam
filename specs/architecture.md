@@ -71,7 +71,7 @@ images: intervention/image      # 4 (GD driver)
 auth_passkeys: laravel/passkeys # 0.2.1 (WebAuthn / FIDO2)
 auth_jwt: firebase/php-jwt      # 7
 mfa: pragmarx/google2fa-laravel # 3 ; bacon/bacon-qr-code 3
-svg: enshrined/svg-sanitize     # 0.22
+svg: enshrined/svg-sanitize     # 1.0
 js_libs:                        # pdfjs-dist 6.2, sortablejs 1.15, gif.js 0.2
 commands:
   dev: php artisan serve  /  npm run dev
@@ -275,7 +275,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1242 tests,
+- `php artisan config:clear && php artisan test` — the full Pest suite (1244 tests,
   97 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security
