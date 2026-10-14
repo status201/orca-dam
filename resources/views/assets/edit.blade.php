@@ -82,7 +82,7 @@
                                  alt="{{ $asset->filename }}"
                                  class="max-w-sm rounded-lg">
                             <div class="attention absolute top-1 right-1 pointer-events-none">
-                                <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow"></i>
+                                <i class="fas fa-file-pdf text-red-600 text-lg drop-shadow-sm"></i>
                             </div>
                         </div>
                     @else
@@ -189,7 +189,7 @@
                                             <div @click="selectedIndex = index"
                                                  :class="selectedIndex === index ? 'ring-2 ring-red-600 ring-offset-2' : 'ring-1 ring-gray-200'"
                                                  class="cursor-pointer rounded-lg overflow-hidden transition-all hover:ring-2 hover:ring-red-400">
-                                                <img :src="page" class="w-full aspect-[3/4] object-contain bg-white" :alt="'Page ' + pageLabels[index]">
+                                                <img :src="page" class="w-full aspect-3/4 object-contain bg-white" :alt="'Page ' + pageLabels[index]">
                                                 <div class="text-center text-xs py-1 bg-gray-50">{{ __('Page') }} <span x-text="pageLabels[index]"></span></div>
                                             </div>
                                         </template>

@@ -52,7 +52,7 @@
                 <textarea readonly
                           x-ref="moveSummaryText"
                           :value="bulkMoveSummaryText"
-                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
+                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-hidden"
                           @focus="$event.target.select()"></textarea>
                 <div class="mt-4 flex justify-end gap-3">
                     <button @click="bulkMoveCopySummary()"
@@ -121,7 +121,7 @@
                 </p>
                 <textarea readonly
                           :value="bulkDeleteSummaryText"
-                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-none"
+                          class="w-full h-48 px-3 py-2 text-xs font-mono text-gray-700 bg-gray-50 border border-gray-300 rounded-lg resize-none focus:outline-hidden"
                           @focus="$event.target.select()"></textarea>
                 <div class="mt-4 flex justify-end gap-3">
                     <button @click="bulkDeleteCopySummary()"

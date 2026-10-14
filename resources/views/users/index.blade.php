@@ -28,7 +28,7 @@
     </div>
 </div>
 
-<div class="bg-white rounded-lg shadow overflow-x-auto invert-scrollbar-colors">
+<div class="bg-white rounded-lg shadow-sm overflow-x-auto invert-scrollbar-colors">
     <table data-testid="users-table" class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
             <tr>
@@ -162,7 +162,7 @@
                     <select name="transfer_to_user_id"
                             id="transfer_to_user_id"
                             x-model="transferToUserId"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-orca-black focus:border-transparent"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-2 focus:ring-orca-black focus:border-transparent"
                             required>
                         <option value="">{{ __('Select a user...') }}</option>
                         @foreach($users as $targetUser)

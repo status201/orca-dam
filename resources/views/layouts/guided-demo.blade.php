@@ -61,19 +61,19 @@
              the real element — that is what makes an act-to-advance step work. Being
              invisible, they need no transition, so nothing can drift. --}}
         <template x-for="side in shutters" :key="side">
-            <div x-show="hasTarget" class="fixed z-[60]" :style="shutter(side)"></div>
+            <div x-show="hasTarget" class="fixed z-60" :style="shutter(side)"></div>
         </template>
 
         {{-- No hole to cut: dim the lot with a single element. --}}
-        <div x-show="!hasTarget" class="orca-demo-veil fixed inset-0 z-[60] bg-black/60"></div>
+        <div x-show="!hasTarget" class="orca-demo-veil fixed inset-0 z-60 bg-black/60"></div>
 
         {{-- A passive step gets a transparent lid so the highlighted control cannot be
              clicked by mistake; an interactive one deliberately does not. --}}
-        <div x-show="hasTarget && !awaiting" class="fixed z-[61]" :style="ring"></div>
+        <div x-show="hasTarget && !awaiting" class="fixed z-61" :style="ring"></div>
 
         <div data-testid="demo-spotlight"
              x-show="hasTarget"
-             class="orca-demo-ring fixed z-[61] rounded-md border-2 border-white pointer-events-none"
+             class="orca-demo-ring fixed z-61 rounded-md border-2 border-white pointer-events-none"
              :style="ring"></div>
 
         <div data-testid="demo-popover"
@@ -81,7 +81,7 @@
              aria-modal="true"
              tabindex="-1"
              aria-label="{{ __('Guided demo') }}"
-             class="fixed z-[62] max-w-[calc(100vw-2rem)] rounded-lg bg-white p-5 shadow-2xl"
+             class="fixed z-62 max-w-[calc(100vw-2rem)] rounded-lg bg-white p-5 shadow-2xl"
              :style="popover">
 
             {{-- The outro: shown only when the demo has a successor this user may play. --}}

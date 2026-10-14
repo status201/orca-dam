@@ -2,10 +2,10 @@
 
 {{-- $attributes is merged so a call site can pass data-testid; without this it was
      silently dropped, which is why these cards were untargetable. --}}
-<div {{ $attributes->merge(['class' => 'bg-white overflow-hidden shadow-sm sm:rounded-lg']) }}>
+<div {{ $attributes->merge(['class' => 'bg-white overflow-hidden shadow-xs sm:rounded-lg']) }}>
     <div class="p-6 h-full">
         <div class="flex items-center h-full">
-            <div class="flex-shrink-0 {{ $bgClass }} rounded-md p-3 w-14 text-center">
+            <div class="shrink-0 {{ $bgClass }} rounded-md p-3 w-14 text-center">
                 <i class="{{ $icon }} text-white text-2xl"></i>
             </div>
             <div class="ml-5 w-0 flex-1">

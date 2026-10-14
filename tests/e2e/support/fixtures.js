@@ -38,10 +38,11 @@ export function testid(id) {
 
 export const test = base.extend({
     /**
-     * Keep the suite hermetic: the layouts pull Font Awesome from cdnjs and the
-     * Figtree webfont from fonts.bunny.net, which makes every page load depend on
-     * the network (and stall for its timeout when CI has no egress). Anything not
-     * served by the app or the local bucket is aborted.
+     * Keep the suite hermetic: the layouts pull the Figtree webfont from
+     * fonts.bunny.net, which makes every page load depend on the network (and
+     * stall for its timeout when CI has no egress). Anything not served by the
+     * app or the local bucket is aborted. Font Awesome is bundled by Vite, so
+     * icon-only controls get their real size and need no stub.
      */
     page: async ({ page, baseURL }, use) => {
         const allowed = new Set([new URL(baseURL).host, ...BUCKET_HOSTS]);
@@ -49,25 +50,6 @@ export const test = base.extend({
         await page.route('**/*', (route) => (
             allowed.has(new URL(route.request().url()).host) ? route.continue() : route.abort()
         ));
-
-        // Several controls are icon-only (`<button><i class="fas fa-trash">`), and
-        // with Font Awesome blocked those <i> elements collapse to 0x0, so the
-        // button has no hit box and Playwright rightly refuses to click it. The
-        // stylesheet can't be stubbed via route.fulfill (the <link> carries an SRI
-        // integrity hash, so a substituted body is rejected), hence an injected
-        // style rule instead.
-        await page.addInitScript(() => {
-            const css = '.fa,.fas,.far,.fab,.fa-solid,.fa-regular{display:inline-block;width:1em;height:1em;line-height:1}';
-            const inject = () => {
-                const style = document.createElement('style');
-                style.dataset.e2eIconStub = '1';
-                style.textContent = css;
-                document.head.appendChild(style);
-            };
-
-            if (document.head) inject();
-            else document.addEventListener('DOMContentLoaded', inject, { once: true });
-        });
 
         await use(page);
     },

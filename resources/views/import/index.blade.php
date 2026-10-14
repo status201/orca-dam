@@ -168,7 +168,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-sm">
                 <p class="text-xs text-yellow-800">
                     <i class="fas fa-exclamation-triangle mr-1"></i>
                     <strong>{{ __('Note:') }}</strong> {{ __('Empty fields in the CSV are skipped (existing values are preserved). Only non-empty values will overwrite current data.') }}
@@ -217,10 +217,10 @@
                                  :data-filename="result.asset.filename">
                                 <div class="flex items-start gap-4">
                                     <!-- Thumbnail -->
-                                    <div class="attention flex-shrink-0">
+                                    <div class="attention shrink-0">
                                         <img :src="result.asset.thumbnail_url || '/placeholder.png'"
                                              :alt="result.asset.filename"
-                                             class="w-16 h-16 object-cover rounded border border-gray-200"
+                                             class="w-16 h-16 object-cover rounded-sm border border-gray-200"
                                              onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect fill=%22%23f3f4f6%22 width=%2264%22 height=%2264%22/><text x=%2232%22 y=%2236%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2212%22>?</text></svg>'">
                                     </div>
                                     <!-- Info -->

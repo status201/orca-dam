@@ -431,11 +431,11 @@ Scenario: Seeding twice leaves one admin
   its own copy of the paren-balancing scanner.
 - Run everything: `php artisan config:clear && php artisan test`
 - Advisories: `composer audit --locked` and `node scripts/npm-audit.mjs` (`npm audit --json`, failing
-  on high/critical like `--audit-level=high`). Both steps block. Composer has no ignore list. The
-  npm allowlist holds one entry, GHSA-vfj7-8cjw-p6xm (`braces` ≤ 3.0.3, with no fix released). It
-  reaches the build only through Tailwind 3's content-glob matching (`chokidar`, `micromatch`),
-  whose patterns come from `tailwind.config.js` rather than from input. Moving to the next Tailwind
-  major removes `braces`, and with it this entry.
+  on high/critical like `--audit-level=high`). Both steps block. Composer has no ignore list, and
+  the npm allowlist is currently empty. Its only entry so far, GHSA-vfj7-8cjw-p6xm (`braces`
+  ≤ 3.0.3, no fix released), was removed when the Tailwind v4 migration
+  ([ADR-019](../decisions/adr-019-tailwind-4-css-first.md)) took `braces` out of the tree. The
+  stale-entry check is what forced its deletion.
 - Style: `./vendor/bin/pint --test`
 - Spec structure: `npm run spec:lint`
 

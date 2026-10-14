@@ -22,11 +22,11 @@
     @scrollend.window="onScroll()"
     :class="{ '-translate-y-full': hidden }"
     data-testid="app-nav"
-    class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm transition-transform duration-300 ease-in-out {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
+    class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-xs transition-transform duration-300 ease-in-out {{ $maintenanceMode ? 'maintenance-mode' : '' }}">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16 transition-[height] duration-300 ease-in-out"
-             :class="compact ? '!h-10' : ''">
+             :class="compact ? 'h-10!' : ''">
             <div class="flex">
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center nav-logo">
@@ -43,7 +43,7 @@
                             default   => 'bg-gray-100 text-gray-700 ring-gray-200',
                         };
                     @endphp
-                    <span class="ml-3 self-center inline-flex items-center px-2 py-0.5 text-xs font-semibold uppercase tracking-wide rounded ring-1 ring-inset {{ $envPill }}">
+                    <span class="ml-3 self-center inline-flex items-center px-2 py-0.5 text-xs font-semibold uppercase tracking-wide rounded-sm ring-1 ring-inset {{ $envPill }}">
                         {{ app()->environment() }}
                     </span>
                 @endunless
@@ -68,7 +68,7 @@
                              x-transition:leave="transition ease-in duration-75"
                              x-transition:leave-start="opacity-100 scale-100"
                              x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50"
+                             class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black/5 py-1 z-50"
                              style="display: none;">
                             <a href="{{ route('assets.index') }}" data-testid="nav-assets-browse" class="block px-4 py-2 text-sm {{ request()->routeIs('assets.index') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                 <i class="fas fa-images fa-fw mr-2 {{ request()->routeIs('assets.index') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Browse') }}
@@ -117,7 +117,7 @@
                              x-transition:leave="transition ease-in duration-75"
                              x-transition:leave-start="opacity-100 scale-100"
                              x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50"
+                             class="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black/5 py-1 z-50"
                              style="display: none;">
                             <a href="{{ route('tools.index') }}" class="block px-4 py-2 text-sm {{ request()->routeIs('tools.index') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }}">
                                 <i class="fas fa-toolbox fa-fw mr-2 {{ request()->routeIs('tools.index') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Overview') }}
@@ -144,7 +144,7 @@
             <div class="hidden md:flex md:items-center md:ms-6">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button data-testid="nav-user-menu" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                        <button data-testid="nav-user-menu" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-hidden transition ease-in-out duration-150">
                             <div>{{ Auth::user()->name }}</div>
 
                             <div class="ms-1">
@@ -156,18 +156,18 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <a href="{{ route('profile.edit') }}" data-testid="nav-profile" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('profile.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                        <a href="{{ route('profile.edit') }}" data-testid="nav-profile" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('profile.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-hidden transition duration-150 ease-in-out">
                             <i class="fas fa-user fa-fw mr-2 {{ request()->routeIs('profile.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Profile') }}
                         </a>
 
                         @can('access', App\Http\Controllers\SystemController::class)
-                            <a href="{{ route('system.index') }}" data-testid="nav-system" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('system.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('system.index') }}" data-testid="nav-system" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('system.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-hidden transition duration-150 ease-in-out">
                                 <i class="fas fa-cog fa-fw mr-2 {{ request()->routeIs('system.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('System') }}
                             </a>
-                            <a href="{{ route('api.index') }}" data-testid="nav-api" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('api.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('api.index') }}" data-testid="nav-api" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('api.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-hidden transition duration-150 ease-in-out">
                                 <i class="fas fa-code fa-fw mr-2 {{ request()->routeIs('api.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('API') }}
                             </a>
-                            <a href="{{ route('import.index') }}" data-testid="nav-import" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('import.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('import.index') }}" data-testid="nav-import" class="block w-full px-4 py-2 text-start text-sm leading-5 {{ request()->routeIs('import.*') ? 'bg-gray-100 text-orca-teal-hover font-medium' : 'text-gray-700 hover:bg-gray-100' }} focus:outline-hidden transition duration-150 ease-in-out">
                                 <i class="fas fa-file-import fa-fw mr-2 {{ request()->routeIs('import.*') ? 'text-orca-teal' : 'text-gray-400' }}"></i>{{ __('Import') }}
                             </a>
                         @endcan
@@ -176,7 +176,7 @@
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
 
-                            <a href="{{ route('logout') }}" data-testid="nav-logout" onclick="event.preventDefault(); this.closest('form').submit();" class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 hover:bg-gray-100 focus:outline-none transition duration-150 ease-in-out">
+                            <a href="{{ route('logout') }}" data-testid="nav-logout" onclick="event.preventDefault(); this.closest('form').submit();" class="block w-full px-4 py-2 text-start text-sm leading-5 text-gray-700 hover:bg-gray-100 focus:outline-hidden transition duration-150 ease-in-out">
                                 <i class="fas fa-arrow-right-from-bracket fa-fw mr-2 text-gray-400"></i>{{ __('Log Out') }}
                             </a>
                         </form>
@@ -186,7 +186,7 @@
 
             <!-- Hamburger -->
             <div class="-me-2 flex items-center md:hidden">
-                <button @click="open = ! open" data-testid="nav-mobile-toggle" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
+                <button @click="open = ! open" data-testid="nav-mobile-toggle" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-hidden focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -204,7 +204,7 @@
             </x-responsive-nav-link>
             <div x-data="{ open: {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'true' : 'false' }} }">
                 <button @click="open = !open" data-testid="nav-mobile-assets"
-                        class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-none
+                        class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-hidden
                                {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'border-orca-teal text-orca-teal-hover bg-teal-50 focus:text-orca-teal-hover focus:bg-teal-100 focus:border-orca-teal' : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 focus:text-gray-800 focus:bg-gray-50 focus:border-gray-300' }}">
                     <span>{{ __('Assets') }}</span>
                     <svg :class="{ 'rotate-180': open }" class="h-4 w-4 transition-transform duration-200 {{ request()->routeIs('assets.*') || request()->routeIs('discover.*') || request()->routeIs('export.*') ? 'text-orca-teal' : 'text-gray-400' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -245,7 +245,7 @@
             @endcan
             <div x-data="{ open: {{ request()->routeIs('tools.*') ? 'true' : 'false' }} }">
                 <button @click="open = !open" data-testid="nav-mobile-tools"
-                        class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-none
+                        class="w-full flex justify-between items-center ps-3 pe-4 py-2 border-l-4 text-start text-base font-medium transition duration-150 ease-in-out focus:outline-hidden
                                {{ request()->routeIs('tools.*') ? 'border-orca-teal text-orca-teal-hover bg-teal-50 focus:text-orca-teal-hover focus:bg-teal-100 focus:border-orca-teal' : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 focus:text-gray-800 focus:bg-gray-50 focus:border-gray-300' }}">
                     <span>{{ __('Tools') }}</span>
                     <svg :class="{ 'rotate-180': open }" class="h-4 w-4 transition-transform duration-200 {{ request()->routeIs('tools.*') ? 'text-orca-teal' : 'text-gray-400' }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -274,12 +274,12 @@
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200" x-data="{ open: false }">
-            <button @click="open = !open" data-testid="nav-mobile-user-menu" class="w-full flex justify-between items-center px-4 py-2 text-start focus:outline-none hover:bg-gray-50">
+            <button @click="open = !open" data-testid="nav-mobile-user-menu" class="w-full flex justify-between items-center px-4 py-2 text-start focus:outline-hidden hover:bg-gray-50">
                 <div>
                     <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                     <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
                 </div>
-                <svg :class="{ 'rotate-180': open }" class="h-4 w-4 text-gray-400 transition-transform duration-200 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <svg :class="{ 'rotate-180': open }" class="h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                 </svg>
             </button>

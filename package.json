@@ -18,23 +18,19 @@
     "devDependencies": {
         "@playwright/test": "^1.62.0",
         "@tailwindcss/forms": "^0.5.2",
+        "@tailwindcss/vite": "^4.3.3",
         "alpinejs": "^3.4.2",
-        "autoprefixer": "^10.4.2",
         "axios": "^1.20.0",
         "laravel-vite-plugin": "^3.1.0",
-        "postcss": "^8.5.25",
-        "tailwindcss": "^3.1.0",
+        "tailwindcss": "^4.3.3",
         "vite": "^8.0.16"
     },
     "dependencies": {
         "@alpinejs/collapse": "^3.15.8",
-        "@fortawesome/fontawesome-free": "^6.4.0",
+        "@fortawesome/fontawesome-free": "^6.7.2",
         "@laravel/passkeys": "^0.2.0",
         "gif.js": "^0.2.0",
         "pdfjs-dist": "^6.2.108",
         "sortablejs": "^1.15.7"
-    },
-    "overrides": {
-        "postcss-selector-parser": "^7.1.6"
     }
 }

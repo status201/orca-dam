@@ -188,10 +188,10 @@
                                 <input type="text"
                                        value="{{ $asset->resize_s_url }}"
                                        readonly
-                                       class="flex-1 min-w-0 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs font-mono truncate">
+                                       class="flex-1 min-w-0 px-2 py-1 bg-gray-50 border border-gray-300 rounded-sm text-xs font-mono truncate">
                                 <button @click="copyUrl('{{ $asset->resize_s_url }}', 'resize_s')"
                                         :class="copiedStates.resize_s ? 'attention bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'"
-                                        class="px-2 py-1 text-white rounded text-xs whitespace-nowrap transition-all duration-300">
+                                        class="px-2 py-1 text-white rounded-sm text-xs whitespace-nowrap transition-all duration-300">
                                     <i :class="copiedStates.resize_s ? 'fas fa-check' : 'fas fa-copy'"></i>
                                 </button>
                             </div>
@@ -205,10 +205,10 @@
                                 <input type="text"
                                        value="{{ $asset->resize_m_url }}"
                                        readonly
-                                       class="flex-1 min-w-0 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs font-mono truncate">
+                                       class="flex-1 min-w-0 px-2 py-1 bg-gray-50 border border-gray-300 rounded-sm text-xs font-mono truncate">
                                 <button @click="copyUrl('{{ $asset->resize_m_url }}', 'resize_m')"
                                         :class="copiedStates.resize_m ? 'attention bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'"
-                                        class="px-2 py-1 text-white rounded text-xs whitespace-nowrap transition-all duration-300">
+                                        class="px-2 py-1 text-white rounded-sm text-xs whitespace-nowrap transition-all duration-300">
                                     <i :class="copiedStates.resize_m ? 'fas fa-check' : 'fas fa-copy'"></i>
                                 </button>
                             </div>
@@ -222,10 +222,10 @@
                                 <input type="text"
                                        value="{{ $asset->resize_l_url }}"
                                        readonly
-                                       class="flex-1 min-w-0 px-2 py-1 bg-gray-50 border border-gray-300 rounded text-xs font-mono truncate">
+                                       class="flex-1 min-w-0 px-2 py-1 bg-gray-50 border border-gray-300 rounded-sm text-xs font-mono truncate">
                                 <button @click="copyUrl('{{ $asset->resize_l_url }}', 'resize_l')"
                                         :class="copiedStates.resize_l ? 'attention bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'"
-                                        class="px-2 py-1 text-white rounded text-xs whitespace-nowrap transition-all duration-300">
+                                        class="px-2 py-1 text-white rounded-sm text-xs whitespace-nowrap transition-all duration-300">
                                     <i :class="copiedStates.resize_l ? 'fas fa-check' : 'fas fa-copy'"></i>
                                 </button>
                             </div>
@@ -248,9 +248,9 @@
                             <a href="{{ route('assets.show', $parent) }}"
                                class="flex items-center gap-3 p-2 pr-10 rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
                                 @if($parent->thumbnail_url)
-                                    <img src="{{ $parent->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded">
+                                    <img src="{{ $parent->thumbnail_url }}" alt="" class="w-10 h-10 object-cover rounded-sm">
                                 @else
-                                    <span class="w-10 h-10 flex items-center justify-center rounded bg-gray-100">
+                                    <span class="w-10 h-10 flex items-center justify-center rounded-sm bg-gray-100">
                                         <x-file-type-icon :asset="$parent" class="w-5 h-5" />
                                     </span>
                                 @endif
@@ -287,9 +287,9 @@
                                     <a href="{{ route('assets.show', $child) }}"
                                        class="flex items-start gap-3 p-2 pr-10 h-full rounded-md border border-gray-200 hover:border-orca-teal hover:bg-gray-50 transition-colors">
                                         @if($child->thumbnail_url)
-                                            <img src="{{ $child->thumbnail_url }}" alt="" class="rounded shrink-0" style="width: 150px; height: auto;">
+                                            <img src="{{ $child->thumbnail_url }}" alt="" class="rounded-sm shrink-0" style="width: 150px; height: auto;">
                                         @else
-                                            <span class="flex items-center justify-center rounded bg-gray-100 shrink-0" style="width: 150px; height: 150px;">
+                                            <span class="flex items-center justify-center rounded-sm bg-gray-100 shrink-0" style="width: 150px; height: 150px;">
                                                 <x-file-type-icon :asset="$child" class="w-12 h-12" />
                                             </span>
                                         @endif
@@ -324,7 +324,7 @@
         <div class="space-y-6">
             <!-- Details card -->
             <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 data-testid="asset-detail-filename" class="text-2xl font-bold mb-4 break-words">{{ $asset->filename }}</h2>
+                <h2 data-testid="asset-detail-filename" class="text-2xl font-bold mb-4 wrap-break-word">{{ $asset->filename }}</h2>
 
                 <dl class="space-y-3 text-sm">
                     <div>

@@ -10,7 +10,7 @@
     <!-- Grid View -->
     <div x-show="viewMode === 'grid'" x-cloak data-testid="asset-grid-view" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 xxl:grid-cols-12 gap-4">
         @foreach($assets as $asset)
-        <div data-testid="asset-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
+        <div data-testid="asset-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow overflow-hidden cursor-pointer"
              x-data="assetCard({{ $asset->id }})"
              @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset).$showSuffix }}'; }">
             <!-- Selection checkbox -->
@@ -18,7 +18,7 @@
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                  @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
                 <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
-                     class="w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
+                     class="w-6 h-6 rounded-sm border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
                     <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
                 </div>
             </div>
@@ -27,7 +27,7 @@
             <div class="aspect-square bg-gray-100 relative">
                 @if($asset->is_missing)
                 <div class="absolute top-1 right-1 z-10">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-600 text-white">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-red-600 text-white">
                         <i class="fas fa-triangle-exclamation mr-1"></i>{{ __('Missing') }}
                     </span>
                 </div>
@@ -69,7 +69,7 @@
                 @endif
 
                 <!-- Overlay with actions -->
-                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <button @click.stop="downloadAsset('{{ route('assets.download', $asset) }}')"
                             :disabled="downloading"
                             :class="downloading ? 'bg-green-600' : 'bg-white hover:bg-gray-100'"
@@ -128,7 +128,7 @@
             $isImageLike = $asset->isImage() || $asset->isSvg();
             $hasDims = $asset->width && $asset->height;
         @endphp
-        <div data-testid="asset-masonry-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white shadow hover:shadow-lg transition-shadow overflow-hidden cursor-pointer mb-3 break-inside-avoid"
+        <div data-testid="asset-masonry-card" data-asset-id="{{ $asset->id }}" class="group relative bg-white shadow-sm hover:shadow-lg transition-shadow overflow-hidden cursor-pointer mb-3 break-inside-avoid"
              x-data="assetCard({{ $asset->id }})"
              @click="if ($store.bulkSelection.hasSelection) { $store.bulkSelection.shiftToggle({{ $asset->id }}, $event); } else { window.location.href = '{{ route('assets.show', $asset).$showSuffix }}'; }">
             <!-- Selection checkbox -->
@@ -136,14 +136,14 @@
                  :class="$store.bulkSelection.hasSelection || $store.bulkSelection.isSelected({{ $asset->id }}) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                  @click.stop="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)">
                 <div :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white/80 border-gray-400'"
-                     class="w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
+                     class="w-6 h-6 rounded-sm border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors">
                     <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
                 </div>
             </div>
 
             @if($asset->is_missing)
             <div class="absolute top-2 right-2 z-10">
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-600 text-white">
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-medium bg-red-600 text-white">
                     <i class="fas fa-triangle-exclamation mr-1"></i>{{ __('Missing') }}
                 </span>
             </div>
@@ -202,7 +202,7 @@
             @endif
 
             <!-- Minimal hover overlay: filename + quick actions -->
-            <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3">
+            <div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3">
                 <p class="text-xs text-white font-medium truncate mb-2" title="{{ $asset->filename }}">
                     {{ $asset->filename }}
                 </p>
@@ -211,18 +211,18 @@
                             :disabled="downloading"
                             :class="downloading ? 'bg-green-600 text-white' : 'bg-white/90 hover:bg-white text-gray-900'"
                             :title="downloading ? @js(__('Downloading...')) : @js(__('Download'))"
-                            class="px-2 py-1 rounded text-xs transition-all">
+                            class="px-2 py-1 rounded-sm text-xs transition-all">
                         <i :class="downloading ? 'fas fa-spinner fa-spin' : 'fas fa-download'"></i>
                     </button>
                     <button @click.stop="copyAssetUrl('{{ $asset->url }}')"
                             :class="copied ? 'attention bg-green-600 text-white' : 'bg-white/90 hover:bg-white text-gray-900'"
                             :title="copied ? @js(__('Copied!')) : @js(__('Copy URL'))"
-                            class="px-2 py-1 rounded text-xs transition-all">
+                            class="px-2 py-1 rounded-sm text-xs transition-all">
                         <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
                     </button>
                     <a href="{{ route('assets.edit', $asset) }}"
                        @click.stop
-                       class="bg-white/90 hover:bg-white text-gray-900 px-2 py-1 rounded text-xs transition-colors"
+                       class="bg-white/90 hover:bg-white text-gray-900 px-2 py-1 rounded-sm text-xs transition-colors"
                        title="{{ __('Edit') }}">
                         <i class="fas fa-edit"></i>
                     </a>
@@ -233,7 +233,7 @@
     </div>
 
     <!-- List/Table View -->
-    <div x-show="viewMode === 'list'" x-cloak data-testid="asset-list-view" class="bg-white rounded-lg shadow overflow-hidden">
+    <div x-show="viewMode === 'list'" x-cloak data-testid="asset-list-view" class="bg-white rounded-lg shadow-sm overflow-hidden">
         <div class="overflow-x-auto invert-scrollbar-colors">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -241,7 +241,7 @@
                         <th class="px-4 py-3 text-center w-10">
                             <div @click="$store.bulkSelection.toggleSelectAll()"
                                  :class="$store.bulkSelection.allOnPageSelected ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
-                                 class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
+                                 class="w-5 h-5 rounded-sm border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
                                 <i x-show="$store.bulkSelection.allOnPageSelected" class="fas fa-check text-white text-xs"></i>
                             </div>
                         </th>
@@ -277,7 +277,7 @@
                         <td class="px-4 py-3 text-center">
                             <div data-testid="asset-row-checkbox" @click="$store.bulkSelection.shiftToggle({{ $asset->id }}, $event)"
                                  :class="$store.bulkSelection.isSelected({{ $asset->id }}) ? 'bg-orca-black border-orca-black' : 'bg-white border-gray-400'"
-                                 class="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
+                                 class="w-5 h-5 rounded-sm border-2 flex items-center justify-center cursor-pointer hover:border-orca-black transition-colors mx-auto">
                                 <i x-show="$store.bulkSelection.isSelected({{ $asset->id }})" class="fas fa-check text-white text-xs"></i>
                             </div>
                         </td>
@@ -285,10 +285,10 @@
                         <!-- Thumbnail -->
                         <td class="px-4 py-3">
                             <a href="{{ route('assets.show', $asset).$showSuffix }}" class="block">
-                                <div class="w-16 h-16 bg-gray-100 rounded flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orca-500 transition-all relative">
+                                <div class="w-16 h-16 bg-gray-100 rounded-sm flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-orca-500 transition-all relative">
                                     @if($asset->is_missing)
                                     <div class="absolute top-0 right-0 z-10">
-                                        <span class="inline-flex items-center px-1 py-0.5 rounded text-[0.6rem] font-medium bg-red-600 text-white">
+                                        <span class="inline-flex items-center px-1 py-0.5 rounded-sm text-[0.6rem] font-medium bg-red-600 text-white">
                                             <i class="fas fa-triangle-exclamation"></i>
                                         </span>
                                     </div>
@@ -318,7 +318,7 @@
                                              alt="{{ $asset->filename }}"
                                              :class="fitMode === 'cover' ? 'w-full h-full object-cover' : 'w-full h-full object-contain'"
                                              loading="lazy">
-                                        <div class="absolute attention top-0 right-0 w-6 h-6 bg-white/60 rounded-bl flex items-center justify-center pointer-events-none">
+                                        <div class="absolute attention top-0 right-0 w-6 h-6 bg-white/60 rounded-bl-sm flex items-center justify-center pointer-events-none">
                                             <i class="fas fa-file-pdf text-red-600 text-xs"></i>
                                         </div>
                                     @elseif($asset->isMathMl())
@@ -396,7 +396,7 @@
                                             tag.attached_by && tag.attached_by !== tag.type ? (tag.attached_by === 'ai' ? 'ring-2 ring-purple-400' : (tag.attached_by === 'reference' ? 'ring-2 ring-orange-400' : 'ring-2 ring-blue-400')) : ''
                                           ]"
                                           :title="(tag.type === 'reference' && tag.name.length > 12 ? tag.name : '') + (tag.attached_by && tag.attached_by !== tag.type ? (tag.type === 'reference' && tag.name.length > 12 ? ' — ' : '') + '{{ __('Created as') }}: ' + tag.type + ', {{ __('Attached by') }}: ' + tag.attached_by : '')"
-                                          class="tag attention inline-flex items-center px-2 py-1 rounded text-xs font-medium">
+                                          class="tag attention inline-flex items-center px-2 py-1 rounded-sm text-xs font-medium">
                                         <span x-text="tag.type === 'reference' && tag.name.length > 12 && !expanded ? tag.name.substring(0, 12) + '…' : tag.name"
                                               :style="tag.type === 'reference' && tag.name.length > 12 ? 'cursor:pointer' : ''"
                                               @click.stop="if (tag.type === 'reference' && tag.name.length > 12) expanded = !expanded"></span>
@@ -413,7 +413,7 @@
                                 <div x-show="!addingTag">
                                     <button @click="showAddTagInput()" data-testid="asset-row-tag-add"
                                             :disabled="loading"
-                                            class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">
+                                            class="inline-flex items-center px-2 py-1 rounded-sm text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">
                                         <i class="fas fa-plus mr-1"></i> {{ __('Add') }}
                                     </button>
                                 </div>
@@ -432,14 +432,14 @@
                                                @keydown.arrow-up.prevent="selectPrevSuggestion()"
                                                @blur="setTimeout(() => showSuggestions = false, 200)"
                                                @focus="filterTagSuggestions()"
-                                               class="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                               class="px-2 py-1 text-xs border border-gray-300 rounded-sm focus:ring-1 focus:ring-blue-500"
                                                data-testid="asset-row-tag-input" placeholder="{{ __('Tag name') }}"
                                                style="width: 120px;">
 
                                         <!-- Autocomplete dropdown -->
                                         <div x-show="showSuggestions && filteredSuggestions.length > 0"
                                              x-cloak
-                                             class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-40 overflow-y-auto">
+                                             class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-sm shadow-lg max-h-40 overflow-y-auto">
                                             <template x-for="(suggestion, index) in filteredSuggestions" :key="suggestion">
                                                 <button type="button"
                                                         @mousedown.prevent="selectSuggestion(suggestion)"
@@ -453,11 +453,11 @@
 
                                     <button @click="addTag()"
                                             :disabled="!newTagName.trim() || loading"
-                                            class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50">
+                                            class="px-2 py-1 bg-blue-600 text-white text-xs rounded-sm hover:bg-blue-700 disabled:opacity-50">
                                         {{ __('Add') }}
                                     </button>
                                     <button @click="cancelAddTag()"
-                                            class="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300">
+                                            class="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-sm hover:bg-gray-300">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>

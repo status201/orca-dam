@@ -24,7 +24,7 @@
             <select id="home_folder"
                     x-model="homeFolder"
                     name="home_folder"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm">
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm">
                 <option value="">{{ __('Use default (root)') }}</option>
                 <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
             </select>
@@ -37,7 +37,7 @@
             <select id="items_per_page"
                     x-model="itemsPerPage"
                     name="items_per_page"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-2 focus:ring-orca-black focus:border-transparent">
                 <option value="0">{{ __('Use default') }} ({{ $globalItemsPerPage }})</option>
                 @foreach([12, 24, 36, 48, 60, 72, 96] as $count)
                     <option value="{{ $count }}">{{ $count }}</option>
@@ -52,7 +52,7 @@
             <select id="locale"
                     x-model="locale"
                     name="locale"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-2 focus:ring-orca-black focus:border-transparent">
                 <option value="">{{ __('Use default') }} ({{ $globalLocaleLabel }})</option>
                 @foreach($availableUiLanguages as $code => $label)
                     <option value="{{ $code }}">{{ $label }}</option>
@@ -68,7 +68,7 @@
                     x-model="darkMode"
                     name="dark_mode"
                     @change="updateDarkModePreview"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-2 focus:ring-orca-black focus:border-transparent">
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-2 focus:ring-orca-black focus:border-transparent">
                 <option value="disabled">{{ __('Disabled') }}</option>
                 <option value="force_dark">{{ __('Force Dark Mode') }}</option>
                 <option value="force_light">{{ __('Force Light Mode') }}</option>

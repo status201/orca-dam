@@ -9,7 +9,7 @@
         </span>
     @endif
 
-    <div class="inline-flex items-stretch rounded-lg border border-gray-300 bg-white shadow-sm overflow-hidden">
+    <div class="inline-flex items-stretch rounded-lg border border-gray-300 bg-white shadow-xs overflow-hidden">
         @if($nav['prev'])
             <a href="{{ $nav['prev']['url'] }}"
                data-cycle="prev"

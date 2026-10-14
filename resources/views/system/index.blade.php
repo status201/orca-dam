@@ -86,7 +86,7 @@
         </div>
 
         <!-- Display Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fas fa-desktop mr-2 text-blue-500"></i>{{ __('Display Settings') }}
@@ -160,7 +160,7 @@
         </div>
 
         <!-- Image Resize Presets -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fas fa-expand mr-2 text-green-500"></i>{{ __('Image Resize Presets') }}
@@ -264,7 +264,7 @@
         </div>
 
         <!-- Maintenance Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden border border-amber-200">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-amber-200">
             <div class="bg-amber-50 border-b border-amber-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fas fa-tools mr-2 text-amber-500"></i>{{ __('Maintenance') }}
@@ -285,7 +285,7 @@
                                @change="updateSetting('maintenance_mode', settings.maintenance_mode ? '1' : '0')"
                                :checked="settings.maintenance_mode === '1' || settings.maintenance_mode === true"
                                class="sr-only peer">
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:rtl:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:inset-s-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
                 <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -295,7 +295,7 @@
         </div>
 
         <!-- S3 Storage Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fab fa-aws mr-2 text-orange-500"></i>{{ __('S3 Storage') }}
@@ -357,7 +357,7 @@
                                        :checked="settings.cloudflare_cache_purge === '1' || settings.cloudflare_cache_purge === true"
                                        :disabled="!cloudflareEnvEnabled || !settings.custom_domain"
                                        class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:rtl:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:inset-s-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                             </label>
                         </div>
                         <template x-if="!cloudflareEnvEnabled">
@@ -372,7 +372,7 @@
         </div>
 
         <!-- AWS Rekognition Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fas fa-brain mr-2 text-purple-500"></i>{{ __('AWS Rekognition Settings') }}
@@ -429,7 +429,7 @@
         </div>
 
         <!-- Embedding Settings -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fas fa-code mr-2 text-cyan-500"></i>{{ __('Embedding') }}
@@ -453,7 +453,7 @@
         </div>
 
         <!-- TikZ / LaTeX Settings -->
-        <div id="tikz-latex" class="bg-white rounded-lg shadow overflow-hidden scroll-mt-6">
+        <div id="tikz-latex" class="bg-white rounded-lg shadow-sm overflow-hidden scroll-mt-6">
             <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
                 <h4 class="text-base font-semibold text-gray-900">
                     <i class="attention fas fa-palette mr-2 text-purple-500"></i>{{ __('TikZ / LaTeX') }}
@@ -485,7 +485,7 @@
                            rows="15"
                            placeholder="% studyflow-colors.sty&#10;\RequirePackage{xcolor}&#10;&#10;\definecolor{SF_primair}{HTML}{1B4D8E}&#10;..."
                            class="attention w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent font-mono text-sm"></textarea>
-                    <p class="text-xs text-gray-500 mt-1">{{ __('Full .sty file content. In snippet mode this package is auto-loaded. In full documents, add') }} <code class="font-mono bg-gray-100 px-1 rounded" x-text="'\\usepackage{' + (settings.tikz_color_package_name || 'name') + '}'"></code> {{ __('to your preamble. Keep in sync with your local .sty file.') }}</p>
+                    <p class="text-xs text-gray-500 mt-1">{{ __('Full .sty file content. In snippet mode this package is auto-loaded. In full documents, add') }} <code class="font-mono bg-gray-100 px-1 rounded-sm" x-text="'\\usepackage{' + (settings.tikz_color_package_name || 'name') + '}'"></code> {{ __('to your preamble. Keep in sync with your local .sty file.') }}</p>
                 </div>
             </div>
         </div>
@@ -508,9 +508,9 @@
         <!-- System Info Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- PHP Version -->
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                    <div class="shrink-0 bg-purple-100 rounded-lg p-3">
                         <i class="fab fa-php text-2xl text-purple-600"></i>
                     </div>
                     <div class="ml-4">
@@ -521,9 +521,9 @@
             </div>
 
             <!-- Laravel Version -->
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
+                    <div class="shrink-0 bg-red-100 rounded-lg p-3">
                         <i class="fab fa-laravel text-2xl text-red-600"></i>
                     </div>
                     <div class="ml-4">
@@ -534,9 +534,9 @@
             </div>
 
             <!-- Environment -->
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                    <div class="shrink-0 bg-green-100 rounded-lg p-3">
                         <i class="fas fa-server text-2xl text-green-600"></i>
                     </div>
                     <div class="ml-4">
@@ -547,9 +547,9 @@
             </div>
 
             <!-- Memory Limit -->
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center">
-                    <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                    <div class="shrink-0 bg-blue-100 rounded-lg p-3">
                         <i class="fas fa-memory text-2xl text-blue-600"></i>
                     </div>
                     <div class="ml-4">
@@ -561,7 +561,7 @@
         </div>
 
         <!-- Database Statistics -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-database mr-2"></i>{{ __('Database Statistics') }}
@@ -580,7 +580,7 @@
         </div>
 
         <!-- API Status -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-heartbeat mr-2"></i>{{ __('API Status') }}
@@ -643,7 +643,7 @@
                     </div>
                 </div>
             </div>
-            <div class="p-6 pt-[0]">
+            <div class="p-6 pt-0">
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h4 class="text-sm font-semibold text-blue-900 mb-2">
                         <i class="fas fa-info-circle mr-1"></i>{{ __('About API settings') }}
@@ -658,7 +658,7 @@
 
 
         <!-- Disk Usage -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-hard-drive mr-2"></i>{{ __('Disk Usage') }}
@@ -691,7 +691,7 @@
     <div x-show="activeTab === 'queue'" x-cloak class="space-y-6">
         <!-- Queue Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">{{ __('Pending Jobs') }}</p>
@@ -701,7 +701,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">{{ __('Failed Jobs') }}</p>
@@ -711,7 +711,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">{{ __('Batches') }}</p>
@@ -721,7 +721,7 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <button @click="refreshQueueStatus()"
                         class="w-full h-full flex items-center justify-center text-gray-600 hover:text-gray-900">
                     <i class="fas fa-sync-alt text-2xl" :class="{'fa-spin': loadingQueue}"></i>
@@ -731,7 +731,7 @@
         </div>
 
         <!-- Queue Controls -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-sliders-h mr-2"></i>{{ __('Queue Controls') }}
             </h3>
@@ -768,15 +768,15 @@
                     <i class="fas fa-info-circle mr-1"></i>{{ __('Queue Worker Setup') }}
                 </h4>
                 <div class="text-xs text-blue-800 space-y-1">
-                    <p><strong>{{ __('Development:') }}</strong> {{ __('Run manually in terminal:') }} <code class="bg-blue-100 px-1 py-0.5 rounded">php artisan queue:work --tries=3</code></p>
-                    <p><strong>{{ __('Production:') }}</strong> {{ __('Use supervisor to manage persistent workers. See') }} <code class="bg-blue-100 px-1 py-0.5 rounded">DEPLOYMENT.md</code> {{ __('for setup instructions.') }}</p>
-                    <p><strong>{{ __('Config file:') }}</strong> <code class="bg-blue-100 px-1 py-0.5 rounded">deploy/supervisor/orca-queue-worker.conf</code></p>
+                    <p><strong>{{ __('Development:') }}</strong> {{ __('Run manually in terminal:') }} <code class="bg-blue-100 px-1 py-0.5 rounded-sm">php artisan queue:work --tries=3</code></p>
+                    <p><strong>{{ __('Production:') }}</strong> {{ __('Use supervisor to manage persistent workers. See') }} <code class="bg-blue-100 px-1 py-0.5 rounded-sm">DEPLOYMENT.md</code> {{ __('for setup instructions.') }}</p>
+                    <p><strong>{{ __('Config file:') }}</strong> <code class="bg-blue-100 px-1 py-0.5 rounded-sm">deploy/supervisor/orca-queue-worker.conf</code></p>
                 </div>
             </div>
         </div>
 
         <!-- Supervisor Status -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-server mr-2"></i>{{ __('Supervisor Status') }}
@@ -843,7 +843,7 @@
         </div>
 
         <!-- Failed Jobs List -->
-        <div x-show="failedJobs.length > 0" class="bg-white rounded-lg shadow">
+        <div x-show="failedJobs.length > 0" class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-exclamation-circle mr-2"></i>{{ __('Failed Jobs') }}
@@ -885,7 +885,7 @@
 
     <!-- Logs Tab -->
     <div x-show="activeTab === 'logs'" x-cloak class="space-y-6">
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">
@@ -934,7 +934,7 @@
     <!-- Commands Tab -->
     <div x-show="activeTab === 'commands'" x-cloak class="space-y-6">
         <!-- Command Input -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">
@@ -981,19 +981,19 @@
         </div>
 
         <!-- Suggested Commands -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-list mr-2"></i>{{ __('Suggested Commands') }}
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 @foreach($suggestedCommands as $cmd)
                     <div class="flex flex-col justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 h-full">
-                        <div class="flex-grow mb-2">
+                        <div class="grow mb-2">
                             <code class="text-sm font-mono text-gray-900 break-all">{{ $cmd['command'] }}</code>
                             <p class="text-xs text-gray-500 mt-1">{{ $cmd['description'] }}</p>
                         </div>
                         <button @click="customCommand = '{{ $cmd['command'] }}'; if (!customCommand.includes('<')) executeCustomCommand()"
-                                class="w-full px-3 py-1.5 text-sm bg-orca-black text-white rounded hover:bg-orca-black-hover">
+                                class="w-full px-3 py-1.5 text-sm bg-orca-black text-white rounded-sm hover:bg-orca-black-hover">
                             <i class="fas fa-play mr-1"></i>
                             <span x-text="'{{ $cmd['command'] }}'.includes('<') ? @js(__('Edit & run')) : @js(__('Run'))"></span>
                         </button>
@@ -1006,7 +1006,7 @@
     <!-- Diagnostics Tab -->
     <div x-show="activeTab === 'diagnostics'" x-cloak class="space-y-6">
         <!-- Configuration Details -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-cog mr-2"></i>{{ __('System Configuration') }}
             </h3>
@@ -1069,7 +1069,7 @@
         </div>
 
         <!-- PHP Configuration -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fab fa-php mr-2"></i>{{ __('PHP Configuration') }}
             </h3>
@@ -1106,7 +1106,7 @@
         </div>
 
         <!-- Connection Tests -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">
                 <i class="fas fa-plug mr-2"></i>{{ __('Connection Tests') }}
             </h3>
@@ -1132,7 +1132,7 @@
         </div>
 
         <!-- S3 Integrity -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-shield-halved mr-2"></i>{{ __('S3 Integrity') }}
@@ -1180,7 +1180,7 @@
 
     <!-- Documentation Tab -->
     <div x-show="activeTab === 'documentation'" x-cloak x-init="$watch('activeTab', value => { if (value === 'documentation' && !docContent && !docError) loadDocumentation(); })" class="space-y-6">
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">
@@ -1231,7 +1231,7 @@
     <!-- Tests Tab -->
     <div x-show="activeTab === 'tests'" x-cloak class="space-y-6">
         <!-- Test Runner Controls -->
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">
@@ -1274,7 +1274,7 @@
                         <button type="button"
                                 x-show="testRunId && testRunStatus !== 'queued'"
                                 @click="abortTestRun()"
-                                class="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200">
+                                class="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-sm hover:bg-red-200">
                             <i class="fas fa-stop mr-1"></i>{{ __('Abort') }}
                         </button>
                     </div>
@@ -1285,24 +1285,24 @@
                              :style="'width: ' + Math.round(testProgress) + '%'"></div>
                     </template>
                     <template x-if="!testEstimate">
-                        <div class="h-2.5 rounded-full bg-gradient-to-r from-green-400 via-green-600 to-green-400 animate-pulse w-full"></div>
+                        <div class="h-2.5 rounded-full bg-linear-to-r from-green-400 via-green-600 to-green-400 animate-pulse w-full"></div>
                     </template>
                 </div>
                 <div x-show="testRunStatus !== 'queued' && !testEstimate" class="mt-2 text-xs text-gray-500">
                     {{ __('First run — no time estimate yet. Subsequent runs will show a real progress bar.') }}
                 </div>
-                <div x-show="testRunWorkerWarning" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                <div x-show="testRunWorkerWarning" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-sm text-xs text-yellow-800">
                     <div>
                         <i class="fas fa-exclamation-triangle mr-1"></i>
                         {{ __('Test run is still queued. Is a queue worker running? Start one with:') }}
-                        <code class="ml-1 px-1 py-0.5 bg-yellow-100 rounded">php artisan queue:work --timeout=900</code>
+                        <code class="ml-1 px-1 py-0.5 bg-yellow-100 rounded-sm">php artisan queue:work --timeout=900</code>
                     </div>
                     <div class="mt-2">
                         {{ __('No shell access?') }}
                         <button type="button"
                                 @click="processQueueJobs()"
                                 :disabled="processingJobs"
-                                class="ml-1 inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-200 text-yellow-900 rounded hover:bg-yellow-300 disabled:opacity-50">
+                                class="ml-1 inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-200 text-yellow-900 rounded-sm hover:bg-yellow-300 disabled:opacity-50">
                             <i class="fas mr-1" :class="processingJobs ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
                             <span x-text="processingJobs ? @js(__('Processing jobs...')) : @js(__('Process the job now'))"></span>
                         </button>
@@ -1337,7 +1337,7 @@
             <!-- Success/Failure Banner -->
             <div x-show="testStats.total > 0 && !runningTests" class="attention mb-6">
                 <div x-show="testStats.failed === 0" class="p-4 bg-green-100 border border-green-300 rounded-lg flex items-center">
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                         <i class="fas fa-check-circle text-3xl text-green-600"></i>
                     </div>
                     <div class="ml-4">
@@ -1349,7 +1349,7 @@
                     </div>
                 </div>
                 <div x-show="testStats.failed > 0" class="p-4 bg-red-100 border border-red-300 rounded-lg flex items-center">
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                         <i class="fas fa-times-circle text-3xl text-red-600"></i>
                     </div>
                     <div class="ml-4">
@@ -1364,7 +1364,7 @@
         </div>
 
         <!-- Test Output -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-terminal mr-2"></i>{{ __('Test Output') }}
@@ -1395,7 +1395,7 @@
         </div>
 
         <!-- Test Files Overview -->
-        <div x-show="testStats.tests && testStats.tests.length > 0" class="bg-white rounded-lg shadow">
+        <div x-show="testStats.tests && testStats.tests.length > 0" class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-list-check mr-2"></i>{{ __('Test Results by Suite') }}

@@ -8,7 +8,7 @@
             <div class="mb-6">
                 <h1 class="text-3xl font-bold text-gray-900">{{ __('Set Up Two-Factor Authentication') }}</h1>
             </div>
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6">
                     <div class="mb-6">
                         <h3 class="text-lg font-medium text-gray-900">

@@ -99,11 +99,11 @@
                             <div class="p-2 border-b border-gray-200 bg-blue-50">
                                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-1">
                                     <template x-for="tag in pinnedTags" :key="'pinned-' + tag.id">
-                                        <label class="flex items-start space-x-2 p-1.5 hover:bg-blue-100 rounded cursor-pointer border border-blue-200">
+                                        <label class="flex items-start space-x-2 p-1.5 hover:bg-blue-100 rounded-sm cursor-pointer border border-blue-200">
                                             <input type="checkbox"
                                                    :value="tag.id"
                                                    x-model="selectedTags"
-                                                   class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                                   class="rounded-sm text-blue-600 focus:ring-orca-black shrink-0 mt-0.5">
                                             <div class="flex flex-col gap-0.5 min-w-0 flex-1">
                                                 <span class="text-sm font-medium truncate" x-text="tag.name"></span>
                                                 <div class="flex items-center gap-1.5">
@@ -129,13 +129,13 @@
                             <div x-show="!filterTagsLoading" class="p-2">
                                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-1">
                                     <template x-for="tag in displayTags" :key="tag.id">
-                                        <label class="flex items-start space-x-2 p-1.5 hover:bg-gray-50 rounded cursor-pointer border border-gray-200"
+                                        <label class="flex items-start space-x-2 p-1.5 hover:bg-gray-50 rounded-sm cursor-pointer border border-gray-200"
                                                data-testid="export-tag"
                                                :data-tag-name="tag.name">
                                             <input type="checkbox"
                                                    :value="tag.id"
                                                    x-model="selectedTags"
-                                                   class="rounded text-blue-600 focus:ring-orca-black flex-shrink-0 mt-0.5">
+                                                   class="rounded-sm text-blue-600 focus:ring-orca-black shrink-0 mt-0.5">
                                             <div class="flex flex-col gap-0.5 min-w-0 flex-1">
                                                 <span class="text-sm truncate" x-text="tag.name"></span>
                                                 <div class="flex items-center gap-1.5">
@@ -238,7 +238,7 @@
                     <li>{{ __('Data analysis and visualization') }}</li>
                     <li>{{ __('Integration with spreadsheet tools') }}</li>
                 </ul>
-                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-sm">
                     <p class="text-xs text-yellow-800">
                         <i class="fas fa-exclamation-triangle mr-1"></i>
                         <strong>{{ __('Note:') }}</strong> {{ __('CSV exports contain metadata only. Actual files remain in S3 storage.') }}

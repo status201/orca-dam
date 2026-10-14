@@ -56,7 +56,7 @@
         <div x-show="!loadingDashboard" class="space-y-6">
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-500">{{ __('API Tokens') }}</p>
@@ -65,7 +65,7 @@
                         <i class="fas fa-key text-4xl text-purple-200"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-500">{{ __('JWT Secrets') }}</p>
@@ -74,7 +74,7 @@
                         <i class="fas fa-shield-alt text-4xl text-green-200"></i>
                     </div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-500">{{ __('API Users') }}</p>
@@ -86,7 +86,7 @@
             </div>
 
             <!-- API Status -->
-            <div class="bg-white rounded-lg shadow">
+            <div class="bg-white rounded-lg shadow-sm">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">
                         <i class="fas fa-heartbeat mr-2"></i>{{ __('API Status') }}
@@ -152,7 +152,7 @@
             </div>
 
             <!-- API Settings -->
-            <div class="bg-white rounded-lg shadow">
+            <div class="bg-white rounded-lg shadow-sm">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">
                         <i class="fas fa-cog mr-2"></i>{{ __('API Settings') }}
@@ -173,11 +173,11 @@
                         <div class="ml-4">
                             <button @click="saveApiSetting('jwt_enabled_override', !dashboardData.jwtSettingEnabled)"
                                     :disabled="savingSettings"
-                                    class="attention relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orca-black focus:ring-offset-2"
+                                    class="attention relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-orca-black focus:ring-offset-2"
                                     :class="dashboardData.jwtSettingEnabled ? 'bg-green-600' : 'bg-gray-200'"
                                     role="switch"
                                     :aria-checked="dashboardData.jwtSettingEnabled">
-                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
                                       :class="dashboardData.jwtSettingEnabled ? 'translate-x-5' : 'translate-x-0'"></span>
                             </button>
                         </div>
@@ -190,8 +190,8 @@
                             <div>
                                 <h4 class="attention text-sm font-medium text-yellow-800">{{ __('JWT Disabled in Environment') }}</h4>
                                 <p class="text-sm text-yellow-700 mt-1">
-                                    {{ __('JWT authentication is disabled via') }} <code class="bg-yellow-100 px-1 rounded">JWT_ENABLED=false</code> {{ __('in your .env file.') }}
-                                    {{ __('To enable JWT, set') }} <code class="bg-yellow-100 px-1 rounded">JWT_ENABLED=true</code> {{ __('and restart the application.') }}
+                                    {{ __('JWT authentication is disabled via') }} <code class="bg-yellow-100 px-1 rounded-sm">JWT_ENABLED=false</code> {{ __('in your .env file.') }}
+                                    {{ __('To enable JWT, set') }} <code class="bg-yellow-100 px-1 rounded-sm">JWT_ENABLED=true</code> {{ __('and restart the application.') }}
                                 </p>
                             </div>
                         </div>
@@ -211,11 +211,11 @@
                         <div class="ml-4">
                             <button @click="saveApiSetting('api_upload_enabled', !dashboardData.uploadEndpointEnabled)"
                                     :disabled="savingSettings"
-                                    class="attention relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orca-black focus:ring-offset-2"
+                                    class="attention relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-orca-black focus:ring-offset-2"
                                     :class="dashboardData.uploadEndpointEnabled ? 'bg-green-600' : 'bg-gray-200'"
                                     role="switch"
                                     :aria-checked="dashboardData.uploadEndpointEnabled">
-                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
                                       :class="dashboardData.uploadEndpointEnabled ? 'translate-x-5' : 'translate-x-0'"></span>
                             </button>
                         </div>
@@ -228,18 +228,18 @@
                         <div class="flex-1">
                             <h4 class="text-sm font-medium text-gray-900">{{ __('Public Meta Endpoint') }}</h4>
                             <p class="text-sm text-gray-500 mt-1">
-                                {{ __('Enable or disable the public') }} <code class="bg-gray-100 px-1 rounded">/api/assets/meta</code> {{ __('endpoint.') }}
+                                {{ __('Enable or disable the public') }} <code class="bg-gray-100 px-1 rounded-sm">/api/assets/meta</code> {{ __('endpoint.') }}
                                 {{ __('This endpoint allows fetching asset metadata without authentication.') }}
                             </p>
                         </div>
                         <div class="ml-4">
                             <button @click="saveApiSetting('api_meta_endpoint_enabled', !dashboardData.metaEndpointEnabled)"
                                     :disabled="savingSettings"
-                                    class="attention relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orca-black focus:ring-offset-2"
+                                    class="attention relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-orca-black focus:ring-offset-2"
                                     :class="dashboardData.metaEndpointEnabled ? 'bg-green-600' : 'bg-gray-200'"
                                     role="switch"
                                     :aria-checked="dashboardData.metaEndpointEnabled">
-                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out"
                                       :class="dashboardData.metaEndpointEnabled ? 'translate-x-5' : 'translate-x-0'"></span>
                             </button>
                         </div>
@@ -248,7 +248,7 @@
             </div>
 
             <!-- Quick Links -->
-            <div class="bg-white rounded-lg shadow">
+            <div class="bg-white rounded-lg shadow-sm">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">
                         <i class="fas fa-link mr-2"></i>{{ __('Quick Links') }}
@@ -257,7 +257,7 @@
                 <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button @click="navigateToTab('swagger')"
                             class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left">
-                        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-orange-100 rounded-lg mr-4">
+                        <div class="shrink-0 w-10 h-10 flex items-center justify-center bg-orange-100 rounded-lg mr-4">
                             <i class="fas fa-book-open text-orange-600"></i>
                         </div>
                         <div>
@@ -267,7 +267,7 @@
                     </button>
                     <button @click="navigateToTab('tokens')"
                             class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left">
-                        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-purple-100 rounded-lg mr-4">
+                        <div class="shrink-0 w-10 h-10 flex items-center justify-center bg-purple-100 rounded-lg mr-4">
                             <i class="fas fa-key text-purple-600"></i>
                         </div>
                         <div>
@@ -277,7 +277,7 @@
                     </button>
                     <button @click="navigateToTab('jwt')"
                             class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left">
-                        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-green-100 rounded-lg mr-4">
+                        <div class="shrink-0 w-10 h-10 flex items-center justify-center bg-green-100 rounded-lg mr-4">
                             <i class="fas fa-shield-alt text-green-600"></i>
                         </div>
                         <div>
@@ -298,7 +298,7 @@
                 <i class="fas fa-info-circle mr-1"></i>{{ __('API Authentication') }}
             </h4>
             <div class="text-xs text-blue-800 space-y-2">
-                <p>{{ __('Click the') }} <strong>"{{ __('Authorize') }}"</strong> {{ __('button below to authenticate. All endpoints except') }} <code class="bg-blue-100 px-1 rounded">/api/assets/meta</code> {{ __('require authentication.') }}</p>
+                <p>{{ __('Click the') }} <strong>"{{ __('Authorize') }}"</strong> {{ __('button below to authenticate. All endpoints except') }} <code class="bg-blue-100 px-1 rounded-sm">/api/assets/meta</code> {{ __('require authentication.') }}</p>
 
                 <p><strong>{{ __('Two authentication methods are supported:') }}</strong></p>
                 <ul class="list-disc ml-4 space-y-1">
@@ -306,12 +306,12 @@
                     <li><strong>{{ __('JWT') }}</strong> — {{ __('Short-lived tokens for frontend RTE integrations. Generate secrets in the') }} <button @click="navigateToTab('jwt')" class="underline font-semibold">{{ __('JWT Secrets') }}</button> {{ __('tab.') }}</li>
                 </ul>
 
-                <p class="text-blue-600"><i class="fas fa-book mr-1"></i>{{ __('See') }} <code class="bg-blue-100 px-1 rounded">RTE_INTEGRATION.md</code> {{ __('for detailed integration examples.') }}</p>
+                <p class="text-blue-600"><i class="fas fa-book mr-1"></i>{{ __('See') }} <code class="bg-blue-100 px-1 rounded-sm">RTE_INTEGRATION.md</code> {{ __('for detailed integration examples.') }}</p>
             </div>
         </div>
 
         <!-- Swagger UI Container -->
-        <div class="swagger-ui-container bg-white rounded-lg shadow">
+        <div class="swagger-ui-container bg-white rounded-lg shadow-sm">
             <div x-show="!swaggerLoaded && !swaggerError" class="p-12 text-center">
                 <i class="fas fa-spinner fa-spin text-4xl text-gray-400 mb-4"></i>
                 <p class="text-gray-600">{{ __('Loading Swagger UI...') }}</p>
@@ -320,7 +320,7 @@
                 <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
                 <p class="text-red-600 font-medium">{{ __('Failed to load Swagger UI') }}</p>
                 <p class="text-gray-500 text-sm mt-2" x-text="swaggerError"></p>
-                <button @click="loadSwagger()" class="mt-4 px-4 py-2 bg-orca-black text-white rounded hover:bg-orca-black-hover">
+                <button @click="loadSwagger()" class="mt-4 px-4 py-2 bg-orca-black text-white rounded-sm hover:bg-orca-black-hover">
                     <i class="fas fa-redo mr-2"></i>{{ __('Retry') }}
                 </button>
             </div>
@@ -332,7 +332,7 @@
     <div x-show="activeTab === 'tokens'" class="space-y-6">
         <!-- Token Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">{{ __('Total Tokens') }}</p>
@@ -341,7 +341,7 @@
                     <i class="fas fa-key text-4xl text-purple-200"></i>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">{{ __('API Users') }}</p>
@@ -350,7 +350,7 @@
                     <i class="fas fa-robot text-4xl text-blue-200"></i>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <button @click="loadTokens()"
                         class="w-full h-full flex items-center justify-center text-gray-600 hover:text-gray-900">
                     <i class="fas fa-sync-alt text-2xl" :class="{'fa-spin': loadingTokens}"></i>
@@ -360,7 +360,7 @@
         </div>
 
         <!-- Create Token Form -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-plus-circle mr-2"></i>{{ __('Create New Token') }}
@@ -434,10 +434,10 @@
         <!-- New Token Display Modal -->
         <div x-show="createdToken.plainText" data-testid="api-token-created" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
             <div class="flex items-start gap-4">
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                     <i class="attention fas fa-check-circle text-3xl text-green-600"></i>
                 </div>
-                <div class="flex-grow">
+                <div class="grow">
                     <h4 class="text-lg font-semibold text-green-800 mb-2">{{ __('Token Created Successfully!') }}</h4>
                     <p class="text-sm text-green-700 mb-4">
                         <strong>{{ __('Important:') }}</strong> {{ __('Copy this token now. It will NOT be shown again!') }}
@@ -447,7 +447,7 @@
                         <div class="flex items-center justify-between gap-4">
                             <code class="text-sm font-mono text-gray-900 break-all" x-text="createdToken.plainText"></code>
                             <button @click="copyToken()"
-                                    class="attention flex-shrink-0 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">
+                                    class="attention shrink-0 px-3 py-1.5 bg-green-600 text-white rounded-sm hover:bg-green-700">
                                 <i class="fas fa-copy mr-1"></i>{{ __('Copy') }}
                             </button>
                         </div>
@@ -467,7 +467,7 @@
         </div>
 
         <!-- Existing Tokens Table -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-list mr-2"></i>{{ __('Existing Tokens') }}
@@ -534,9 +534,9 @@
             </h4>
             <div class="text-xs text-blue-800 space-y-1">
                 <p>{{ __('Include the token in API requests using the Authorization header:') }}</p>
-                <code class="block bg-blue-100 p-2 rounded mt-2 font-mono">Authorization: Bearer YOUR_TOKEN_HERE</code>
+                <code class="block bg-blue-100 p-2 rounded-sm mt-2 font-mono">Authorization: Bearer YOUR_TOKEN_HERE</code>
                 <p class="mt-2"><strong>{{ __('API users') }}</strong> {{ __('(role: api) have limited permissions: view, create, and update assets. They cannot delete assets, access trash, discover unmapped files, or export data.') }}</p>
-                <p>{{ __('See') }} <code class="bg-blue-100 px-1 rounded">RTE_INTEGRATION.md</code> {{ __('for integration examples.') }}</p>
+                <p>{{ __('See') }} <code class="bg-blue-100 px-1 rounded-sm">RTE_INTEGRATION.md</code> {{ __('for integration examples.') }}</p>
             </div>
         </div>
     </div>
@@ -546,7 +546,7 @@
 
         <!-- JWT Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">{{ __('Users with JWT Secrets') }}</p>
@@ -555,7 +555,7 @@
                     <i class="fas fa-shield-alt text-4xl text-green-200"></i>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500">{{ __('Total Users') }}</p>
@@ -564,7 +564,7 @@
                     <i class="fas fa-users text-4xl text-blue-200"></i>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
                 <button @click="loadJwtSecrets()"
                         class="w-full h-full flex items-center justify-center text-gray-600 hover:text-gray-900">
                     <i class="fas fa-sync-alt text-2xl" :class="{'fa-spin': loadingJwt}"></i>
@@ -583,7 +583,7 @@
                         {{ __('JWT Authentication is') }} <span x-text="jwtEnabled && jwtSettingEnabled ? @js(__('Enabled')) : @js(__('Disabled'))"></span>
                     </p>
                     <p x-show="!jwtEnabled" class="text-xs text-yellow-700 mt-1">
-                        {{ __('Set') }} <code class="bg-yellow-100 px-1 rounded">JWT_ENABLED=true</code> {{ __('in your .env file to enable JWT authentication.') }}
+                        {{ __('Set') }} <code class="bg-yellow-100 px-1 rounded-sm">JWT_ENABLED=true</code> {{ __('in your .env file to enable JWT authentication.') }}
                     </p>
                     <p x-show="!jwtSettingEnabled" class="text-xs text-yellow-700 mt-1">
                         {{ __('JWT Authentication is turned off in the Dashboard Settings.') }}
@@ -593,7 +593,7 @@
         </div>
 
         <!-- Generate JWT Secret Form -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-plus-circle mr-2"></i>{{ __('Generate JWT Secret') }}
@@ -627,10 +627,10 @@
         <!-- Generated Secret Display -->
         <div x-show="generatedJwtSecret.secret" data-testid="api-jwt-created" class="bg-green-50 border-2 border-green-300 rounded-lg p-6">
             <div class="flex items-start gap-4">
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                     <i class="attention fas fa-check-circle text-3xl text-green-600"></i>
                 </div>
-                <div class="flex-grow">
+                <div class="grow">
                     <h4 class="text-lg font-semibold text-green-800 mb-2">{{ __('JWT Secret Generated!') }}</h4>
                     <p class="text-sm text-green-700 mb-4">
                         <strong>{{ __('Important:') }}</strong> {{ __('Copy this secret now. It will NOT be shown again!') }}
@@ -641,7 +641,7 @@
                         <div class="flex items-center justify-between gap-4">
                             <code class="text-sm font-mono text-gray-900 break-all" x-text="generatedJwtSecret.secret"></code>
                             <button @click="copyJwtSecret()"
-                                    class="attention flex-shrink-0 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">
+                                    class="attention shrink-0 px-3 py-1.5 bg-green-600 text-white rounded-sm hover:bg-green-700">
                                 <i class="fas fa-copy mr-1"></i>{{ __('Copy') }}
                             </button>
                         </div>
@@ -683,7 +683,7 @@ const token = jwt.sign(
         </div>
 
         <!-- Existing JWT Secrets Table -->
-        <div class="bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">
                     <i class="fas fa-list mr-2"></i>{{ __('Users with JWT Secrets') }}
@@ -752,12 +752,12 @@ const token = jwt.sign(
                 <p><strong>{{ __('Algorithm:') }}</strong> HS256 (HMAC-SHA256)</p>
                 <p><strong>{{ __('Required claims:') }}</strong></p>
                 <ul class="list-disc ml-4">
-                    <li><code class="bg-gray-200 px-1 rounded">sub</code> - {{ __('User ID (integer)') }}</li>
-                    <li><code class="bg-gray-200 px-1 rounded">exp</code> - {{ __('Expiration timestamp') }}</li>
-                    <li><code class="bg-gray-200 px-1 rounded">iat</code> - {{ __('Issued-at timestamp') }}</li>
+                    <li><code class="bg-gray-200 px-1 rounded-sm">sub</code> - {{ __('User ID (integer)') }}</li>
+                    <li><code class="bg-gray-200 px-1 rounded-sm">exp</code> - {{ __('Expiration timestamp') }}</li>
+                    <li><code class="bg-gray-200 px-1 rounded-sm">iat</code> - {{ __('Issued-at timestamp') }}</li>
                 </ul>
-                <p><strong>{{ __('Max token lifetime:') }}</strong> {{ __('10 hour (configurable via') }} <code class="bg-gray-200 px-1 rounded">JWT_MAX_TTL</code>)</p>
-                <p><strong>{{ __('Usage:') }}</strong> {{ __('Include in Authorization header as') }} <code class="bg-gray-200 px-1 rounded">Bearer {token}</code></p>
+                <p><strong>{{ __('Max token lifetime:') }}</strong> {{ __('10 hour (configurable via') }} <code class="bg-gray-200 px-1 rounded-sm">JWT_MAX_TTL</code>)</p>
+                <p><strong>{{ __('Usage:') }}</strong> {{ __('Include in Authorization header as') }} <code class="bg-gray-200 px-1 rounded-sm">Bearer {token}</code></p>
             </div>
         </div>
         <!-- JWT Info Box -->

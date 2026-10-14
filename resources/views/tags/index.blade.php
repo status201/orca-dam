@@ -46,7 +46,7 @@
                             <input type="checkbox"
                                    :checked="allSelected"
                                    @click="toggleSelectAll()"
-                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                   class="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
                             <span class="text-sm text-gray-600 whitespace-nowrap hidden sm:inline" x-text="allSelected ? '{{ __('Deselect all') }}' : '{{ __('Select all') }}'"></span>
                         </label>
                     </template>
@@ -92,12 +92,12 @@
     <template x-if="loading">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xxl:grid-cols-6 gap-4">
             <template x-for="i in 12" :key="i">
-                <div class="bg-white rounded-lg shadow p-4 animate-pulse">
+                <div class="bg-white rounded-lg shadow-sm p-4 animate-pulse">
                     <div class="flex items-start justify-between mb-2">
-                        <div class="h-6 bg-gray-200 rounded w-2/3"></div>
-                        <div class="h-6 bg-gray-200 rounded w-12"></div>
+                        <div class="h-6 bg-gray-200 rounded-sm w-2/3"></div>
+                        <div class="h-6 bg-gray-200 rounded-sm w-12"></div>
                     </div>
-                    <div class="h-4 bg-gray-200 rounded w-1/3 mt-2"></div>
+                    <div class="h-4 bg-gray-200 rounded-sm w-1/3 mt-2"></div>
                 </div>
             </template>
         </div>
@@ -108,7 +108,7 @@
         <div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 xxl:grid-cols-6 gap-4">
                 <template x-for="tag in tags" :key="tag.id">
-                    <div data-testid="tag-card" :data-tag-name="tag.name" class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4 cursor-pointer relative"
+                    <div data-testid="tag-card" :data-tag-name="tag.name" class="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow p-4 cursor-pointer relative"
                          :class="isSelected(tag.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''"
                          @click="toggleSelect(tag.id, $event)">
                         <!-- Checkbox -->
@@ -116,7 +116,7 @@
                             <input type="checkbox"
                                    :checked="isSelected(tag.id)"
                                    @click="toggleSelect(tag.id, $event)"
-                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                   class="rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
                         </div>
 
                         <a :href="`{{ route('assets.index') }}?tags[]=${tag.id}`"
@@ -130,7 +130,7 @@
                                 <i class="fas fa-images mr-1"></i>
                                 <span x-text="tag.assets_count"></span> <span x-text="tag.assets_count === 1 ? 'asset' : 'assets'"></span>
                             </p>
-                            <div class="flex items-center gap-2 flex-shrink-0" @click.stop>
+                            <div class="flex items-center gap-2 shrink-0" @click.stop>
                                 <span class="tag attention px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap"
                                       :class="tag.type === 'ai' ? 'bg-purple-100 text-purple-700' : (tag.type === 'reference' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700')">
                                     <span x-text="tag.type === 'reference' ? 'ref' : tag.type"></span>
@@ -141,7 +141,7 @@
                                 <!-- Edit button (not for AI tags) -->
                                 <template x-if="tag.type !== 'ai'">
                                     <button @click="editTag(tag.id, tag.name)" data-testid="tag-card-edit"
-                                            class="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded transition"
+                                            class="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-sm transition"
                                             :title="'{{ __('Edit tag') }}'">
                                         <i class="fas fa-edit text-sm"></i>
                                     </button>
@@ -149,7 +149,7 @@
 
                                 <!-- Delete button -->
                                 <button @click="deleteTag(tag.id, tag.name, tag.type)" data-testid="tag-card-delete"
-                                        class="delete text-gray-500 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition"
+                                        class="delete text-gray-500 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-sm transition"
                                         :title="'{{ __('Delete tag') }}'">
                                     <i class="fas fa-trash text-sm"></i>
                                 </button>
@@ -172,7 +172,7 @@
 
     <!-- No tags at all -->
     <template x-if="!loading && tags.length === 0 && !activeSearch">
-        <div class="text-center py-12 bg-white rounded-lg shadow">
+        <div class="text-center py-12 bg-white rounded-lg shadow-sm">
             <i class="fas fa-tags text-6xl text-gray-300 mb-4"></i>
             <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ __('No tags found') }}</h3>
             <p class="text-gray-500">
@@ -183,7 +183,7 @@
 
     <!-- No matching search results -->
     <template x-if="!loading && tags.length === 0 && activeSearch">
-        <div class="text-center py-12 bg-white rounded-lg shadow">
+        <div class="text-center py-12 bg-white rounded-lg shadow-sm">
             <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
             <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ __('No matching tags') }}</h3>
             <p class="text-gray-500">
@@ -198,7 +198,7 @@
     <!-- Edit Tag Modal -->
     <div x-show="showEditModal"
          x-cloak
-         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
          @click.self="showEditModal = false">
         <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
             <h2 class="text-2xl font-bold mb-4">{{ __('Edit Tag') }}</h2>

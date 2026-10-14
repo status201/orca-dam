@@ -11,7 +11,7 @@
         </button>
 
         <!-- Fit Mode Toggle (hidden in masonry — native aspect ratios are the point) -->
-        <div x-show="viewMode !== 'masonry'" class="inline-flex rounded-md shadow-sm" role="group">
+        <div x-show="viewMode !== 'masonry'" class="inline-flex rounded-md shadow-xs" role="group">
             <button @click="fitMode = 'cover'; saveFitMode()"
                     :class="fitMode === 'cover' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-3 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors"
@@ -26,7 +26,7 @@
             </button>
         </div>
 
-        <div class="inline-flex rounded-md shadow-sm" role="group">
+        <div class="inline-flex rounded-md shadow-xs" role="group">
             <button @click="viewMode = 'grid'; saveViewMode()" data-testid="grid-view-grid"
                     :class="viewMode === 'grid' ? 'bg-orca-black text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
                     class="px-4 py-2 text-xs font-medium border border-gray-300 rounded-l-lg transition-colors">

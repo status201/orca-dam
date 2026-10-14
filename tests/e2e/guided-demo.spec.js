@@ -181,17 +181,20 @@ test.describe('guided demos', () => {
 
     test('a nav step stays visible even though the nav auto-hides on scroll', async ({ page }) => {
         await openDemo(page);
-
-        // layouts/navigation.blade.php adds -translate-y-full once scrollY passes 100.
-        await page.mouse.wheel(0, 600);
-        await expect(page.locator(testid('app-nav'))).toHaveClass(/-translate-y-full/);
-
         await advanceUntil(page, 'nav-assets');
 
-        // Pinned back by body.orca-demo-active in app.css, not by touching the nav's own
-        // Alpine state.
-        const nav = await page.locator(testid('app-nav')).boundingBox();
-        expect(nav.y).toBeGreaterThanOrEqual(0);
+        // Entering a nav step scrolls to the top, which un-hides the nav on its own, so
+        // the pin only matters once the reader scrolls down during the step.
+        // layouts/navigation.blade.php adds -translate-y-full once scrollY passes 100.
+        const nav = page.locator(testid('app-nav'));
+        await page.mouse.wheel(0, 600);
+        await expect(nav).toHaveClass(/-translate-y-full/);
+
+        // Pinned by body.orca-demo-active in app.css, not by touching the nav's own Alpine
+        // state. The computed value is checked rather than the box, which a broken pin
+        // would only leave mid-transition.
+        expect(await nav.evaluate((el) => getComputedStyle(el).translate)).toBe('none');
+        expect((await nav.boundingBox()).y).toBeGreaterThanOrEqual(0);
 
         await expectRingOn(page, 'nav-assets');
     });

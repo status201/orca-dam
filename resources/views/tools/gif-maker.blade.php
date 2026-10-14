@@ -30,7 +30,7 @@
     </div>
 
     {{-- Frames card --}}
-    <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-base font-semibold text-gray-900">
                 <i class="fas fa-film text-orca-teal mr-1"></i>
@@ -59,7 +59,7 @@
         {{-- Frame strip --}}
         <div x-show="frames.length > 0" x-ref="frameList" class="flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: thin;">
             <template x-for="(frame, idx) in frames" :key="frame.id">
-                <div class="flex-shrink-0 w-32 border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                <div class="shrink-0 w-32 border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
                     {{-- Drag handle + frame number --}}
                     <div class="flex items-center justify-between px-2 py-1 bg-gray-100 border-b border-gray-200">
                         <span class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
@@ -86,7 +86,7 @@
                         <label class="text-[10px] text-gray-400 block">{{ __('Delay (ms)') }}</label>
                         <input type="number" x-model.number="frame.delay" min="50" max="10000" step="50"
                             :placeholder="globalDelay"
-                            class="w-full text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-orca-teal">
+                            class="w-full text-xs border border-gray-200 rounded-sm px-1.5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-orca-teal">
                     </div>
                 </div>
             </template>
@@ -131,7 +131,7 @@
                                 <img :src="item.objectUrl"
                                      class="absolute inset-0 w-full h-full object-contain"
                                      :alt="'Frame ' + (item.index + 1)">
-                                <span class="absolute top-0 left-0 px-1 text-[10px] text-gray-700 bg-white/85 rounded-br"
+                                <span class="absolute top-0 left-0 px-1 text-[10px] text-gray-700 bg-white/85 rounded-br-sm"
                                       x-text="'#' + (item.index + 1) + ' · ' + item.delayMs + 'ms'"></span>
                                 {{-- Drag handle on the right edge --}}
                                 <div class="absolute top-0 bottom-0 right-0 w-1.5 bg-orca-teal opacity-0 hover:opacity-80 cursor-ew-resize transition-opacity"
@@ -154,7 +154,7 @@
     </div>
 
     {{-- Settings card --}}
-    <div x-show="frames.length > 0" class="bg-white rounded-lg shadow p-6 mb-6">
+    <div x-show="frames.length > 0" class="bg-white rounded-lg shadow-sm p-6 mb-6">
         <h2 class="text-base font-semibold text-gray-900 mb-4">
             <i class="fas fa-sliders text-gray-400 mr-1"></i>
             {{ __('Settings') }}
@@ -169,17 +169,17 @@
                     <input type="number" x-model.number="globalDelay" min="50" max="10000" step="50"
                         :disabled="allFramesHaveCustomDelay"
                         :class="allFramesHaveCustomDelay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''"
-                        class="w-24 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                        class="w-24 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <span class="text-xs text-gray-400">ms</span>
                 </div>
                 <template x-if="!allFramesHaveCustomDelay">
                     <div class="flex gap-1.5 mt-2">
                         <button @click="globalDelay = 200" :class="globalDelay === 200 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
-                            class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Fast') }}</button>
+                            class="text-xs px-2 py-0.5 rounded-sm border transition-colors">{{ __('Fast') }}</button>
                         <button @click="globalDelay = 500" :class="globalDelay === 500 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
-                            class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Normal') }}</button>
+                            class="text-xs px-2 py-0.5 rounded-sm border transition-colors">{{ __('Normal') }}</button>
                         <button @click="globalDelay = 1000" :class="globalDelay === 1000 ? 'bg-orca-teal text-white border-orca-teal' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'"
-                            class="text-xs px-2 py-0.5 rounded border transition-colors">{{ __('Slow') }}</button>
+                            class="text-xs px-2 py-0.5 rounded-sm border transition-colors">{{ __('Slow') }}</button>
                     </div>
                 </template>
                 <template x-if="allFramesHaveCustomDelay">
@@ -198,7 +198,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Pre-delay') }}</label>
                 <div class="flex items-center gap-2">
                     <input type="number" x-model.number="preDelay" min="0" max="10000" step="100"
-                        class="w-24 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                        class="w-24 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <span class="text-xs text-gray-400">ms</span>
                 </div>
                 <p class="text-xs text-gray-400 mt-1">{{ __('Extra hold time on first frame') }}</p>
@@ -209,7 +209,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Post-delay') }}</label>
                 <div class="flex items-center gap-2">
                     <input type="number" x-model.number="postDelay" min="0" max="10000" step="100"
-                        class="w-24 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                        class="w-24 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <span class="text-xs text-gray-400">ms</span>
                 </div>
                 <p class="text-xs text-gray-400 mt-1">{{ __('Extra hold time on last frame') }}</p>
@@ -222,7 +222,7 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Transition') }}</label>
                 <select x-model="transition"
-                    class="w-full pr-dropdown text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                    class="w-full pr-dropdown text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <option value="none">{{ __('None (instant cut)') }}</option>
                     <option value="fade">{{ __('Fade') }}</option>
                     <option value="slide-left">{{ __('Slide left') }}</option>
@@ -233,7 +233,7 @@
                 <div x-show="transition !== 'none'" class="flex items-center gap-2 mt-2">
                     <label class="text-xs text-gray-500">{{ __('Duration') }}:</label>
                     <input type="number" x-model.number="transitionDuration" min="100" max="2000" step="50"
-                        class="w-20 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal">
+                        class="w-20 text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal">
                     <span class="text-xs text-gray-400">ms</span>
                 </div>
             </div>
@@ -242,14 +242,14 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Loop') }}</label>
                 <select x-model="loopMode"
-                    class="w-full pr-dropdown text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                    class="w-full pr-dropdown text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <option value="forever">{{ __('Loop forever') }}</option>
                     <option value="once">{{ __('Play once (no loop)') }}</option>
                     <option value="count">{{ __('Custom count') }}</option>
                 </select>
                 <div x-show="loopMode === 'count'" class="flex items-center gap-2 mt-2">
                     <input type="number" x-model.number="loopCount" min="1" max="100" step="1"
-                        class="w-20 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-orca-teal">
+                        class="w-20 text-xs border border-gray-200 rounded-sm px-2 py-1 focus:outline-hidden focus:ring-1 focus:ring-orca-teal">
                     <span class="text-xs text-gray-400">{{ __('iterations') }}</span>
                 </div>
             </div>
@@ -259,10 +259,10 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Output size') }}</label>
                 <div class="flex items-center gap-2">
                     <input type="number" x-model.number="outputWidth" @change="updateWidth()" min="50" max="2000" step="10"
-                        class="w-20 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                        class="w-20 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <span class="text-xs text-gray-400">&times;</span>
                     <input type="number" x-model.number="outputHeight" @change="updateHeight()" min="50" max="2000" step="10"
-                        class="w-20 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                        class="w-20 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                     <span class="text-xs text-gray-400">px</span>
                     <button @click="lockAspectRatio = !lockAspectRatio"
                         :class="lockAspectRatio ? 'text-orca-teal' : 'text-gray-400'"
@@ -283,9 +283,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('Background') }}</label>
                 <div class="flex items-center gap-2">
                     <input type="color" x-model="bgColor"
-                        class="attention w-8 h-8 rounded border border-gray-300 cursor-pointer p-0.5">
+                        class="attention w-8 h-8 rounded-sm border border-gray-300 cursor-pointer p-0.5">
                     <input type="text" x-model="bgColor" maxlength="7"
-                        class="w-24 text-sm font-mono border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orca-teal focus:border-transparent">
+                        class="w-24 text-sm font-mono border border-gray-300 rounded-md px-2 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-orca-teal focus:border-transparent">
                 </div>
                 <p class="text-xs text-gray-400 mt-1">{{ __('Visible behind non-filling frames') }}</p>
             </div>
@@ -293,7 +293,7 @@
     </div>
 
     {{-- Generate & Preview card --}}
-    <div x-show="frames.length > 0" class="bg-white rounded-lg shadow p-6 mb-6">
+    <div x-show="frames.length > 0" class="bg-white rounded-lg shadow-sm p-6 mb-6">
         <h2 class="text-base font-semibold text-gray-900 mb-4">
             <i class="fas fa-wand-magic-sparkles text-gray-400 mr-1"></i>
             {{ __('Generate') }}
@@ -345,7 +345,7 @@
     </div>
 
     {{-- Upload to ORCA --}}
-    <div x-show="generatedGif" class="bg-white rounded-lg shadow p-6">
+    <div x-show="generatedGif" class="bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-sm font-semibold text-gray-700 mb-3">
             <i class="fas fa-cloud-arrow-up mr-2 text-gray-400"></i>{{ __('Upload to ORCA') }}
         </h3>
@@ -356,7 +356,7 @@
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Folder') }}</label>
                 <select x-model="uploadFolder"
-                    class="w-full pr-dropdown rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
+                    class="w-full pr-dropdown rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal font-mono text-sm">
                     <x-folder-tree-options :folders="$folders" :root-folder="$rootFolder" />
                 </select>
             </div>
@@ -364,7 +364,7 @@
             <div class="min-w-[200px]">
                 <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Filename') }}</label>
                 <input type="text" x-model="uploadFilename"
-                    class="w-full rounded-lg border-gray-300 shadow-sm focus:border-orca-teal focus:ring-orca-teal text-sm"
+                    class="w-full rounded-lg border-gray-300 shadow-xs focus:border-orca-teal focus:ring-orca-teal text-sm"
                     placeholder="animation.gif">
             </div>
 
