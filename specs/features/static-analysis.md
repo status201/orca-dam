@@ -377,7 +377,7 @@ fabrication this method warns against.
   `config('app.php_cli_path') ?: env('PHP_CLI_PATH')` makes PHPStan fail on the `env()` call **and**
   fails two tests in `tests/Unit/TestRunnerServiceTest.php`, including the one that pins "read from
   config, not from the environment". Both nets fire independently.
-- Advisories, in the `security` job: `composer audit --locked` and `npm audit --audit-level=high`.
+- Advisories, in the `security` job: `composer audit --locked` and `node scripts/npm-audit.mjs` (`npm audit --json` at the high bar, with a GHSA allowlist for unpatched advisories; see [security-invariants.md](security-invariants.md) REQ-8).
   Worth noting what these caught on their first run: two Guzzle advisories
   (`CVE-2026-69245`, `CVE-2026-69246`) published hours after the local run that had reported clean,
   fixed by moving to `guzzlehttp/guzzle` 7.15.2. The value of a dependency check is that it runs

@@ -153,9 +153,10 @@ jobs:
         run: |
           php artisan config:clear
           php artisan test --testsuite=Security
-      # Known advisories in dependencies. Neither carries an ignore list: when one fires, patch it,
-      # or add an explicit commented --ignore for that specific advisory. Do not append `|| true` —
-      # that makes the step decorative.
+      # Known advisories in dependencies. When one fires, patch it (upgrade, lock refresh, or an npm
+      # override). Only an advisory with no patched release may be ignored, by GHSA id, in
+      # scripts/npm-audit.mjs's ADVISORY_ALLOWLIST with its reason; a stale entry fails the step.
+      # Composer has no ignore list. Do not append `|| true`, which makes the step decorative.
       #
       # This is not theoretical. On its first run it failed on two Guzzle advisories
       # (CVE-2026-69245/69246) published hours after a local run had reported clean, which is the
@@ -163,7 +164,7 @@ jobs:
       - name: Audit Composer dependencies
         run: composer audit --locked
       - name: Audit npm dependencies
-        run: npm audit --audit-level=high
+        run: node scripts/npm-audit.mjs
 
   # Static analysis, layer B — see specs/features/static-analysis.md.
   # Separate from the `security` job because it needs Python rather than PHP, and because a

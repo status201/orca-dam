@@ -237,7 +237,7 @@ orca-dam/
 │       ├── layouts/
 │       └── ...
 ├── routes/                                # web.php, api.php, auth.php, console.php
-├── scripts/                               # sdd-guard.mjs, spec-lint.mjs, e2e-storage.mjs
+├── scripts/                               # sdd-guard.mjs, spec-lint.mjs, e2e-storage.mjs, npm-audit.mjs
 ├── specs/                                 # the behavioural source of truth
 │   ├── features/                          # 49 feature specs
 │   ├── decisions/                         # 19 ADRs
