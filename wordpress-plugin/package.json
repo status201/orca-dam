@@ -36,6 +36,9 @@
     "@wordpress/env": {
       "js-yaml": {
         "argparse": "^2.0.1"
+      },
+      "simple-git": {
+        "@simple-git/argv-parser": "^2.0.1"
       }
     }
   }
