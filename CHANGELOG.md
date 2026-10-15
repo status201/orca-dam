@@ -24,6 +24,7 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ### Fixed
 - **A chunked (≥ 10MB) SVG that failed sanitization was stored raw.** `ChunkedUploadService::completeUpload()` ignored a failed `sanitizeStoredSvg()`: the unsanitized object kept its ETag and became an asset, breaking s3-storage REQ-4. The 1.0 upgrade above made that failure easy to trigger with a working script payload. The object is now deleted, the session is marked `failed`, and the upload errors. In `keep_original_filename` overwrite mode, this leaves the existing asset without an original, because S3 had already replaced it with the raw upload (see the open question in `specs/features/chunked-upload.md`).
+- **`npm run e2e:up` / `e2e:down` failed when Docker was installed but not running.** `scripts/e2e-storage.mjs` decided whether to use Docker with `docker compose version`, which the client answers on its own, so with Docker Desktop closed it chose Compose and failed there instead of falling back to the RustFS binary. It now also asks the daemon (`docker info`, with a 15-second limit), falls back to the binary with a message saying the daemon is not answering, and `e2e:down` skips Compose in that case and still stops the binary. Spec: [`specs/features/e2e-testing.md`](specs/features/e2e-testing.md) REQ-2.
 
 ---
 

@@ -3,7 +3,7 @@
 ```yaml
 id: e2e-testing
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -77,7 +77,8 @@ when MinIO was archived upstream.
   them the suite could only talk to real AWS.
 
   `npm run e2e:up` (`scripts/e2e-storage.mjs`) brings it up **either** through
-  `docker-compose.e2e.yml` **or**, on a machine with no container runtime, from a
+  `docker-compose.e2e.yml` **or**, on a machine with no usable container runtime
+  (no `docker`, no Compose v2, or a Docker daemon that does not answer), from a
   RustFS binary it downloads into `storage/e2e/` and verifies against a pinned
   SHA-256 before running. The version is pinned in one place and moves only by
   hand. Either way the bucket is created and opened to anonymous `s3:GetObject`
@@ -232,8 +233,8 @@ putPublicReadPolicy(config): Promise<void>   # anonymous s3:GetObject on the buc
 assertAnonymousRead(config): Promise<void>   # throws if the policy did not take
 
 # scripts/e2e-storage.mjs — `npm run e2e:up` / `e2e:down`
-up      # Docker Compose when docker resolves, else the downloaded binary; then the bucket
-down    # compose down -v and/or kill the detached process, dropping its data
+up      # Docker Compose when the daemon answers `docker info`, else the downloaded binary; then the bucket
+down    # compose down -v (only if the daemon answers) and kill any detached process, dropping its data
 bucket  # provision only, against a backend that is already up
 
 # tests/e2e/support/files.js
@@ -404,6 +405,13 @@ Scenario: The storage stand-in starts without a container runtime
   Then the pinned RustFS binary is downloaded, checksum-verified and started detached
   And the bucket is created and opened to anonymous reads by the same code CI uses
 # pinned by: scripts/e2e-storage.mjs, tests/e2e/support/bucket.js
+
+Scenario: Regression — an installed but stopped Docker counts as no container runtime
+  Given docker and Compose v2 on PATH, but a Docker daemon that is not running
+  When npm run e2e:up runs
+  Then it says the daemon is not answering and starts the RustFS binary instead of failing in compose
+  And npm run e2e:down stops that binary instead of failing in compose
+# pinned by: scripts/e2e-storage.mjs
 
 Scenario: A bucket that is not anonymously readable fails at provisioning time
   Given a storage backend that refuses the public-read policy
