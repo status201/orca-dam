@@ -8,7 +8,8 @@
 //
 //   • Docker — `docker-compose.e2e.yml`, which is what CI uses.
 //   • A downloaded RustFS binary under storage/e2e/ — the fallback for a machine
-//     with no container runtime. MinIO, which this replaces, stopped publishing
+//     with no usable container runtime, including one whose Docker is installed
+//     but not running. MinIO, which this replaces, stopped publishing
 //     binaries before it was archived, so that option did not exist before and
 //     the storage specs simply skipped. See ADR-017.
 //
@@ -57,11 +58,23 @@ const READY_INTERVAL_MS = 500;
 const log = (message) => process.stdout.write(`${message}\n`);
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
-/** Is there a usable Docker with Compose v2? */
-function hasDocker() {
-    const probe = spawnSync('docker', ['compose', 'version'], { stdio: 'ignore', shell: false });
+const DOCKER_INFO_TIMEOUT_MS = 15_000;
 
-    return probe.status === 0;
+/**
+ * 'ready' when Docker with Compose v2 can actually run a container, 'stopped' when
+ * the CLI is installed but its daemon does not answer, 'absent' otherwise.
+ *
+ * `docker compose version` alone is not enough: it is answered by the client, so it
+ * succeeds with Docker Desktop closed, and `compose up` then fails instead of the
+ * binary fallback taking over. `docker info` needs the daemon. It is bounded because
+ * a daemon that is still starting can hold it open.
+ */
+function dockerState() {
+    const run = (args, extra = {}) => spawnSync('docker', args, { stdio: 'ignore', shell: false, ...extra }).status === 0;
+
+    if (!run(['compose', 'version'])) return 'absent';
+
+    return run(['info'], { timeout: DOCKER_INFO_TIMEOUT_MS }) ? 'ready' : 'stopped';
 }
 
 function docker(args) {
@@ -255,11 +268,15 @@ async function provisionBucket() {
 }
 
 async function up() {
-    if (hasDocker()) {
+    const state = dockerState();
+
+    if (state === 'ready') {
         log('Starting RustFS with Docker Compose.');
         docker(['compose', '-f', COMPOSE_FILE, 'up', '-d', 'rustfs']);
     } else {
-        log('No Docker found — starting the RustFS binary instead.');
+        log(state === 'stopped'
+            ? 'Docker is installed but its daemon is not answering — starting the RustFS binary instead.'
+            : 'No Docker found — starting the RustFS binary instead.');
         await startBinary();
     }
 
@@ -268,7 +285,9 @@ async function up() {
 }
 
 function down() {
-    if (hasDocker()) {
+    // A daemon that is not answering has no containers running, so there is
+    // nothing for compose to take down.
+    if (dockerState() === 'ready') {
         docker(['compose', '-f', COMPOSE_FILE, 'down', '-v']);
     }
 
