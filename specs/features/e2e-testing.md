@@ -343,7 +343,7 @@ Tools and versions:
   copy in `wordpress-plugin/package.json` and is versioned independently
   ([ADR-013](../decisions/adr-013-wordpress-plugin-separate-stream.md)), so the
   two suites each download their own browser build.
-- RustFS `1.0.0` — the image `rustfs/rustfs:1.0.0` in
+- RustFS `1.0.1` — the image `rustfs/rustfs:1.0.1` in
   `docker-compose.e2e.yml`, or the release binary of the same version fetched by
   `scripts/e2e-storage.mjs`, which pins that version and the SHA-256 of each
   platform's archive, and caches the binary per version under
