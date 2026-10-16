@@ -5,6 +5,7 @@ use App\Models\Asset;
 use App\Models\UploadSession;
 use App\Models\User;
 use App\Services\ChunkedUploadService;
+use App\Services\ImageProcessingService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
 use Aws\Command;
@@ -14,6 +15,7 @@ use Aws\Result;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Mockery\MockInterface;
 
 function makeUploadSession(User $user, array $overrides = []): UploadSession
 {
@@ -35,13 +37,14 @@ function makeUploadSession(User $user, array $overrides = []): UploadSession
 }
 
 /**
- * A real ChunkedUploadService whose AWS client answers from $handler, with every command it sends
- * recorded in the returned History. It is also bound into the container, so controller tests run
- * the real service logic over the mocked client.
+ * A real ChunkedUploadService over a real S3Service whose AWS client answers from $handler, with
+ * every command it sends recorded in the returned History. The S3Service is a partial mock, so a
+ * test can stub single methods (sanitizeStoredSvg, deleteFile) while the multipart calls run for
+ * real. The chunked service is bound into the container for controller tests.
  *
- * @return array{0: ChunkedUploadService, 1: History}
+ * @return array{0: ChunkedUploadService, 1: History, 2: S3Service&MockInterface}
  */
-function chunkedServiceWith(MockHandler $handler, ?S3Service $s3 = null): array
+function chunkedServiceWith(MockHandler $handler): array
 {
     config([
         'filesystems.disks.s3.region' => 'us-east-1',
@@ -51,12 +54,13 @@ function chunkedServiceWith(MockHandler $handler, ?S3Service $s3 = null): array
     ]);
 
     $history = new History;
-    $service = new ChunkedUploadService($s3 ?? Mockery::mock(S3Service::class));
-    (new ReflectionProperty(ChunkedUploadService::class, 's3Client'))
-        ->setValue($service, fakeS3Client($handler, $history));
+    $s3 = Mockery::mock(S3Service::class, [app(ImageProcessingService::class)])->makePartial();
+    $s3->setS3Client(fakeS3Client($handler, $history));
+
+    $service = new ChunkedUploadService($s3);
     app()->instance(ChunkedUploadService::class, $service);
 
-    return [$service, $history];
+    return [$service, $history, $s3];
 }
 
 /** @return list<string> */
@@ -217,12 +221,10 @@ test('chunked SVG that fails sanitization is deleted and creates no asset', func
     $handler->append(new S3Exception('NoSuchUpload', new Command('AbortMultipartUpload')));
 
     // Strict expectations: deleting (or writing) anything but the staging key fails the test.
-    $s3Mock = Mockery::mock(S3Service::class);
+    [$service, $history, $s3Mock] = chunkedServiceWith($handler);
     $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
         ->with('chunked-staging/tok.svg', 'assets/drawing.svg')->andReturnNull();
     $s3Mock->shouldReceive('deleteFile')->once()->with('chunked-staging/tok.svg')->andReturnTrue();
-
-    [$service, $history] = chunkedServiceWith($handler, $s3Mock);
 
     expect(fn () => $service->completeUpload($session))
         ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
@@ -251,13 +253,13 @@ test('an overwrite-mode SVG that fails sanitization keeps the existing original 
     $handler->append(new Result(['ETag' => '"raw-etag"']));
     $handler->append(new S3Exception('NoSuchUpload', new Command('AbortMultipartUpload')));
 
-    // No deleteAssetFiles() and no deleteFile('assets/logo.svg') expectation: either call fails.
-    $s3Mock = Mockery::mock(S3Service::class);
+    // deleteFile() is expected for the staging key only, so a delete of assets/logo.svg fails the
+    // test, and the overwrite branch's derived-file cleanup must never be reached.
+    [$service, , $s3Mock] = chunkedServiceWith($handler);
     $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
         ->with('chunked-staging/tok.svg', 'assets/logo.svg')->andReturnNull();
     $s3Mock->shouldReceive('deleteFile')->once()->with('chunked-staging/tok.svg')->andReturnTrue();
-
-    [$service] = chunkedServiceWith($handler, $s3Mock);
+    $s3Mock->shouldNotReceive('deleteAssetFiles');
 
     expect(fn () => $service->completeUpload($session))
         ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
@@ -282,12 +284,10 @@ test('a session from before staging keys still sanitizes its SVG in place', func
     $handler->append(new Result(['ETag' => '"raw-etag"']));
     $handler->append(new S3Exception('NoSuchUpload', new Command('AbortMultipartUpload')));
 
-    $s3Mock = Mockery::mock(S3Service::class);
+    [$service, $history, $s3Mock] = chunkedServiceWith($handler);
     $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
         ->with('assets/drawing.svg', 'assets/drawing.svg')->andReturnNull();
     $s3Mock->shouldReceive('deleteFile')->once()->with('assets/drawing.svg')->andReturnTrue();
-
-    [$service, $history] = chunkedServiceWith($handler, $s3Mock);
 
     expect(fn () => $service->completeUpload($session))
         ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
@@ -306,25 +306,21 @@ test('completing a chunked SVG writes the sanitized content to the final key and
         'part_etags' => [['PartNumber' => 2, 'ETag' => 'e2'], ['PartNumber' => 1, 'ETag' => 'e1']],
     ]);
 
-    $handler = new MockHandler;
-    $handler->append(new Result(['ETag' => '"raw-etag"']));                    // CompleteMultipartUpload
-    $handler->append(new Result(['Body' => '<svg xmlns="http://www.w3.org/2000/svg"/>'])); // dimensions read
-
-    $s3Mock = Mockery::mock(S3Service::class);
+    // Only CompleteMultipartUpload reaches S3: an SVG has no raster dimensions, so nothing is
+    // downloaded to size it.
+    [$service, $history, $s3Mock] = chunkedServiceWith(new MockHandler([new Result(['ETag' => '"raw-etag"'])]));
     $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
         ->with('chunked-staging/tok.svg', 'assets/drawing.svg')->andReturn('clean-etag');
     $s3Mock->shouldReceive('deleteFile')->once()->with('chunked-staging/tok.svg')->andReturnTrue();
 
-    [$service, $history] = chunkedServiceWith($handler, $s3Mock);
-
     $asset = $service->completeUpload($session);
 
-    [$complete, $read] = array_map(fn ($entry) => $entry['command'], $history->toArray());
-    expect($complete->getName())->toBe('CompleteMultipartUpload')
+    $complete = $history->getLastCommand();
+    expect(sentCommands($history))->toBe(['CompleteMultipartUpload'])
         ->and($complete['Key'])->toBe('chunked-staging/tok.svg')
         ->and(array_column($complete['MultipartUpload']['Parts'], 'PartNumber'))->toBe([1, 2])
-        ->and($read['Key'])->toBe('assets/drawing.svg')
         ->and($asset->s3_key)->toBe('assets/drawing.svg')
+        ->and($asset->width)->toBeNull()
         ->and($asset->etag)->toBe('clean-etag')
         ->and($session->fresh()->status)->toBe('completed');
 });

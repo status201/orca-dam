@@ -219,3 +219,41 @@ test('sanitizeStoredSvg reads the source key and writes the sanitized markup to 
         ->and((string) $put['Body'])->not->toContain('<script')
         ->and((string) $put['Body'])->toContain('<rect');
 });
+
+test('extractImageDimensions streams a stored image and sizes it from its header', function () {
+    $img = imagecreatetruecolor(24, 12);
+    ob_start();
+    imagejpeg($img);
+    $jpeg = ob_get_clean();
+    imagedestroy($img);
+
+    $service = s3ServiceReturning([['Body' => $jpeg]]);
+
+    expect($service->extractImageDimensions('assets/photo.jpg', 'image/jpeg'))
+        ->toBe(['width' => 24, 'height' => 12]);
+});
+
+test('extractImageDimensions skips non-images and SVGs without downloading them', function () {
+    $history = new History;
+    $service = app(S3Service::class)->setS3Client(fakeS3Client(new MockHandler, $history));
+
+    expect($service->extractImageDimensions('assets/clip.mp4', 'video/mp4'))->toBeNull()
+        ->and($service->extractImageDimensions('assets/logo.svg', 'image/svg+xml'))->toBeNull()
+        ->and($history)->toHaveCount(0);
+});
+
+test('completeMultipartUpload sends the parts in ascending PartNumber order', function () {
+    $handler = new MockHandler([new Result(['ETag' => '"whole"'])]);
+    $history = new History;
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
+
+    $etag = $service->completeMultipartUpload('assets/big.zip', 'up-1', [
+        ['PartNumber' => 3, 'ETag' => 'c'],
+        ['PartNumber' => 1, 'ETag' => 'a'],
+        ['PartNumber' => 2, 'ETag' => 'b'],
+    ]);
+
+    $parts = $history->getLastCommand()['MultipartUpload']['Parts'];
+    expect($etag)->toBe('whole')
+        ->and(array_column($parts, 'PartNumber'))->toBe([1, 2, 3]);
+});

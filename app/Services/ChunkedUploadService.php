@@ -6,35 +6,26 @@ use App\Exceptions\DuplicateAssetException;
 use App\Models\Asset;
 use App\Models\UploadSession;
 use App\Support\UploadPolicy;
-use Aws\S3\S3Client;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Session bookkeeping for S3 multipart uploads. Every S3 call goes through S3Service, so the
+ * configured endpoint, timeouts and upload hardening apply here too (s3-storage
+ * REQ-sole-s3-gateway).
+ */
 class ChunkedUploadService
 {
-    protected S3Client $s3Client;
-
-    protected string $bucket;
+    /** The part size the server dictates; init returns it and the uploader slices by it. */
+    public const CHUNK_SIZE = 10 * 1024 * 1024;
 
     protected S3Service $s3Service;
 
     public function __construct(S3Service $s3Service)
     {
         $this->s3Service = $s3Service;
-        $this->bucket = config('filesystems.disks.s3.bucket');
-        // Same endpoint, path-style and timeout configuration as S3Service (s3-storage REQ-7/8).
-        $this->s3Client = S3Service::makeClient();
-    }
-
-    /**
-     * Determine if file should use chunked upload
-     */
-    public static function shouldUseChunkedUpload(int $fileSize): bool
-    {
-        // Use chunked upload for files >= 10MB
-        return $fileSize >= (10 * 1024 * 1024);
     }
 
     /**
@@ -66,23 +57,11 @@ class ChunkedUploadService
         // so a sanitization failure can't cost an existing asset (overwrite mode) its original.
         $stagingKey = UploadPolicy::isSvg($s3Key) ? S3Service::CHUNKED_STAGING_PREFIX.$sessionToken.'.svg' : null;
 
-        // Initiate S3 multipart upload. Force download for non-inline types
-        // (mirrors S3Service::putUploadedFile for the direct-upload path).
-        $createParams = [
-            'Bucket' => $this->bucket,
-            'Key' => $stagingKey ?? $s3Key,
-            'ContentType' => $mimeType,
-        ];
-        if (! UploadPolicy::isInline($s3Key)) {
-            $createParams['ContentDisposition'] = 'attachment';
-        }
+        // The staging key keeps the extension, so S3Service's Content-Disposition decision is the
+        // same as it would be for $s3Key.
+        $uploadId = $this->s3Service->createMultipartUpload($stagingKey ?? $s3Key, $mimeType);
 
-        $result = $this->s3Client->createMultipartUpload($createParams);
-
-        $uploadId = $result['UploadId'];
-
-        // Calculate chunks
-        $chunkSize = 10 * 1024 * 1024; // 10MB
+        $chunkSize = self::CHUNK_SIZE;
         $totalChunks = (int) ceil($fileSize / $chunkSize);
 
         // Create database record
@@ -132,21 +111,15 @@ class ChunkedUploadService
             return ['PartNumber' => $chunkNumber, 'ETag' => $recorded['ETag'], 'skipped' => true];
         }
 
-        // Stream chunk to S3
-        $stream = fopen($chunk->getRealPath(), 'r');
-
         try {
             // Deliberately outside the transaction below: holding the row lock through a 10MB
             // PUT would serialize every chunk, and re-uploading a PartNumber is idempotent in S3.
-            $result = $this->s3Client->uploadPart([
-                'Bucket' => $this->bucket,
-                'Key' => $session->multipartKey(),
-                'UploadId' => $session->upload_id,
-                'PartNumber' => $chunkNumber,
-                'Body' => $stream,
-            ]);
-
-            $etag = trim($result['ETag'], '"');
+            $etag = $this->s3Service->uploadPart(
+                $session->multipartKey(),
+                $session->upload_id,
+                $chunkNumber,
+                $chunk->getRealPath()
+            );
 
             // Merge under a row lock, keyed by PartNumber, and derive the count from the merged
             // parts. Appending to the in-memory copy and writing `uploaded_chunks + 1` lost a
@@ -182,10 +155,6 @@ class ChunkedUploadService
                 'error' => $e->getMessage(),
             ]);
             throw $e;
-        } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
         }
     }
 
@@ -207,24 +176,12 @@ class ChunkedUploadService
             );
         }
 
-        // Sort parts by PartNumber (required by S3)
-        $parts = collect($session->part_etags)
-            ->sortBy('PartNumber')
-            ->values()
-            ->toArray();
-
         try {
-            // Complete multipart upload
-            $result = $this->s3Client->completeMultipartUpload([
-                'Bucket' => $this->bucket,
-                'Key' => $session->multipartKey(),
-                'UploadId' => $session->upload_id,
-                'MultipartUpload' => [
-                    'Parts' => $parts,
-                ],
-            ]);
-
-            $etag = trim($result['ETag'], '"');
+            $etag = $this->s3Service->completeMultipartUpload(
+                $session->multipartKey(),
+                $session->upload_id,
+                $session->part_etags ?? []
+            );
 
             // SVGs are sanitized after assembly (the >=10MB chunked path; smaller
             // SVGs take the direct path). Re-puts the cleaned content, which
@@ -272,8 +229,7 @@ class ChunkedUploadService
                 }
             }
 
-            // Get dimensions for images (if applicable)
-            $dimensions = $this->extractDimensions($session);
+            $dimensions = $this->s3Service->extractImageDimensions($session->s3_key, $session->mime_type) ?? [];
 
             if ($existingByKey) {
                 // Overwrite: clean up old derived files, update existing record
@@ -346,11 +302,7 @@ class ChunkedUploadService
     public function abortUpload(UploadSession $session): void
     {
         try {
-            $this->s3Client->abortMultipartUpload([
-                'Bucket' => $this->bucket,
-                'Key' => $session->multipartKey(),
-                'UploadId' => $session->upload_id,
-            ]);
+            $this->s3Service->abortMultipartUpload($session->multipartKey(), $session->upload_id);
 
             $session->update(['status' => 'aborted']);
 
@@ -365,43 +317,5 @@ class ChunkedUploadService
             ]);
             throw $e;
         }
-    }
-
-    /**
-     * Extract image dimensions from uploaded S3 object
-     */
-    protected function extractDimensions(UploadSession $session): array
-    {
-        // Only extract dimensions for images
-        if (! str_starts_with($session->mime_type, 'image/')) {
-            return [];
-        }
-
-        try {
-            // Get object from S3
-            $result = $this->s3Client->getObject([
-                'Bucket' => $this->bucket,
-                'Key' => $session->s3_key,
-            ]);
-
-            // Save temporarily to extract dimensions
-            $tempPath = tempnam(sys_get_temp_dir(), 'orca_dim_');
-            file_put_contents($tempPath, (string) $result['Body']);
-
-            // Use getimagesize for memory efficiency
-            $size = @getimagesize($tempPath);
-            unlink($tempPath);
-
-            if ($size !== false) {
-                return ['width' => $size[0], 'height' => $size[1]];
-            }
-        } catch (\Exception $e) {
-            Log::warning('Failed to extract dimensions', [
-                'session_token' => $session->session_token,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return [];
     }
 }

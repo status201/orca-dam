@@ -3,7 +3,7 @@
 ```yaml
 id: image-processing
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -35,10 +35,19 @@ S3/AWS SDK involvement.
   block structure (looking for a second Image Descriptor block, `0x2C`) rather
   than relying on file size or frame-count metadata heuristics, so it's
   correct even for GIFs with unusual block ordering.
-- **REQ-4** — Dimension extraction (`getImageDimensions()`) skips EPS and SVG
-  (no meaningful raster dimensions) and uses `getimagesize()` rather than
-  loading the full image for GIFs, to avoid memory blowups on large animated
-  GIFs.
+- **REQ-4** — Dimension extraction has one implementation,
+  `getImageDimensionsFromPath()`, used by every path that stores an image —
+  direct upload (`getImageDimensions()` on the upload's temp file), chunked
+  upload and discovery (`S3Service::extractImageDimensions()`, which streams the
+  object to a temp file first). It skips EPS and SVG (no meaningful raster
+  dimensions) and reads the header with `getimagesize()`, never decoding the
+  pixels, so a 500MB upload costs no more memory than a small one. EXIF
+  orientations 5–8 (rotated 90°/270°) swap width and height, so the stored
+  dimensions are the image *as displayed* — matching the auto-oriented
+  thumbnails and resizes. The three paths used to disagree: the direct path
+  decoded the whole image (EXIF-aware, memory-hungry), the chunked path read
+  raw `getimagesize()` (cheap, but a rotated phone photo ≥ 10MB came out
+  sideways), and discovery decoded from a string in memory.
 
 ## Technical design
 
@@ -48,8 +57,9 @@ S3/AWS SDK involvement.
 createThumbnailContent(imageContent: string, filename: string): ?string   # JPEG bytes, or null for animated GIF
 createResizedContent(imageContent: string, extension: string, ?width: int, ?height: int): array
   # => {content: string, mime_type: string, extension: string}
-getImageDimensions(UploadedFile): array          # => {width, height} or [] when not applicable
-getImageDimensionsFromData(imageData: string): array  # => {width, height}
+getImageDimensions(UploadedFile): array          # => {width, height} or [] when not applicable (non-image mime)
+getImageDimensionsFromPath(path: string, filename: string): array  # => {width, height} or [] — REQ-4
+hasRasterDimensions(filename: string): bool      # false for EPS/SVG — also lets S3Service skip the download
 isAnimatedGif(imageData: string): bool
 ```
 
@@ -57,20 +67,21 @@ isAnimatedGif(imageData: string): bool
 
 Called exclusively from `S3Service` (`generateThumbnail`,
 `generateResizedImages`, `getImageDimensions` inside `uploadFile`,
-`extractImageDimensions`) — this service never touches S3 or the filesystem
-itself, it only transforms in-memory byte strings. `ImageManager` (Intervention
+`extractImageDimensions`) — this service never touches S3; it transforms
+in-memory byte strings, and reads a local path only to size an image
+(`getImageDimensionsFromPath()`). `ImageManager` (Intervention
 Image 4.x, GD driver) is built once per `ImageProcessingService` instance via
 `ImageManager::usingDriver(Driver::class)`.
 
 Decoding is explicit about its input kind: raw byte strings go through
-`decodeBinary()`, and the single filesystem path (`getImageDimensions()`) goes
-through `decodePath()` — Intervention 4 dropped the auto-detecting `read()`.
+`decodeBinary()` — Intervention 4 dropped the auto-detecting `read()`.
+Dimension extraction doesn't decode at all (REQ-4).
 Encoding likewise goes through explicit encoder objects
 (`Encoders\{JpegEncoder, PngEncoder, WebpEncoder}`) rather than the `toJpeg()` /
 `toPng()` / `toWebp()` shortcuts removed in 4.x; each returns an `EncodedImage`
 that is cast to a byte string. Intervention's own exceptions all extend
-`\Exception`, so the `getImageDimensions()` catch blocks still degrade to `[]`
-on an undecodable file.
+`\Exception`. An unreadable file makes `getimagesize()` return `false`, which
+`getImageDimensionsFromPath()` turns into `[]`.
 
 ## Scenarios (BDD)
 
@@ -117,6 +128,18 @@ Scenario: getImageDimensions returns width/height for a valid JPEG
   Then getImageDimensions() returns the correct width and height
 # pinned by: tests/Unit/ImageProcessingServiceTest.php
 
+Scenario: A JPEG whose EXIF orientation rotates it reports its displayed dimensions (REQ-4)
+  Given a 20x10 JPEG carrying EXIF Orientation 6 (rotate 90° clockwise)
+  Then getImageDimensionsFromPath() returns width 10 and height 20
+  And the same JPEG with Orientation 1 returns width 20 and height 10
+# pinned by: tests/Unit/ImageProcessingServiceTest.php
+
+Scenario: S3 dimension extraction streams the object and shares the local implementation (REQ-4)
+  Given a stored JPEG
+  When S3Service::extractImageDimensions() runs
+  Then it returns the JPEG's width and height, and null for a non-image mime type or an SVG
+# pinned by: tests/Unit/Services/S3ServiceTest.php
+
 Scenario: isAnimatedGif detects a two-frame GIF as animated
   Given GIF bytes with two Image Descriptor blocks
   Then isAnimatedGif() returns true
@@ -135,5 +158,5 @@ Scenario: isAnimatedGif correctly walks a GIF with a Global Color Table and loop
 
 ## Tests & verification
 
-- Unit: `tests/Unit/ImageProcessingServiceTest.php`
+- Unit: `tests/Unit/ImageProcessingServiceTest.php`, `tests/Unit/Services/S3ServiceTest.php`
 - Run: `php artisan config:clear && php artisan test`

@@ -31,11 +31,14 @@ chunk. See [ADR-005](../decisions/adr-005-chunked-above-10mb.md) for the
 
 ## Requirements
 
-- **REQ-1** — The client picks the path. The browser uploader sends files at or
-  above 10MB (`CHUNKED_THRESHOLD` in `resources/js/alpine/asset-uploader.js`)
-  through this feature and smaller ones through the direct path; the server does
-  not enforce the threshold, so an API client may use either path within each
-  path's own limits.
+- **REQ-1** — The client picks the path; the server dictates the chunking. The
+  browser uploader sends files at or above 10MB (`CHUNKED_THRESHOLD` in
+  `resources/js/alpine/asset-uploader.js`) through this feature and smaller ones
+  through the direct path; the server doesn't enforce the threshold, so an API
+  client may use either path within each path's own limits. The part size is
+  the server's alone (`ChunkedUploadService::CHUNK_SIZE`): `init` returns
+  `chunk_size` and `total_chunks`, and the uploader cuts and counts chunks from
+  those — it keeps no chunk size of its own, so the two can't disagree.
 - **REQ-2** — Chunk uploads are idempotent, and the guarantee lives in
   `ChunkedUploadService::uploadChunk()`, not the controller: re-sending a
   `chunk_number` the session has already recorded skips the S3 `uploadPart` and
@@ -85,9 +88,12 @@ POST complete: ChunkedUploadController::complete        # chunked-upload.complet
 POST abort:    ChunkedUploadController::abort            # chunked-upload.abort
 ```
 
-`ChunkedUploadService` talks to S3 through a client from
-`S3Service::makeClient()` — the same endpoint, path-style and timeout
-configuration as `S3Service` ([`s3-storage.md`](s3-storage.md) REQ-7, REQ-8).
+`ChunkedUploadService` holds no S3 client: every S3 call goes through
+`S3Service` — the multipart primitives `createMultipartUpload()` /
+`uploadPart()` / `completeMultipartUpload()` / `abortMultipartUpload()`, plus
+`sanitizeStoredSvg()`, `deleteFile()` and `extractImageDimensions()` — so it
+inherits the endpoint, timeouts and upload hardening
+([`s3-storage.md`](s3-storage.md) REQ-sole-s3-gateway).
 
 `ChunkedUploadService::initiateUpload(filename, mimeType, fileSize, userId, ?folder, keepOriginalFilename): UploadSession`
 — computes the S3 key (UUID or sanitized original name), opens an S3
@@ -117,7 +123,8 @@ the locked row.
 and deletes the staging object (a legacy session with no staging key is
 sanitized in place); runs the etag dedup check
 (throws `DuplicateAssetException` on a match); creates or updates the `Asset`
-row; marks the session `completed`.
+row (dimensions via `S3Service::extractImageDimensions()`, which skips SVG);
+marks the session `completed`.
 
 `ChunkedUploadService::abortUpload(UploadSession): void` — S3
 `abortMultipartUpload` + session status `aborted`.
@@ -171,6 +178,13 @@ itself — see [`maintenance-commands.md`](maintenance-commands.md).
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: The browser uploader cuts chunks to the size init returns (REQ-1)
+  Given a 10.5MB file staged on the upload page
+  And the init response says chunk_size is 6MB
+  When the upload is submitted
+  Then the first chunk sent is 6MB, not the server's default 10MB, and the upload completes
+# pinned by: tests/e2e/asset-upload.spec.js
+
 Scenario: Initiating a chunked upload opens a session for the caller
   Given an authenticated editor
   When POST .../init is called for a 25MB "archive.zip"
@@ -323,7 +337,9 @@ Scenario: Stale upload sessions are aborted by the cleanup command
 - Feature: `tests/Feature/ChunkedUploadTest.php`, `tests/Feature/DuplicatePayloadTest.php`,
   `tests/Feature/Console/AssetMaintenanceCommandTest.php`
 - Unit: `tests/Unit/Services/S3ServiceTest.php` (`sanitizeStoredSvg` to a destination key,
-  staging keys hidden from discovery)
+  staging keys hidden from discovery, multipart part ordering)
+- E2E: `tests/e2e/asset-upload.spec.js` — a 10.5MB upload through the real uploader into
+  RustFS (needs `npm run e2e:up`)
 - Run: `php artisan config:clear && php artisan test`
 
 ## Open questions / future
@@ -334,9 +350,3 @@ Scenario: Stale upload sessions are aborted by the cleanup command
   overwrite branch against the asset it just created (derived files are dropped
   and regenerated). Harmless but wasteful; a guard returning the existing asset
   for a `completed` session would close it.
-- Two copies of the chunking numbers exist. `ChunkedUploadService` has an
-  unused `shouldUseChunkedUpload()` restating the 10MB threshold the uploader
-  actually applies, and the uploader slices files with its own `CHUNK_SIZE`
-  and counts its own chunks instead of using the `chunk_size`/`total_chunks`
-  that `init` returns — so changing the server's chunk size would make every
-  browser upload fail at `complete` ("not all chunks uploaded").

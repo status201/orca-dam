@@ -25,10 +25,9 @@ source:
 
 ## Background / Why
 
-`S3Service` is the gateway to AWS S3 (REQ-1 of `architecture.md`) — no
-controller talks to the AWS SDK directly. The one other service that does is
-`ChunkedUploadService`, whose multipart calls have no `S3Service` counterpart;
-it gets its client from `S3Service::makeClient()` (REQ-7). `S3Service` owns the S3 key
+`S3Service` is the sole gateway to AWS S3 (REQ-1 of `architecture.md`) — no
+controller or other service talks to the AWS SDK directly (REQ-sole-s3-gateway).
+It owns the S3 key
 layout, the security hardening applied at upload time (server-detected
 Content-Type, forced download for non-inline types, SVG sanitization), and all
 derived-asset (thumbnail/resize) key generation and cleanup.
@@ -48,6 +47,16 @@ derived-asset (thumbnail/resize) key generation and cleanup.
 - **REQ-4** — SVGs are sanitized (`enshrined/svg-sanitize`) before storage on
   every upload path; a sanitization failure throws rather than storing
   unsanitized content.
+- **REQ-sole-s3-gateway** — `S3Service` is the only class in `app/` that uses
+  the AWS S3 SDK, so REQ-7's endpoint and REQ-8's timeouts govern every S3
+  request ORCA makes. That includes the multipart upload
+  [`chunked-upload.md`](chunked-upload.md) drives: `ChunkedUploadService` calls
+  `S3Service::createMultipartUpload()` / `uploadPart()` /
+  `completeMultipartUpload()` / `abortMultipartUpload()` and holds no client of
+  its own. An architecture test enforces it, because the previous arrangement —
+  a second, hand-built client in `ChunkedUploadService` — silently skipped both
+  requirements and sent every upload ≥ 10MB to AWS on an S3-compatible
+  deployment.
 - **REQ-staging-prefix-hidden** — `chunked-staging/` at the bucket root
   (`S3Service::CHUNKED_STAGING_PREFIX`) is ORCA's own transient prefix: a
   chunked SVG assembles there before it is sanitized onto its asset key
@@ -65,11 +74,7 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   naming used by `generateThumbnail()`/`generateResizedImages()` exactly, so
   moving an asset (bulk move) can predict where its thumbnails/resizes will
   land without regenerating them.
-- **REQ-7** — Every `S3Client` ORCA builds comes from one factory,
-  `S3Service::makeClient()` — S3Service's own and the one
-  [`chunked-upload.md`](chunked-upload.md)'s `ChunkedUploadService` drives
-  multipart uploads with — so the two can't drift apart. That client is built
-  from the `s3` disk config *including*
+- **REQ-7** — The `S3Client` is built from the `s3` disk config *including*
   `endpoint` and `use_path_style_endpoint` when they are set, so the service can
   be pointed at any S3-compatible endpoint (the RustFS bucket the E2E suite runs
   against — [`e2e-testing.md`](e2e-testing.md) REQ-2 — or an R2/Wasabi-style
@@ -77,7 +82,7 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   Flysystem disk; the service simply stopped ignoring them. When `endpoint` is
   unset the client is constructed exactly as before (region + credentials only),
   so real-AWS behaviour is unchanged.
-- **REQ-8** — Every `S3Client` (REQ-7's factory) carries an explicit `connect_timeout` and `timeout`
+- **REQ-8** — The `S3Client` carries an explicit `connect_timeout` and `timeout`
   (`AWS_CONNECT_TIMEOUT`, default 5s; `AWS_REQUEST_TIMEOUT`, default 120s; both
   read from the `s3` disk config). The SDK's own default is to wait indefinitely
   for a response, so an endpoint that completes the TCP handshake and then never
@@ -107,7 +112,16 @@ deleteAssetFiles(Asset, keepOriginal=false): void   # original + thumbnail + res
 computeDerivedKeys(s3Key): array            # {thumbnail_s3_key, resize_s_s3_key, resize_m_s3_key, resize_l_s3_key}
 moveObject(sourceKey, destinationKey): bool # copy + delete
 deleteFile(s3Key): bool
-extractImageDimensions(s3Key, mimeType): ?array
+extractImageDimensions(s3Key, mimeType): ?array   # null for non-images; streams the object to a temp file
+                                            # and defers to ImageProcessingService::getImageDimensionsFromPath()
+
+# Multipart upload — chunked-upload.md's only way to S3 (REQ-sole-s3-gateway). Unlike the rest of
+# this service these THROW (ADR-010's exception): the caller orchestrates abort/rollback and has
+# to know which step failed.
+createMultipartUpload(key, contentType): string               # UploadId; Content-Disposition per REQ-3
+uploadPart(key, uploadId, partNumber, path): string            # part ETag; streams the local file
+completeMultipartUpload(key, uploadId, parts): ?string         # parts sorted by PartNumber here; object ETag
+abortMultipartUpload(key, uploadId): void
 listObjects(prefix='', ?maxKeys): array
 findUnmappedObjects(?prefix): array         # S3 objects not in the assets table (discovery); skips thumbnails/ and chunked-staging/
 listFolders(?prefix): array
@@ -118,10 +132,8 @@ getPublicBaseUrl(): string                  # static — custom_domain setting >
 getUrl(s3Key): string
 getRootFolder() / getConfiguredFolders() / getRootPrefix(): static helpers over the Setting model
 setS3Client(S3Client): static               # test seam — swap the underlying AWS client
-makeClient(): S3Client                      # static — the one place an S3Client is configured:
-                                            # region, credentials, timeouts (REQ-8), endpoint +
-                                            # use_path_style_endpoint (REQ-7); ChunkedUploadService uses it too
-__construct(ImageProcessingService)         # $this->s3Client = self::makeClient()
+__construct(ImageProcessingService)         # builds S3Client from the `s3` disk config,
+                                            # incl. endpoint + use_path_style_endpoint (REQ-7)
 sanitizeFilename(filename): string          # static
 ensureExtension(filename, ext, fallback): string   # static
 ```
@@ -250,14 +262,18 @@ Scenario: An endpoint that accepts the connection and never answers fails in sec
   Then the client gives up after the configured timeout rather than running until max_execution_time
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 
-Scenario: The chunked-upload client honours the endpoint and timeouts too (regression)
-  Given filesystems.disks.s3.endpoint is http://127.0.0.1:9100 with path-style enabled
-  And AWS request/connect timeouts are configured
-  When ChunkedUploadService is constructed
-  Then its S3Client targets that endpoint with path-style addressing and carries those timeouts
+Scenario: Chunked-upload requests go to the configured endpoint and are bounded by the timeout (regression)
+  Given filesystems.disks.s3.endpoint points at a local socket that accepts and never answers
+  When ChunkedUploadService::initiateUpload() runs
+  Then the CreateMultipartUpload request arrives at that socket (path-style)
+  And the call fails within the configured timeout
 # Regression: ChunkedUploadService built its own S3Client from region + credentials only,
 # so every upload >= 10MB went to real AWS on an R2/Wasabi/RustFS deployment, and waited
 # without bound against AWS.
+# pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
+
+Scenario: No class but S3Service uses the AWS S3 SDK (REQ-sole-s3-gateway)
+  Then an architecture test finds no use of Aws\S3 anywhere in App outside App\Services\S3Service
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 
 Scenario: No endpoint config leaves AWS addressing untouched
