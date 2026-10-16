@@ -26,10 +26,19 @@ class S3Service
         $this->bucket = config('filesystems.disks.s3.bucket');
         $this->region = config('filesystems.disks.s3.region');
         $this->imageProcessingService = $imageProcessingService;
+        $this->s3Client = self::makeClient();
+    }
 
+    /**
+     * The one place an S3Client is configured (s3-storage REQ-7). ChunkedUploadService builds its
+     * client here too: it used to assemble its own from region + credentials, which sent every
+     * chunked upload to real AWS on an S3-compatible deployment and waited without bound.
+     */
+    public static function makeClient(): S3Client
+    {
         $clientConfig = [
             'version' => 'latest',
-            'region' => $this->region,
+            'region' => config('filesystems.disks.s3.region'),
             'credentials' => [
                 'key' => config('filesystems.disks.s3.key'),
                 'secret' => config('filesystems.disks.s3.secret'),
@@ -54,7 +63,7 @@ class S3Service
             $clientConfig['use_path_style_endpoint'] = (bool) config('filesystems.disks.s3.use_path_style_endpoint', false);
         }
 
-        $this->s3Client = new S3Client($clientConfig);
+        return new S3Client($clientConfig);
     }
 
     /**

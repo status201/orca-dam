@@ -61,7 +61,11 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   naming used by `generateThumbnail()`/`generateResizedImages()` exactly, so
   moving an asset (bulk move) can predict where its thumbnails/resizes will
   land without regenerating them.
-- **REQ-7** — The `S3Client` is built from the `s3` disk config *including*
+- **REQ-7** — Every `S3Client` ORCA builds comes from one factory,
+  `S3Service::makeClient()` — S3Service's own and the one
+  [`chunked-upload.md`](chunked-upload.md)'s `ChunkedUploadService` drives
+  multipart uploads with — so the two can't drift apart. That client is built
+  from the `s3` disk config *including*
   `endpoint` and `use_path_style_endpoint` when they are set, so the service can
   be pointed at any S3-compatible endpoint (the RustFS bucket the E2E suite runs
   against — [`e2e-testing.md`](e2e-testing.md) REQ-2 — or an R2/Wasabi-style
@@ -69,7 +73,7 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   Flysystem disk; the service simply stopped ignoring them. When `endpoint` is
   unset the client is constructed exactly as before (region + credentials only),
   so real-AWS behaviour is unchanged.
-- **REQ-8** — The `S3Client` carries an explicit `connect_timeout` and `timeout`
+- **REQ-8** — Every `S3Client` (REQ-7's factory) carries an explicit `connect_timeout` and `timeout`
   (`AWS_CONNECT_TIMEOUT`, default 5s; `AWS_REQUEST_TIMEOUT`, default 120s; both
   read from the `s3` disk config). The SDK's own default is to wait indefinitely
   for a response, so an endpoint that completes the TCP handshake and then never
@@ -110,8 +114,10 @@ getPublicBaseUrl(): string                  # static — custom_domain setting >
 getUrl(s3Key): string
 getRootFolder() / getConfiguredFolders() / getRootPrefix(): static helpers over the Setting model
 setS3Client(S3Client): static               # test seam — swap the underlying AWS client
-__construct(ImageProcessingService)         # builds S3Client from the `s3` disk config,
-                                            # incl. endpoint + use_path_style_endpoint (REQ-7)
+makeClient(): S3Client                      # static — the one place an S3Client is configured:
+                                            # region, credentials, timeouts (REQ-8), endpoint +
+                                            # use_path_style_endpoint (REQ-7); ChunkedUploadService uses it too
+__construct(ImageProcessingService)         # $this->s3Client = self::makeClient()
 sanitizeFilename(filename): string          # static
 ensureExtension(filename, ext, fallback): string   # static
 ```
@@ -238,6 +244,16 @@ Scenario: An endpoint that accepts the connection and never answers fails in sec
   Given an S3 endpoint that completes the handshake but sends no response
   When S3Service issues a request against it
   Then the client gives up after the configured timeout rather than running until max_execution_time
+# pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
+
+Scenario: The chunked-upload client honours the endpoint and timeouts too (regression)
+  Given filesystems.disks.s3.endpoint is http://127.0.0.1:9100 with path-style enabled
+  And AWS request/connect timeouts are configured
+  When ChunkedUploadService is constructed
+  Then its S3Client targets that endpoint with path-style addressing and carries those timeouts
+# Regression: ChunkedUploadService built its own S3Client from region + credentials only,
+# so every upload >= 10MB went to real AWS on an R2/Wasabi/RustFS deployment, and waited
+# without bound against AWS.
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 
 Scenario: No endpoint config leaves AWS addressing untouched

@@ -82,6 +82,10 @@ POST complete: ChunkedUploadController::complete        # chunked-upload.complet
 POST abort:    ChunkedUploadController::abort            # chunked-upload.abort
 ```
 
+`ChunkedUploadService` talks to S3 through a client from
+`S3Service::makeClient()` — the same endpoint, path-style and timeout
+configuration as `S3Service` ([`s3-storage.md`](s3-storage.md) REQ-7, REQ-8).
+
 `ChunkedUploadService::initiateUpload(filename, mimeType, fileSize, userId, ?folder, keepOriginalFilename): UploadSession`
 — computes the S3 key (UUID or sanitized original name), opens an S3
 `createMultipartUpload` (with `ContentDisposition: attachment` for non-inline

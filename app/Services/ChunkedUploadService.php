@@ -30,15 +30,8 @@ class ChunkedUploadService
     {
         $this->s3Service = $s3Service;
         $this->bucket = config('filesystems.disks.s3.bucket');
-
-        $this->s3Client = new S3Client([
-            'version' => 'latest',
-            'region' => config('filesystems.disks.s3.region'),
-            'credentials' => [
-                'key' => config('filesystems.disks.s3.key'),
-                'secret' => config('filesystems.disks.s3.secret'),
-            ],
-        ]);
+        // Same endpoint, path-style and timeout configuration as S3Service (s3-storage REQ-7/8).
+        $this->s3Client = S3Service::makeClient();
     }
 
     /**

@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
 use Aws\S3\S3Client;
 
@@ -88,4 +89,25 @@ test('an endpoint that accepts the connection and never answers fails in seconds
     // Swallowed and logged, per ADR-010 — the point is that it gets there at all.
     expect($content)->toBeNull();
     expect($elapsed)->toBeLessThan(30.0);
+});
+
+test('the chunked-upload client honours the endpoint and timeouts too', function () {
+    // Regression: ChunkedUploadService assembled its own client from region + credentials, so
+    // every upload >= 10MB went to real AWS on an S3-compatible deployment (s3-storage REQ-7)
+    // and waited without bound (REQ-8).
+    config([
+        'filesystems.disks.s3.endpoint' => 'http://127.0.0.1:9100',
+        'filesystems.disks.s3.use_path_style_endpoint' => true,
+        'filesystems.disks.s3.connect_timeout' => 3,
+        'filesystems.disks.s3.timeout' => 45,
+    ]);
+
+    $service = app()->makeWith(ChunkedUploadService::class, []);
+    $client = (new ReflectionProperty(ChunkedUploadService::class, 's3Client'))->getValue($service);
+
+    expect((string) $client->getEndpoint())->toBe('http://127.0.0.1:9100')
+        ->and($client->getConfig('use_path_style_endpoint'))->toBeTrue()
+        // The SDK applies `http` options per command rather than exposing them via getConfig().
+        ->and($client->getCommand('UploadPart', ['Bucket' => 'b', 'Key' => 'k'])['@http'])
+        ->toMatchArray(['connect_timeout' => 3.0, 'timeout' => 45.0]);
 });
