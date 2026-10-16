@@ -120,6 +120,15 @@ Scenario: Scan returns unmapped S3 objects enriched with soft-delete status
   Then the results include both, with is_deleted true only for the soft-deleted match
 # pinned by: tests/Feature/DiscoverTest.php
 
+Scenario: Scanned object sizes are integers, as the scan contract declares (regression)
+  Given a ListObjectsV2 response, whose XML the AWS SDK parses into a string Size
+    (it has no "long" mapping, so a 512-byte object arrives as "512")
+  When the bucket is listed for a scan
+  Then each object's size is the integer 512, not the string "512"
+  # Without the cast, an object under 1 KB reached discover.js formatFileSize
+  # undivided and threw "toFixed is not a function", breaking the results table.
+# pinned by: tests/Unit/Services/S3ServiceTest.php
+
 Scenario: Import creates an asset and dispatches ProcessDiscoveredAsset
   Given an unmapped S3 key
   When it is imported
@@ -190,6 +199,10 @@ Scenario: Select all and deselect all drive the import button
 
 - Feature: `tests/Feature/DiscoverTest.php`
 - Unit: `tests/Unit/Jobs/ProcessDiscoveredAssetTest.php`
+- Unit: `tests/Unit/Services/S3ServiceTest.php` — the listing (scan) and HeadObject
+  metadata (import) both run through the SDK's real response parsers, so the integer
+  `size` is checked against what S3 actually returns (a `MockHandler` result skips
+  the parsers and would hide the listing's string `Size`)
 - E2E: `tests/e2e/discover.spec.js` — scan → select → import against a real bucket,
   guarded by `requiresS3()`. The guard is load-bearing, not defensive:
   `S3Service::listObjects` swallows its exceptions and returns `[]`, so without a

@@ -8,6 +8,8 @@ use Aws\History;
 use Aws\MockHandler;
 use Aws\Result;
 use Aws\S3\Exception\S3Exception;
+use Aws\S3\S3Client;
+use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\UploadedFile;
 
@@ -23,6 +25,23 @@ function s3ServiceReturning(array $results): S3Service
     }
 
     return app(S3Service::class)->setS3Client(fakeS3Client($handler));
+}
+
+/**
+ * Build an S3Service whose AWS client answers every request with this raw HTTP
+ * response. Unlike a MockHandler Result, it goes through the SDK's real response
+ * parsers, so the PHP types are the ones S3 actually produces.
+ */
+function s3ServiceRespondingWith(Response $response): S3Service
+{
+    $client = new S3Client([
+        'version' => 'latest',
+        'region' => 'us-east-1',
+        'credentials' => ['key' => 'test', 'secret' => 'test'],
+        'http_handler' => fn () => Create::promiseFor($response),
+    ]);
+
+    return app(S3Service::class)->setS3Client($client);
 }
 
 beforeEach(function () {
@@ -77,6 +96,47 @@ test('listObjects with a maxKeys cap issues a single bounded request (no paginat
     ]);
 
     expect($service->listObjects('', 1))->toHaveCount(1);
+});
+
+test('listObjects returns an integer size, though the SDK parses ListObjectsV2 Size as a string', function () {
+    // The SDK's XML parser has no 'long' mapping, so <Size> arrives as "512".
+    $xml = <<<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+            <Name>test-bucket</Name>
+            <Prefix>assets/</Prefix>
+            <KeyCount>1</KeyCount>
+            <MaxKeys>1000</MaxKeys>
+            <IsTruncated>false</IsTruncated>
+            <Contents>
+                <Key>assets/tiny.svg</Key>
+                <LastModified>2026-01-01T00:00:00.000Z</LastModified>
+                <ETag>"abc"</ETag>
+                <Size>512</Size>
+                <StorageClass>STANDARD</StorageClass>
+            </Contents>
+        </ListBucketResult>
+        XML;
+
+    $objects = s3ServiceRespondingWith(new Response(200, [], $xml))->listObjects('assets/');
+
+    expect($objects)->toHaveCount(1)
+        ->and($objects[0]['size'])->toBe(512);
+});
+
+test('getObjectMetadata returns an integer size from the HeadObject Content-Length header', function () {
+    // Header-bound longs are cast by the SDK's REST parser, unlike <Size> in a
+    // listing body — this pins that the import path's size stays an integer.
+    $metadata = s3ServiceRespondingWith(new Response(200, [
+        'Content-Length' => '512',
+        'Content-Type' => 'image/svg+xml',
+        'ETag' => '"abc"',
+        'Last-Modified' => 'Thu, 01 Jan 2026 00:00:00 GMT',
+    ]))->getObjectMetadata('assets/tiny.svg');
+
+    expect($metadata['size'])->toBe(512)
+        ->and($metadata['mime_type'])->toBe('image/svg+xml')
+        ->and($metadata['etag'])->toBe('abc');
 });
 
 test('findUnmappedObjects filters out already-mapped, thumbnail and zero-byte keys', function () {
