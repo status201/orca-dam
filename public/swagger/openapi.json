@@ -1130,7 +1130,7 @@
                   },
                   "mime_type": {
                     "type": "string",
-                    "description": "File MIME type"
+                    "description": "Optional and ignored. The stored Content-Type is decided by the filename's extension; a declared type is never trusted."
                   },
                   "file_size": {
                     "type": "integer",
@@ -1144,11 +1144,10 @@
                     "description": "Target folder path (optional)"
                   }
                 },
-                "required": ["filename", "mime_type", "file_size"]
+                "required": ["filename", "file_size"]
               },
               "example": {
                 "filename": "large-video.mp4",
-                "mime_type": "video/mp4",
                 "file_size": 104857600,
                 "folder": "assets/videos"
               }
@@ -1245,6 +1244,16 @@
               }
             }
           },
+          "404": {
+            "description": "Upload session not found (unknown token, or one owned by another user)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Chunk upload failed",
             "content": {
@@ -1307,6 +1316,16 @@
           "422": {
             "$ref": "#/components/responses/ValidationError"
           },
+          "404": {
+            "description": "Upload session not found (unknown token, or one owned by another user)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Upload completion failed",
             "content": {
@@ -1365,6 +1384,16 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "404": {
+            "description": "Upload session not found (unknown token, or one owned by another user)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
             "description": "Failed to abort upload",

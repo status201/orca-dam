@@ -42,6 +42,9 @@ class SystemService
         'assets:deduplicate',
         'assets:deduplicate --force',
         'assets:verify-integrity',
+        'assets:audit-content-types',
+        'token:list',
+        'db:verify-schema',
     ];
 
     /**
@@ -78,10 +81,8 @@ class SystemService
         // Parse command to get base command name
         $parts = explode(' ', trim($command));
         $baseCommand = $parts[0];
-        $fullCommand = trim($command);
 
-        // Validate command is whitelisted (check both full command and base command)
-        if (! in_array($fullCommand, self::ALLOWED_COMMANDS) && ! in_array($baseCommand, self::ALLOWED_COMMANDS)) {
+        if (! $this->isAllowed($command)) {
             Log::warning("Attempted to execute non-whitelisted command: {$command}", [
                 'user_id' => auth()->id(),
             ]);
@@ -132,6 +133,20 @@ class SystemService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Whether a command may run from the dashboard: the full command or its base command is on
+     * the whitelist. Also what keeps every suggested card runnable (system-admin
+     * REQ-suggested-commands-runnable).
+     */
+    public function isAllowed(string $command): bool
+    {
+        $command = trim($command);
+        $baseCommand = explode(' ', $command)[0];
+
+        return in_array($command, self::ALLOWED_COMMANDS, true)
+            || in_array($baseCommand, self::ALLOWED_COMMANDS, true);
     }
 
     /**
@@ -605,6 +620,21 @@ class SystemService
                 'command' => 'migrate:status',
                 'description' => 'Check migration status',
                 'category' => 'Database',
+            ],
+            [
+                'command' => 'assets:audit-content-types',
+                'description' => 'Dry-run: find stored objects served with a Content-Type their extension does not call for (run with --fix to repair)',
+                'category' => 'Assets',
+            ],
+            [
+                'command' => 'db:verify-schema',
+                'description' => 'Check the live MySQL/MariaDB schema against column limits and index sizes',
+                'category' => 'Database',
+            ],
+            [
+                'command' => 'token:list',
+                'description' => 'List API tokens with their owners and last-used dates',
+                'category' => 'API',
             ],
         ];
     }

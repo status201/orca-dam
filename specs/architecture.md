@@ -122,7 +122,7 @@ S3Service:               # all S3 ops (upload/delete/list/move), SVG sanitize, C
 AssetProcessingService:  # shared post-upload work (thumbnail, resizes, dimensions, AI dispatch)
 ImageProcessingService:  # Intervention/GD wrapper (thumbs, resizes, dimensions, animated-GIF)
 AssetSearchParser:       # pure parser for search input (+req -excl "phrase")
-ChunkedUploadService:    # S3 multipart for >=10MB uploads; upload_sessions
+ChunkedUploadService:    # S3 multipart for >=10MB uploads; upload_sessions; S3 only via S3Service
 RekognitionService:      # AI tagging via Rekognition + Translate
 CloudflareService:       # non-blocking CDN purge on replace / thumbnail regen
 TikzCompilerService:     # TeX Live pipeline (LaTeX -> DVI -> SVG/PNG); paranoid security
@@ -184,9 +184,10 @@ The asset matrix (see [`features/authorization-policies.md`](features/authorizat
 ### S3 + CDN topology
 
 ```
-Upload → S3:  assets/{folder}/{uuid}.{ext}                (original; ContentType server-detected)
+Upload → S3:  assets/{folder}/{uuid}.{ext}                (original; ContentType from the extension)
               thumbnails/{folder}/{uuid}_thumb.jpg         (300x300 JPEG; skips animated GIFs)
               thumbnails/{S|M|L}/...                       (resize variants, resize_{s,m,l}_s3_key)
+              chunked-staging/{token}.svg                  (transient: chunked SVG before sanitization)
 Read:   getPublicBaseUrl() → AWS_URL or the configured custom_domain
 Purge:  CloudflareService.collectAssetUrls() → purgeUrls() on replace / thumbnail regen
         (requires env + custom_domain + cloudflare_cache_purge toggle; never throws)
@@ -275,13 +276,13 @@ The *why* behind the choices above — and the alternatives each rejected — li
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1244 tests,
+- `php artisan config:clear && php artisan test` — the full Pest suite (1281 tests,
   97 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security
   invariants and exploit probes on their own, as the CI job runs them. See
   [security-invariants.md](features/security-invariants.md).
-- `npm run test:e2e` — the Playwright browser suite (141 tests across 21 spec files)
+- `npm run test:e2e` — the Playwright browser suite (142 tests across 21 spec files)
   against a real `artisan serve` + a local RustFS bucket. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus

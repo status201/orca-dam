@@ -1,5 +1,9 @@
 <?php
 
+use Aws\History;
+use Aws\Middleware;
+use Aws\MockHandler;
+use Aws\S3\S3Client;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +51,24 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * An S3Client that answers from $handler (FIFO) instead of the network. Pass a History to record
+ * every command it sends. An exhausted MockHandler throws, so an empty one asserts "no S3 call".
+ */
+function fakeS3Client(MockHandler $handler, ?History $history = null): S3Client
+{
+    $client = new S3Client([
+        'version' => 'latest',
+        'region' => 'us-east-1',
+        'credentials' => ['key' => 'test', 'secret' => 'test'],
+        'handler' => $handler,
+    ]);
+
+    if ($history !== null) {
+        $client->getHandlerList()->appendSign(Middleware::history($history));
+    }
+
+    return $client;
 }

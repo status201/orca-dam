@@ -32,15 +32,15 @@ import { assertAnonymousRead, bucketConfig, createBucket, putPublicReadPolicy } 
 // under you turns an unrelated PR red. Nothing bumps this automatically — it
 // moves when someone edits the constants below together with the image tag in
 // docker-compose.e2e.yml, re-recording the digests from the release's SHA256SUMS.
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const RELEASE = `https://github.com/rustfs/rustfs/releases/download/${VERSION}`;
 
-// asset name → sha256, from https://github.com/rustfs/rustfs/releases/download/1.0.0/SHA256SUMS
+// asset name → sha256, from https://github.com/rustfs/rustfs/releases/download/1.0.1/SHA256SUMS
 const BINARIES = {
-    'win32-x64': ['rustfs-windows-x86_64-v1.0.0.zip', '4ccf5858ce8e6f70f01af2394c8cc0e0878ee77faa6c20d3179153476554b7d8'],
-    'linux-x64': ['rustfs-linux-x86_64-gnu-v1.0.0.zip', '2d5059501745682664c3d345b22274b66079c952fbec7e1ce66980ef4515cd42'],
-    'linux-arm64': ['rustfs-linux-aarch64-gnu-v1.0.0.zip', '780e832d68e0148dc042f05647796056fe014e7cf1a8f195e3e83b22a3bb988f'],
-    'darwin-arm64': ['rustfs-macos-aarch64-v1.0.0.zip', '06e32a681c16930fb5414df64c96151fe3370321fab0403a83a83a015874c39a'],
+    'win32-x64': ['rustfs-windows-x86_64-v1.0.1.zip', '624259622524255d0000131e095f37a11299fd76926aabfd8f831a9dbe6a39f7'],
+    'linux-x64': ['rustfs-linux-x86_64-gnu-v1.0.1.zip', '9742e183cb0dfb0d48fa909797af572fe47b7f827569036baa4156e0d3958ee5'],
+    'linux-arm64': ['rustfs-linux-aarch64-gnu-v1.0.1.zip', '1dcfb6ae59702b8e90394157e57450ed219515a1cc63525f730d4e120e9be7b9'],
+    'darwin-arm64': ['rustfs-macos-aarch64-v1.0.1.zip', '18aac7101c3484b98f93de64a0609aaa8e02aba072ba7927172c4b2eae7d4843'],
 };
 
 const COMPOSE_FILE = path.join(ROOT, 'docker-compose.e2e.yml');

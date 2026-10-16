@@ -11,27 +11,56 @@ return [
     | replace). Anything not listed is rejected at validation time. SVGs are
     | additionally sanitized before storage (see S3Service::putUploadedFile).
     |
+    | Each extension maps to the Content-Type its objects are stored and served
+    | with. That type is never taken from the client's claim or sniffed from the
+    | bytes — the uploader controls both, and either could otherwise put
+    | text/html behind an inline extension (upload-policy
+    | REQ-content-type-from-extension).
+    |
     */
 
     'allowed_extensions' => [
         // Raster images
-        'jpg', 'jpeg', 'png', 'gif', 'webp',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
         // Vector (sanitized on upload)
-        'svg',
+        'svg' => 'image/svg+xml',
         // Documents
-        'pdf',
+        'pdf' => 'application/pdf',
         // Video
-        'mp4', 'webm', 'mov',
+        'mp4' => 'video/mp4',
+        'webm' => 'video/webm',
+        'mov' => 'video/quicktime',
         // PostScript
-        'eps',
+        'eps' => 'application/postscript',
         // Audio
-        'mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac',
+        'mp3' => 'audio/mpeg',
+        'wav' => 'audio/wav',
+        'ogg' => 'audio/ogg',
+        'm4a' => 'audio/mp4',
+        'aac' => 'audio/aac',
+        'flac' => 'audio/flac',
         // Office
-        'docx', 'xlsx', 'pptx', 'doc', 'xls', 'ppt', 'odt', 'ods', 'odp',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'doc' => 'application/msword',
+        'xls' => 'application/vnd.ms-excel',
+        'ppt' => 'application/vnd.ms-powerpoint',
+        'odt' => 'application/vnd.oasis.opendocument.text',
+        'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
+        'odp' => 'application/vnd.oasis.opendocument.presentation',
         // Markup / text
-        'tex', 'mml', 'txt', 'md', 'csv',
+        'tex' => 'application/x-tex',
+        'mml' => 'application/mathml+xml',
+        'txt' => 'text/plain',
+        'md' => 'text/markdown',
+        'csv' => 'text/csv',
         // Archives
-        'zip',
+        'zip' => 'application/zip',
     ],
 
     /*

@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\User;
+use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
 use Aws\S3\S3Client;
 
@@ -89,3 +91,45 @@ test('an endpoint that accepts the connection and never answers fails in seconds
     expect($content)->toBeNull();
     expect($elapsed)->toBeLessThan(30.0);
 });
+
+test('chunked-upload requests go to the configured endpoint and are bounded by the timeout', function () {
+    // Regression: ChunkedUploadService built its own S3Client from region + credentials, so every
+    // upload >= 10MB went to real AWS on an S3-compatible deployment (s3-storage REQ-7) and waited
+    // without bound (REQ-8). Same never-answering socket as above: the kernel completes the
+    // handshake and buffers the request, which is read back after the call gives up.
+    $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
+    expect($server)->not->toBeFalse();
+    $port = (int) explode(':', stream_socket_get_name($server, false))[1];
+
+    config([
+        'filesystems.disks.s3.endpoint' => "http://127.0.0.1:{$port}",
+        'filesystems.disks.s3.use_path_style_endpoint' => true,
+        'filesystems.disks.s3.timeout' => 1,
+        'filesystems.disks.s3.connect_timeout' => 1,
+    ]);
+    $user = User::factory()->create();
+
+    $started = microtime(true);
+    $thrown = null;
+    try {
+        app(ChunkedUploadService::class)->initiateUpload('big.zip', 20 * 1024 * 1024, $user->id, 'assets');
+    } catch (Throwable $e) {
+        $thrown = $e;
+    }
+    $elapsed = microtime(true) - $started;
+
+    $connection = stream_socket_accept($server, 1);
+    $request = $connection ? (string) fread($connection, 8192) : '';
+    fclose($server);
+
+    expect($thrown)->not->toBeNull()
+        ->and($elapsed)->toBeLessThan(30.0)
+        ->and($request)->toStartWith('POST /test-bucket/assets/')
+        ->and($request)->toContain('?uploads');
+});
+
+// REQ-sole-s3-gateway: a second, hand-built client is how chunked uploads lost the endpoint.
+arch('no class but S3Service uses the AWS S3 SDK')
+    ->expect('App')
+    ->not->toUse('Aws\S3')
+    ->ignoring('App\Services\S3Service');

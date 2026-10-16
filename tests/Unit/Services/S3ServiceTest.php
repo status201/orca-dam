@@ -3,9 +3,13 @@
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Services\S3Service;
+use Aws\Command;
+use Aws\History;
 use Aws\MockHandler;
 use Aws\Result;
-use Aws\S3\S3Client;
+use Aws\S3\Exception\S3Exception;
+use GuzzleHttp\Psr7\Response;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Build an S3Service whose underlying AWS client returns the given results
@@ -18,14 +22,7 @@ function s3ServiceReturning(array $results): S3Service
         $handler->append(new Result($result));
     }
 
-    $client = new S3Client([
-        'version' => 'latest',
-        'region' => 'us-east-1',
-        'credentials' => ['key' => 'test', 'secret' => 'test'],
-        'handler' => $handler,
-    ]);
-
-    return app(S3Service::class)->setS3Client($client);
+    return app(S3Service::class)->setS3Client(fakeS3Client($handler));
 }
 
 beforeEach(function () {
@@ -167,4 +164,167 @@ test('listFolders paginates common prefixes across pages', function () {
     expect($folders)->toContain('assets/alpha')
         ->and($folders)->toContain('assets/marketing')
         ->and($folders)->toContain('assets');
+});
+
+test('findUnmappedObjects never reports a key under the chunked-staging prefix', function () {
+    $service = s3ServiceReturning([
+        [
+            'Contents' => [
+                ['Key' => 'chunked-staging/0b5c-left-behind.svg', 'Size' => 100, 'LastModified' => '2026-01-01'],
+                ['Key' => 'logo.svg', 'Size' => 100, 'LastModified' => '2026-01-01'],
+            ],
+            'IsTruncated' => false,
+        ],
+    ]);
+
+    // Bucket-root scan: the case where the staging prefix is inside the scanned range.
+    $keys = collect($service->findUnmappedObjects(''))->pluck('key')->all();
+
+    expect($keys)->toBe(['logo.svg']);
+});
+
+test('listFolders never lists the chunked-staging prefix', function () {
+    Setting::set('s3_root_folder', '', 'string', 'aws');
+
+    // Only marketing/ is recursed into; a recursion into chunked-staging/ would hit the empty queue.
+    $service = s3ServiceReturning([
+        [
+            'CommonPrefixes' => [
+                ['Prefix' => 'chunked-staging/'],
+                ['Prefix' => 'marketing/'],
+                ['Prefix' => 'thumbnails/'],
+            ],
+            'IsTruncated' => false,
+        ],
+        ['CommonPrefixes' => [], 'IsTruncated' => false],   // recursion into marketing/
+    ]);
+
+    expect($service->listFolders())->toBe(['marketing']);
+});
+
+test('sanitizeStoredSvg reads the source key and writes the sanitized markup to the destination', function () {
+    $handler = new MockHandler;
+    $handler->append(new Result([
+        'Body' => '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><rect width="1" height="1"/></svg>',
+    ]));
+    $handler->append(new Result(['ETag' => '"clean-etag"']));
+
+    $history = new History;
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
+
+    $etag = $service->sanitizeStoredSvg('chunked-staging/tok.svg', 'assets/logo.svg');
+
+    [$get, $put] = array_map(fn ($entry) => $entry['command'], $history->toArray());
+    expect($etag)->toBe('clean-etag')
+        ->and($get->getName())->toBe('GetObject')
+        ->and($get['Key'])->toBe('chunked-staging/tok.svg')
+        ->and($put->getName())->toBe('PutObject')
+        ->and($put['Key'])->toBe('assets/logo.svg')
+        ->and((string) $put['Body'])->not->toContain('<script')
+        ->and((string) $put['Body'])->toContain('<rect');
+});
+
+test('extractImageDimensions streams a stored image and sizes it from its header', function () {
+    $img = imagecreatetruecolor(24, 12);
+    ob_start();
+    imagejpeg($img);
+    $jpeg = ob_get_clean();
+    imagedestroy($img);
+
+    $service = s3ServiceReturning([['Body' => $jpeg]]);
+
+    expect($service->extractImageDimensions('assets/photo.jpg', 'image/jpeg'))
+        ->toBe(['width' => 24, 'height' => 12]);
+});
+
+test('extractImageDimensions skips non-images and SVGs without downloading them', function () {
+    $history = new History;
+    $service = app(S3Service::class)->setS3Client(fakeS3Client(new MockHandler, $history));
+
+    expect($service->extractImageDimensions('assets/clip.mp4', 'video/mp4'))->toBeNull()
+        ->and($service->extractImageDimensions('assets/logo.svg', 'image/svg+xml'))->toBeNull()
+        ->and($history)->toHaveCount(0);
+});
+
+test('completeMultipartUpload sends the parts in ascending PartNumber order', function () {
+    $handler = new MockHandler([new Result(['ETag' => '"whole"'])]);
+    $history = new History;
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
+
+    $etag = $service->completeMultipartUpload('assets/big.zip', 'up-1', [
+        ['PartNumber' => 3, 'ETag' => 'c'],
+        ['PartNumber' => 1, 'ETag' => 'a'],
+        ['PartNumber' => 2, 'ETag' => 'b'],
+    ]);
+
+    $parts = $history->getLastCommand()['MultipartUpload']['Parts'];
+    expect($etag)->toBe('whole')
+        ->and(array_column($parts, 'PartNumber'))->toBe([1, 2, 3]);
+});
+
+test('uploadFile types the object by its extension, not by sniffing its bytes', function () {
+    // Regression: the direct path stored $file->getMimeType(), sniffed from bytes the uploader
+    // controls, so an HTML page saved as pixel.png went up as text/html and, png being an inline
+    // type, was served as a page from the asset domain.
+    $history = new History;
+    $service = app(S3Service::class)
+        ->setS3Client(fakeS3Client(new MockHandler([new Result(['ETag' => '"e"'])]), $history));
+
+    $path = tempnam(sys_get_temp_dir(), 'html_');
+    file_put_contents($path, '<!doctype html><html><body><script>alert(document.domain)</script></body></html>');
+    $file = new UploadedFile($path, 'pixel.png', 'text/html', null, true);
+    expect($file->getMimeType())->toBe('text/html');   // what used to be stored
+
+    $service->uploadFile($file, 'assets');
+
+    $put = $history->getLastCommand();
+    expect($put->getName())->toBe('PutObject')
+        ->and($put['ContentType'])->toBe('image/png')
+        ->and($put->hasParam('ContentDisposition'))->toBeFalse();
+
+    @unlink($path);
+});
+
+test('uploadFile forces a non-inline type to download', function () {
+    $history = new History;
+    $service = app(S3Service::class)
+        ->setS3Client(fakeS3Client(new MockHandler([new Result(['ETag' => '"e"'])]), $history));
+
+    $service->uploadFile(UploadedFile::fake()->createWithContent('notes.txt', 'plain'), 'assets');
+
+    $put = $history->getLastCommand();
+    expect($put['ContentType'])->toBe('text/plain')
+        ->and($put['ContentDisposition'])->toBe('attachment');
+});
+
+test('getObjectHeaders reads each object\'s served headers and maps a missing one to null', function () {
+    $handler = new MockHandler([
+        new Result(['ContentType' => 'text/html', 'ContentDisposition' => null]),
+        new S3Exception('Not Found', new Command('HeadObject'), [
+            'response' => new Response(404),
+        ]),
+    ]);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler));
+
+    // Concurrency 1 keeps the MockHandler's FIFO answers lined up with the keys.
+    expect($service->getObjectHeaders(['assets/photo.jpg', 'assets/gone.zip'], concurrency: 1))->toBe([
+        'assets/photo.jpg' => ['content_type' => 'text/html', 'content_disposition' => null],
+        'assets/gone.zip' => null,
+    ]);
+});
+
+test('repairUploadHeaders copies the object onto itself with the headers an upload sets today', function () {
+    $history = new History;
+    $handler = new MockHandler([new Result(['CopyObjectResult' => ['ETag' => '"plainmd5"']])]);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
+
+    expect($service->repairUploadHeaders('assets/notes.txt'))->toBe('plainmd5');
+
+    $copy = $history->getLastCommand();
+    expect($copy->getName())->toBe('CopyObject')
+        ->and($copy['Key'])->toBe('assets/notes.txt')
+        ->and($copy['CopySource'])->toBe('test-bucket/assets/notes.txt')
+        ->and($copy['MetadataDirective'])->toBe('REPLACE')
+        ->and($copy['ContentType'])->toBe('text/plain')
+        ->and($copy['ContentDisposition'])->toBe('attachment');
 });

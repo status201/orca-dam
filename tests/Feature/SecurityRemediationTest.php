@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\S3Service;
+use App\Support\UploadPolicy;
 use Illuminate\Http\UploadedFile;
 
 // ─── F1: upload type allowlist ────────────────────────────────────────────────
@@ -51,6 +52,35 @@ test('store accepts an allowlisted svg upload', function () {
     ]);
 
     $response->assertStatus(200);
+});
+
+test('every allowlisted extension has a Content-Type, and anything else is octet-stream', function () {
+    foreach (UploadPolicy::allowedExtensions() as $extension) {
+        expect(UploadPolicy::contentType("file.{$extension}"))
+            ->toMatch('#^[a-z]+/[a-z0-9.+-]+$#')
+            ->not->toBe('application/octet-stream');
+    }
+
+    expect(UploadPolicy::contentType('PHOTO.JPG'))->toBe('image/jpeg')
+        ->and(UploadPolicy::contentType('payload.exe'))->toBe('application/octet-stream')
+        ->and(UploadPolicy::contentType('no-extension'))->toBe('application/octet-stream');
+});
+
+test('servedHeaderMismatch judges stored headers against what an upload sets today', function () {
+    // Matching, give or take a charset parameter.
+    expect(UploadPolicy::servedHeaderMismatch('photo.jpg', 'image/jpeg', null))->toBeNull()
+        ->and(UploadPolicy::servedHeaderMismatch('notes.txt', 'text/plain; charset=utf-8', 'attachment'))->toBeNull()
+        // A sanitized SVG under .svg is expected to render inline.
+        ->and(UploadPolicy::servedHeaderMismatch('logo.svg', 'image/svg+xml', null))->toBeNull();
+
+    // An active type served inline under an image name: the stored-XSS shape.
+    expect(UploadPolicy::servedHeaderMismatch('photo.jpg', 'text/html', null))
+        ->toMatchArray(['type' => 'text/html', 'attachment' => false, 'expected_type' => 'image/jpeg', 'dangerous' => true])
+        ->and(UploadPolicy::servedHeaderMismatch('pixel.png', 'image/svg+xml', null)['dangerous'])->toBeTrue()
+        // Wrong, but a download or an inert type is not dangerous.
+        ->and(UploadPolicy::servedHeaderMismatch('photo.jpg', 'text/html', 'attachment')['dangerous'])->toBeFalse()
+        ->and(UploadPolicy::servedHeaderMismatch('notes.txt', 'text/plain', null))
+        ->toMatchArray(['expected_attachment' => true, 'dangerous' => false]);
 });
 
 test('chunked upload init rejects a disallowed extension', function () {

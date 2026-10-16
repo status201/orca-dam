@@ -467,7 +467,7 @@ the four-step session below. Contract:
 ```
 # 1. Initialize
 POST /api/chunked-upload/init
-{ "filename": "large-file.mp4", "mime_type": "video/mp4", "file_size": 524288000 }
+{ "filename": "large-file.mp4", "file_size": 524288000 }
 → { "session_token": "uuid", "upload_id": "s3-upload-id",
     "chunk_size": 10485760, "total_chunks": 50 }
 
@@ -488,6 +488,14 @@ POST /api/chunked-upload/complete
 POST /api/chunked-upload/abort
 { "session_token": "uuid" }
 ```
+
+The file is stored with the Content-Type its extension maps to; a `mime_type` in the
+init body is accepted for compatibility but ignored.
+
+A failed chunk can simply be sent again: a chunk the session already holds is answered
+with `"Chunk already uploaded"` and the current progress, and nothing is stored twice.
+Chunks may also be sent in parallel. A `session_token` that is unknown or belongs to
+another user returns `404`; a `chunk_number` outside `1..total_chunks` returns `422`.
 
 Re-uploading identical bytes returns `409` with a duplicates payload rather than storing
 a second copy — see

@@ -3,7 +3,7 @@
 ```yaml
 id: static-analysis
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -233,7 +233,7 @@ Five functions across eight files. Everything else in the ban list has no exempt
 | `md5` | `TestRunnerService`, `TikzCompilerService` | cache keys over a suite name / TikZ source — no security property |
 | `sha1` | `AssetController` | asset-cycle cache key over a JSON-encoded filter context |
 | `uniqid` | `TikzCompilerService` | scratch directory name |
-| `tempnam` | `AssetBulkController`, `ChunkedUploadService`, `ToolUploadService`, `TestRunnerService` | private temp paths for files ORCA just produced; TOCTOU accepted |
+| `tempnam` | `AssetBulkController`, `S3Service`, `ToolUploadService`, `TestRunnerService` | private temp paths for files ORCA just produced (`S3Service`: a stored image streamed down to be sized); TOCTOU accepted |
 
 The `exec` exemption is per class precisely so a *fourth* class calling it still fails. Adding a
 name to that list is a claim that its arguments cannot originate in a request.

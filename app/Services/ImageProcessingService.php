@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\Encoders\PngEncoder;
@@ -82,58 +83,54 @@ class ImageProcessingService
      */
     public function getImageDimensions(UploadedFile $file): array
     {
-        if (! str_starts_with($file->getMimeType(), 'image/')) {
+        if (! str_starts_with((string) $file->getMimeType(), 'image/')) {
             return [];
         }
 
-        // EPS: dimensions are nice-to-have, skip gracefully
-        if (str_ends_with(strtolower($file->getClientOriginalName()), '.eps')) {
-            return [];
-        }
-        // SVG: vector graphics don't have meaningful pixel dimensions
-        if (str_ends_with(strtolower($file->getClientOriginalName()), '.svg')) {
-            return [];
-        }
-
-        // Skip dimension detection for GIFs to avoid memory issues
-        if ($file->getMimeType() === 'image/gif') {
-            try {
-                $size = @getimagesize($file->getRealPath());
-                if ($size !== false) {
-                    return [
-                        'width' => $size[0],
-                        'height' => $size[1],
-                    ];
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to get GIF dimensions: '.$e->getMessage());
-            }
-
-            return [];
-        }
-
-        try {
-            $image = $this->imageManager->decodePath($file->getRealPath());
-
-            return [
-                'width' => $image->width(),
-                'height' => $image->height(),
-            ];
-        } catch (\Exception $e) {
-            \Log::warning('Failed to get image dimensions: '.$e->getMessage());
-
-            return [];
-        }
+        return $this->getImageDimensionsFromPath($file->getRealPath(), $file->getClientOriginalName());
     }
 
     /**
-     * Extract image dimensions from raw image data.
+     * Whether a file of this name has pixel dimensions worth recording. EPS: nice-to-have, skipped;
+     * SVG: a vector has no meaningful pixel size.
      */
-    public function getImageDimensionsFromData(string $imageData): array
+    public function hasRasterDimensions(string $filename): bool
     {
-        $image = $this->imageManager->decodeBinary($imageData);
+        return ! Str::endsWith(strtolower($filename), ['.eps', '.svg']);
+    }
 
-        return ['width' => $image->width(), 'height' => $image->height()];
+    /**
+     * Dimensions of a local image file as displayed — the one implementation behind every upload
+     * path (image-processing REQ-4). Reads only the header, never decodes the pixels, so the cost
+     * doesn't grow with the file. $filename decides the EPS/SVG skip, since $path is often a
+     * temp file without the original extension.
+     *
+     * @return array{width?: int, height?: int}
+     */
+    public function getImageDimensionsFromPath(string $path, string $filename): array
+    {
+        if (! $this->hasRasterDimensions($filename)) {
+            return [];
+        }
+
+        $size = @getimagesize($path);
+        if ($size === false) {
+            return [];
+        }
+
+        [$width, $height, $type] = $size;
+
+        // EXIF orientations 5–8 store the image rotated a quarter turn, so it displays (and the
+        // auto-oriented thumbnails render) with width and height swapped.
+        if (in_array($type, [IMAGETYPE_JPEG, IMAGETYPE_TIFF_II, IMAGETYPE_TIFF_MM], true)
+            && function_exists('exif_read_data')) {
+            $orientation = (int) (@exif_read_data($path)['Orientation'] ?? 1);
+            if ($orientation >= 5 && $orientation <= 8) {
+                [$width, $height] = [$height, $width];
+            }
+        }
+
+        return ['width' => $width, 'height' => $height];
     }
 
     /**

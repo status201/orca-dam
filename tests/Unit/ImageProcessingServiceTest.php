@@ -18,6 +18,23 @@ function makeJpegContent(int $width = 10, int $height = 10): string
     return $content;
 }
 
+/**
+ * A JPEG with an EXIF APP1 segment that carries only an Orientation tag — what a phone writes when
+ * it stores a portrait photo sideways and leaves the rotation to the viewer.
+ */
+function withExifOrientation(string $jpeg, int $orientation): string
+{
+    // Big-endian TIFF header, then IFD0 with one entry: tag 0x0112 (Orientation), SHORT, count 1.
+    $tiff = "MM\x00\x2A\x00\x00\x00\x08"
+        ."\x00\x01"
+        ."\x01\x12\x00\x03\x00\x00\x00\x01".pack('n', $orientation)."\x00\x00"
+        ."\x00\x00\x00\x00";
+    $payload = "Exif\x00\x00".$tiff;
+
+    // Straight after SOI (FF D8).
+    return substr($jpeg, 0, 2)."\xFF\xE1".pack('n', strlen($payload) + 2).$payload.substr($jpeg, 2);
+}
+
 function makePngContent(int $width = 10, int $height = 10): string
 {
     $img = imagecreatetruecolor($width, $height);
@@ -254,6 +271,33 @@ test('getImageDimensions returns empty array for SVG file', function () {
     expect($result)->toBe([]);
 
     @unlink($tmpPath);
+});
+
+test('getImageDimensionsFromPath reports a rotated JPEG as displayed', function () {
+    $service = new ImageProcessingService;
+    $path = tempnam(sys_get_temp_dir(), 'exif_');
+
+    // Orientation 6: stored 20x10, displayed rotated 90° clockwise — 10 wide, 20 tall.
+    file_put_contents($path, withExifOrientation(makeJpegContent(20, 10), 6));
+    expect($service->getImageDimensionsFromPath($path, 'portrait.jpg'))->toBe(['width' => 10, 'height' => 20]);
+
+    // Orientation 1: displayed as stored.
+    file_put_contents($path, withExifOrientation(makeJpegContent(20, 10), 1));
+    expect($service->getImageDimensionsFromPath($path, 'landscape.jpg'))->toBe(['width' => 20, 'height' => 10]);
+
+    @unlink($path);
+});
+
+test('getImageDimensionsFromPath decides EPS and SVG by filename, not by the path', function () {
+    $service = new ImageProcessingService;
+    $path = tempnam(sys_get_temp_dir(), 'tmp_');   // no extension, like an upload's temp file
+    file_put_contents($path, makeJpegContent(20, 10));
+
+    expect($service->getImageDimensionsFromPath($path, 'vector.eps'))->toBe([])
+        ->and($service->getImageDimensionsFromPath($path, 'icon.SVG'))->toBe([])
+        ->and($service->getImageDimensionsFromPath($path, 'photo.jpg'))->toBe(['width' => 20, 'height' => 10]);
+
+    @unlink($path);
 });
 
 test('getImageDimensions returns width and height for valid JPEG', function () {

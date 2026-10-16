@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\AssetBulkController;
 use App\Http\Controllers\AssetController;
-use App\Services\ChunkedUploadService;
+use App\Services\S3Service;
 use App\Services\SystemService;
 use App\Services\TestRunnerService;
 use App\Services\TikzCompilerService;
@@ -107,7 +107,7 @@ arch('temp-file creation stays in the paths that already do it')
     ->not->toBeUsed()
     ->ignoring([
         AssetBulkController::class,   // zip staging for bulk download
-        ChunkedUploadService::class,  // reassembling uploaded chunks
+        S3Service::class,             // streaming a stored image down to size it
         ToolUploadService::class,     // client-tool output staging
         TestRunnerService::class,     // capturing test-run output
     ]);

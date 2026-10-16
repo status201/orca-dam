@@ -5,14 +5,29 @@ namespace App\Services;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Support\UploadPolicy;
+use Aws\CommandPool;
+use Aws\Exception\AwsException;
 use Aws\Result;
 use Aws\S3\S3Client;
 use enshrined\svgSanitize\Sanitizer;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 class S3Service
 {
+    /**
+     * Bucket-root prefix where a chunked SVG assembles before it is sanitized onto its asset key
+     * (chunked-upload REQ-4).
+     */
+    public const CHUNKED_STAGING_PREFIX = 'chunked-staging/';
+
+    /**
+     * Bucket-root prefixes ORCA writes for its own purposes, never asset originals: discovery
+     * doesn't import from them and the folder list doesn't offer them (REQ-staging-prefix-hidden).
+     */
+    private const RESERVED_PREFIXES = ['thumbnails/', self::CHUNKED_STAGING_PREFIX];
+
     protected S3Client $s3Client;
 
     protected string $bucket;
@@ -125,7 +140,7 @@ class S3Service
             'filename' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
-            'etag' => trim($result['ETag'], '"'), // Remove quotes from ETag
+            'etag' => self::etag($result),
             'width' => $dimensions['width'] ?? null,
             'height' => $dimensions['height'] ?? null,
         ];
@@ -133,7 +148,7 @@ class S3Service
 
     /**
      * Stream an uploaded file to S3, applying security hardening:
-     *   - server-detected Content-Type (not client-declared),
+     *   - Content-Type from the extension (uploadHeaders()),
      *   - Content-Disposition: attachment for non-inline types,
      *   - in-memory SVG sanitization to strip active content.
      *
@@ -141,16 +156,7 @@ class S3Service
      */
     protected function putUploadedFile(string $s3Key, UploadedFile $file)
     {
-        $params = [
-            'Bucket' => $this->bucket,
-            'Key' => $s3Key,
-            'ContentType' => $file->getMimeType(),
-        ];
-
-        // Force download for types that should never render inline in the browser.
-        if (! UploadPolicy::isInline($s3Key)) {
-            $params['ContentDisposition'] = 'attachment';
-        }
+        $params = $this->uploadHeaders($s3Key);
 
         // SVGs are sanitized in-memory before storage. They are small enough to
         // load fully; large files (>=10MB) take the chunked path instead.
@@ -198,11 +204,12 @@ class S3Service
     }
 
     /**
-     * Download an already-stored SVG, sanitize it, and re-upload it in place.
-     * Used by the chunked-upload path (where the object is assembled in S3
-     * before we can inspect it). Returns the new ETag, or null on failure.
+     * Download an already-stored SVG, sanitize it, and upload the result to $destinationKey
+     * (default: back in place). Used by the chunked-upload path, where the object is assembled
+     * in S3 — on a staging key — before we can inspect it. Returns the new ETag, or null on
+     * failure, in which case nothing has been written to the destination.
      */
-    public function sanitizeStoredSvg(string $s3Key): ?string
+    public function sanitizeStoredSvg(string $s3Key, ?string $destinationKey = null): ?string
     {
         try {
             $original = $this->getObjectContent($s3Key);
@@ -212,12 +219,12 @@ class S3Service
 
             $result = $this->s3Client->putObject([
                 'Bucket' => $this->bucket,
-                'Key' => $s3Key,
+                'Key' => $destinationKey ?? $s3Key,
                 'Body' => $this->sanitizeSvg($original),
                 'ContentType' => 'image/svg+xml',
             ]);
 
-            return isset($result['ETag']) ? trim($result['ETag'], '"') : null;
+            return self::etag($result);
         } catch (\Exception $e) {
             \Log::error('Stored SVG sanitization failed: '.$e->getMessage());
 
@@ -240,7 +247,7 @@ class S3Service
             'filename' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
-            'etag' => trim($result['ETag'], '"'),
+            'etag' => self::etag($result),
             'width' => $dimensions['width'] ?? null,
             'height' => $dimensions['height'] ?? null,
         ];
@@ -510,6 +517,96 @@ class S3Service
     }
 
     /**
+     * Open a multipart upload (chunked-upload's only way into S3 — REQ-sole-s3-gateway) and return
+     * its UploadId, with the same headers as the direct path (uploadHeaders(), REQ-3).
+     *
+     * The four multipart methods throw instead of logging and returning null (ADR-010's exception):
+     * ChunkedUploadService orchestrates the abort and needs to know which step failed.
+     */
+    public function createMultipartUpload(string $s3Key): string
+    {
+        return $this->s3Client->createMultipartUpload($this->uploadHeaders($s3Key))['UploadId'];
+    }
+
+    /**
+     * Bucket, key and serving headers for an object an uploader supplied, shared by the direct and
+     * multipart paths. The Content-Type is the extension's (upload-policy
+     * REQ-content-type-from-extension), not the client's claim or the sniffed bytes: an uploader
+     * controls both, and either once let text/html sit behind an inline extension. Types that
+     * should never render inline are forced to download (upload-policy REQ-5).
+     *
+     * @return array{Bucket: string, Key: string, ContentType: string, ContentDisposition?: string}
+     */
+    private function uploadHeaders(string $s3Key): array
+    {
+        $params = [
+            'Bucket' => $this->bucket,
+            'Key' => $s3Key,
+            'ContentType' => UploadPolicy::contentType($s3Key),
+        ];
+        if (! UploadPolicy::isInline($s3Key)) {
+            $params['ContentDisposition'] = 'attachment';
+        }
+
+        return $params;
+    }
+
+    /**
+     * Stream one local file into a multipart upload as part $partNumber; returns the part's ETag.
+     */
+    public function uploadPart(string $s3Key, string $uploadId, int $partNumber, string $path): string
+    {
+        $stream = fopen($path, 'r');
+        if ($stream === false) {
+            throw new \RuntimeException("Failed to open chunk for upload: {$path}");
+        }
+
+        try {
+            return (string) self::etag($this->s3Client->uploadPart([
+                'Bucket' => $this->bucket,
+                'Key' => $s3Key,
+                'UploadId' => $uploadId,
+                'PartNumber' => $partNumber,
+                'Body' => $stream,
+            ]));
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+    }
+
+    /**
+     * Assemble the uploaded parts into the object; returns its ETag. Parts may arrive in any order —
+     * S3 requires them ascending by PartNumber, so they are sorted here.
+     *
+     * @param  list<array{PartNumber: int, ETag: string}>  $parts
+     */
+    public function completeMultipartUpload(string $s3Key, string $uploadId, array $parts): ?string
+    {
+        return self::etag($this->s3Client->completeMultipartUpload([
+            'Bucket' => $this->bucket,
+            'Key' => $s3Key,
+            'UploadId' => $uploadId,
+            'MultipartUpload' => [
+                'Parts' => collect($parts)->sortBy('PartNumber')->values()->all(),
+            ],
+        ]));
+    }
+
+    /**
+     * Abort a multipart upload so S3 discards its parts.
+     */
+    public function abortMultipartUpload(string $s3Key, string $uploadId): void
+    {
+        $this->s3Client->abortMultipartUpload([
+            'Bucket' => $this->bucket,
+            'Key' => $s3Key,
+            'UploadId' => $uploadId,
+        ]);
+    }
+
+    /**
      * Delete a file from S3
      */
     public function deleteFile(string $s3Key): bool
@@ -529,56 +626,41 @@ class S3Service
     }
 
     /**
-     * Extract image dimensions from S3 object
-     * More efficient than loading full image into memory for processing
+     * Dimensions of a stored image, as displayed (image-processing REQ-4). The object is streamed
+     * to a temp file and sized from its header there, never decoded or held in memory whole —
+     * chunked uploads and discovery both land here, with objects up to 500MB.
+     *
+     * @return array{width?: int, height?: int}|null null for a non-image or an image without
+     *                                               raster dimensions (EPS, SVG, unreadable)
      */
     public function extractImageDimensions(string $s3Key, string $mimeType): ?array
     {
-        // EPS: dimensions are nice-to-have, skip gracefully
-        if (str_ends_with(strtolower($s3Key), '.eps')) {
+        // Decided before the download: neither a non-image nor a vector is worth fetching.
+        if (! str_starts_with($mimeType, 'image/') || ! $this->imageProcessingService->hasRasterDimensions($s3Key)) {
             return null;
         }
 
-        // Skip GIFs - use getimagesize approach from existing code
-        if ($mimeType === 'image/gif') {
-            try {
-                $result = $this->s3Client->getObject([
-                    'Bucket' => $this->bucket,
-                    'Key' => $s3Key,
-                ]);
+        $tempPath = tempnam(sys_get_temp_dir(), 'orca_dim_');
 
-                $imageData = (string) $result['Body'];
-                $image = imagecreatefromstring($imageData);
-
-                if ($image) {
-                    $width = imagesx($image);
-                    $height = imagesy($image);
-                    imagedestroy($image);
-
-                    return ['width' => $width, 'height' => $height];
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to extract GIF dimensions: '.$e->getMessage());
-            }
-
-            return null;
-        }
-
-        // For other images, use Intervention Image
         try {
-            $result = $this->s3Client->getObject([
+            $body = Utils::streamFor($this->s3Client->getObject([
                 'Bucket' => $this->bucket,
                 'Key' => $s3Key,
-            ]);
+            ])['Body']);
 
-            $imageData = (string) $result['Body'];
+            $out = fopen($tempPath, 'wb');
+            while (! $body->eof()) {
+                fwrite($out, $body->read(1024 * 1024));
+            }
+            fclose($out);
 
-            return $this->imageProcessingService->getImageDimensionsFromData($imageData);
-
+            return $this->imageProcessingService->getImageDimensionsFromPath($tempPath, $s3Key) ?: null;
         } catch (\Exception $e) {
             \Log::warning("Failed to extract image dimensions for {$s3Key}: ".$e->getMessage());
 
             return null;
+        } finally {
+            @unlink($tempPath);
         }
     }
 
@@ -627,6 +709,25 @@ class S3Service
     }
 
     /**
+     * The ETag of an S3 response, without the surrounding quotes S3 sends — the form stored in
+     * assets.etag and compared for duplicate detection.
+     *
+     * @param  Result|array<string, mixed>  $result
+     */
+    private static function etag(Result|array $result): ?string
+    {
+        return isset($result['ETag']) ? trim($result['ETag'], '"') : null;
+    }
+
+    /**
+     * Whether a key or prefix sits under one of ORCA's own bucket-root prefixes.
+     */
+    private static function isReservedKey(string $key): bool
+    {
+        return Str::startsWith($key, self::RESERVED_PREFIXES);
+    }
+
+    /**
      * Find objects in S3 that are not in the database
      *
      * @param  string|null  $prefix  Optional prefix to scan (defaults to root prefix)
@@ -641,7 +742,7 @@ class S3Service
             ->filter(function ($object) use ($mappedKeys) {
                 return ! in_array($object['key'], $mappedKeys)
                     && ! str_contains($object['key'], '/thumbnails/')
-                    && ! str_starts_with($object['key'], 'thumbnails/')
+                    && ! self::isReservedKey($object['key'])
                     && $object['size'] > 0;  // Exclude zero-byte folder markers
             })
             ->values()
@@ -677,7 +778,7 @@ class S3Service
                 // Get subfolders from common prefixes
                 foreach ($result['CommonPrefixes'] ?? [] as $commonPrefix) {
                     $folderPath = rtrim($commonPrefix['Prefix'], '/');
-                    if ($folderPath !== $rootFolder && ! empty($folderPath) && $folderPath !== 'thumbnails') {
+                    if ($folderPath !== $rootFolder && ! empty($folderPath) && ! self::isReservedKey($commonPrefix['Prefix'])) {
                         if (! in_array($folderPath, $folders)) {
                             $folders[] = $folderPath;
                         }
@@ -731,6 +832,64 @@ class S3Service
     }
 
     /**
+     * The served headers of many stored objects at once — concurrent HEAD requests, so a whole
+     * library's worth fits in one web request (assets:audit-content-types runs from the System page).
+     * A key maps to null when its object is missing or couldn't be read.
+     *
+     * @param  list<string>  $s3Keys
+     * @return array<string, array{content_type: ?string, content_disposition: ?string}|null>
+     */
+    public function getObjectHeaders(array $s3Keys, int $concurrency = 25): array
+    {
+        $s3Keys = array_values($s3Keys);
+        $headers = array_fill_keys($s3Keys, null);
+
+        $commands = array_map(
+            fn (string $key) => $this->s3Client->getCommand('HeadObject', ['Bucket' => $this->bucket, 'Key' => $key]),
+            $s3Keys
+        );
+
+        (new CommandPool($this->s3Client, $commands, [
+            'concurrency' => $concurrency,
+            'fulfilled' => function (Result $result, int $index) use (&$headers, $s3Keys): void {
+                $headers[$s3Keys[$index]] = [
+                    'content_type' => $result['ContentType'] ?? null,
+                    'content_disposition' => $result['ContentDisposition'] ?? null,
+                ];
+            },
+            'rejected' => function (\Throwable $reason, int $index) use ($s3Keys): void {
+                if (! ($reason instanceof AwsException && $reason->getStatusCode() === 404)) {
+                    \Log::warning("S3 HEAD failed for {$s3Keys[$index]}: ".$reason->getMessage());
+                }
+            },
+        ]))->promise()->wait();
+
+        return $headers;
+    }
+
+    /**
+     * Give a stored object the headers an upload would give it today (uploadHeaders()) by copying
+     * it onto itself — same key, same bytes, only the metadata replaced. Returns the copy's ETag,
+     * which for a former multipart object is a plain MD5 rather than the composite it had, or null
+     * on failure.
+     */
+    public function repairUploadHeaders(string $s3Key): ?string
+    {
+        try {
+            $result = $this->s3Client->copyObject($this->uploadHeaders($s3Key) + [
+                'CopySource' => $this->bucket.'/'.implode('/', array_map('rawurlencode', explode('/', $s3Key))),
+                'MetadataDirective' => 'REPLACE',
+            ]);
+
+            return self::etag($result['CopyObjectResult'] ?? []);
+        } catch (\Exception $e) {
+            \Log::error("Repairing upload headers failed for {$s3Key}: ".$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
      * Get object metadata from S3
      */
     public function getObjectMetadata(string $s3Key): ?array
@@ -745,7 +904,7 @@ class S3Service
                 'size' => $result['ContentLength'],
                 'mime_type' => $result['ContentType'],
                 'last_modified' => $result['LastModified'],
-                'etag' => isset($result['ETag']) ? trim($result['ETag'], '"') : null,
+                'etag' => self::etag($result),
             ];
         } catch (\Exception $e) {
             \Log::error('Get S3 metadata failed: '.$e->getMessage());

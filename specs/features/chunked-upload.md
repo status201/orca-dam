@@ -3,7 +3,7 @@
 ```yaml
 id: chunked-upload
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -31,24 +31,47 @@ chunk. See [ADR-005](../decisions/adr-005-chunked-above-10mb.md) for the
 
 ## Requirements
 
-- **REQ-1** — `ChunkedUploadService::shouldUseChunkedUpload()` is the single
-  source of truth for the 10MB threshold; the frontend uses it to pick a path.
-- **REQ-2** — Chunk uploads are idempotent: re-uploading an already-received
-  `chunk_number` for a session is a no-op that returns the existing progress,
-  not a duplicate part.
+- **REQ-1** — The client picks the path; the server dictates the chunking. The
+  browser uploader sends files at or above 10MB (`CHUNKED_THRESHOLD` in
+  `resources/js/alpine/asset-uploader.js`) through this feature and smaller ones
+  through the direct path; the server doesn't enforce the threshold, so an API
+  client may use either path within each path's own limits. The part size is
+  the server's alone (`ChunkedUploadService::CHUNK_SIZE`): `init` returns
+  `chunk_size` and `total_chunks`, and the uploader cuts and counts chunks from
+  those — it keeps no chunk size of its own, so the two can't disagree.
+- **REQ-2** — Chunk uploads are idempotent, and the guarantee lives in
+  `ChunkedUploadService::uploadChunk()`, not the controller: re-sending a
+  `chunk_number` the session has already recorded skips the S3 `uploadPart` and
+  returns the existing progress. Part bookkeeping is merged by `PartNumber` under
+  a row lock (`lockForUpdate()`), and `uploaded_chunks` is the count of distinct
+  recorded parts — never a running `+ 1` — so chunks sent in parallel by an API
+  client can neither drop nor double-count a part.
 - **REQ-3** — On completion, an etag dedup check runs exactly like the direct
   path (skipped when overwriting an existing `s3_key` in `keep_original_filename`
   mode) — see [`duplicate-detection.md`](duplicate-detection.md).
 - **REQ-4** — SVGs assembled via chunked upload are sanitized *after*
-  completion (`S3Service::sanitizeStoredSvg()`), since the direct-upload
-  in-memory sanitization path isn't available for an S3-side multipart
-  assembly. This re-upload changes the ETag, so sanitization must run before
-  the dedup check.
+  completion, since the direct-upload in-memory sanitization path isn't
+  available for an S3-side multipart assembly. The multipart for an SVG never
+  assembles at the asset's key: it assembles at a staging key,
+  `chunked-staging/{session_token}.svg` (`upload_sessions.staging_s3_key`).
+  Completion reads the staging object, sanitizes it, writes the sanitized
+  content to `s3_key` (`S3Service::sanitizeStoredSvg($staging, $s3Key)`), and
+  deletes the staging object — on success and on failure. A sanitization
+  failure therefore never touches `s3_key`: in `keep_original_filename`
+  overwrite mode the existing asset keeps its original and its row, and raw
+  SVG markup never sits at an asset's public URL. Sanitizing re-puts the
+  content, which changes the ETag, so it runs before the dedup check.
 - **REQ-5** — A session is scoped to the user who created it
-  (`user_id = Auth::id()`); the chunk/complete/abort endpoints reject a
-  `session_token` that doesn't belong to the requesting user via `firstOrFail()`.
+  (`user_id = Auth::id()`); the chunk/complete/abort endpoints answer **404** for a
+  `session_token` that is unknown or belongs to another user — the same answer
+  for both, so a token's existence is not disclosed.
 - **REQ-6** — A failed completion attempts to abort the underlying multipart
-  upload so S3 doesn't accumulate orphaned parts.
+  upload so S3 doesn't accumulate orphaned parts. The "not all chunks uploaded"
+  precondition is checked before any S3 call and does **not** abort: the session
+  stays resumable, so the client can send the missing chunks and complete again.
+- **REQ-chunk-number-out-of-range** — A `chunk_number` outside
+  `1..total_chunks` is a client error: the chunk endpoint answers **422** and
+  sends nothing to S3.
 
 ## Technical design
 
@@ -65,28 +88,61 @@ POST complete: ChunkedUploadController::complete        # chunked-upload.complet
 POST abort:    ChunkedUploadController::abort            # chunked-upload.abort
 ```
 
-`ChunkedUploadService::initiateUpload(filename, mimeType, fileSize, userId, ?folder, keepOriginalFilename): UploadSession`
+`ChunkedUploadService` holds no S3 client: every S3 call goes through
+`S3Service` — the multipart primitives `createMultipartUpload()` /
+`uploadPart()` / `completeMultipartUpload()` / `abortMultipartUpload()`, plus
+`sanitizeStoredSvg()`, `deleteFile()` and `extractImageDimensions()` — so it
+inherits the endpoint, timeouts and upload hardening
+([`s3-storage.md`](s3-storage.md) REQ-sole-s3-gateway).
+
+`ChunkedUploadService::initiateUpload(filename, fileSize, userId, ?folder, keepOriginalFilename): UploadSession`
 — computes the S3 key (UUID or sanitized original name), opens an S3
-`createMultipartUpload` (with `ContentDisposition: attachment` for non-inline
-types per `UploadPolicy::isInline()`), and persists an `UploadSession` row with
-`chunk_size = 10MB` and `total_chunks = ceil(fileSize / chunkSize)`.
+`createMultipartUpload` (Content-Type from the extension, and
+`ContentDisposition: attachment` for non-inline types — [`upload-policy.md`](upload-policy.md)
+REQ-content-type-from-extension, REQ-5), and persists an `UploadSession` row —
+`mime_type` is `UploadPolicy::contentType(filename)` — with
+`chunk_size = 10MB` and `total_chunks = ceil(fileSize / chunkSize)`. For an SVG
+the multipart is opened on `S3Service::CHUNKED_STAGING_PREFIX.{token}.svg`
+instead, recorded as `staging_s3_key` (REQ-4). Every multipart call —
+`uploadPart`, `completeMultipartUpload`, `abortMultipartUpload` — addresses
+`UploadSession::multipartKey()` (`staging_s3_key ?? s3_key`), so a session
+created before the column existed still completes and aborts on its own key.
 
 `ChunkedUploadService::uploadChunk(UploadSession, UploadedFile, int $chunkNumber): array`
-— streams the chunk via `uploadPart`, appends `{PartNumber, ETag}` to
-`part_etags`, increments `uploaded_chunks`. Throws `InvalidArgumentException`
-for a chunk number outside `1..total_chunks`.
+— throws `InvalidArgumentException` for a chunk number outside `1..total_chunks`.
+If the part is already recorded it returns `{PartNumber, ETag, skipped: true}`
+without calling S3 (REQ-2). Otherwise it streams the chunk via `uploadPart`
+*outside* any transaction (holding a row lock through a 10MB PUT would serialize
+every chunk; re-uploading a `PartNumber` is itself idempotent in S3), then, in a
+`DB::transaction` holding `lockForUpdate()` on the session row, merges
+`{PartNumber, ETag}` into `part_etags` keyed by `PartNumber` and sets
+`uploaded_chunks = count(part_etags)`. The passed `$session` is refreshed from
+the locked row.
 
 `ChunkedUploadService::completeUpload(UploadSession): Asset` — requires
 `uploaded_chunks === total_chunks`; sorts parts by `PartNumber` and calls
-`completeMultipartUpload`; sanitizes stored SVGs; runs the etag dedup check
+`completeMultipartUpload`; sanitizes SVGs from the staging key onto `s3_key`
+and deletes the staging object (a legacy session with no staging key is
+sanitized in place); runs the etag dedup check
 (throws `DuplicateAssetException` on a match); creates or updates the `Asset`
-row; marks the session `completed`.
+row (dimensions via `S3Service::extractImageDimensions()`, which skips SVG);
+marks the session `completed`.
 
 `ChunkedUploadService::abortUpload(UploadSession): void` — S3
 `abortMultipartUpload` + session status `aborted`.
 
+Controller error mapping (chunk/complete/abort): all three resolve the session
+through one owner-scoped lookup (`findOwnedSession()`), whose
+`ModelNotFoundException` is **404** `Upload session not found.`
+(REQ-5); in `uploadChunk`, `InvalidArgumentException` is **422**
+(REQ-chunk-number-out-of-range); everything else stays a 500 through
+`Controller::clientError()`. A `skipped` result from the service is reported as
+`Chunk already uploaded` with the current progress.
+
 Controller validation: `initiate` — `filename` (required, `AllowedUploadExtension`),
-`mime_type`, `file_size` (max 500MB in bytes), `folder` (max 100),
+`mime_type` (optional and **ignored** — accepted so existing clients keep working,
+never stored or sent to S3; browsers send an empty one for some extensions,
+which used to fail validation), `file_size` (max 500MB in bytes), `folder` (max 100),
 `keep_original_filename`; also gated by `api_upload_enabled` setting for
 non-web-guard callers. `complete` validates the same `metadata_*` shape as the
 direct-upload path **through the shared `UploadMetadataRules::rules()`**, not a
@@ -106,7 +162,8 @@ UploadSession:                # upload_sessions table
   upload_id: string            # S3 multipart UploadId
   session_token: uuid          # client-facing handle
   filename / mime_type / file_size: 
-  s3_key: string
+  s3_key: string                # the asset's final key
+  staging_s3_key: ?string       # SVG only: chunked-staging/{session_token}.svg, where the multipart assembles
   chunk_size: int               # 10MB
   total_chunks / uploaded_chunks: int
   part_etags: json              # [{PartNumber, ETag}, ...]
@@ -120,11 +177,86 @@ UploadSession:                # upload_sessions table
 `upload_sessions` rows are the only persistent state during an in-flight
 upload; stale sessions are cleaned up by `uploads:cleanup` (aborts the S3
 multipart upload via `ChunkedUploadService`) rather than by this feature
-itself — see `CLAUDE.md`'s maintenance commands.
+itself — see [`maintenance-commands.md`](maintenance-commands.md).
 
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: The browser uploader cuts chunks to the size init returns (REQ-1)
+  Given a 10.5MB file staged on the upload page
+  And the init response says chunk_size is 6MB
+  When the upload is submitted
+  Then the first chunk sent is 6MB, not the server's default 10MB, and the upload completes
+# pinned by: tests/e2e/asset-upload.spec.js
+
+Scenario: Initiating a chunked upload opens a session for the caller
+  Given an authenticated editor
+  When POST .../init is called for a 25MB "archive.zip"
+  Then the response is 201 with a session_token, chunk_size 10MB and total_chunks 3
+  And a pending upload_sessions row is stored for that user under a UUID key
+  And the S3 multipart upload is opened with ContentDisposition attachment (non-inline type)
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: keep_original_filename keeps the sanitized original name as the key
+  When POST .../init is called with keep_original_filename = true
+  Then the session's s3_key ends in the sanitized original filename, not a UUID
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Uploading a chunk records the part (REQ-2)
+  Given a pending session with 2 total chunks
+  When chunk 1 is uploaded
+  Then part_etags holds {PartNumber 1, ETag} and uploaded_chunks is 1, status uploading
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Re-sending a recorded chunk is a no-op (REQ-2)
+  Given a session that has already recorded chunk 1
+  When chunk 1 is uploaded again
+  Then the response reports "Chunk already uploaded" with the unchanged progress
+  And no UploadPart is sent to S3
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Chunks recorded through stale copies of a session are merged, not lost (REQ-2, regression)
+  Given two in-memory copies of one session, both loaded before any chunk arrived
+    (what two parallel chunk requests see)
+  When chunk 1 is recorded through the first copy and chunks 2 and 1 through the second
+  Then part_etags holds exactly parts 1 and 2, in order, and uploaded_chunks is 2
+# Regression: part_etags was appended to the request's in-memory copy and written back,
+# and uploaded_chunks was `+ 1` from a stale value — a concurrent chunk lost its part,
+# and a concurrent duplicate counted twice and could make an incomplete upload "complete".
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: A chunk number outside the session's range is a 422 (REQ-chunk-number-out-of-range)
+  Given a session with 2 total chunks
+  When chunk 3 is uploaded
+  Then the response is 422 and nothing is sent to S3
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Another user's session token is a 404 on chunk, complete and abort (REQ-5)
+  Given a session created by user A
+  When user B calls .../chunk, .../complete or .../abort with A's session_token
+  Then each response is 404 and A's session is untouched
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Aborting a session aborts the S3 multipart upload
+  When POST .../abort is called for the caller's session
+  Then AbortMultipartUpload is sent for the session's key and UploadId
+  And the session is marked aborted
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: A failed completion aborts the multipart upload (REQ-6)
+  Given a session with every chunk uploaded
+  And S3 rejects CompleteMultipartUpload
+  When POST .../complete is called
+  Then AbortMultipartUpload is sent for the session's key and UploadId
+  And the session is marked aborted and the response is 500
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Completing a session with missing chunks leaves it resumable (REQ-6)
+  Given a session with 1 of 2 chunks uploaded
+  When POST .../complete is called
+  Then the response is 500, nothing is sent to S3, and the session keeps its status
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
 Scenario: Completing a chunked upload applies batch metadata
   Given a completed chunked-upload session with metadata_tags/license/copyright/date_obtained
   When POST .../complete is called
@@ -157,14 +289,44 @@ Scenario: Completing a chunked upload that duplicates an existing asset returns 
   Then the response is 409 with the same duplicate payload shape as the direct-upload path
 # pinned by: tests/Feature/ChunkedUploadTest.php, tests/Feature/DuplicatePayloadTest.php
 
+Scenario: A chunked SVG assembles on a staging key, never the asset's key (REQ-4)
+  When POST .../init is called for a 12MB "drawing.svg"
+  Then the S3 multipart upload is opened on chunked-staging/{session_token}.svg
+  And the session's s3_key is the asset's final key and staging_s3_key the staging key
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Completing a chunked SVG writes the sanitized content to the final key (REQ-4)
+  Given an SVG session with every chunk uploaded
+  When completeUpload() runs
+  Then the multipart is completed on the staging key
+  And sanitizeStoredSvg() reads the staging key and writes the asset's key
+  And the staging object is deleted and the asset carries the sanitized ETag
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
 Scenario: A chunked SVG that fails sanitization is deleted, not stored raw (regression)
   Given a chunked-upload session for an SVG whose assembled content cannot be sanitized
     (e.g. it declares a custom DTD entity, which svg-sanitize >= 1.0 rejects)
   When completeUpload() runs
-  Then the assembled S3 object is deleted and the session is marked failed
+  Then the staging object is deleted, the asset's key is never written, and the session is marked failed
   And completeUpload() throws, so no Asset row is created or updated
 # Regression: sanitizeStoredSvg() returning null used to be ignored — the raw
 # upload kept its original ETag and became an asset, breaking s3-storage REQ-4.
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: An overwrite-mode SVG that fails sanitization keeps the existing original (REQ-4)
+  Given an existing asset at assets/logo.svg
+  And a keep_original_filename SVG session for the same key whose content cannot be sanitized
+  When completeUpload() runs
+  Then only the staging object is deleted — assets/logo.svg is neither deleted nor overwritten
+  And the existing Asset row is unchanged
+# Was: the multipart assembled straight onto assets/logo.svg, so the only way to avoid
+# serving the raw upload was to delete it, leaving the asset without an original.
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: A session created before staging keys existed still sanitizes in place
+  Given an SVG session with no staging_s3_key
+  When completeUpload() runs and sanitization fails
+  Then the multipart completes on s3_key, that object is deleted, and the session is marked failed
 # pinned by: tests/Feature/ChunkedUploadTest.php
 
 Scenario: Stale upload sessions are aborted by the cleanup command
@@ -178,20 +340,17 @@ Scenario: Stale upload sessions are aborted by the cleanup command
 
 - Feature: `tests/Feature/ChunkedUploadTest.php`, `tests/Feature/DuplicatePayloadTest.php`,
   `tests/Feature/Console/AssetMaintenanceCommandTest.php`
+- Unit: `tests/Unit/Services/S3ServiceTest.php` (`sanitizeStoredSvg` to a destination key,
+  staging keys hidden from discovery, multipart part ordering)
+- E2E: `tests/e2e/asset-upload.spec.js` — a 10.5MB upload through the real uploader into
+  RustFS (needs `npm run e2e:up`)
 - Run: `php artisan config:clear && php artisan test`
 
 ## Open questions / future
 
-- There is no dedicated test suite exercising `ChunkedUploadController::initiate`,
-  `uploadChunk`, or `abort` directly (session creation, the idempotent-retry
-  branch in `uploadChunk` — REQ-2 — or `abort`'s success path). The only
-  chunked-upload coverage in `tests/Feature/ChunkedUploadTest.php` targets the
-  `complete` endpoint. Session-lifecycle and idempotency scenarios above (REQ-2,
-  REQ-6) are documented from source but currently unpinned — a gap worth
-  closing with dedicated tests.
-- A sanitization failure in `keep_original_filename` overwrite mode deletes the
-  object an existing asset points at: `completeMultipartUpload` has already
-  replaced that content with the raw upload, so deleting it is the only way to
-  avoid serving unsanitized SVG, and the existing `Asset` row is left without an
-  original. Avoiding that would mean assembling to a temporary key and only
-  copying over the existing one after sanitization succeeds.
+- `complete` doesn't refuse a session that is already `completed`. A client that
+  retries `complete` after a success whose response was lost runs it again: S3
+  may accept re-completing the upload, and `completeUpload()` then takes the
+  overwrite branch against the asset it just created (derived files are dropped
+  and regenerated). Harmless but wasteful; a guard returning the existing asset
+  for a `completed` session would close it.

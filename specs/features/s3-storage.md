@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -26,8 +26,9 @@ source:
 ## Background / Why
 
 `S3Service` is the sole gateway to AWS S3 (REQ-1 of `architecture.md`) — no
-controller or other service talks to the AWS SDK directly. It owns the S3 key
-layout, the security hardening applied at upload time (server-detected
+controller or other service talks to the AWS SDK directly (REQ-sole-s3-gateway).
+It owns the S3 key
+layout, the security hardening applied at upload time (extension-decided
 Content-Type, forced download for non-inline types, SVG sanitization), and all
 derived-asset (thumbnail/resize) key generation and cleanup.
 
@@ -40,12 +41,34 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   [ADR-006](../decisions/adr-006-immutable-s3-key.md).
 - **REQ-2** — Every upload is streamed to S3 (not buffered fully in memory)
   except SVGs, which are small enough to sanitize in-memory before storage.
-- **REQ-3** — Content-Type is always server-detected (`$file->getMimeType()`),
-  never the client-declared value; non-inline types get
+- **REQ-3** — Content-Type is decided by the object's allowlisted extension
+  (`UploadPolicy::contentType()` — [`upload-policy.md`](upload-policy.md)
+  REQ-content-type-from-extension), on `putUploadedFile()` and
+  `createMultipartUpload()` alike: never the client-declared value, and never
+  sniffed from the bytes, which the uploader also controls. Non-inline types get
   `Content-Disposition: attachment` (`App\Support\UploadPolicy::isInline()`).
 - **REQ-4** — SVGs are sanitized (`enshrined/svg-sanitize`) before storage on
   every upload path; a sanitization failure throws rather than storing
   unsanitized content.
+- **REQ-sole-s3-gateway** — `S3Service` is the only class in `app/` that uses
+  the AWS S3 SDK, so REQ-7's endpoint and REQ-8's timeouts govern every S3
+  request ORCA makes. That includes the multipart upload
+  [`chunked-upload.md`](chunked-upload.md) drives: `ChunkedUploadService` calls
+  `S3Service::createMultipartUpload()` / `uploadPart()` /
+  `completeMultipartUpload()` / `abortMultipartUpload()` and holds no client of
+  its own. An architecture test enforces it, because the previous arrangement —
+  a second, hand-built client in `ChunkedUploadService` — silently skipped both
+  requirements and sent every upload ≥ 10MB to AWS on an S3-compatible
+  deployment.
+- **REQ-staging-prefix-hidden** — `chunked-staging/` at the bucket root
+  (`S3Service::CHUNKED_STAGING_PREFIX`) is ORCA's own transient prefix: a
+  chunked SVG assembles there before it is sanitized onto its asset key
+  ([`chunked-upload.md`](chunked-upload.md) REQ-4). Like `thumbnails/`, it is a
+  reserved prefix: `findUnmappedObjects()` never reports a key under one and
+  `listFolders()` never lists one, so a staging object a failed delete leaves
+  behind can't be imported by discovery or offered as an upload folder — which
+  matters most when the root folder is the bucket root and both scan the whole
+  bucket.
 - **REQ-5** — `getPublicBaseUrl()` resolves to the `custom_domain` setting when
   set, otherwise the configured S3 bucket URL — this is the single point every
   computed asset URL passes through, so a custom-domain change or Cloudflare
@@ -83,7 +106,7 @@ uploadFile(UploadedFile, ?directory, keepOriginalFilename=false): array   # {s3_
 replaceFile(UploadedFile, existingS3Key): array                          # same shape minus s3_key (key unchanged)
 putUploadedFile(s3Key, UploadedFile): Aws\Result   # protected — streaming + hardening, shared by upload/replace
 sanitizeSvg(string $svg): string
-sanitizeStoredSvg(s3Key): ?string           # download → sanitize → re-put; used by chunked-upload completion
+sanitizeStoredSvg(s3Key, ?destinationKey): ?string  # download s3Key → sanitize → put to destinationKey ?? s3Key; new ETag or null
 generateThumbnail(s3Key): ?string           # 300x300 JPEG; null for EPS/SVG/animated GIF
 generateResizedImages(s3Key): array         # {s,m,l} => key; skips non-image ext, animated GIF
 uploadThumbnail(s3Key, imageData): ?string  # browser-generated thumb (video/PDF)
@@ -92,12 +115,25 @@ deleteAssetFiles(Asset, keepOriginal=false): void   # original + thumbnail + res
 computeDerivedKeys(s3Key): array            # {thumbnail_s3_key, resize_s_s3_key, resize_m_s3_key, resize_l_s3_key}
 moveObject(sourceKey, destinationKey): bool # copy + delete
 deleteFile(s3Key): bool
-extractImageDimensions(s3Key, mimeType): ?array
+extractImageDimensions(s3Key, mimeType): ?array   # null for non-images; streams the object to a temp file
+                                            # and defers to ImageProcessingService::getImageDimensionsFromPath()
+
+# Multipart upload — chunked-upload.md's only way to S3 (REQ-sole-s3-gateway). Unlike the rest of
+# this service these THROW (ADR-010's exception): the caller orchestrates abort/rollback and has
+# to know which step failed.
+createMultipartUpload(key): string                            # UploadId; Content-Type + Content-Disposition from the key's extension (REQ-3)
+uploadPart(key, uploadId, partNumber, path): string            # part ETag; streams the local file
+completeMultipartUpload(key, uploadId, parts): ?string         # parts sorted by PartNumber here; object ETag
+abortMultipartUpload(key, uploadId): void
 listObjects(prefix='', ?maxKeys): array
-findUnmappedObjects(?prefix): array         # S3 objects not in the assets table (discovery)
+findUnmappedObjects(?prefix): array         # S3 objects not in the assets table (discovery); skips thumbnails/ and chunked-staging/
 listFolders(?prefix): array
 createFolder(folderPath): bool
 getObjectMetadata(s3Key): ?array            # {size, mime_type, last_modified, etag}
+getObjectHeaders(s3Keys, concurrency=25): array   # key => {content_type, content_disposition} | null (missing/unreadable);
+                                            # concurrent HEADs, so a whole library fits in one web request
+repairUploadHeaders(s3Key): ?string         # copy onto itself with the headers uploadHeaders() sets today
+                                            # (MetadataDirective REPLACE); new ETag, or null on failure
 getObjectContent(s3Key): ?string
 getPublicBaseUrl(): string                  # static — custom_domain setting > AWS_URL
 getUrl(s3Key): string
@@ -141,6 +177,7 @@ S3 key layout (see also `architecture.md` → "S3 + CDN topology"):
 assets/{folder}/{uuid}.{ext}                  # original
 thumbnails/{folder}/{uuid}_thumb.jpg           # 300x300 JPEG thumbnail
 thumbnails/{S|M|L}/{folder}/{basename}.{ext}   # resize variants
+chunked-staging/{session_token}.svg            # transient: a chunked SVG before sanitization (chunked-upload REQ-4)
 ```
 
 Nothing is cached at this layer beyond what `Setting` itself caches; every S3
@@ -193,6 +230,18 @@ Scenario: findUnmappedObjects excludes mapped, thumbnail, and zero-byte keys
   Then findUnmappedObjects() excludes all three categories
 # pinned by: tests/Unit/Services/S3ServiceTest.php
 
+Scenario: findUnmappedObjects and listFolders hide the chunked-staging prefix (REQ-staging-prefix-hidden)
+  Given an object under chunked-staging/ in the bucket
+  Then findUnmappedObjects() does not report it
+  And listFolders() does not list chunked-staging as a folder
+# pinned by: tests/Unit/Services/S3ServiceTest.php
+
+Scenario: sanitizeStoredSvg can write the sanitized content to a different key
+  Given an SVG stored at a source key
+  When sanitizeStoredSvg(source, destination) runs
+  Then the source is read, the sanitized markup is put to the destination, and its ETag is returned
+# pinned by: tests/Unit/Services/S3ServiceTest.php
+
 Scenario: findUnmappedObjects follows pagination across every page
   Given more objects than a single ListObjectsV2 page
   Then all pages are walked via ContinuationToken
@@ -218,6 +267,20 @@ Scenario: An endpoint that accepts the connection and never answers fails in sec
   Given an S3 endpoint that completes the handshake but sends no response
   When S3Service issues a request against it
   Then the client gives up after the configured timeout rather than running until max_execution_time
+# pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
+
+Scenario: Chunked-upload requests go to the configured endpoint and are bounded by the timeout (regression)
+  Given filesystems.disks.s3.endpoint points at a local socket that accepts and never answers
+  When ChunkedUploadService::initiateUpload() runs
+  Then the CreateMultipartUpload request arrives at that socket (path-style)
+  And the call fails within the configured timeout
+# Regression: ChunkedUploadService built its own S3Client from region + credentials only,
+# so every upload >= 10MB went to real AWS on an R2/Wasabi/RustFS deployment, and waited
+# without bound against AWS.
+# pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
+
+Scenario: No class but S3Service uses the AWS S3 SDK (REQ-sole-s3-gateway)
+  Then an architecture test finds no use of Aws\S3 anywhere in App outside App\Services\S3Service
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 
 Scenario: No endpoint config leaves AWS addressing untouched
@@ -247,13 +310,10 @@ Scenario: Bytes round-trip through a real S3-compatible bucket
 
 ## Open questions / future
 
-- `uploadFile`/`replaceFile`/`putUploadedFile` (the streaming + hardening core —
-  server-detected Content-Type, forced `Content-Disposition: attachment` for
-  non-inline extensions, SVG sanitize-on-upload) have no dedicated unit test in
-  either `S3ServiceTest.php` file; they're only exercised indirectly through
-  feature tests that mock `S3Service` (e.g. `tests/Feature/AssetTest.php`'s
-  replace scenarios). A direct unit test asserting the `ContentDisposition` /
-  `ContentType` params passed to the mocked S3 client would close this gap.
+- `replaceFile` and SVG sanitize-on-upload in `putUploadedFile` still have no
+  dedicated unit test; they're exercised through feature tests that mock
+  `S3Service` and by the browser suite. `uploadFile`'s `ContentType` /
+  `ContentDisposition` params are now asserted directly (`S3ServiceTest.php`).
 - `generateThumbnail()`, `generateResizedImages()`, `deleteAssetFiles()`, and
   `computeDerivedKeys()` are likewise only covered indirectly (through
   `AssetProcessingServiceTest.php` and the bulk-move feature tests) rather than

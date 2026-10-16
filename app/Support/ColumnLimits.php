@@ -61,6 +61,9 @@ final class ColumnLimits
             // The chunked-upload path reserves the key before the asset row exists, so this
             // column has to accept everything assets.s3_key does.
             's3_key' => 1024,
+            // The generated chunked-staging/{uuid}.svg key is far shorter, but sizing this with
+            // s3_key keeps the staging-key format free to change without another migration.
+            'staging_s3_key' => 1024,
             // Likewise: ChunkedUploadController::initiate validates the filename against
             // assets.filename and parks it here until complete() creates the asset, so anything
             // that column accepts has to survive the round trip.

@@ -1,6 +1,7 @@
-// Direct upload through the browser into RustFS — pins specs/features/asset-upload.md,
-// specs/features/duplicate-detection.md and the storage boundary of
-// specs/features/s3-storage.md. Needs real object storage (requiresS3).
+// Direct and chunked upload through the browser into RustFS — pins specs/features/asset-upload.md,
+// specs/features/chunked-upload.md, specs/features/duplicate-detection.md and the storage
+// boundary of specs/features/s3-storage.md. Needs real object storage (requiresS3).
+import { randomBytes } from 'node:crypto';
 import {
     assetCard,
     expect,
@@ -12,6 +13,7 @@ import {
     testid,
     useViewMode,
 } from './support/fixtures.js';
+import { bucketConfig } from './support/bucket.js';
 import { pngFixture, uniqueColor, uniqueName } from './support/files.js';
 
 /**
@@ -138,5 +140,59 @@ test.describe('asset upload', () => {
         expect(response.status()).toBe(422);
         // A failure also keeps the user on the page.
         await expect(page.locator(testid('upload-status-failed'))).toBeVisible();
+    });
+
+    test('a file of 10MB or more is uploaded in chunks cut to the size the server dictates', async ({ page }) => {
+        const MB = 1024 * 1024;
+        const name = uniqueName('e2e-chunked', 'zip');
+        // Random bytes: never a duplicate of an earlier run. 10.5MB crosses the 10MB threshold.
+        const buffer = randomBytes(10 * MB + MB / 2);
+
+        // The server answers 10MB / 2 chunks; tell the browser 6MB / 2 instead. An uploader that
+        // follows the session cuts a 6MB first chunk; one with its own CHUNK_SIZE still sends 10MB.
+        // Both shapes are valid S3 multipart parts (>= 5MB except the last), so the upload completes.
+        await page.route('**/api/chunked-upload/init', async (route) => {
+            const response = await route.fetch();
+            const session = await response.json();
+            expect(session.total_chunks).toBe(2);
+            await route.fulfill({ response, json: { ...session, chunk_size: 6 * MB } });
+        });
+
+        const chunkSizes = [];
+        page.on('request', (request) => {
+            if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/chunked-upload/chunk') {
+                chunkSizes.push(request.postDataBuffer()?.length ?? 0);
+            }
+        });
+
+        await gotoStable(page, '/assets/create');
+        await page.setInputFiles(testid('upload-input'), { name, mimeType: 'application/zip', buffer });
+        await expect(page.locator(testid('upload-row'))).toHaveCount(1);
+
+        const [complete] = await Promise.all([
+            page.waitForResponse((r) => new URL(r.url()).pathname === '/api/chunked-upload/complete', {
+                timeout: 120_000,
+            }),
+            page.click(testid('upload-submit')),
+        ]);
+        expect(complete.ok(), `complete responded ${complete.status()}`).toBeTruthy();
+
+        // The bucket serves the object typed by its extension and forced to download (zip is not
+        // an inline type), whatever the browser declared (upload-policy REQ-content-type-from-extension).
+        const { asset } = await complete.json();
+        const { origin, bucket } = bucketConfig();
+        const objectUrl = `${origin}/${bucket}/${asset.s3_key}`;
+        const object = await page.request.head(objectUrl);
+        expect(object.ok(), `HEAD ${objectUrl} responded ${object.status()}`).toBeTruthy();
+        expect(object.headers()['content-type']).toBe('application/zip');
+        expect(object.headers()['content-disposition']).toBe('attachment');
+
+        // Multipart bodies carry a little form overhead on top of the chunk itself.
+        expect(chunkSizes).toHaveLength(2);
+        expect(chunkSizes[0]).toBeGreaterThanOrEqual(6 * MB);
+        expect(chunkSizes[0]).toBeLessThan(6 * MB + 64 * 1024);
+
+        await gotoAssets(page, { search: name.replace('.zip', '') });
+        await expect(assetCard(page, name)).toBeVisible();
     });
 });

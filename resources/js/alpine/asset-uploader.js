@@ -19,7 +19,8 @@ export function assetUploader() {
         fileWarnings: {},
         filePreviews: {},
         fileThumbnails: {},
-        CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
+        // Which path a file takes. The chunk size is not ours to pick: the server returns
+        // chunk_size and total_chunks from init, and the chunks are cut to match.
         CHUNKED_THRESHOLD: 10 * 1024 * 1024, // Use chunked upload for files >= 10MB
         selectedFolder: pageData.selectedFolder,
         keepOriginalFilename: false,
@@ -541,16 +542,16 @@ export function assetUploader() {
         },
 
         async uploadFileChunked(file, index) {
-            const totalChunks = Math.ceil(file.size / this.CHUNK_SIZE);
-
-            // Step 1: Initialize chunked upload
+            // Step 1: Initialize chunked upload. The session dictates the chunking: counting
+            // chunks here with a size of our own would fail at complete the moment they differ.
             const session = await this.initiateChunkedUpload(file);
+            const { chunk_size: chunkSize, total_chunks: totalChunks } = session;
 
             try {
                 // Step 2: Upload chunks with retry logic
                 for (let chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++) {
-                    const start = (chunkNumber - 1) * this.CHUNK_SIZE;
-                    const end = Math.min(start + this.CHUNK_SIZE, file.size);
+                    const start = (chunkNumber - 1) * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
                     const chunk = file.slice(start, end);
 
                     await this.uploadChunkWithRetry(session.session_token, chunk, chunkNumber);
@@ -581,8 +582,8 @@ export function assetUploader() {
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({
+                    // No mime_type: the server types the object by its extension and ignores a claim.
                     filename: file.name,
-                    mime_type: file.type,
                     file_size: file.size,
                     folder: this.selectedFolder,
                     keep_original_filename: this.keepOriginalFilename,

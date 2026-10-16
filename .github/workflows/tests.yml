@@ -226,10 +226,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # ini-values: the chunked-mode limits DEPLOYMENT.md asks of production. The
+      # runner's stock upload_max_filesize=2M rejects every chunk with a 422
+      # ("The chunk failed to upload.") before the app sees it.
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
         with:
           php-version: '8.4'
           extensions: mbstring, gd, exif, zip, bcmath, intl, pdo_sqlite, sqlite3
+          ini-values: upload_max_filesize=15M, post_max_size=16M
           coverage: none
           tools: composer
       # Same gitignored runtime dirs as the phpunit job. .env.e2e uses the *file*

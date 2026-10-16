@@ -698,6 +698,7 @@ Access the admin panel at: `https://your-domain.com/system`
 - **cache:clear** - Clear application cache
 - **config:clear** - Clear configuration cache
 - **assets:verify-integrity** - Queue S3 integrity checks for all assets
+- **assets:audit-content-types** - Find objects served with a Content-Type their extension doesn't call for (`--fix` from the command line to repair)
 - **migrate:status** - Check migration status
 
 ### Health Checks
