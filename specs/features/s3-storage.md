@@ -28,7 +28,7 @@ source:
 `S3Service` is the sole gateway to AWS S3 (REQ-1 of `architecture.md`) — no
 controller or other service talks to the AWS SDK directly (REQ-sole-s3-gateway).
 It owns the S3 key
-layout, the security hardening applied at upload time (server-detected
+layout, the security hardening applied at upload time (extension-decided
 Content-Type, forced download for non-inline types, SVG sanitization), and all
 derived-asset (thumbnail/resize) key generation and cleanup.
 
@@ -41,8 +41,11 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   [ADR-006](../decisions/adr-006-immutable-s3-key.md).
 - **REQ-2** — Every upload is streamed to S3 (not buffered fully in memory)
   except SVGs, which are small enough to sanitize in-memory before storage.
-- **REQ-3** — Content-Type is always server-detected (`$file->getMimeType()`),
-  never the client-declared value; non-inline types get
+- **REQ-3** — Content-Type is decided by the object's allowlisted extension
+  (`UploadPolicy::contentType()` — [`upload-policy.md`](upload-policy.md)
+  REQ-content-type-from-extension), on `putUploadedFile()` and
+  `createMultipartUpload()` alike: never the client-declared value, and never
+  sniffed from the bytes, which the uploader also controls. Non-inline types get
   `Content-Disposition: attachment` (`App\Support\UploadPolicy::isInline()`).
 - **REQ-4** — SVGs are sanitized (`enshrined/svg-sanitize`) before storage on
   every upload path; a sanitization failure throws rather than storing
@@ -118,7 +121,7 @@ extractImageDimensions(s3Key, mimeType): ?array   # null for non-images; streams
 # Multipart upload — chunked-upload.md's only way to S3 (REQ-sole-s3-gateway). Unlike the rest of
 # this service these THROW (ADR-010's exception): the caller orchestrates abort/rollback and has
 # to know which step failed.
-createMultipartUpload(key, contentType): string               # UploadId; Content-Disposition per REQ-3
+createMultipartUpload(key): string                            # UploadId; Content-Type + Content-Disposition from the key's extension (REQ-3)
 uploadPart(key, uploadId, partNumber, path): string            # part ETag; streams the local file
 completeMultipartUpload(key, uploadId, parts): ?string         # parts sorted by PartNumber here; object ETag
 abortMultipartUpload(key, uploadId): void
@@ -303,13 +306,10 @@ Scenario: Bytes round-trip through a real S3-compatible bucket
 
 ## Open questions / future
 
-- `uploadFile`/`replaceFile`/`putUploadedFile` (the streaming + hardening core —
-  server-detected Content-Type, forced `Content-Disposition: attachment` for
-  non-inline extensions, SVG sanitize-on-upload) have no dedicated unit test in
-  either `S3ServiceTest.php` file; they're only exercised indirectly through
-  feature tests that mock `S3Service` (e.g. `tests/Feature/AssetTest.php`'s
-  replace scenarios). A direct unit test asserting the `ContentDisposition` /
-  `ContentType` params passed to the mocked S3 client would close this gap.
+- `replaceFile` and SVG sanitize-on-upload in `putUploadedFile` still have no
+  dedicated unit test; they're exercised through feature tests that mock
+  `S3Service` and by the browser suite. `uploadFile`'s `ContentType` /
+  `ContentDisposition` params are now asserted directly (`S3ServiceTest.php`).
 - `generateThumbnail()`, `generateResizedImages()`, `deleteAssetFiles()`, and
   `computeDerivedKeys()` are likewise only covered indirectly (through
   `AssetProcessingServiceTest.php` and the bulk-move feature tests) rather than

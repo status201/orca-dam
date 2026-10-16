@@ -582,8 +582,8 @@ export function assetUploader() {
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({
+                    // No mime_type: the server types the object by its extension and ignores a claim.
                     filename: file.name,
-                    mime_type: file.type,
                     file_size: file.size,
                     folder: this.selectedFolder,
                     keep_original_filename: this.keepOriginalFilename,

@@ -16,7 +16,19 @@ class UploadPolicy
      */
     public static function allowedExtensions(): array
     {
-        return (array) config('uploads.allowed_extensions', []);
+        return array_keys((array) config('uploads.allowed_extensions', []));
+    }
+
+    /**
+     * The Content-Type an object with this name/key is stored and served with: the one its
+     * allowlisted extension maps to — never the client's claim, never sniffed from the bytes
+     * (upload-policy REQ-content-type-from-extension). Off-list names get a type no browser renders.
+     */
+    public static function contentType(string $filename): string
+    {
+        $types = (array) config('uploads.allowed_extensions', []);
+
+        return $types[self::extension($filename)] ?? 'application/octet-stream';
     }
 
     /**

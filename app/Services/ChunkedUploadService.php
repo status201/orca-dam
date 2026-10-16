@@ -33,7 +33,6 @@ class ChunkedUploadService
      */
     public function initiateUpload(
         string $filename,
-        string $mimeType,
         int $fileSize,
         int $userId,
         ?string $folder = null,
@@ -57,9 +56,9 @@ class ChunkedUploadService
         // so a sanitization failure can't cost an existing asset (overwrite mode) its original.
         $stagingKey = UploadPolicy::isSvg($s3Key) ? S3Service::CHUNKED_STAGING_PREFIX.$sessionToken.'.svg' : null;
 
-        // The staging key keeps the extension, so S3Service's Content-Disposition decision is the
-        // same as it would be for $s3Key.
-        $uploadId = $this->s3Service->createMultipartUpload($stagingKey ?? $s3Key, $mimeType);
+        // The staging key keeps the extension, so S3Service derives the same Content-Type and
+        // Content-Disposition as it would for $s3Key. No client-declared type is involved.
+        $uploadId = $this->s3Service->createMultipartUpload($stagingKey ?? $s3Key);
 
         $chunkSize = self::CHUNK_SIZE;
         $totalChunks = (int) ceil($fileSize / $chunkSize);
@@ -69,7 +68,7 @@ class ChunkedUploadService
             'upload_id' => $uploadId,
             'session_token' => $sessionToken,
             'filename' => $filename,
-            'mime_type' => $mimeType,
+            'mime_type' => UploadPolicy::contentType($filename),
             'file_size' => $fileSize,
             's3_key' => $s3Key,
             'staging_s3_key' => $stagingKey,

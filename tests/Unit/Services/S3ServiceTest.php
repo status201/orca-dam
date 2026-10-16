@@ -6,6 +6,7 @@ use App\Services\S3Service;
 use Aws\History;
 use Aws\MockHandler;
 use Aws\Result;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Build an S3Service whose underlying AWS client returns the given results
@@ -256,4 +257,39 @@ test('completeMultipartUpload sends the parts in ascending PartNumber order', fu
     $parts = $history->getLastCommand()['MultipartUpload']['Parts'];
     expect($etag)->toBe('whole')
         ->and(array_column($parts, 'PartNumber'))->toBe([1, 2, 3]);
+});
+
+test('uploadFile types the object by its extension, not by sniffing its bytes', function () {
+    // Regression: the direct path stored $file->getMimeType(), sniffed from bytes the uploader
+    // controls, so an HTML page saved as pixel.png went up as text/html and, png being an inline
+    // type, was served as a page from the asset domain.
+    $history = new History;
+    $service = app(S3Service::class)
+        ->setS3Client(fakeS3Client(new MockHandler([new Result(['ETag' => '"e"'])]), $history));
+
+    $path = tempnam(sys_get_temp_dir(), 'html_');
+    file_put_contents($path, '<!doctype html><html><body><script>alert(document.domain)</script></body></html>');
+    $file = new UploadedFile($path, 'pixel.png', 'text/html', null, true);
+    expect($file->getMimeType())->toBe('text/html');   // what used to be stored
+
+    $service->uploadFile($file, 'assets');
+
+    $put = $history->getLastCommand();
+    expect($put->getName())->toBe('PutObject')
+        ->and($put['ContentType'])->toBe('image/png')
+        ->and($put->hasParam('ContentDisposition'))->toBeFalse();
+
+    @unlink($path);
+});
+
+test('uploadFile forces a non-inline type to download', function () {
+    $history = new History;
+    $service = app(S3Service::class)
+        ->setS3Client(fakeS3Client(new MockHandler([new Result(['ETag' => '"e"'])]), $history));
+
+    $service->uploadFile(UploadedFile::fake()->createWithContent('notes.txt', 'plain'), 'assets');
+
+    $put = $history->getLastCommand();
+    expect($put['ContentType'])->toBe('text/plain')
+        ->and($put['ContentDisposition'])->toBe('attachment');
 });

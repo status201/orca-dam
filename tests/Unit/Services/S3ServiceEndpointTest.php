@@ -112,7 +112,7 @@ test('chunked-upload requests go to the configured endpoint and are bounded by t
     $started = microtime(true);
     $thrown = null;
     try {
-        app(ChunkedUploadService::class)->initiateUpload('big.zip', 'application/zip', 20 * 1024 * 1024, $user->id, 'assets');
+        app(ChunkedUploadService::class)->initiateUpload('big.zip', 20 * 1024 * 1024, $user->id, 'assets');
     } catch (Throwable $e) {
         $thrown = $e;
     }

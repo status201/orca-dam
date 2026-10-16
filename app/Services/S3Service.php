@@ -146,7 +146,7 @@ class S3Service
 
     /**
      * Stream an uploaded file to S3, applying security hardening:
-     *   - server-detected Content-Type (not client-declared),
+     *   - Content-Type from the extension (uploadHeaders()),
      *   - Content-Disposition: attachment for non-inline types,
      *   - in-memory SVG sanitization to strip active content.
      *
@@ -154,16 +154,7 @@ class S3Service
      */
     protected function putUploadedFile(string $s3Key, UploadedFile $file)
     {
-        $params = [
-            'Bucket' => $this->bucket,
-            'Key' => $s3Key,
-            'ContentType' => $file->getMimeType(),
-        ];
-
-        // Force download for types that should never render inline in the browser.
-        if (! UploadPolicy::isInline($s3Key)) {
-            $params['ContentDisposition'] = 'attachment';
-        }
+        $params = $this->uploadHeaders($s3Key);
 
         // SVGs are sanitized in-memory before storage. They are small enough to
         // load fully; large files (>=10MB) take the chunked path instead.
@@ -525,23 +516,37 @@ class S3Service
 
     /**
      * Open a multipart upload (chunked-upload's only way into S3 — REQ-sole-s3-gateway) and return
-     * its UploadId. Non-inline types are forced to download, as on the direct path (REQ-3).
+     * its UploadId, with the same headers as the direct path (uploadHeaders(), REQ-3).
      *
      * The four multipart methods throw instead of logging and returning null (ADR-010's exception):
      * ChunkedUploadService orchestrates the abort and needs to know which step failed.
      */
-    public function createMultipartUpload(string $s3Key, string $contentType): string
+    public function createMultipartUpload(string $s3Key): string
+    {
+        return $this->s3Client->createMultipartUpload($this->uploadHeaders($s3Key))['UploadId'];
+    }
+
+    /**
+     * Bucket, key and serving headers for an object an uploader supplied, shared by the direct and
+     * multipart paths. The Content-Type is the extension's (upload-policy
+     * REQ-content-type-from-extension), not the client's claim or the sniffed bytes: an uploader
+     * controls both, and either once let text/html sit behind an inline extension. Types that
+     * should never render inline are forced to download (upload-policy REQ-5).
+     *
+     * @return array{Bucket: string, Key: string, ContentType: string, ContentDisposition?: string}
+     */
+    private function uploadHeaders(string $s3Key): array
     {
         $params = [
             'Bucket' => $this->bucket,
             'Key' => $s3Key,
-            'ContentType' => $contentType,
+            'ContentType' => UploadPolicy::contentType($s3Key),
         ];
         if (! UploadPolicy::isInline($s3Key)) {
             $params['ContentDisposition'] = 'attachment';
         }
 
-        return $this->s3Client->createMultipartUpload($params)['UploadId'];
+        return $params;
     }
 
     /**

@@ -49,7 +49,10 @@ class ChunkedUploadController extends Controller
 
         $request->validate([
             'filename' => ['required', 'string', 'max:'.ColumnLimits::for('assets', 'filename'), new AllowedUploadExtension],
-            'mime_type' => 'required|string',
+            // Accepted so existing clients keep working, but never trusted: the stored and served
+            // type comes from the filename's extension (upload-policy REQ-content-type-from-extension).
+            // Browsers also send an empty type for some extensions, which used to fail here.
+            'mime_type' => 'nullable|string',
             'file_size' => 'required|integer|min:1|max:524288000', // 500MB in bytes
             // 100, matching FolderController's creation cap: folder and filename both feed s3_key,
             // now varchar(1024). The cap stays to keep the folder LIKE range inside
@@ -64,7 +67,6 @@ class ChunkedUploadController extends Controller
         try {
             $session = $this->chunkedUploadService->initiateUpload(
                 $request->filename,
-                $request->mime_type,
                 $request->file_size,
                 Auth::id(),
                 $folder,

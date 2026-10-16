@@ -3,7 +3,7 @@
 ```yaml
 id: upload-policy
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -28,7 +28,9 @@ of truth so validation (`AllowedUploadExtension`) and storage decisions
 
 - **REQ-1** — `config/uploads.php` `allowed_extensions` is the sole allowlist for
   what any uploader accepts; anything not on it is rejected at validation time,
-  regardless of declared MIME type.
+  regardless of declared MIME type. It maps each extension to the Content-Type
+  that extension is stored with (REQ-content-type-from-extension), so an
+  extension can't be allowed without deciding how it is served.
 - **REQ-2** — `App\Rules\AllowedUploadExtension` enforces the allowlist on **every**
   upload path: it accepts either an `UploadedFile` (direct/replace) or a plain
   filename string (chunked `init`, where the file bytes aren't present yet) and
@@ -44,6 +46,17 @@ of truth so validation (`AllowedUploadExtension`) and storage decisions
   `Content-Disposition: attachment` so it downloads instead of rendering —
   defense-in-depth against active markup or MIME-sniffing even for allowlisted
   types.
+- **REQ-content-type-from-extension** — The Content-Type an uploaded object is
+  stored — and so served — with is the one its allowlisted extension maps to
+  (`UploadPolicy::contentType()`), on every upload path: direct, replace,
+  chunked, and the client-side tools. It is never the client's declaration and
+  never sniffed from the bytes, because the uploader controls both. Either one
+  let an uploader — an api token included — store `text/html` under an inline
+  extension: chunked `init` took `mime_type: text/html` for `photo.jpg` at its
+  word, and the direct path sniffed HTML bytes in a `.png` as `text/html`. The
+  bucket or custom domain then served that object inline as a page, which is
+  stored XSS on the asset domain. With the type pinned to the extension, the
+  worst a mislabelled file can do is fail to render as the image it claims to be.
 - **REQ-6** — Expensive or publicly reachable routes carry rate limiting: bulk
   download, AI tagging (`assets.ai-tag`), the TikZ server-render tool, chunked
   upload, and the public API surface all declare `throttle` middleware.
@@ -60,7 +73,9 @@ of truth so validation (`AllowedUploadExtension`) and storage decisions
 ### Contract / public interface
 
 ```yaml
-UploadPolicy::allowedExtensions(): array<string>      # config('uploads.allowed_extensions')
+UploadPolicy::allowedExtensions(): array<string>      # keys of config('uploads.allowed_extensions')
+UploadPolicy::contentType(string $filename): string    # the extension's mapped type — REQ-content-type-from-extension;
+                                                       # application/octet-stream for anything off the list
 UploadPolicy::extension(string $filename): string      # lower-cased, no dot
 UploadPolicy::isAllowed(string $filename): bool
 UploadPolicy::isInline(string $filename): bool          # config('uploads.inline_extensions')
@@ -78,10 +93,16 @@ chunked-upload: 100                                  # chunked-upload.init|chunk
 
 ```yaml
 # config/uploads.php
-allowed_extensions: [jpg, jpeg, png, gif, webp, svg, pdf, mp4, webm, mov, eps,
-                      mp3, wav, ogg, m4a, aac, flac,
-                      docx, xlsx, pptx, doc, xls, ppt, odt, ods, odp,
-                      tex, mml, txt, md, csv, zip]
+allowed_extensions:   # extension => the Content-Type it is stored with
+  jpg/jpeg: image/jpeg   png: image/png   gif: image/gif   webp: image/webp
+  svg: image/svg+xml     pdf: application/pdf
+  mp4: video/mp4         webm: video/webm  mov: video/quicktime
+  eps: application/postscript
+  mp3: audio/mpeg  wav: audio/wav  ogg: audio/ogg  m4a: audio/mp4  aac: audio/aac  flac: audio/flac
+  docx/xlsx/pptx: application/vnd.openxmlformats-officedocument.*   doc/xls/ppt: application/ms*
+  odt/ods/odp: application/vnd.oasis.opendocument.*
+  tex: application/x-tex  mml: application/mathml+xml
+  txt: text/plain  md: text/markdown  csv: text/csv  zip: application/zip
 inline_extensions:  [jpg, jpeg, png, gif, webp, svg, pdf,
                       mp4, webm, mov, mp3, wav, ogg, m4a, aac, flac]
 ```
@@ -98,8 +119,11 @@ POST /assets/{id}/replace -> validates $file  (UploadedFile instance)
 ```
 
 Storage-time decisions read the same `UploadPolicy` helpers: `S3Service` sanitizes
-SVGs on write and sets `Content-Disposition` from `UploadPolicy::isInline()` when
-streaming the object via `putUploadedFile()`.
+SVGs on write, and one private `uploadHeaders()` sets `ContentType` from
+`UploadPolicy::contentType()` and `Content-Disposition` from `UploadPolicy::isInline()`
+for both `putUploadedFile()` (direct, replace, tools) and `createMultipartUpload()`
+(chunked). `assets.mime_type` on the direct path still records the sniffed type —
+it classifies the asset in the UI and API and is never served as a header.
 
 ### Persistence
 
@@ -110,6 +134,21 @@ not an admin-tunable preference (contrast with [`features/settings.md`](settings
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: An object's Content-Type comes from its extension, not the client or the bytes (regression)
+  Given a chunked upload of "photo.jpg" whose init declares mime_type "text/html"
+  And a direct upload of "pixel.png" whose bytes are an HTML page
+  When each is stored
+  Then the chunked object is created with Content-Type image/jpeg, and the asset records image/jpeg
+  And the direct object is put with Content-Type image/png
+# Regression: chunked init stored the client's mime_type and the direct path stored the
+# sniffed type, so both served text/html inline from the asset domain (stored XSS).
+# pinned by: tests/Feature/ChunkedUploadTest.php, tests/Unit/Services/S3ServiceTest.php
+
+Scenario: Every allowlisted extension has a Content-Type, and anything else is octet-stream
+  Then UploadPolicy::contentType() returns a type for each allowed extension, case-insensitively
+  And returns application/octet-stream for an extension off the list
+# pinned by: tests/Feature/SecurityRemediationTest.php
+
 Scenario: A disallowed extension is rejected on direct upload
   Given a file named "malware.exe"
   When it is uploaded via POST /assets

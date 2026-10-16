@@ -95,10 +95,12 @@ POST abort:    ChunkedUploadController::abort            # chunked-upload.abort
 inherits the endpoint, timeouts and upload hardening
 ([`s3-storage.md`](s3-storage.md) REQ-sole-s3-gateway).
 
-`ChunkedUploadService::initiateUpload(filename, mimeType, fileSize, userId, ?folder, keepOriginalFilename): UploadSession`
+`ChunkedUploadService::initiateUpload(filename, fileSize, userId, ?folder, keepOriginalFilename): UploadSession`
 — computes the S3 key (UUID or sanitized original name), opens an S3
-`createMultipartUpload` (with `ContentDisposition: attachment` for non-inline
-types per `UploadPolicy::isInline()`), and persists an `UploadSession` row with
+`createMultipartUpload` (Content-Type from the extension, and
+`ContentDisposition: attachment` for non-inline types — [`upload-policy.md`](upload-policy.md)
+REQ-content-type-from-extension, REQ-5), and persists an `UploadSession` row —
+`mime_type` is `UploadPolicy::contentType(filename)` — with
 `chunk_size = 10MB` and `total_chunks = ceil(fileSize / chunkSize)`. For an SVG
 the multipart is opened on `S3Service::CHUNKED_STAGING_PREFIX.{token}.svg`
 instead, recorded as `staging_s3_key` (REQ-4). Every multipart call —
@@ -138,7 +140,9 @@ through one owner-scoped lookup (`findOwnedSession()`), whose
 `Chunk already uploaded` with the current progress.
 
 Controller validation: `initiate` — `filename` (required, `AllowedUploadExtension`),
-`mime_type`, `file_size` (max 500MB in bytes), `folder` (max 100),
+`mime_type` (optional and **ignored** — accepted so existing clients keep working,
+never stored or sent to S3; browsers send an empty one for some extensions,
+which used to fail validation), `file_size` (max 500MB in bytes), `folder` (max 100),
 `keep_original_filename`; also gated by `api_upload_enabled` setting for
 non-web-guard callers. `complete` validates the same `metadata_*` shape as the
 direct-upload path **through the shared `UploadMetadataRules::rules()`**, not a

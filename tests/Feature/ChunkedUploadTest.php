@@ -371,6 +371,44 @@ test('chunked upload init opens a multipart upload and stores a pending session'
     $params = $history->getLastCommand()->toArray();
     expect(sentCommands($history))->toBe(['CreateMultipartUpload'])
         ->and($params['Key'])->toBe($session->s3_key)
+        ->and($params['ContentType'])->toBe('application/zip')
+        ->and($params['ContentDisposition'])->toBe('attachment');
+});
+
+test('chunked upload init types the object by its extension, not the declared mime_type', function () {
+    // Regression: init stored the client's mime_type, so photo.jpg declared as text/html was
+    // served inline as an HTML page from the asset domain — stored XSS for any uploader.
+    $user = User::factory()->create();
+    [, $history] = chunkedServiceWith(new MockHandler([new Result(['UploadId' => 'up-xss'])]));
+
+    $response = $this->actingAs($user)->postJson(route('chunked-upload.init'), [
+        'filename' => 'photo.jpg',
+        'mime_type' => 'text/html',
+        'file_size' => 12 * 1024 * 1024,
+        'folder' => 'assets',
+    ]);
+
+    $response->assertCreated();
+    $params = $history->getLastCommand()->toArray();
+    expect($params['ContentType'])->toBe('image/jpeg')
+        ->and($params)->not->toHaveKey('ContentDisposition')
+        ->and(UploadSession::where('session_token', $response->json('session_token'))->value('mime_type'))
+        ->toBe('image/jpeg');
+});
+
+test('chunked upload init accepts a missing mime_type, as browsers send for some extensions', function () {
+    $user = User::factory()->create();
+    [, $history] = chunkedServiceWith(new MockHandler([new Result(['UploadId' => 'up-eps'])]));
+
+    $this->actingAs($user)->postJson(route('chunked-upload.init'), [
+        'filename' => 'poster.eps',
+        'mime_type' => '',
+        'file_size' => 12 * 1024 * 1024,
+        'folder' => 'assets',
+    ])->assertCreated();
+
+    $params = $history->getLastCommand()->toArray();
+    expect($params['ContentType'])->toBe('application/postscript')
         ->and($params['ContentDisposition'])->toBe('attachment');
 });
 

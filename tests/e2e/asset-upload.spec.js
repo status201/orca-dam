@@ -13,6 +13,7 @@ import {
     testid,
     useViewMode,
 } from './support/fixtures.js';
+import { bucketConfig } from './support/bucket.js';
 import { pngFixture, uniqueColor, uniqueName } from './support/files.js';
 
 /**
@@ -175,6 +176,16 @@ test.describe('asset upload', () => {
             page.click(testid('upload-submit')),
         ]);
         expect(complete.ok(), `complete responded ${complete.status()}`).toBeTruthy();
+
+        // The bucket serves the object typed by its extension and forced to download (zip is not
+        // an inline type), whatever the browser declared (upload-policy REQ-content-type-from-extension).
+        const { asset } = await complete.json();
+        const { origin, bucket } = bucketConfig();
+        const objectUrl = `${origin}/${bucket}/${asset.s3_key}`;
+        const object = await page.request.head(objectUrl);
+        expect(object.ok(), `HEAD ${objectUrl} responded ${object.status()}`).toBeTruthy();
+        expect(object.headers()['content-type']).toBe('application/zip');
+        expect(object.headers()['content-disposition']).toBe('attachment');
 
         // Multipart bodies carry a little form overhead on top of the chunk itself.
         expect(chunkSizes).toHaveLength(2);

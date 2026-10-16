@@ -184,7 +184,7 @@ The asset matrix (see [`features/authorization-policies.md`](features/authorizat
 ### S3 + CDN topology
 
 ```
-Upload → S3:  assets/{folder}/{uuid}.{ext}                (original; ContentType server-detected)
+Upload → S3:  assets/{folder}/{uuid}.{ext}                (original; ContentType from the extension)
               thumbnails/{folder}/{uuid}_thumb.jpg         (300x300 JPEG; skips animated GIFs)
               thumbnails/{S|M|L}/...                       (resize variants, resize_{s,m,l}_s3_key)
               chunked-staging/{token}.svg                  (transient: chunked SVG before sanitization)
@@ -276,7 +276,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1269 tests,
+- `php artisan config:clear && php artisan test` — the full Pest suite (1274 tests,
   97 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security

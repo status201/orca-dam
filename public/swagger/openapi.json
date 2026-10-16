@@ -1130,7 +1130,7 @@
                   },
                   "mime_type": {
                     "type": "string",
-                    "description": "File MIME type"
+                    "description": "Optional and ignored. The stored Content-Type is decided by the filename's extension; a declared type is never trusted."
                   },
                   "file_size": {
                     "type": "integer",
@@ -1144,11 +1144,10 @@
                     "description": "Target folder path (optional)"
                   }
                 },
-                "required": ["filename", "mime_type", "file_size"]
+                "required": ["filename", "file_size"]
               },
               "example": {
                 "filename": "large-video.mp4",
-                "mime_type": "video/mp4",
                 "file_size": 104857600,
                 "folder": "assets/videos"
               }
