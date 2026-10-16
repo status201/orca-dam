@@ -3,8 +3,10 @@
 use App\Models\Passkey;
 use App\Models\User;
 use App\Services\PasskeyService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Laravel\Passkeys\Actions\VerifyPasskey;
 use Laravel\Passkeys\Events\PasskeyRegistered;
 use Laravel\Passkeys\Events\PasskeyVerified;
 use Laravel\Passkeys\Passkeys;
@@ -359,3 +361,71 @@ test('profile edit page renders when the user has a passkey with a stamped last_
     $response->assertOk();
     $response->assertSee('Hydrated', false);
 });
+
+/**
+ * A structurally valid assertion: enough for WebAuthn::fromJson to build a
+ * PublicKeyCredential. Signature checking happens in VerifyPasskey, which the
+ * remember tests replace with a double.
+ */
+function fakeAssertionCredential(): array
+{
+    $b64url = fn (string $bytes) => rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+    $id = $b64url(random_bytes(16));
+
+    return [
+        'id' => $id,
+        'rawId' => $id,
+        'type' => 'public-key',
+        'response' => [
+            'clientDataJSON' => $b64url(json_encode([
+                'type' => 'webauthn.get',
+                'challenge' => $b64url(random_bytes(32)),
+                'origin' => config('app.url'),
+            ])),
+            // rpIdHash (32) + flags (UP|UV) + signCount (4)
+            'authenticatorData' => $b64url(hash('sha256', 'localhost', true)."\x05\x00\x00\x00\x01"),
+            'signature' => $b64url(random_bytes(64)),
+            'userHandle' => null,
+        ],
+    ];
+}
+
+function passkeyLoginWithRemember($test, User $user, ?bool $remember)
+{
+    $passkey = attachPasskey($user);
+    $verify = Mockery::mock(VerifyPasskey::class);
+    $verify->shouldReceive('__invoke')->once()->andReturn($passkey);
+    app()->instance(VerifyPasskey::class, $verify);
+
+    $test->getJson(route('passkey.options'))->assertOk();
+
+    $payload = ['credential' => fakeAssertionCredential()];
+    if ($remember !== null) {
+        $payload['remember'] = $remember;
+    }
+
+    return $test->postJson(route('passkey.login'), $payload);
+}
+
+test('passkey login with remember=true issues the recaller cookie', function () {
+    $user = User::factory()->create(['role' => 'editor']);
+
+    $response = passkeyLoginWithRemember($this, $user, true);
+
+    $response->assertOk();
+    $this->assertAuthenticatedAs($user, 'web');
+    $response->assertCookie(Auth::guard('web')->getRecallerName());
+});
+
+test('passkey login without remember is session-only', function (?bool $remember) {
+    $user = User::factory()->create(['role' => 'editor']);
+
+    $response = passkeyLoginWithRemember($this, $user, $remember);
+
+    $response->assertOk();
+    $this->assertAuthenticatedAs($user, 'web');
+    $response->assertCookieMissing(Auth::guard('web')->getRecallerName());
+})->with([
+    'remember=false' => [false],
+    'remember absent' => [null],
+]);

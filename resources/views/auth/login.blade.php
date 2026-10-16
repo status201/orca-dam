@@ -55,7 +55,7 @@
         <!-- Remember Me -->
         <div class="block mt-4">
             <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded-sm border-gray-300 text-indigo-600 shadow-xs focus:ring-indigo-500" name="remember">
+                <input id="remember_me" data-testid="login-remember" type="checkbox" class="rounded-sm border-gray-300 text-indigo-600 shadow-xs focus:ring-indigo-500" name="remember">
                 <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
             </label>
         </div>
@@ -80,6 +80,8 @@
                 passkeyLoginOptions: @json(route('passkey.options')),
                 passkeyLogin: @json(route('passkey.login')),
             });
+            // The password form's "Remember me" applies to passkey sign-in too.
+            window.__pageData.passkeyRememberInput = 'remember_me';
             window.__pageData.translations = Object.assign(window.__pageData.translations || {}, {
                 passkeyLoginFailed: @json(__('Passkey sign-in failed.')),
             });
