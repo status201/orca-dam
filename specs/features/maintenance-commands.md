@@ -3,7 +3,7 @@
 ```yaml
 id: maintenance-commands
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -15,7 +15,7 @@ source:
 
 ## Background / Why
 
-ORCA ships 18 `artisan` commands covering asset hygiene, auth-secret lifecycle
+ORCA ships 19 `artisan` commands covering asset hygiene, auth-secret lifecycle
 management, translation safety, reading the user audit trail, and verifying the live
 schema. They are the CLI counterpart to the System
 admin dashboard (`SystemService::getSuggestedCommands()` surfaces the asset/queue
@@ -50,6 +50,21 @@ revocation) when the web UI itself is inaccessible.
   run is not the same as a broken schema, and returning `0` would turn an unverified
   run into a passing one. See [`input-validation.md`](input-validation.md) REQ-1 and
   REQ-10 to REQ-12 for what it checks and why nothing else can.
+- **REQ-audit-content-types** — `assets:audit-content-types` finds stored objects
+  whose served headers disagree with
+  [`upload-policy.md`](upload-policy.md) REQ-content-type-from-extension — objects
+  uploaded before that fix keep the type the uploader chose. It checks every asset,
+  **soft-deleted ones included** (a trashed asset's object stays public), compares
+  the object's `Content-Type` and `Content-Disposition` with what an upload would
+  set today, and flags as **dangerous** any mismatch served inline under an active
+  type (HTML, XHTML, XML, JavaScript, or SVG behind a non-SVG extension). It is a
+  dry-run report by default and exits `1` while any mismatch remains, so a script
+  can tell clean from not. `--fix` rewrites each mismatched object's headers in
+  place — same key, same bytes (s3-storage REQ-1) — records the copy's new ETag on
+  the asset (a former multipart object's composite ETag becomes a plain MD5), and
+  purges the original's URL from Cloudflare when purging is configured. An object
+  that is missing from the bucket is counted, not repaired: that is
+  `assets:verify-integrity`'s job.
 
 ## Technical design
 
@@ -68,6 +83,13 @@ assets:backfill-etags:
 assets:deduplicate {--force}:
   # Groups assets by etag (excluding null/empty), keeps the oldest per group,
   # skips duplicates carrying a reference tag, soft-deletes the rest under --force.
+assets:audit-content-types {--fix}:
+  # REQ-audit-content-types. Assets withTrashed(), chunked by id; one concurrent HEAD
+  # sweep per chunk (S3Service::getObjectHeaders), judged by UploadPolicy::servedHeaderMismatch(). Lists dangerous mismatches first, then
+  # the rest (capped at 100 rows, with a count of the remainder); prints a
+  # Checked/Mismatched/Dangerous/Missing(/Fixed/Failed) table. --fix: per mismatch,
+  # S3Service::repairUploadHeaders() → asset etag update when it changed → one
+  # CloudflareService::purgeUrls() call per 30 URLs. Exit 0 clean or all fixed; 1 otherwise.
 
 # API token lifecycle (Sanctum)
 token:create {email?} {--name=} {--new} {--user-name=}:
@@ -159,6 +181,28 @@ just wrote, rather than orchestrating a service.
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: The content-type audit reports objects whose headers disagree with their extension (REQ-audit-content-types)
+  Given an asset photo.jpg stored as text/html with no Content-Disposition
+  And a trashed asset notes.txt stored as text/plain without attachment
+  And an asset logo.png stored correctly as image/png
+  When assets:audit-content-types runs
+  Then photo.jpg is listed as dangerous and notes.txt as a mismatch, logo.png is not listed
+  And nothing is rewritten, and the command exits 1
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: The content-type audit exits 0 when every object matches (REQ-audit-content-types)
+  Given assets whose stored headers all match their extensions, and one missing object
+  When assets:audit-content-types runs
+  Then it reports no mismatches, counts the missing object, and exits 0
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: --fix rewrites the headers in place, records the new etag and purges the URL (REQ-audit-content-types)
+  Given an asset photo.jpg stored as text/html, with a multipart etag
+  When assets:audit-content-types --fix runs
+  Then its headers are rewritten in place, the asset's etag becomes the copy's etag
+  And its URL is purged from Cloudflare, and the command exits 0
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
 Scenario: uploads:cleanup aborts only sessions past the activity threshold
   Given one upload session idle for 3 days and one idle for 0 seconds
   When uploads:cleanup --hours=24 runs

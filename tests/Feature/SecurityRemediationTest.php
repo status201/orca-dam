@@ -66,6 +66,23 @@ test('every allowlisted extension has a Content-Type, and anything else is octet
         ->and(UploadPolicy::contentType('no-extension'))->toBe('application/octet-stream');
 });
 
+test('servedHeaderMismatch judges stored headers against what an upload sets today', function () {
+    // Matching, give or take a charset parameter.
+    expect(UploadPolicy::servedHeaderMismatch('photo.jpg', 'image/jpeg', null))->toBeNull()
+        ->and(UploadPolicy::servedHeaderMismatch('notes.txt', 'text/plain; charset=utf-8', 'attachment'))->toBeNull()
+        // A sanitized SVG under .svg is expected to render inline.
+        ->and(UploadPolicy::servedHeaderMismatch('logo.svg', 'image/svg+xml', null))->toBeNull();
+
+    // An active type served inline under an image name: the stored-XSS shape.
+    expect(UploadPolicy::servedHeaderMismatch('photo.jpg', 'text/html', null))
+        ->toMatchArray(['type' => 'text/html', 'attachment' => false, 'expected_type' => 'image/jpeg', 'dangerous' => true])
+        ->and(UploadPolicy::servedHeaderMismatch('pixel.png', 'image/svg+xml', null)['dangerous'])->toBeTrue()
+        // Wrong, but a download or an inert type is not dangerous.
+        ->and(UploadPolicy::servedHeaderMismatch('photo.jpg', 'text/html', 'attachment')['dangerous'])->toBeFalse()
+        ->and(UploadPolicy::servedHeaderMismatch('notes.txt', 'text/plain', null))
+        ->toMatchArray(['expected_attachment' => true, 'dangerous' => false]);
+});
+
 test('chunked upload init rejects a disallowed extension', function () {
     $user = User::factory()->create();
 

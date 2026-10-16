@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Support\UploadPolicy;
+use Aws\CommandPool;
+use Aws\Exception\AwsException;
 use Aws\Result;
 use Aws\S3\S3Client;
 use enshrined\svgSanitize\Sanitizer;
@@ -826,6 +828,64 @@ class S3Service
             \Log::error('S3 create folder failed: '.$e->getMessage());
 
             return false;
+        }
+    }
+
+    /**
+     * The served headers of many stored objects at once — concurrent HEAD requests, so a whole
+     * library's worth fits in one web request (assets:audit-content-types runs from the System page).
+     * A key maps to null when its object is missing or couldn't be read.
+     *
+     * @param  list<string>  $s3Keys
+     * @return array<string, array{content_type: ?string, content_disposition: ?string}|null>
+     */
+    public function getObjectHeaders(array $s3Keys, int $concurrency = 25): array
+    {
+        $s3Keys = array_values($s3Keys);
+        $headers = array_fill_keys($s3Keys, null);
+
+        $commands = array_map(
+            fn (string $key) => $this->s3Client->getCommand('HeadObject', ['Bucket' => $this->bucket, 'Key' => $key]),
+            $s3Keys
+        );
+
+        (new CommandPool($this->s3Client, $commands, [
+            'concurrency' => $concurrency,
+            'fulfilled' => function (Result $result, int $index) use (&$headers, $s3Keys): void {
+                $headers[$s3Keys[$index]] = [
+                    'content_type' => $result['ContentType'] ?? null,
+                    'content_disposition' => $result['ContentDisposition'] ?? null,
+                ];
+            },
+            'rejected' => function (\Throwable $reason, int $index) use ($s3Keys): void {
+                if (! ($reason instanceof AwsException && $reason->getStatusCode() === 404)) {
+                    \Log::warning("S3 HEAD failed for {$s3Keys[$index]}: ".$reason->getMessage());
+                }
+            },
+        ]))->promise()->wait();
+
+        return $headers;
+    }
+
+    /**
+     * Give a stored object the headers an upload would give it today (uploadHeaders()) by copying
+     * it onto itself — same key, same bytes, only the metadata replaced. Returns the copy's ETag,
+     * which for a former multipart object is a plain MD5 rather than the composite it had, or null
+     * on failure.
+     */
+    public function repairUploadHeaders(string $s3Key): ?string
+    {
+        try {
+            $result = $this->s3Client->copyObject($this->uploadHeaders($s3Key) + [
+                'CopySource' => $this->bucket.'/'.implode('/', array_map('rawurlencode', explode('/', $s3Key))),
+                'MetadataDirective' => 'REPLACE',
+            ]);
+
+            return self::etag($result['CopyObjectResult'] ?? []);
+        } catch (\Exception $e) {
+            \Log::error("Repairing upload headers failed for {$s3Key}: ".$e->getMessage());
+
+            return null;
         }
     }
 

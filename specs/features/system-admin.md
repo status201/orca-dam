@@ -3,7 +3,7 @@
 ```yaml
 id: system-admin
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -36,6 +36,12 @@ three narrow services, gated entirely by `SystemPolicy::access` (admin only, see
   restart/process-queue shortcuts) only ever runs commands on
   `SystemService::ALLOWED_COMMANDS` — never arbitrary shell input. Non-whitelisted
   commands are logged as a warning and rejected with `success: false`.
+- **REQ-suggested-commands-runnable** — Every suggested command card passes the
+  same allowlist check `executeCommand` applies (`SystemService::isAllowed()`, with
+  any `<placeholder>` argument removed), so a card can never lead to a rejection.
+  The cards fill a three-column grid; three were added together — the
+  content-type audit (dry run), `db:verify-schema` and `token:list` — to keep the
+  last row full.
 - **REQ-3** — Setting updates (`updateSetting`) validate known keys against
   per-key closures (ranges, regex, enum membership) before writing through
   `Setting::set()`; unknown keys skip validation and are written as-is.
@@ -90,6 +96,7 @@ SystemController:
 
 SystemService:
   executeCommand(string, array): array           # whitelist-checked Artisan::call wrapper
+  isAllowed(string $command): bool               # the whitelist check itself — full command or base command
   getSystemInfo/getDiskUsage/getDatabaseStats/getCacheStats(): array
   testS3Connection(): array
   getSupervisorStatus(): array                    # Windows -> {available: false}; else parses supervisorctl
@@ -143,7 +150,10 @@ queue: [queue:retry, queue:flush, queue:restart, queue:work]
 migrations: [migrate:status, migrate:rollback, migrate, "migrate --force"]
 2fa: [two-factor:status, two-factor:disable]
 passkeys: [passkeys:list, passkeys:revoke]
-assets: [assets:backfill-etags, "assets:deduplicate", "assets:deduplicate --force", assets:verify-integrity]
+assets: [assets:backfill-etags, "assets:deduplicate", "assets:deduplicate --force", assets:verify-integrity,
+         assets:audit-content-types]    # base command allowed, so --fix can be typed; the card runs the dry run
+tokens: [token:list]                     # read-only: names, owners, dates — tokens are stored hashed
+schema: [db:verify-schema]               # read-only; exit 2 = driver cannot answer (maintenance-commands REQ-6)
 ```
 
 ### Layer touchpoints & ordering
@@ -172,6 +182,12 @@ isn't possible.
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: Every suggested command card is runnable (REQ-suggested-commands-runnable)
+  Given the suggested commands on the System page
+  Then each one, with any <placeholder> removed, passes SystemService::isAllowed()
+  And the list includes assets:audit-content-types, db:verify-schema and token:list
+# pinned by: tests/Feature/SystemTest.php
+
 Scenario: Only admins can reach the system dashboard
   Given a guest, an editor, and an admin
   When each requests GET /system

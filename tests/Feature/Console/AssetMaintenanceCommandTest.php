@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\UploadSession;
 use App\Models\User;
 use App\Services\ChunkedUploadService;
+use App\Services\CloudflareService;
 use App\Services\S3Service;
 
 test('assets:backfill-etags is a no-op when all assets have etags', function () {
@@ -92,4 +93,78 @@ test('uploads:cleanup is a no-op when no stale sessions', function () {
     $this->artisan('uploads:cleanup')
         ->expectsOutputToContain('No stale upload sessions found')
         ->assertExitCode(0);
+});
+
+// ─── assets:audit-content-types (maintenance-commands REQ-audit-content-types) ────
+
+test('assets:audit-content-types reports mismatched objects, trashed ones included, and changes nothing', function () {
+    $html = Asset::factory()->create(['s3_key' => 'assets/photo.jpg']);
+    $trashed = Asset::factory()->create(['s3_key' => 'assets/notes.txt']);
+    $trashed->delete();
+    Asset::factory()->create(['s3_key' => 'assets/logo.png']);
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+        'assets/photo.jpg' => ['content_type' => 'text/html', 'content_disposition' => null],
+        'assets/notes.txt' => ['content_type' => 'text/plain; charset=utf-8', 'content_disposition' => null],
+        'assets/logo.png' => ['content_type' => 'image/png', 'content_disposition' => null],
+    ]);
+    $s3->shouldNotReceive('repairUploadHeaders');
+    $this->app->instance(S3Service::class, $s3);
+
+    $this->artisan('assets:audit-content-types')
+        ->expectsOutputToContain('DRY RUN')
+        ->expectsOutputToContain('DANGEROUS')
+        ->expectsOutputToContain("#{$trashed->id} (trashed)")
+        ->doesntExpectOutputToContain('assets/logo.png')
+        ->expectsOutputToContain('Run with --fix')
+        ->assertExitCode(1);
+
+    expect($html->fresh()->etag)->toBe($html->etag);
+});
+
+test('assets:audit-content-types exits 0 when every object matches, counting missing ones', function () {
+    Asset::factory()->create(['s3_key' => 'assets/logo.png']);
+    Asset::factory()->create(['s3_key' => 'assets/report.pdf']);
+    Asset::factory()->create(['s3_key' => 'assets/gone.zip']);
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+        'assets/logo.png' => ['content_type' => 'image/png', 'content_disposition' => null],
+        'assets/report.pdf' => ['content_type' => 'application/pdf', 'content_disposition' => null],
+        'assets/gone.zip' => null,
+    ]);
+    $this->app->instance(S3Service::class, $s3);
+
+    $this->artisan('assets:audit-content-types')
+        ->expectsOutputToContain('Every stored object is served with the headers its extension calls for')
+        ->expectsTable(['Result', 'Count'], [
+            ['Checked', 3],
+            ['Mismatched', 0],
+            ['Dangerous (active type served inline)', 0],
+            ['Missing or unreadable (see assets:verify-integrity)', 1],
+        ])
+        ->assertExitCode(0);
+});
+
+test('assets:audit-content-types --fix rewrites the headers, records the new etag and purges the URL', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'assets/photo.jpg', 'etag' => 'composite-2']);
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+        'assets/photo.jpg' => ['content_type' => 'text/html', 'content_disposition' => null],
+    ]);
+    $s3->shouldReceive('repairUploadHeaders')->once()->with('assets/photo.jpg')->andReturn('plainmd5');
+    $s3->shouldReceive('getUrl')->with('assets/photo.jpg')->andReturn('https://cdn.example.test/assets/photo.jpg');
+    $this->app->instance(S3Service::class, $s3);
+
+    $cloudflare = Mockery::mock(CloudflareService::class);
+    $cloudflare->shouldReceive('purgeUrls')->once()->with(['https://cdn.example.test/assets/photo.jpg'])->andReturnTrue();
+    $this->app->instance(CloudflareService::class, $cloudflare);
+
+    $this->artisan('assets:audit-content-types', ['--fix' => true])
+        ->doesntExpectOutputToContain('DRY RUN')
+        ->assertExitCode(0);
+
+    expect($asset->fresh()->etag)->toBe('plainmd5');
 });

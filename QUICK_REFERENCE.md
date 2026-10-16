@@ -50,7 +50,7 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1274 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1281 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
@@ -105,6 +105,7 @@ php artisan uploads:cleanup [--hours=48]      # stale chunked upload sessions
 php artisan assets:verify-integrity           # queue S3 integrity checks
 php artisan assets:backfill-etags             # fetch etags from S3 for dedup
 php artisan assets:deduplicate [--force]      # dry-run, or soft-delete duplicates
+php artisan assets:audit-content-types [--fix]  # served headers vs extension; dry-run, exit 1 on findings
 php artisan lang:safe-update                  # NEVER raw lang:update — it eats nl.json
 php artisan db:verify-schema                  # widths/row format/index bytes vs ColumnLimits
                                               # MySQL/MariaDB only; exit 2 = not verifiable here
@@ -113,7 +114,7 @@ php artisan db:verify-schema                  # widths/row format/index bytes vs
 php artisan queue:work --tries=3
 ```
 
-Full contracts for all 18 commands:
+Full contracts for all 19 commands:
 [specs/features/maintenance-commands.md](specs/features/maintenance-commands.md).
 
 ---
@@ -126,7 +127,8 @@ Complete for `app/Services/`, `app/Console/Commands/` and the top-level director
 ```
 orca-dam/
 ├── app/
-│   ├── Console/Commands/                  # 18 artisan commands
+│   ├── Console/Commands/                  # 19 artisan commands
+│   │   ├── AuditContentTypesCommand.php   # assets:audit-content-types
 │   │   ├── BackfillEtags.php              # assets:backfill-etags
 │   │   ├── CleanupStaleUploads.php        # uploads:cleanup
 │   │   ├── DeduplicateAssets.php          # assets:deduplicate

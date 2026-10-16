@@ -5,6 +5,7 @@ use App\Jobs\RunTestSuiteJob;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\SystemService;
 use App\Services\TestRunnerService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -422,4 +423,17 @@ test('system page loads all settings correctly', function () {
     $response->assertStatus(200);
     // Verify settings are passed to view
     expect($response['settings'])->toBeArray();
+});
+
+test('every suggested command card passes the execute allowlist', function () {
+    $system = app(SystemService::class);
+    $suggested = array_column($system->getSuggestedCommands(), 'command');
+
+    foreach ($suggested as $command) {
+        // A card like "reference-tag:create <name>" is edited before it runs.
+        $runnable = trim(preg_replace('/<[^>]+>/', '', $command));
+        expect($system->isAllowed($runnable))->toBeTrue("'{$command}' is suggested but not allowlisted");
+    }
+
+    expect($suggested)->toContain('assets:audit-content-types', 'db:verify-schema', 'token:list');
 });

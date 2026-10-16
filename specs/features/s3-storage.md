@@ -130,6 +130,10 @@ findUnmappedObjects(?prefix): array         # S3 objects not in the assets table
 listFolders(?prefix): array
 createFolder(folderPath): bool
 getObjectMetadata(s3Key): ?array            # {size, mime_type, last_modified, etag}
+getObjectHeaders(s3Keys, concurrency=25): array   # key => {content_type, content_disposition} | null (missing/unreadable);
+                                            # concurrent HEADs, so a whole library fits in one web request
+repairUploadHeaders(s3Key): ?string         # copy onto itself with the headers uploadHeaders() sets today
+                                            # (MetadataDirective REPLACE); new ETag, or null on failure
 getObjectContent(s3Key): ?string
 getPublicBaseUrl(): string                  # static — custom_domain setting > AWS_URL
 getUrl(s3Key): string

@@ -80,6 +80,9 @@ UploadPolicy::extension(string $filename): string      # lower-cased, no dot
 UploadPolicy::isAllowed(string $filename): bool
 UploadPolicy::isInline(string $filename): bool          # config('uploads.inline_extensions')
 UploadPolicy::isSvg(string $filename): bool
+UploadPolicy::servedHeaderMismatch(filename, ?contentType, ?contentDisposition): ?array
+  # how stored headers differ from what an upload sets today; dangerous = inline + active type
+  # (HTML, XHTML, XML, JavaScript, or SVG behind a non-SVG name) — maintenance-commands REQ-audit-content-types
 AllowedUploadExtension implements ValidationRule         # validate(attribute, value, fail)
 
 # Named rate limiters (AppServiceProvider::boot) — per minute, by user id ?: ip
@@ -143,6 +146,12 @@ Scenario: An object's Content-Type comes from its extension, not the client or t
 # Regression: chunked init stored the client's mime_type and the direct path stored the
 # sniffed type, so both served text/html inline from the asset domain (stored XSS).
 # pinned by: tests/Feature/ChunkedUploadTest.php, tests/Unit/Services/S3ServiceTest.php
+
+Scenario: Stored headers are judged against what an upload would set today
+  Then servedHeaderMismatch() is null for matching headers, ignoring a charset parameter and a sanitized .svg
+  And flags text/html (or SVG behind a non-SVG name) served inline as dangerous
+  And reports a mismatch served as a download, or of an inert type, as not dangerous
+# pinned by: tests/Feature/SecurityRemediationTest.php
 
 Scenario: Every allowlisted extension has a Content-Type, and anything else is octet-stream
   Then UploadPolicy::contentType() returns a type for each allowed extension, case-insensitively

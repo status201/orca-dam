@@ -3,9 +3,12 @@
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Services\S3Service;
+use Aws\Command;
 use Aws\History;
 use Aws\MockHandler;
 use Aws\Result;
+use Aws\S3\Exception\S3Exception;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\UploadedFile;
 
 /**
@@ -292,4 +295,36 @@ test('uploadFile forces a non-inline type to download', function () {
     $put = $history->getLastCommand();
     expect($put['ContentType'])->toBe('text/plain')
         ->and($put['ContentDisposition'])->toBe('attachment');
+});
+
+test('getObjectHeaders reads each object\'s served headers and maps a missing one to null', function () {
+    $handler = new MockHandler([
+        new Result(['ContentType' => 'text/html', 'ContentDisposition' => null]),
+        new S3Exception('Not Found', new Command('HeadObject'), [
+            'response' => new Response(404),
+        ]),
+    ]);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler));
+
+    // Concurrency 1 keeps the MockHandler's FIFO answers lined up with the keys.
+    expect($service->getObjectHeaders(['assets/photo.jpg', 'assets/gone.zip'], concurrency: 1))->toBe([
+        'assets/photo.jpg' => ['content_type' => 'text/html', 'content_disposition' => null],
+        'assets/gone.zip' => null,
+    ]);
+});
+
+test('repairUploadHeaders copies the object onto itself with the headers an upload sets today', function () {
+    $history = new History;
+    $handler = new MockHandler([new Result(['CopyObjectResult' => ['ETag' => '"plainmd5"']])]);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
+
+    expect($service->repairUploadHeaders('assets/notes.txt'))->toBe('plainmd5');
+
+    $copy = $history->getLastCommand();
+    expect($copy->getName())->toBe('CopyObject')
+        ->and($copy['Key'])->toBe('assets/notes.txt')
+        ->and($copy['CopySource'])->toBe('test-bucket/assets/notes.txt')
+        ->and($copy['MetadataDirective'])->toBe('REPLACE')
+        ->and($copy['ContentType'])->toBe('text/plain')
+        ->and($copy['ContentDisposition'])->toBe('attachment');
 });
