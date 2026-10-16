@@ -71,6 +71,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "ignore-abandoned": ["dragon-code/pretty-array", "dragon-code/support"]
         }
     },
     "minimum-stability": "stable",

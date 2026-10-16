@@ -3,7 +3,7 @@
 ```yaml
 id: security-invariants
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -126,6 +126,16 @@ have noticed" into a required review step.
   advisory in the same dependency chain still fails. An entry that no longer matches any advisory
   in the audit **fails the step**, so the list cannot outlive its reason. The wrapper checks its
   own filter against fixtures on every run, before trusting the real report.
+
+  `composer audit` also fails (exit 2) on a package marked **abandoned**. That is a maintenance
+  signal, not an advisory, so a package may be exempted from it, by name, in `composer.json`'s
+  `config.audit.ignore-abandoned`. This is allowed only when the package is transitive, there is
+  no replacement we can switch to because a dependent still requires it, and the dependent's latest
+  release still does. The exemption covers abandonment only: an advisory against the same package
+  still fails the step. Each entry is recorded below with what removes it. Current entries are
+  `dragon-code/support` and `dragon-code/pretty-array`, both dev-only, pulled in by
+  `laravel-lang/common` (locales, models, publisher, routes). They come out when laravel-lang
+  drops them or when `lang:safe-update` stops needing `laravel-lang/common`.
 
 - **REQ-9** — **The bootstrap seeder cannot mint a published-credential admin.**
   `AdminUserSeeder` creates the first admin on a fresh installation and is a documented production
@@ -431,8 +441,8 @@ Scenario: Seeding twice leaves one admin
   its own copy of the paren-balancing scanner.
 - Run everything: `php artisan config:clear && php artisan test`
 - Advisories: `composer audit --locked` and `node scripts/npm-audit.mjs` (`npm audit --json`, failing
-  on high/critical like `--audit-level=high`). Both steps block. Composer has no ignore list, and
-  the npm allowlist is currently empty. Its only entry so far, GHSA-vfj7-8cjw-p6xm (`braces`
+  on high/critical like `--audit-level=high`). Both steps block. Composer ignores no advisories
+  (only the named abandoned-package exemptions in REQ-8), and the npm allowlist is currently empty. Its only entry so far, GHSA-vfj7-8cjw-p6xm (`braces`
   ≤ 3.0.3, no fix released), was removed when the Tailwind v4 migration
   ([ADR-019](../decisions/adr-019-tailwind-4-css-first.md)) took `braces` out of the tree. The
   stale-entry check is what forced its deletion.
