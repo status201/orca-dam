@@ -25,8 +25,10 @@ source:
 
 ## Background / Why
 
-`S3Service` is the sole gateway to AWS S3 (REQ-1 of `architecture.md`) — no
-controller or other service talks to the AWS SDK directly. It owns the S3 key
+`S3Service` is the gateway to AWS S3 (REQ-1 of `architecture.md`) — no
+controller talks to the AWS SDK directly. The one other service that does is
+`ChunkedUploadService`, whose multipart calls have no `S3Service` counterpart;
+it gets its client from `S3Service::makeClient()` (REQ-7). `S3Service` owns the S3 key
 layout, the security hardening applied at upload time (server-detected
 Content-Type, forced download for non-inline types, SVG sanitization), and all
 derived-asset (thumbnail/resize) key generation and cleanup.
@@ -46,13 +48,15 @@ derived-asset (thumbnail/resize) key generation and cleanup.
 - **REQ-4** — SVGs are sanitized (`enshrined/svg-sanitize`) before storage on
   every upload path; a sanitization failure throws rather than storing
   unsanitized content.
-- **REQ-staging-prefix-hidden** — `chunked-staging/` at the bucket root is
-  ORCA's own transient prefix: a chunked SVG assembles there before it is
-  sanitized onto its asset key ([`chunked-upload.md`](chunked-upload.md) REQ-4).
-  `findUnmappedObjects()` never reports a key under it and `listFolders()`
-  never lists it, so a staging object a failed delete leaves behind can't be
-  imported by discovery or offered as an upload folder — which matters most
-  when the root folder is the bucket root and both scan the whole bucket.
+- **REQ-staging-prefix-hidden** — `chunked-staging/` at the bucket root
+  (`S3Service::CHUNKED_STAGING_PREFIX`) is ORCA's own transient prefix: a
+  chunked SVG assembles there before it is sanitized onto its asset key
+  ([`chunked-upload.md`](chunked-upload.md) REQ-4). Like `thumbnails/`, it is a
+  reserved prefix: `findUnmappedObjects()` never reports a key under one and
+  `listFolders()` never lists one, so a staging object a failed delete leaves
+  behind can't be imported by discovery or offered as an upload folder — which
+  matters most when the root folder is the bucket root and both scan the whole
+  bucket.
 - **REQ-5** — `getPublicBaseUrl()` resolves to the `custom_domain` setting when
   set, otherwise the configured S3 bucket URL — this is the single point every
   computed asset URL passes through, so a custom-domain change or Cloudflare

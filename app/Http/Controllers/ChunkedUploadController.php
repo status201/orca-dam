@@ -105,9 +105,7 @@ class ChunkedUploadController extends Controller
         ]);
 
         try {
-            $session = UploadSession::where('session_token', $request->session_token)
-                ->where('user_id', Auth::id())
-                ->firstOrFail();
+            $session = $this->findOwnedSession($request->session_token);
 
             // Idempotent: the service skips S3 for a part the session already recorded.
             $result = $this->chunkedUploadService->uploadChunk(
@@ -136,9 +134,8 @@ class ChunkedUploadController extends Controller
             return $this->sessionNotFound();
 
         } catch (\InvalidArgumentException $e) {
-            return response()->json([
-                'message' => $this->clientError($e, 'Invalid chunk number.'),
-            ], 422);
+            // The service's own message ("Invalid chunk number: N"), safe for every audience.
+            return response()->json(['message' => $e->getMessage()], 422);
 
         } catch (\Exception $e) {
             Log::error('Chunk upload failed', [
@@ -174,14 +171,12 @@ class ChunkedUploadController extends Controller
         // Declared before the try because the DuplicateAssetException handler below reads it, and
         // the assignment inside the try is itself a throwing call — without this, the `?? null`
         // there would be silently doubling as an undefined-variable guard. Deliberately *not*
-        // hoisted out of the try: firstOrFail()'s ModelNotFoundException is meant to land in its
+        // hoisted out of the try: findOwnedSession()'s ModelNotFoundException is meant to land in its
         // own 404 arm, as in the sibling uploadChunk()/abort() methods.
         $session = null;
 
         try {
-            $session = UploadSession::where('session_token', $request->session_token)
-                ->where('user_id', Auth::id())
-                ->firstOrFail();
+            $session = $this->findOwnedSession($request->session_token);
 
             // Complete the multipart upload and create Asset
             $asset = $this->chunkedUploadService->completeUpload($session);
@@ -239,9 +234,7 @@ class ChunkedUploadController extends Controller
         ]);
 
         try {
-            $session = UploadSession::where('session_token', $request->session_token)
-                ->where('user_id', Auth::id())
-                ->firstOrFail();
+            $session = $this->findOwnedSession($request->session_token);
 
             $this->chunkedUploadService->abortUpload($session);
 
@@ -262,6 +255,20 @@ class ChunkedUploadController extends Controller
                 'message' => $this->clientError($e, 'Failed to abort upload.'),
             ], 500);
         }
+    }
+
+    /**
+     * The caller's own session for a token. Scoped by user, so another user's token is a
+     * ModelNotFoundException exactly like an unknown one — each action maps that to
+     * sessionNotFound().
+     *
+     * @throws ModelNotFoundException
+     */
+    protected function findOwnedSession(string $sessionToken): UploadSession
+    {
+        return UploadSession::where('session_token', $sessionToken)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
     }
 
     /**

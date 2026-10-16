@@ -4,10 +4,8 @@ use App\Models\Asset;
 use App\Models\Setting;
 use App\Services\S3Service;
 use Aws\History;
-use Aws\Middleware;
 use Aws\MockHandler;
 use Aws\Result;
-use Aws\S3\S3Client;
 
 /**
  * Build an S3Service whose underlying AWS client returns the given results
@@ -20,14 +18,7 @@ function s3ServiceReturning(array $results): S3Service
         $handler->append(new Result($result));
     }
 
-    $client = new S3Client([
-        'version' => 'latest',
-        'region' => 'us-east-1',
-        'credentials' => ['key' => 'test', 'secret' => 'test'],
-        'handler' => $handler,
-    ]);
-
-    return app(S3Service::class)->setS3Client($client);
+    return app(S3Service::class)->setS3Client(fakeS3Client($handler));
 }
 
 beforeEach(function () {
@@ -214,15 +205,8 @@ test('sanitizeStoredSvg reads the source key and writes the sanitized markup to 
     ]));
     $handler->append(new Result(['ETag' => '"clean-etag"']));
 
-    $client = new S3Client([
-        'version' => 'latest',
-        'region' => 'us-east-1',
-        'credentials' => ['key' => 'test', 'secret' => 'test'],
-        'handler' => $handler,
-    ]);
     $history = new History;
-    $client->getHandlerList()->appendSign(Middleware::history($history));
-    $service = app(S3Service::class)->setS3Client($client);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
 
     $etag = $service->sanitizeStoredSvg('chunked-staging/tok.svg', 'assets/logo.svg');
 

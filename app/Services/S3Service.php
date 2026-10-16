@@ -13,6 +13,18 @@ use Illuminate\Support\Str;
 
 class S3Service
 {
+    /**
+     * Bucket-root prefix where a chunked SVG assembles before it is sanitized onto its asset key
+     * (chunked-upload REQ-4).
+     */
+    public const CHUNKED_STAGING_PREFIX = 'chunked-staging/';
+
+    /**
+     * Bucket-root prefixes ORCA writes for its own purposes, never asset originals: discovery
+     * doesn't import from them and the folder list doesn't offer them (REQ-staging-prefix-hidden).
+     */
+    private const RESERVED_PREFIXES = ['thumbnails/', self::CHUNKED_STAGING_PREFIX];
+
     protected S3Client $s3Client;
 
     protected string $bucket;
@@ -637,6 +649,14 @@ class S3Service
     }
 
     /**
+     * Whether a key or prefix sits under one of ORCA's own bucket-root prefixes.
+     */
+    private static function isReservedKey(string $key): bool
+    {
+        return Str::startsWith($key, self::RESERVED_PREFIXES);
+    }
+
+    /**
      * Find objects in S3 that are not in the database
      *
      * @param  string|null  $prefix  Optional prefix to scan (defaults to root prefix)
@@ -651,8 +671,7 @@ class S3Service
             ->filter(function ($object) use ($mappedKeys) {
                 return ! in_array($object['key'], $mappedKeys)
                     && ! str_contains($object['key'], '/thumbnails/')
-                    && ! str_starts_with($object['key'], 'thumbnails/')
-                    && ! str_starts_with($object['key'], ChunkedUploadService::STAGING_PREFIX)
+                    && ! self::isReservedKey($object['key'])
                     && $object['size'] > 0;  // Exclude zero-byte folder markers
             })
             ->values()
@@ -688,8 +707,7 @@ class S3Service
                 // Get subfolders from common prefixes
                 foreach ($result['CommonPrefixes'] ?? [] as $commonPrefix) {
                     $folderPath = rtrim($commonPrefix['Prefix'], '/');
-                    if ($folderPath !== $rootFolder && ! empty($folderPath) && $folderPath !== 'thumbnails'
-                        && $folderPath !== rtrim(ChunkedUploadService::STAGING_PREFIX, '/')) {
+                    if ($folderPath !== $rootFolder && ! empty($folderPath) && ! self::isReservedKey($commonPrefix['Prefix'])) {
                         if (! in_array($folderPath, $folders)) {
                             $folders[] = $folderPath;
                         }

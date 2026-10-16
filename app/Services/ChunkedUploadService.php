@@ -14,12 +14,6 @@ use Illuminate\Support\Str;
 
 class ChunkedUploadService
 {
-    /**
-     * Bucket-root prefix where chunked SVGs assemble before sanitization. S3Service hides it from
-     * discovery and the folder list (s3-storage REQ-staging-prefix-hidden).
-     */
-    public const STAGING_PREFIX = 'chunked-staging/';
-
     protected S3Client $s3Client;
 
     protected string $bucket;
@@ -70,7 +64,7 @@ class ChunkedUploadService
 
         // An SVG assembles on a staging key and only its sanitized content ever reaches $s3Key,
         // so a sanitization failure can't cost an existing asset (overwrite mode) its original.
-        $stagingKey = UploadPolicy::isSvg($s3Key) ? self::STAGING_PREFIX.$sessionToken.'.svg' : null;
+        $stagingKey = UploadPolicy::isSvg($s3Key) ? S3Service::CHUNKED_STAGING_PREFIX.$sessionToken.'.svg' : null;
 
         // Initiate S3 multipart upload. Force download for non-inline types
         // (mirrors S3Service::putUploadedFile for the direct-upload path).

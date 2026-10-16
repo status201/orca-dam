@@ -489,6 +489,11 @@ POST /api/chunked-upload/abort
 { "session_token": "uuid" }
 ```
 
+A failed chunk can simply be sent again: a chunk the session already holds is answered
+with `"Chunk already uploaded"` and the current progress, and nothing is stored twice.
+Chunks may also be sent in parallel. A `session_token` that is unknown or belongs to
+another user returns `404`; a `chunk_number` outside `1..total_chunks` returns `422`.
+
 Re-uploading identical bytes returns `409` with a duplicates payload rather than storing
 a second copy — see
 [specs/features/duplicate-detection.md](specs/features/duplicate-detection.md).

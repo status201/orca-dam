@@ -31,8 +31,11 @@ chunk. See [ADR-005](../decisions/adr-005-chunked-above-10mb.md) for the
 
 ## Requirements
 
-- **REQ-1** — `ChunkedUploadService::shouldUseChunkedUpload()` is the single
-  source of truth for the 10MB threshold; the frontend uses it to pick a path.
+- **REQ-1** — The client picks the path. The browser uploader sends files at or
+  above 10MB (`CHUNKED_THRESHOLD` in `resources/js/alpine/asset-uploader.js`)
+  through this feature and smaller ones through the direct path; the server does
+  not enforce the threshold, so an API client may use either path within each
+  path's own limits.
 - **REQ-2** — Chunk uploads are idempotent, and the guarantee lives in
   `ChunkedUploadService::uploadChunk()`, not the controller: re-sending a
   `chunk_number` the session has already recorded skips the S3 `uploadPart` and
@@ -91,7 +94,7 @@ configuration as `S3Service` ([`s3-storage.md`](s3-storage.md) REQ-7, REQ-8).
 `createMultipartUpload` (with `ContentDisposition: attachment` for non-inline
 types per `UploadPolicy::isInline()`), and persists an `UploadSession` row with
 `chunk_size = 10MB` and `total_chunks = ceil(fileSize / chunkSize)`. For an SVG
-the multipart is opened on `ChunkedUploadService::STAGING_PREFIX.{token}.svg`
+the multipart is opened on `S3Service::CHUNKED_STAGING_PREFIX.{token}.svg`
 instead, recorded as `staging_s3_key` (REQ-4). Every multipart call —
 `uploadPart`, `completeMultipartUpload`, `abortMultipartUpload` — addresses
 `UploadSession::multipartKey()` (`staging_s3_key ?? s3_key`), so a session
@@ -119,8 +122,9 @@ row; marks the session `completed`.
 `ChunkedUploadService::abortUpload(UploadSession): void` — S3
 `abortMultipartUpload` + session status `aborted`.
 
-Controller error mapping (chunk/complete/abort): a `ModelNotFoundException` from
-the owner-scoped `firstOrFail()` lookup is **404** `Upload session not found.`
+Controller error mapping (chunk/complete/abort): all three resolve the session
+through one owner-scoped lookup (`findOwnedSession()`), whose
+`ModelNotFoundException` is **404** `Upload session not found.`
 (REQ-5); in `uploadChunk`, `InvalidArgumentException` is **422**
 (REQ-chunk-number-out-of-range); everything else stays a 500 through
 `Controller::clientError()`. A `skipped` result from the service is reported as
@@ -162,7 +166,7 @@ UploadSession:                # upload_sessions table
 `upload_sessions` rows are the only persistent state during an in-flight
 upload; stale sessions are cleaned up by `uploads:cleanup` (aborts the S3
 multipart upload via `ChunkedUploadService`) rather than by this feature
-itself — see `CLAUDE.md`'s maintenance commands.
+itself — see [`maintenance-commands.md`](maintenance-commands.md).
 
 ## Scenarios (BDD)
 
@@ -330,3 +334,9 @@ Scenario: Stale upload sessions are aborted by the cleanup command
   overwrite branch against the asset it just created (derived files are dropped
   and regenerated). Harmless but wasteful; a guard returning the existing asset
   for a `completed` session would close it.
+- Two copies of the chunking numbers exist. `ChunkedUploadService` has an
+  unused `shouldUseChunkedUpload()` restating the 10MB threshold the uploader
+  actually applies, and the uploader slices files with its own `CHUNK_SIZE`
+  and counts its own chunks instead of using the `chunk_size`/`total_chunks`
+  that `init` returns — so changing the server's chunk size would make every
+  browser upload fail at `complete` ("not all chunks uploaded").
