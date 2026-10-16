@@ -688,7 +688,8 @@ class S3Service
                 foreach ($result['Contents'] ?? [] as $object) {
                     $objects[] = [
                         'key' => $object['Key'],
-                        'size' => $object['Size'],
+                        // The SDK's XML parser has no 'long' mapping, so Size arrives as a string.
+                        'size' => (int) $object['Size'],
                         'last_modified' => $object['LastModified'],
                     ];
                 }
