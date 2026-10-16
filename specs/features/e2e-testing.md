@@ -351,6 +351,11 @@ Tools and versions:
   Nothing bumps either automatically. It replaced MinIO, which was archived upstream ([ADR-017](../decisions/adr-017-rustfs-replaces-minio.md));
   bucket setup no longer needs a second image at all.
 - Node 22 in CI (matching the `phpunit` and `sdd` jobs).
+- PHP in the CI job runs with `upload_max_filesize=15M` / `post_max_size=16M`
+  (setup-php `ini-values`), the chunked-mode limits `DEPLOYMENT.md` asks of
+  production. The runner's stock 2M rejects every chunk with a 422 before the app
+  sees it, which is what `asset-upload.spec.js`'s chunked test caught. A local PHP
+  needs the same limits for that test.
 
 ## Scenarios (BDD)
 
