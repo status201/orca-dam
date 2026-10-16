@@ -5,6 +5,7 @@ const readPageData = () => {
     return {
         routes: data.routes ?? {},
         t: data.translations ?? {},
+        rememberInputId: data.passkeyRememberInput ?? null,
     };
 };
 
@@ -48,8 +49,14 @@ export function passkeyManager() {
 }
 
 export function passkeyLogin() {
-    const { routes, t } = readPageData();
-    const overrides = () => overridesFor(routes.passkeyLoginOptions, routes.passkeyLogin);
+    const { routes, t, rememberInputId } = readPageData();
+    // A getter, not a value: the library reads it when the assertion is submitted, so a
+    // "Remember me" ticked after autofill started (on page load) still counts.
+    const remember = () => Boolean(rememberInputId && document.getElementById(rememberInputId)?.checked);
+    const overrides = () => ({
+        ...overridesFor(routes.passkeyLoginOptions, routes.passkeyLogin),
+        remember,
+    });
 
     const navigate = (result) => {
         window.location.href = result?.redirect || '/';

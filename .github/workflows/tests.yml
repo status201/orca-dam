@@ -156,7 +156,9 @@ jobs:
       # Known advisories in dependencies. When one fires, patch it (upgrade, lock refresh, or an npm
       # override). Only an advisory with no patched release may be ignored, by GHSA id, in
       # scripts/npm-audit.mjs's ADVISORY_ALLOWLIST with its reason; a stale entry fails the step.
-      # Composer has no ignore list. Do not append `|| true`, which makes the step decorative.
+      # Composer ignores no advisories; only abandonment of the packages named in composer.json's
+      # config.audit.ignore-abandoned is exempt (security-invariants.md REQ-8). Do not append
+      # `|| true`, which makes the step decorative.
       #
       # This is not theoretical. On its first run it failed on two Guzzle advisories
       # (CVE-2026-69245/69246) published hours after a local run had reported clean, which is the

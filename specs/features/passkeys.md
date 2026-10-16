@@ -3,7 +3,7 @@
 ```yaml
 id: passkeys
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -60,6 +60,14 @@ the package's own `/passkeys/*` routes so ORCA's own `/passkey/*` and
   An admin can recovery-clear **another** user's passkeys
   (`UserController::clearPasskeys`, gated by `UserPolicy::clearPasskeys`) but not
   their own (self-action forbidden, same rule as `UserPolicy::delete`).
+- **REQ-passkey-login-remember** — The login page has a single "Remember me" checkbox
+  (`#remember_me`, in the password form), and it applies to passkey sign-in too. Both the
+  button ceremony and the conditional-UI autofill pass `@laravel/passkeys` a `remember`
+  *getter*, not a value. The library calls the getter when it submits the assertion, so a box
+  ticked after the ceremony started still counts. Autofill starts on page load, so this
+  matters. `PasskeyLoginController::login` validates `remember` as boolean and passes it to
+  `Auth::guard('web')->login()`. The recaller (`remember_web_*`) cookie is therefore issued only
+  when it is `true`. When it is absent or `false`, the result is a session-only login.
 
 ## Technical design
 
@@ -129,7 +137,8 @@ Login:
     → rate limit check (10/min/IP)
     → VerifyPasskey action verifies assertion against session-stashed options
     → PasskeyVerified event fires → TouchPasskeyLastUsed listener stamps last_passkey_used_at
-    → Auth::guard('web')->login($user) → session regenerate → users.last_login_at stamped
+    → Auth::guard('web')->login($user, $remember) → session regenerate → users.last_login_at stamped
+      # $remember = the request's `remember` boolean (REQ-passkey-login-remember)
     → JSON { redirect: '/dashboard' }   # bypasses the 2FA challenge (REQ-3)
 ```
 
@@ -191,6 +200,20 @@ Scenario: A concurrent registration over the cap is pruned by the safety-net lis
   When PasskeyRegistered fires for an 11th passkey
   Then EnforcePasskeyLimit deletes that newest passkey
   And the user's passkey count stays at the cap
+# pinned by: tests/Feature/PasskeyTest.php
+
+Scenario: Passkey sign-in with "Remember me" ticked issues the recaller cookie
+  Given a user with a registered passkey and stashed login options
+  When they POST /passkey/login with a verified assertion and remember = true
+  Then they are authenticated
+  And the response sets the remember_web_* cookie
+# pinned by: tests/Feature/PasskeyTest.php
+
+Scenario: Passkey sign-in without "Remember me" is session-only
+  Given a user with a registered passkey and stashed login options
+  When they POST /passkey/login with a verified assertion and remember = false or absent
+  Then they are authenticated
+  And no remember_web_* cookie is set
 # pinned by: tests/Feature/PasskeyTest.php
 
 Scenario: A successful passkey verification stamps last_passkey_used_at
@@ -258,7 +281,9 @@ Scenario: Removing a passkey requires confirming
 
 - Feature: `tests/Feature/PasskeyTest.php` — the full surface: role gating, cap
   enforcement (options + listener safety net), rename/delete ownership, admin
-  recovery clear (+ self-action forbidden), login route wiring + rate limiting,
+  recovery clear (+ self-action forbidden), login route wiring + rate limiting, the
+  remember-me recaller cookie (with `VerifyPasskey` swapped for a double, since no test can sign
+  an assertion),
   encrypted-at-rest credential, package-route disablement, listener wiring,
   `passkeys:list`/`passkeys:revoke` console commands.
 - Unit: `tests/Unit/PasskeyServiceTest.php` — `PasskeyService` methods in isolation
