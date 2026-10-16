@@ -14,6 +14,12 @@ use Illuminate\Support\Str;
 
 class ChunkedUploadService
 {
+    /**
+     * Bucket-root prefix where chunked SVGs assemble before sanitization. S3Service hides it from
+     * discovery and the folder list (s3-storage REQ-staging-prefix-hidden).
+     */
+    public const STAGING_PREFIX = 'chunked-staging/';
+
     protected S3Client $s3Client;
 
     protected string $bucket;
@@ -67,12 +73,17 @@ class ChunkedUploadService
         }
 
         $s3Key = $folder !== '' ? $folder.'/'.$safeName : $safeName;
+        $sessionToken = (string) Str::uuid();
+
+        // An SVG assembles on a staging key and only its sanitized content ever reaches $s3Key,
+        // so a sanitization failure can't cost an existing asset (overwrite mode) its original.
+        $stagingKey = UploadPolicy::isSvg($s3Key) ? self::STAGING_PREFIX.$sessionToken.'.svg' : null;
 
         // Initiate S3 multipart upload. Force download for non-inline types
         // (mirrors S3Service::putUploadedFile for the direct-upload path).
         $createParams = [
             'Bucket' => $this->bucket,
-            'Key' => $s3Key,
+            'Key' => $stagingKey ?? $s3Key,
             'ContentType' => $mimeType,
         ];
         if (! UploadPolicy::isInline($s3Key)) {
@@ -90,11 +101,12 @@ class ChunkedUploadService
         // Create database record
         $session = UploadSession::create([
             'upload_id' => $uploadId,
-            'session_token' => Str::uuid(),
+            'session_token' => $sessionToken,
             'filename' => $filename,
             'mime_type' => $mimeType,
             'file_size' => $fileSize,
             's3_key' => $s3Key,
+            'staging_s3_key' => $stagingKey,
             'chunk_size' => $chunkSize,
             'total_chunks' => $totalChunks,
             'user_id' => $userId,
@@ -141,7 +153,7 @@ class ChunkedUploadService
             // PUT would serialize every chunk, and re-uploading a PartNumber is idempotent in S3.
             $result = $this->s3Client->uploadPart([
                 'Bucket' => $this->bucket,
-                'Key' => $session->s3_key,
+                'Key' => $session->multipartKey(),
                 'UploadId' => $session->upload_id,
                 'PartNumber' => $chunkNumber,
                 'Body' => $stream,
@@ -218,7 +230,7 @@ class ChunkedUploadService
             // Complete multipart upload
             $result = $this->s3Client->completeMultipartUpload([
                 'Bucket' => $this->bucket,
-                'Key' => $session->s3_key,
+                'Key' => $session->multipartKey(),
                 'UploadId' => $session->upload_id,
                 'MultipartUpload' => [
                     'Parts' => $parts,
@@ -231,13 +243,20 @@ class ChunkedUploadService
             // SVGs take the direct path). Re-puts the cleaned content, which
             // changes the ETag, so this must run before the dedup check below.
             if (UploadPolicy::isSvg($session->s3_key)) {
-                $newEtag = $this->s3Service->sanitizeStoredSvg($session->s3_key);
+                $assembledKey = $session->multipartKey();
+
+                // From the staging key onto the asset key: s3_key is only ever written with
+                // sanitized content. A session from before staging keys sanitizes in place.
+                $newEtag = $this->s3Service->sanitizeStoredSvg($assembledKey, $session->s3_key);
+
+                // The staging object has served its purpose either way. On failure it is the raw
+                // upload, which must not survive; for a legacy session it is s3_key itself, and
+                // in overwrite mode that raw upload has already replaced the existing original.
+                if ($newEtag === null || $assembledKey !== $session->s3_key) {
+                    $this->s3Service->deleteFile($assembledKey);
+                }
+
                 if ($newEtag === null) {
-                    // The assembled object is still the raw upload, so it must not
-                    // survive or become an asset. In overwrite mode this also removes
-                    // an existing asset's original, but completeMultipartUpload has
-                    // already replaced that content with the raw upload.
-                    $this->s3Service->deleteFile($session->s3_key);
                     $session->update(['status' => 'failed']);
 
                     throw new \RuntimeException('SVG could not be sanitized.');
@@ -342,7 +361,7 @@ class ChunkedUploadService
         try {
             $this->s3Client->abortMultipartUpload([
                 'Bucket' => $this->bucket,
-                'Key' => $session->s3_key,
+                'Key' => $session->multipartKey(),
                 'UploadId' => $session->upload_id,
             ]);
 

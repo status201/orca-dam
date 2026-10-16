@@ -14,6 +14,7 @@ class UploadSession extends Model
         'mime_type',
         'file_size',
         's3_key',
+        'staging_s3_key',
         'chunk_size',
         'total_chunks',
         'uploaded_chunks',
@@ -32,6 +33,15 @@ class UploadSession extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * The key the S3 multipart upload lives at: the staging key for a chunked SVG, otherwise the
+     * asset's own key (including sessions created before staging keys existed).
+     */
+    public function multipartKey(): string
+    {
+        return $this->staging_s3_key ?? $this->s3_key;
     }
 
     public function isComplete(): bool

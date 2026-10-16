@@ -3,7 +3,7 @@
 ```yaml
 id: input-validation
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -161,6 +161,7 @@ assets.resize_s_s3_key: 1024   # newly declared — ColumnLimits::for() used to 
 assets.resize_m_s3_key: 1024
 assets.resize_l_s3_key: 1024
 upload_sessions.s3_key: 1024   # widened from 255 — REQ-10; unindexed, so no restructuring
+upload_sessions.staging_s3_key: 1024  # chunked-upload REQ-4; sized with s3_key, not to its short generated value
 upload_sessions.filename: 500  # widened from 255 — REQ-13, so initiate() survives to complete()
 tags.name: 255                 # rules cap tighter, at Tag::MAX_NAME_LENGTH — legal under REQ-2
 users.name: 255

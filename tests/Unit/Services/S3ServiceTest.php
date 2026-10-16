@@ -3,6 +3,8 @@
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Services\S3Service;
+use Aws\History;
+use Aws\Middleware;
 use Aws\MockHandler;
 use Aws\Result;
 use Aws\S3\S3Client;
@@ -167,4 +169,69 @@ test('listFolders paginates common prefixes across pages', function () {
     expect($folders)->toContain('assets/alpha')
         ->and($folders)->toContain('assets/marketing')
         ->and($folders)->toContain('assets');
+});
+
+test('findUnmappedObjects never reports a key under the chunked-staging prefix', function () {
+    $service = s3ServiceReturning([
+        [
+            'Contents' => [
+                ['Key' => 'chunked-staging/0b5c-left-behind.svg', 'Size' => 100, 'LastModified' => '2026-01-01'],
+                ['Key' => 'logo.svg', 'Size' => 100, 'LastModified' => '2026-01-01'],
+            ],
+            'IsTruncated' => false,
+        ],
+    ]);
+
+    // Bucket-root scan: the case where the staging prefix is inside the scanned range.
+    $keys = collect($service->findUnmappedObjects(''))->pluck('key')->all();
+
+    expect($keys)->toBe(['logo.svg']);
+});
+
+test('listFolders never lists the chunked-staging prefix', function () {
+    Setting::set('s3_root_folder', '', 'string', 'aws');
+
+    // Only marketing/ is recursed into; a recursion into chunked-staging/ would hit the empty queue.
+    $service = s3ServiceReturning([
+        [
+            'CommonPrefixes' => [
+                ['Prefix' => 'chunked-staging/'],
+                ['Prefix' => 'marketing/'],
+                ['Prefix' => 'thumbnails/'],
+            ],
+            'IsTruncated' => false,
+        ],
+        ['CommonPrefixes' => [], 'IsTruncated' => false],   // recursion into marketing/
+    ]);
+
+    expect($service->listFolders())->toBe(['marketing']);
+});
+
+test('sanitizeStoredSvg reads the source key and writes the sanitized markup to the destination', function () {
+    $handler = new MockHandler;
+    $handler->append(new Result([
+        'Body' => '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><rect width="1" height="1"/></svg>',
+    ]));
+    $handler->append(new Result(['ETag' => '"clean-etag"']));
+
+    $client = new S3Client([
+        'version' => 'latest',
+        'region' => 'us-east-1',
+        'credentials' => ['key' => 'test', 'secret' => 'test'],
+        'handler' => $handler,
+    ]);
+    $history = new History;
+    $client->getHandlerList()->appendSign(Middleware::history($history));
+    $service = app(S3Service::class)->setS3Client($client);
+
+    $etag = $service->sanitizeStoredSvg('chunked-staging/tok.svg', 'assets/logo.svg');
+
+    [$get, $put] = array_map(fn ($entry) => $entry['command'], $history->toArray());
+    expect($etag)->toBe('clean-etag')
+        ->and($get->getName())->toBe('GetObject')
+        ->and($get['Key'])->toBe('chunked-staging/tok.svg')
+        ->and($put->getName())->toBe('PutObject')
+        ->and($put['Key'])->toBe('assets/logo.svg')
+        ->and((string) $put['Body'])->not->toContain('<script')
+        ->and((string) $put['Body'])->toContain('<rect');
 });

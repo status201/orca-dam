@@ -44,10 +44,17 @@ chunk. See [ADR-005](../decisions/adr-005-chunked-above-10mb.md) for the
   path (skipped when overwriting an existing `s3_key` in `keep_original_filename`
   mode) — see [`duplicate-detection.md`](duplicate-detection.md).
 - **REQ-4** — SVGs assembled via chunked upload are sanitized *after*
-  completion (`S3Service::sanitizeStoredSvg()`), since the direct-upload
-  in-memory sanitization path isn't available for an S3-side multipart
-  assembly. This re-upload changes the ETag, so sanitization must run before
-  the dedup check.
+  completion, since the direct-upload in-memory sanitization path isn't
+  available for an S3-side multipart assembly. The multipart for an SVG never
+  assembles at the asset's key: it assembles at a staging key,
+  `chunked-staging/{session_token}.svg` (`upload_sessions.staging_s3_key`).
+  Completion reads the staging object, sanitizes it, writes the sanitized
+  content to `s3_key` (`S3Service::sanitizeStoredSvg($staging, $s3Key)`), and
+  deletes the staging object — on success and on failure. A sanitization
+  failure therefore never touches `s3_key`: in `keep_original_filename`
+  overwrite mode the existing asset keeps its original and its row, and raw
+  SVG markup never sits at an asset's public URL. Sanitizing re-puts the
+  content, which changes the ETag, so it runs before the dedup check.
 - **REQ-5** — A session is scoped to the user who created it
   (`user_id = Auth::id()`); the chunk/complete/abort endpoints answer **404** for a
   `session_token` that is unknown or belongs to another user — the same answer
@@ -79,7 +86,12 @@ POST abort:    ChunkedUploadController::abort            # chunked-upload.abort
 — computes the S3 key (UUID or sanitized original name), opens an S3
 `createMultipartUpload` (with `ContentDisposition: attachment` for non-inline
 types per `UploadPolicy::isInline()`), and persists an `UploadSession` row with
-`chunk_size = 10MB` and `total_chunks = ceil(fileSize / chunkSize)`.
+`chunk_size = 10MB` and `total_chunks = ceil(fileSize / chunkSize)`. For an SVG
+the multipart is opened on `ChunkedUploadService::STAGING_PREFIX.{token}.svg`
+instead, recorded as `staging_s3_key` (REQ-4). Every multipart call —
+`uploadPart`, `completeMultipartUpload`, `abortMultipartUpload` — addresses
+`UploadSession::multipartKey()` (`staging_s3_key ?? s3_key`), so a session
+created before the column existed still completes and aborts on its own key.
 
 `ChunkedUploadService::uploadChunk(UploadSession, UploadedFile, int $chunkNumber): array`
 — throws `InvalidArgumentException` for a chunk number outside `1..total_chunks`.
@@ -94,7 +106,9 @@ the locked row.
 
 `ChunkedUploadService::completeUpload(UploadSession): Asset` — requires
 `uploaded_chunks === total_chunks`; sorts parts by `PartNumber` and calls
-`completeMultipartUpload`; sanitizes stored SVGs; runs the etag dedup check
+`completeMultipartUpload`; sanitizes SVGs from the staging key onto `s3_key`
+and deletes the staging object (a legacy session with no staging key is
+sanitized in place); runs the etag dedup check
 (throws `DuplicateAssetException` on a match); creates or updates the `Asset`
 row; marks the session `completed`.
 
@@ -129,7 +143,8 @@ UploadSession:                # upload_sessions table
   upload_id: string            # S3 multipart UploadId
   session_token: uuid          # client-facing handle
   filename / mime_type / file_size: 
-  s3_key: string
+  s3_key: string                # the asset's final key
+  staging_s3_key: ?string       # SVG only: chunked-staging/{session_token}.svg, where the multipart assembles
   chunk_size: int               # 10MB
   total_chunks / uploaded_chunks: int
   part_etags: json              # [{PartNumber, ETag}, ...]
@@ -248,14 +263,44 @@ Scenario: Completing a chunked upload that duplicates an existing asset returns 
   Then the response is 409 with the same duplicate payload shape as the direct-upload path
 # pinned by: tests/Feature/ChunkedUploadTest.php, tests/Feature/DuplicatePayloadTest.php
 
+Scenario: A chunked SVG assembles on a staging key, never the asset's key (REQ-4)
+  When POST .../init is called for a 12MB "drawing.svg"
+  Then the S3 multipart upload is opened on chunked-staging/{session_token}.svg
+  And the session's s3_key is the asset's final key and staging_s3_key the staging key
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Completing a chunked SVG writes the sanitized content to the final key (REQ-4)
+  Given an SVG session with every chunk uploaded
+  When completeUpload() runs
+  Then the multipart is completed on the staging key
+  And sanitizeStoredSvg() reads the staging key and writes the asset's key
+  And the staging object is deleted and the asset carries the sanitized ETag
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
 Scenario: A chunked SVG that fails sanitization is deleted, not stored raw (regression)
   Given a chunked-upload session for an SVG whose assembled content cannot be sanitized
     (e.g. it declares a custom DTD entity, which svg-sanitize >= 1.0 rejects)
   When completeUpload() runs
-  Then the assembled S3 object is deleted and the session is marked failed
+  Then the staging object is deleted, the asset's key is never written, and the session is marked failed
   And completeUpload() throws, so no Asset row is created or updated
 # Regression: sanitizeStoredSvg() returning null used to be ignored — the raw
 # upload kept its original ETag and became an asset, breaking s3-storage REQ-4.
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: An overwrite-mode SVG that fails sanitization keeps the existing original (REQ-4)
+  Given an existing asset at assets/logo.svg
+  And a keep_original_filename SVG session for the same key whose content cannot be sanitized
+  When completeUpload() runs
+  Then only the staging object is deleted — assets/logo.svg is neither deleted nor overwritten
+  And the existing Asset row is unchanged
+# Was: the multipart assembled straight onto assets/logo.svg, so the only way to avoid
+# serving the raw upload was to delete it, leaving the asset without an original.
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: A session created before staging keys existed still sanitizes in place
+  Given an SVG session with no staging_s3_key
+  When completeUpload() runs and sanitization fails
+  Then the multipart completes on s3_key, that object is deleted, and the session is marked failed
 # pinned by: tests/Feature/ChunkedUploadTest.php
 
 Scenario: Stale upload sessions are aborted by the cleanup command
@@ -269,16 +314,12 @@ Scenario: Stale upload sessions are aborted by the cleanup command
 
 - Feature: `tests/Feature/ChunkedUploadTest.php`, `tests/Feature/DuplicatePayloadTest.php`,
   `tests/Feature/Console/AssetMaintenanceCommandTest.php`
+- Unit: `tests/Unit/Services/S3ServiceTest.php` (`sanitizeStoredSvg` to a destination key,
+  staging keys hidden from discovery)
 - Run: `php artisan config:clear && php artisan test`
 
 ## Open questions / future
 
-- A sanitization failure in `keep_original_filename` overwrite mode deletes the
-  object an existing asset points at: `completeMultipartUpload` has already
-  replaced that content with the raw upload, so deleting it is the only way to
-  avoid serving unsanitized SVG, and the existing `Asset` row is left without an
-  original. Avoiding that would mean assembling to a temporary key and only
-  copying over the existing one after sanitization succeeds.
 - `complete` doesn't refuse a session that is already `completed`. A client that
   retries `complete` after a success whose response was lost runs it again: S3
   may accept re-completing the upload, and `completeUpload()` then takes the

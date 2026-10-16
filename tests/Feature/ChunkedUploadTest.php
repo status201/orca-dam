@@ -215,6 +215,7 @@ test('chunked SVG that fails sanitization is deleted and creates no asset', func
         'filename' => 'drawing.svg',
         'mime_type' => 'image/svg+xml',
         's3_key' => 'assets/drawing.svg',
+        'staging_s3_key' => 'chunked-staging/tok.svg',
     ]);
 
     // completeMultipartUpload succeeds; the post-failure abort is rejected the
@@ -223,17 +224,138 @@ test('chunked SVG that fails sanitization is deleted and creates no asset', func
     $handler->append(new Result(['ETag' => '"raw-etag"']));
     $handler->append(new S3Exception('NoSuchUpload', new Command('AbortMultipartUpload')));
 
+    // Strict expectations: deleting (or writing) anything but the staging key fails the test.
     $s3Mock = Mockery::mock(S3Service::class);
-    $s3Mock->shouldReceive('sanitizeStoredSvg')->once()->with('assets/drawing.svg')->andReturnNull();
-    $s3Mock->shouldReceive('deleteFile')->once()->with('assets/drawing.svg')->andReturnTrue();
+    $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
+        ->with('chunked-staging/tok.svg', 'assets/drawing.svg')->andReturnNull();
+    $s3Mock->shouldReceive('deleteFile')->once()->with('chunked-staging/tok.svg')->andReturnTrue();
+
+    [$service, $history] = chunkedServiceWith($handler, $s3Mock);
+
+    expect(fn () => $service->completeUpload($session))
+        ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
+
+    expect($history->toArray()[0]['command']['Key'])->toBe('chunked-staging/tok.svg');
+    expect(Asset::where('s3_key', 'assets/drawing.svg')->exists())->toBeFalse();
+    expect($session->fresh()->status)->toBe('failed');
+});
+
+test('an overwrite-mode SVG that fails sanitization keeps the existing original and row', function () {
+    $user = User::factory()->create();
+    $existing = Asset::factory()->create([
+        's3_key' => 'assets/logo.svg',
+        'filename' => 'logo.svg',
+        'mime_type' => 'image/svg+xml',
+        'etag' => 'original-etag',
+    ]);
+    $session = makeUploadSession($user, [
+        'filename' => 'logo.svg',
+        'mime_type' => 'image/svg+xml',
+        's3_key' => 'assets/logo.svg',
+        'staging_s3_key' => 'chunked-staging/tok.svg',
+    ]);
+
+    $handler = new MockHandler;
+    $handler->append(new Result(['ETag' => '"raw-etag"']));
+    $handler->append(new S3Exception('NoSuchUpload', new Command('AbortMultipartUpload')));
+
+    // No deleteAssetFiles() and no deleteFile('assets/logo.svg') expectation: either call fails.
+    $s3Mock = Mockery::mock(S3Service::class);
+    $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
+        ->with('chunked-staging/tok.svg', 'assets/logo.svg')->andReturnNull();
+    $s3Mock->shouldReceive('deleteFile')->once()->with('chunked-staging/tok.svg')->andReturnTrue();
 
     [$service] = chunkedServiceWith($handler, $s3Mock);
 
     expect(fn () => $service->completeUpload($session))
         ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
 
-    expect(Asset::where('s3_key', 'assets/drawing.svg')->exists())->toBeFalse();
+    $existing->refresh();
+    expect($existing->etag)->toBe('original-etag')
+        ->and($existing->s3_key)->toBe('assets/logo.svg')
+        ->and($existing->trashed())->toBeFalse()
+        ->and($session->fresh()->status)->toBe('failed');
+});
+
+test('a session from before staging keys still sanitizes its SVG in place', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, [
+        'filename' => 'drawing.svg',
+        'mime_type' => 'image/svg+xml',
+        's3_key' => 'assets/drawing.svg',
+        'staging_s3_key' => null,
+    ]);
+
+    $handler = new MockHandler;
+    $handler->append(new Result(['ETag' => '"raw-etag"']));
+    $handler->append(new S3Exception('NoSuchUpload', new Command('AbortMultipartUpload')));
+
+    $s3Mock = Mockery::mock(S3Service::class);
+    $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
+        ->with('assets/drawing.svg', 'assets/drawing.svg')->andReturnNull();
+    $s3Mock->shouldReceive('deleteFile')->once()->with('assets/drawing.svg')->andReturnTrue();
+
+    [$service, $history] = chunkedServiceWith($handler, $s3Mock);
+
+    expect(fn () => $service->completeUpload($session))
+        ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
+
+    expect($history->toArray()[0]['command']['Key'])->toBe('assets/drawing.svg');
     expect($session->fresh()->status)->toBe('failed');
+});
+
+test('completing a chunked SVG writes the sanitized content to the final key and drops staging', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, [
+        'filename' => 'drawing.svg',
+        'mime_type' => 'image/svg+xml',
+        's3_key' => 'assets/drawing.svg',
+        'staging_s3_key' => 'chunked-staging/tok.svg',
+        'part_etags' => [['PartNumber' => 2, 'ETag' => 'e2'], ['PartNumber' => 1, 'ETag' => 'e1']],
+    ]);
+
+    $handler = new MockHandler;
+    $handler->append(new Result(['ETag' => '"raw-etag"']));                    // CompleteMultipartUpload
+    $handler->append(new Result(['Body' => '<svg xmlns="http://www.w3.org/2000/svg"/>'])); // dimensions read
+
+    $s3Mock = Mockery::mock(S3Service::class);
+    $s3Mock->shouldReceive('sanitizeStoredSvg')->once()
+        ->with('chunked-staging/tok.svg', 'assets/drawing.svg')->andReturn('clean-etag');
+    $s3Mock->shouldReceive('deleteFile')->once()->with('chunked-staging/tok.svg')->andReturnTrue();
+
+    [$service, $history] = chunkedServiceWith($handler, $s3Mock);
+
+    $asset = $service->completeUpload($session);
+
+    [$complete, $read] = array_map(fn ($entry) => $entry['command'], $history->toArray());
+    expect($complete->getName())->toBe('CompleteMultipartUpload')
+        ->and($complete['Key'])->toBe('chunked-staging/tok.svg')
+        ->and(array_column($complete['MultipartUpload']['Parts'], 'PartNumber'))->toBe([1, 2])
+        ->and($read['Key'])->toBe('assets/drawing.svg')
+        ->and($asset->s3_key)->toBe('assets/drawing.svg')
+        ->and($asset->etag)->toBe('clean-etag')
+        ->and($session->fresh()->status)->toBe('completed');
+});
+
+test('chunked upload init opens an SVG multipart on a staging key', function () {
+    $user = User::factory()->create();
+    [$service, $history] = chunkedServiceWith(new MockHandler([new Result(['UploadId' => 'up-svg'])]));
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $response = $this->actingAs($user)->postJson(route('chunked-upload.init'), [
+        'filename' => 'drawing.svg',
+        'mime_type' => 'image/svg+xml',
+        'file_size' => 12 * 1024 * 1024,
+        'folder' => 'assets',
+        'keep_original_filename' => true,
+    ]);
+
+    $response->assertCreated();
+    $session = UploadSession::where('session_token', $response->json('session_token'))->firstOrFail();
+
+    expect($session->s3_key)->toBe('assets/drawing.svg')
+        ->and($session->staging_s3_key)->toBe(ChunkedUploadService::STAGING_PREFIX.$session->session_token.'.svg')
+        ->and($history->getLastCommand()['Key'])->toBe($session->staging_s3_key);
 });
 
 // ─── Session lifecycle: initiate / chunk / abort, ownership, REQ-2 / REQ-6 ────

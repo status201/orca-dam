@@ -198,11 +198,12 @@ class S3Service
     }
 
     /**
-     * Download an already-stored SVG, sanitize it, and re-upload it in place.
-     * Used by the chunked-upload path (where the object is assembled in S3
-     * before we can inspect it). Returns the new ETag, or null on failure.
+     * Download an already-stored SVG, sanitize it, and upload the result to $destinationKey
+     * (default: back in place). Used by the chunked-upload path, where the object is assembled
+     * in S3 — on a staging key — before we can inspect it. Returns the new ETag, or null on
+     * failure, in which case nothing has been written to the destination.
      */
-    public function sanitizeStoredSvg(string $s3Key): ?string
+    public function sanitizeStoredSvg(string $s3Key, ?string $destinationKey = null): ?string
     {
         try {
             $original = $this->getObjectContent($s3Key);
@@ -212,7 +213,7 @@ class S3Service
 
             $result = $this->s3Client->putObject([
                 'Bucket' => $this->bucket,
-                'Key' => $s3Key,
+                'Key' => $destinationKey ?? $s3Key,
                 'Body' => $this->sanitizeSvg($original),
                 'ContentType' => 'image/svg+xml',
             ]);
@@ -642,6 +643,7 @@ class S3Service
                 return ! in_array($object['key'], $mappedKeys)
                     && ! str_contains($object['key'], '/thumbnails/')
                     && ! str_starts_with($object['key'], 'thumbnails/')
+                    && ! str_starts_with($object['key'], ChunkedUploadService::STAGING_PREFIX)
                     && $object['size'] > 0;  // Exclude zero-byte folder markers
             })
             ->values()
@@ -677,7 +679,8 @@ class S3Service
                 // Get subfolders from common prefixes
                 foreach ($result['CommonPrefixes'] ?? [] as $commonPrefix) {
                     $folderPath = rtrim($commonPrefix['Prefix'], '/');
-                    if ($folderPath !== $rootFolder && ! empty($folderPath) && $folderPath !== 'thumbnails') {
+                    if ($folderPath !== $rootFolder && ! empty($folderPath) && $folderPath !== 'thumbnails'
+                        && $folderPath !== rtrim(ChunkedUploadService::STAGING_PREFIX, '/')) {
                         if (! in_array($folderPath, $folders)) {
                             $folders[] = $folderPath;
                         }

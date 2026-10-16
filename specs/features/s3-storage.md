@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -46,6 +46,13 @@ derived-asset (thumbnail/resize) key generation and cleanup.
 - **REQ-4** — SVGs are sanitized (`enshrined/svg-sanitize`) before storage on
   every upload path; a sanitization failure throws rather than storing
   unsanitized content.
+- **REQ-staging-prefix-hidden** — `chunked-staging/` at the bucket root is
+  ORCA's own transient prefix: a chunked SVG assembles there before it is
+  sanitized onto its asset key ([`chunked-upload.md`](chunked-upload.md) REQ-4).
+  `findUnmappedObjects()` never reports a key under it and `listFolders()`
+  never lists it, so a staging object a failed delete leaves behind can't be
+  imported by discovery or offered as an upload folder — which matters most
+  when the root folder is the bucket root and both scan the whole bucket.
 - **REQ-5** — `getPublicBaseUrl()` resolves to the `custom_domain` setting when
   set, otherwise the configured S3 bucket URL — this is the single point every
   computed asset URL passes through, so a custom-domain change or Cloudflare
@@ -83,7 +90,7 @@ uploadFile(UploadedFile, ?directory, keepOriginalFilename=false): array   # {s3_
 replaceFile(UploadedFile, existingS3Key): array                          # same shape minus s3_key (key unchanged)
 putUploadedFile(s3Key, UploadedFile): Aws\Result   # protected — streaming + hardening, shared by upload/replace
 sanitizeSvg(string $svg): string
-sanitizeStoredSvg(s3Key): ?string           # download → sanitize → re-put; used by chunked-upload completion
+sanitizeStoredSvg(s3Key, ?destinationKey): ?string  # download s3Key → sanitize → put to destinationKey ?? s3Key; new ETag or null
 generateThumbnail(s3Key): ?string           # 300x300 JPEG; null for EPS/SVG/animated GIF
 generateResizedImages(s3Key): array         # {s,m,l} => key; skips non-image ext, animated GIF
 uploadThumbnail(s3Key, imageData): ?string  # browser-generated thumb (video/PDF)
@@ -94,7 +101,7 @@ moveObject(sourceKey, destinationKey): bool # copy + delete
 deleteFile(s3Key): bool
 extractImageDimensions(s3Key, mimeType): ?array
 listObjects(prefix='', ?maxKeys): array
-findUnmappedObjects(?prefix): array         # S3 objects not in the assets table (discovery)
+findUnmappedObjects(?prefix): array         # S3 objects not in the assets table (discovery); skips thumbnails/ and chunked-staging/
 listFolders(?prefix): array
 createFolder(folderPath): bool
 getObjectMetadata(s3Key): ?array            # {size, mime_type, last_modified, etag}
@@ -141,6 +148,7 @@ S3 key layout (see also `architecture.md` → "S3 + CDN topology"):
 assets/{folder}/{uuid}.{ext}                  # original
 thumbnails/{folder}/{uuid}_thumb.jpg           # 300x300 JPEG thumbnail
 thumbnails/{S|M|L}/{folder}/{basename}.{ext}   # resize variants
+chunked-staging/{session_token}.svg            # transient: a chunked SVG before sanitization (chunked-upload REQ-4)
 ```
 
 Nothing is cached at this layer beyond what `Setting` itself caches; every S3
@@ -191,6 +199,18 @@ Scenario: sanitizeSvg throws for an SVG that declares a custom DTD entity
 Scenario: findUnmappedObjects excludes mapped, thumbnail, and zero-byte keys
   Given S3 objects that are already-mapped, under thumbnails/, or zero-byte folder markers
   Then findUnmappedObjects() excludes all three categories
+# pinned by: tests/Unit/Services/S3ServiceTest.php
+
+Scenario: findUnmappedObjects and listFolders hide the chunked-staging prefix (REQ-staging-prefix-hidden)
+  Given an object under chunked-staging/ in the bucket
+  Then findUnmappedObjects() does not report it
+  And listFolders() does not list chunked-staging as a folder
+# pinned by: tests/Unit/Services/S3ServiceTest.php
+
+Scenario: sanitizeStoredSvg can write the sanitized content to a different key
+  Given an SVG stored at a source key
+  When sanitizeStoredSvg(source, destination) runs
+  Then the source is read, the sanitized markup is put to the destination, and its ETag is returned
 # pinned by: tests/Unit/Services/S3ServiceTest.php
 
 Scenario: findUnmappedObjects follows pagination across every page
