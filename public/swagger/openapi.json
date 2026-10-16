@@ -1245,6 +1245,16 @@
               }
             }
           },
+          "404": {
+            "description": "Upload session not found (unknown token, or one owned by another user)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Chunk upload failed",
             "content": {
@@ -1307,6 +1317,16 @@
           "422": {
             "$ref": "#/components/responses/ValidationError"
           },
+          "404": {
+            "description": "Upload session not found (unknown token, or one owned by another user)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Upload completion failed",
             "content": {
@@ -1365,6 +1385,16 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
+          },
+          "404": {
+            "description": "Upload session not found (unknown token, or one owned by another user)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "500": {
             "description": "Failed to abort upload",

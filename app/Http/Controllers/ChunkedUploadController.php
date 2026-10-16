@@ -12,7 +12,9 @@ use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
 use App\Support\UploadMetadataRules;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -107,9 +109,14 @@ class ChunkedUploadController extends Controller
                 ->where('user_id', Auth::id())
                 ->firstOrFail();
 
-            // Prevent duplicate chunk uploads (idempotent)
-            $existingParts = collect($session->part_etags ?? []);
-            if ($existingParts->where('PartNumber', $request->chunk_number)->isNotEmpty()) {
+            // Idempotent: the service skips S3 for a part the session already recorded.
+            $result = $this->chunkedUploadService->uploadChunk(
+                $session,
+                $request->file('chunk'),
+                (int) $request->chunk_number
+            );
+
+            if ($result['skipped']) {
                 return response()->json([
                     'message' => __('Chunk already uploaded'),
                     'uploaded_chunks' => $session->uploaded_chunks,
@@ -117,19 +124,21 @@ class ChunkedUploadController extends Controller
                 ]);
             }
 
-            $result = $this->chunkedUploadService->uploadChunk(
-                $session,
-                $request->file('chunk'),
-                $request->chunk_number
-            );
-
             return response()->json([
                 'message' => __('Chunk uploaded successfully'),
                 'part_number' => $result['PartNumber'],
                 'etag' => $result['ETag'],
-                'uploaded_chunks' => $session->fresh()->uploaded_chunks,
+                'uploaded_chunks' => $session->uploaded_chunks,
                 'total_chunks' => $session->total_chunks,
             ]);
+
+        } catch (ModelNotFoundException) {
+            return $this->sessionNotFound();
+
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'message' => $this->clientError($e, 'Invalid chunk number.'),
+            ], 422);
 
         } catch (\Exception $e) {
             Log::error('Chunk upload failed', [
@@ -165,10 +174,8 @@ class ChunkedUploadController extends Controller
         // Declared before the try because the DuplicateAssetException handler below reads it, and
         // the assignment inside the try is itself a throwing call — without this, the `?? null`
         // there would be silently doubling as an undefined-variable guard. Deliberately *not*
-        // hoisted out of the try: firstOrFail()'s ModelNotFoundException is meant to land in the
-        // \Exception arm, and moving the query would change which handler runs. The sibling
-        // uploadChunk()/abort() methods have the same shape but never read $session from a catch,
-        // so they are left alone.
+        // hoisted out of the try: firstOrFail()'s ModelNotFoundException is meant to land in its
+        // own 404 arm, as in the sibling uploadChunk()/abort() methods.
         $session = null;
 
         try {
@@ -203,6 +210,9 @@ class ChunkedUploadController extends Controller
                 'message' => __('Duplicate file detected. This file already exists in the library.'),
                 'duplicates' => [DuplicateAssetException::formatDuplicate($e->existingAsset, $session?->filename)],
             ], 409);
+
+        } catch (ModelNotFoundException) {
+            return $this->sessionNotFound();
 
         } catch (\Exception $e) {
             Log::error('Upload completion failed', [
@@ -239,6 +249,9 @@ class ChunkedUploadController extends Controller
                 'message' => __('Upload aborted successfully'),
             ]);
 
+        } catch (ModelNotFoundException) {
+            return $this->sessionNotFound();
+
         } catch (\Exception $e) {
             Log::error('Upload abort failed', [
                 'session_token' => $request->session_token,
@@ -249,5 +262,14 @@ class ChunkedUploadController extends Controller
                 'message' => $this->clientError($e, 'Failed to abort upload.'),
             ], 500);
         }
+    }
+
+    /**
+     * An unknown token and another user's token get the same answer, so a token's existence is
+     * not disclosed (chunked-upload REQ-5).
+     */
+    protected function sessionNotFound(): JsonResponse
+    {
+        return response()->json(['message' => __('Upload session not found.')], 404);
     }
 }

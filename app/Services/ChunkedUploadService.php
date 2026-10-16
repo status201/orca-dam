@@ -8,6 +8,7 @@ use App\Models\UploadSession;
 use App\Support\UploadPolicy;
 use Aws\S3\S3Client;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -112,7 +113,10 @@ class ChunkedUploadService
     }
 
     /**
-     * Upload a single chunk
+     * Upload a single chunk. Idempotent: a part the session already recorded is not re-sent
+     * to S3, and the result carries `skipped => true`.
+     *
+     * @return array{PartNumber: int, ETag: string, skipped: bool}
      */
     public function uploadChunk(
         UploadSession $session,
@@ -124,10 +128,17 @@ class ChunkedUploadService
             throw new \InvalidArgumentException("Invalid chunk number: {$chunkNumber}");
         }
 
+        $recorded = collect($session->part_etags ?? [])->firstWhere('PartNumber', $chunkNumber);
+        if ($recorded !== null) {
+            return ['PartNumber' => $chunkNumber, 'ETag' => $recorded['ETag'], 'skipped' => true];
+        }
+
         // Stream chunk to S3
         $stream = fopen($chunk->getRealPath(), 'r');
 
         try {
+            // Deliberately outside the transaction below: holding the row lock through a 10MB
+            // PUT would serialize every chunk, and re-uploading a PartNumber is idempotent in S3.
             $result = $this->s3Client->uploadPart([
                 'Bucket' => $this->bucket,
                 'Key' => $session->s3_key,
@@ -138,21 +149,32 @@ class ChunkedUploadService
 
             $etag = trim($result['ETag'], '"');
 
-            // Update session with part ETag
-            $partEtags = $session->part_etags ?? [];
-            $partEtags[] = [
-                'PartNumber' => $chunkNumber,
-                'ETag' => $etag,
-            ];
+            // Merge under a row lock, keyed by PartNumber, and derive the count from the merged
+            // parts. Appending to the in-memory copy and writing `uploaded_chunks + 1` lost a
+            // part (or an increment) whenever two chunks for one session landed concurrently.
+            $locked = DB::transaction(function () use ($session, $chunkNumber, $etag) {
+                $locked = UploadSession::whereKey($session->getKey())->lockForUpdate()->firstOrFail();
 
-            $session->update([
-                'part_etags' => $partEtags,
-                'uploaded_chunks' => $session->uploaded_chunks + 1,
-                'status' => 'uploading',
-                'last_activity_at' => now(),
-            ]);
+                $parts = collect($locked->part_etags ?? [])
+                    ->keyBy('PartNumber')
+                    ->put($chunkNumber, ['PartNumber' => $chunkNumber, 'ETag' => $etag])
+                    ->sortKeys()
+                    ->values()
+                    ->all();
 
-            return ['PartNumber' => $chunkNumber, 'ETag' => $etag];
+                $locked->update([
+                    'part_etags' => $parts,
+                    'uploaded_chunks' => count($parts),
+                    'status' => 'uploading',
+                    'last_activity_at' => now(),
+                ]);
+
+                return $locked;
+            });
+
+            $session->setRawAttributes($locked->getAttributes(), true);
+
+            return ['PartNumber' => $chunkNumber, 'ETag' => $etag, 'skipped' => false];
 
         } catch (\Exception $e) {
             Log::error('Chunk upload failed', [

@@ -8,10 +8,13 @@ use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
 use Aws\Command;
+use Aws\History;
+use Aws\Middleware;
 use Aws\MockHandler;
 use Aws\Result;
 use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 function makeUploadSession(User $user, array $overrides = []): UploadSession
@@ -31,6 +34,43 @@ function makeUploadSession(User $user, array $overrides = []): UploadSession
         'user_id' => $user->id,
         'last_activity_at' => now(),
     ], $overrides));
+}
+
+/**
+ * A real ChunkedUploadService whose AWS client answers from $handler (FIFO), with every command
+ * it sends recorded in the returned History. An exhausted MockHandler queue throws, so an empty
+ * one doubles as an assertion that no S3 call is made.
+ *
+ * @return array{0: ChunkedUploadService, 1: History}
+ */
+function chunkedServiceWith(MockHandler $handler, ?S3Service $s3 = null): array
+{
+    config([
+        'filesystems.disks.s3.region' => 'us-east-1',
+        'filesystems.disks.s3.bucket' => 'test-bucket',
+        'filesystems.disks.s3.key' => 'test',
+        'filesystems.disks.s3.secret' => 'test',
+    ]);
+
+    $client = new S3Client([
+        'version' => 'latest',
+        'region' => 'us-east-1',
+        'credentials' => ['key' => 'test', 'secret' => 'test'],
+        'handler' => $handler,
+    ]);
+    $history = new History;
+    $client->getHandlerList()->appendSign(Middleware::history($history));
+
+    $service = new ChunkedUploadService($s3 ?? Mockery::mock(S3Service::class));
+    (new ReflectionProperty(ChunkedUploadService::class, 's3Client'))->setValue($service, $client);
+
+    return [$service, $history];
+}
+
+/** @return list<string> */
+function sentCommands(History $history): array
+{
+    return array_map(fn ($entry) => $entry['command']->getName(), $history->toArray());
 }
 
 test('chunked upload complete applies batch metadata to created asset', function () {
@@ -170,13 +210,6 @@ test('chunked upload complete returns 409 on duplicate', function () {
 });
 
 test('chunked SVG that fails sanitization is deleted and creates no asset', function () {
-    config([
-        'filesystems.disks.s3.region' => 'us-east-1',
-        'filesystems.disks.s3.bucket' => 'test-bucket',
-        'filesystems.disks.s3.key' => 'test',
-        'filesystems.disks.s3.secret' => 'test',
-    ]);
-
     $user = User::factory()->create();
     $session = makeUploadSession($user, [
         'filename' => 'drawing.svg',
@@ -194,18 +227,246 @@ test('chunked SVG that fails sanitization is deleted and creates no asset', func
     $s3Mock->shouldReceive('sanitizeStoredSvg')->once()->with('assets/drawing.svg')->andReturnNull();
     $s3Mock->shouldReceive('deleteFile')->once()->with('assets/drawing.svg')->andReturnTrue();
 
-    $service = new ChunkedUploadService($s3Mock);
-    $client = new ReflectionProperty(ChunkedUploadService::class, 's3Client');
-    $client->setValue($service, new S3Client([
-        'version' => 'latest',
-        'region' => 'us-east-1',
-        'credentials' => ['key' => 'test', 'secret' => 'test'],
-        'handler' => $handler,
-    ]));
+    [$service] = chunkedServiceWith($handler, $s3Mock);
 
     expect(fn () => $service->completeUpload($session))
         ->toThrow(RuntimeException::class, 'SVG could not be sanitized.');
 
     expect(Asset::where('s3_key', 'assets/drawing.svg')->exists())->toBeFalse();
     expect($session->fresh()->status)->toBe('failed');
+});
+
+// ─── Session lifecycle: initiate / chunk / abort, ownership, REQ-2 / REQ-6 ────
+
+test('chunked upload init opens a multipart upload and stores a pending session', function () {
+    $user = User::factory()->create();
+    [$service, $history] = chunkedServiceWith(new MockHandler([new Result(['UploadId' => 'up-1'])]));
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $response = $this->actingAs($user)->postJson(route('chunked-upload.init'), [
+        'filename' => 'archive.zip',
+        'mime_type' => 'application/zip',
+        'file_size' => 25 * 1024 * 1024,
+        'folder' => 'assets',
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('upload_id', 'up-1')
+        ->assertJsonPath('chunk_size', 10 * 1024 * 1024)
+        ->assertJsonPath('total_chunks', 3);
+
+    $session = UploadSession::where('session_token', $response->json('session_token'))->firstOrFail();
+    expect($session->user_id)->toBe($user->id)
+        ->and($session->status)->toBe('pending')
+        ->and($session->s3_key)->toMatch('#^assets/[0-9a-f-]{36}\.zip$#');
+
+    $params = $history->getLastCommand()->toArray();
+    expect(sentCommands($history))->toBe(['CreateMultipartUpload'])
+        ->and($params['Key'])->toBe($session->s3_key)
+        ->and($params['ContentDisposition'])->toBe('attachment');
+});
+
+test('chunked upload init with keep_original_filename keys the session by the original name', function () {
+    $user = User::factory()->create();
+    [$service] = chunkedServiceWith(new MockHandler([new Result(['UploadId' => 'up-2'])]));
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $response = $this->actingAs($user)->postJson(route('chunked-upload.init'), [
+        'filename' => 'Annual Report.zip',
+        'mime_type' => 'application/zip',
+        'file_size' => 12 * 1024 * 1024,
+        'folder' => 'assets',
+        'keep_original_filename' => true,
+    ]);
+
+    $response->assertCreated();
+    $session = UploadSession::where('session_token', $response->json('session_token'))->firstOrFail();
+    expect($session->s3_key)->toBe('assets/'.S3Service::sanitizeFilename('Annual Report.zip'));
+});
+
+test('uploading a chunk records its part and progress', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, ['uploaded_chunks' => 0, 'status' => 'pending']);
+    [$service, $history] = chunkedServiceWith(new MockHandler([new Result(['ETag' => '"etag-1"'])]));
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $response = $this->actingAs($user)->postJson(route('chunked-upload.chunk'), [
+        'session_token' => $session->session_token,
+        'chunk_number' => 1,
+        'chunk' => UploadedFile::fake()->create('chunk.bin', 64),
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('part_number', 1)
+        ->assertJsonPath('etag', 'etag-1')
+        ->assertJsonPath('uploaded_chunks', 1)
+        ->assertJsonPath('total_chunks', 2);
+
+    $session->refresh();
+    expect($session->part_etags)->toBe([['PartNumber' => 1, 'ETag' => 'etag-1']])
+        ->and($session->uploaded_chunks)->toBe(1)
+        ->and($session->status)->toBe('uploading');
+
+    $params = $history->getLastCommand()->toArray();
+    expect(sentCommands($history))->toBe(['UploadPart'])
+        ->and($params['PartNumber'])->toBe(1)
+        ->and($params['UploadId'])->toBe('fake-upload-id');
+});
+
+test('re-sending a recorded chunk is a no-op that sends nothing to S3', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, [
+        'uploaded_chunks' => 1,
+        'part_etags' => [['PartNumber' => 1, 'ETag' => 'etag-1']],
+    ]);
+    // Empty queue: any S3 call would throw.
+    [$service, $history] = chunkedServiceWith(new MockHandler);
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $response = $this->actingAs($user)->postJson(route('chunked-upload.chunk'), [
+        'session_token' => $session->session_token,
+        'chunk_number' => 1,
+        'chunk' => UploadedFile::fake()->create('chunk.bin', 64),
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('message', 'Chunk already uploaded')
+        ->assertJsonPath('uploaded_chunks', 1)
+        ->assertJsonPath('total_chunks', 2);
+
+    expect(sentCommands($history))->toBe([])
+        ->and($session->fresh()->part_etags)->toHaveCount(1);
+});
+
+test('chunks recorded through stale copies of a session are merged, not lost', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, ['uploaded_chunks' => 0, 'part_etags' => null, 'status' => 'pending']);
+
+    // All three copies are loaded before any chunk lands, as parallel requests would load them.
+    [$first, $second, $third] = [$session->fresh(), $session->fresh(), $session->fresh()];
+
+    [$service] = chunkedServiceWith(new MockHandler([
+        new Result(['ETag' => '"etag-1"']),
+        new Result(['ETag' => '"etag-2"']),
+        new Result(['ETag' => '"etag-1"']),
+    ]));
+    $chunk = UploadedFile::fake()->create('chunk.bin', 64);
+
+    $service->uploadChunk($first, $chunk, 1);
+    $service->uploadChunk($second, $chunk, 2);   // must not drop part 1
+    $service->uploadChunk($third, $chunk, 1);    // a concurrent duplicate: replace, don't append
+
+    $session->refresh();
+    expect($session->part_etags)->toBe([
+        ['PartNumber' => 1, 'ETag' => 'etag-1'],
+        ['PartNumber' => 2, 'ETag' => 'etag-2'],
+    ])->and($session->uploaded_chunks)->toBe(2);
+});
+
+test('a chunk number beyond total_chunks is a 422 and sends nothing to S3', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, ['uploaded_chunks' => 0]);
+    [$service, $history] = chunkedServiceWith(new MockHandler);
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $response = $this->actingAs($user)->postJson(route('chunked-upload.chunk'), [
+        'session_token' => $session->session_token,
+        'chunk_number' => 3,
+        'chunk' => UploadedFile::fake()->create('chunk.bin', 64),
+    ]);
+
+    $response->assertStatus(422);
+    expect(sentCommands($history))->toBe([]);
+});
+
+test('another user\'s session token is a 404 on chunk, complete and abort', function () {
+    $owner = User::factory()->create();
+    $intruder = User::factory()->create();
+    $session = makeUploadSession($owner);
+    [$service, $history] = chunkedServiceWith(new MockHandler);
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $this->actingAs($intruder)->postJson(route('chunked-upload.chunk'), [
+        'session_token' => $session->session_token,
+        'chunk_number' => 1,
+        'chunk' => UploadedFile::fake()->create('chunk.bin', 64),
+    ])->assertNotFound();
+
+    $this->actingAs($intruder)->postJson(route('chunked-upload.complete'), [
+        'session_token' => $session->session_token,
+    ])->assertNotFound();
+
+    $this->actingAs($intruder)->postJson(route('chunked-upload.abort'), [
+        'session_token' => $session->session_token,
+    ])->assertNotFound();
+
+    expect(sentCommands($history))->toBe([])
+        ->and($session->fresh()->status)->toBe('uploading');
+});
+
+test('an unknown session token gets the same 404', function () {
+    $user = User::factory()->create();
+    [$service] = chunkedServiceWith(new MockHandler);
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $this->actingAs($user)->postJson(route('chunked-upload.abort'), [
+        'session_token' => (string) Str::uuid(),
+    ])->assertNotFound()->assertJsonPath('message', 'Upload session not found.');
+});
+
+test('aborting a session aborts the S3 multipart upload', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user);
+    [$service, $history] = chunkedServiceWith(new MockHandler([new Result([])]));
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $this->actingAs($user)->postJson(route('chunked-upload.abort'), [
+        'session_token' => $session->session_token,
+    ])->assertOk();
+
+    $params = $history->getLastCommand()->toArray();
+    expect(sentCommands($history))->toBe(['AbortMultipartUpload'])
+        ->and($params['Key'])->toBe('assets/big-photo.jpg')
+        ->and($params['UploadId'])->toBe('fake-upload-id')
+        ->and($session->fresh()->status)->toBe('aborted');
+});
+
+test('a failed completion aborts the multipart upload', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, [
+        'part_etags' => [['PartNumber' => 1, 'ETag' => 'e1'], ['PartNumber' => 2, 'ETag' => 'e2']],
+    ]);
+    [$service, $history] = chunkedServiceWith(new MockHandler([
+        new S3Exception('InvalidPart', new Command('CompleteMultipartUpload')),
+        new Result([]),
+    ]));
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $this->actingAs($user)->postJson(route('chunked-upload.complete'), [
+        'session_token' => $session->session_token,
+    ])->assertStatus(500);
+
+    $params = $history->getLastCommand()->toArray();
+    expect(sentCommands($history))->toBe(['CompleteMultipartUpload', 'AbortMultipartUpload'])
+        ->and($params['Key'])->toBe('assets/big-photo.jpg')
+        ->and($params['UploadId'])->toBe('fake-upload-id')
+        ->and($session->fresh()->status)->toBe('aborted')
+        ->and(Asset::where('s3_key', 'assets/big-photo.jpg')->exists())->toBeFalse();
+});
+
+test('completing a session with missing chunks leaves it resumable', function () {
+    $user = User::factory()->create();
+    $session = makeUploadSession($user, [
+        'uploaded_chunks' => 1,
+        'part_etags' => [['PartNumber' => 1, 'ETag' => 'e1']],
+    ]);
+    [$service, $history] = chunkedServiceWith(new MockHandler);
+    $this->app->instance(ChunkedUploadService::class, $service);
+
+    $this->actingAs($user)->postJson(route('chunked-upload.complete'), [
+        'session_token' => $session->session_token,
+    ])->assertStatus(500);
+
+    expect(sentCommands($history))->toBe([])
+        ->and($session->fresh()->status)->toBe('uploading');
 });

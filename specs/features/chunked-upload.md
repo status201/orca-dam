@@ -3,7 +3,7 @@
 ```yaml
 id: chunked-upload
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -33,9 +33,13 @@ chunk. See [ADR-005](../decisions/adr-005-chunked-above-10mb.md) for the
 
 - **REQ-1** — `ChunkedUploadService::shouldUseChunkedUpload()` is the single
   source of truth for the 10MB threshold; the frontend uses it to pick a path.
-- **REQ-2** — Chunk uploads are idempotent: re-uploading an already-received
-  `chunk_number` for a session is a no-op that returns the existing progress,
-  not a duplicate part.
+- **REQ-2** — Chunk uploads are idempotent, and the guarantee lives in
+  `ChunkedUploadService::uploadChunk()`, not the controller: re-sending a
+  `chunk_number` the session has already recorded skips the S3 `uploadPart` and
+  returns the existing progress. Part bookkeeping is merged by `PartNumber` under
+  a row lock (`lockForUpdate()`), and `uploaded_chunks` is the count of distinct
+  recorded parts — never a running `+ 1` — so chunks sent in parallel by an API
+  client can neither drop nor double-count a part.
 - **REQ-3** — On completion, an etag dedup check runs exactly like the direct
   path (skipped when overwriting an existing `s3_key` in `keep_original_filename`
   mode) — see [`duplicate-detection.md`](duplicate-detection.md).
@@ -45,10 +49,16 @@ chunk. See [ADR-005](../decisions/adr-005-chunked-above-10mb.md) for the
   assembly. This re-upload changes the ETag, so sanitization must run before
   the dedup check.
 - **REQ-5** — A session is scoped to the user who created it
-  (`user_id = Auth::id()`); the chunk/complete/abort endpoints reject a
-  `session_token` that doesn't belong to the requesting user via `firstOrFail()`.
+  (`user_id = Auth::id()`); the chunk/complete/abort endpoints answer **404** for a
+  `session_token` that is unknown or belongs to another user — the same answer
+  for both, so a token's existence is not disclosed.
 - **REQ-6** — A failed completion attempts to abort the underlying multipart
-  upload so S3 doesn't accumulate orphaned parts.
+  upload so S3 doesn't accumulate orphaned parts. The "not all chunks uploaded"
+  precondition is checked before any S3 call and does **not** abort: the session
+  stays resumable, so the client can send the missing chunks and complete again.
+- **REQ-chunk-number-out-of-range** — A `chunk_number` outside
+  `1..total_chunks` is a client error: the chunk endpoint answers **422** and
+  sends nothing to S3.
 
 ## Technical design
 
@@ -72,9 +82,15 @@ types per `UploadPolicy::isInline()`), and persists an `UploadSession` row with
 `chunk_size = 10MB` and `total_chunks = ceil(fileSize / chunkSize)`.
 
 `ChunkedUploadService::uploadChunk(UploadSession, UploadedFile, int $chunkNumber): array`
-— streams the chunk via `uploadPart`, appends `{PartNumber, ETag}` to
-`part_etags`, increments `uploaded_chunks`. Throws `InvalidArgumentException`
-for a chunk number outside `1..total_chunks`.
+— throws `InvalidArgumentException` for a chunk number outside `1..total_chunks`.
+If the part is already recorded it returns `{PartNumber, ETag, skipped: true}`
+without calling S3 (REQ-2). Otherwise it streams the chunk via `uploadPart`
+*outside* any transaction (holding a row lock through a 10MB PUT would serialize
+every chunk; re-uploading a `PartNumber` is itself idempotent in S3), then, in a
+`DB::transaction` holding `lockForUpdate()` on the session row, merges
+`{PartNumber, ETag}` into `part_etags` keyed by `PartNumber` and sets
+`uploaded_chunks = count(part_etags)`. The passed `$session` is refreshed from
+the locked row.
 
 `ChunkedUploadService::completeUpload(UploadSession): Asset` — requires
 `uploaded_chunks === total_chunks`; sorts parts by `PartNumber` and calls
@@ -84,6 +100,13 @@ row; marks the session `completed`.
 
 `ChunkedUploadService::abortUpload(UploadSession): void` — S3
 `abortMultipartUpload` + session status `aborted`.
+
+Controller error mapping (chunk/complete/abort): a `ModelNotFoundException` from
+the owner-scoped `firstOrFail()` lookup is **404** `Upload session not found.`
+(REQ-5); in `uploadChunk`, `InvalidArgumentException` is **422**
+(REQ-chunk-number-out-of-range); everything else stays a 500 through
+`Controller::clientError()`. A `skipped` result from the service is reported as
+`Chunk already uploaded` with the current progress.
 
 Controller validation: `initiate` — `filename` (required, `AllowedUploadExtension`),
 `mime_type`, `file_size` (max 500MB in bytes), `folder` (max 100),
@@ -125,6 +148,74 @@ itself — see `CLAUDE.md`'s maintenance commands.
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: Initiating a chunked upload opens a session for the caller
+  Given an authenticated editor
+  When POST .../init is called for a 25MB "archive.zip"
+  Then the response is 201 with a session_token, chunk_size 10MB and total_chunks 3
+  And a pending upload_sessions row is stored for that user under a UUID key
+  And the S3 multipart upload is opened with ContentDisposition attachment (non-inline type)
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: keep_original_filename keeps the sanitized original name as the key
+  When POST .../init is called with keep_original_filename = true
+  Then the session's s3_key ends in the sanitized original filename, not a UUID
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Uploading a chunk records the part (REQ-2)
+  Given a pending session with 2 total chunks
+  When chunk 1 is uploaded
+  Then part_etags holds {PartNumber 1, ETag} and uploaded_chunks is 1, status uploading
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Re-sending a recorded chunk is a no-op (REQ-2)
+  Given a session that has already recorded chunk 1
+  When chunk 1 is uploaded again
+  Then the response reports "Chunk already uploaded" with the unchanged progress
+  And no UploadPart is sent to S3
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Chunks recorded through stale copies of a session are merged, not lost (REQ-2, regression)
+  Given two in-memory copies of one session, both loaded before any chunk arrived
+    (what two parallel chunk requests see)
+  When chunk 1 is recorded through the first copy and chunks 2 and 1 through the second
+  Then part_etags holds exactly parts 1 and 2, in order, and uploaded_chunks is 2
+# Regression: part_etags was appended to the request's in-memory copy and written back,
+# and uploaded_chunks was `+ 1` from a stale value — a concurrent chunk lost its part,
+# and a concurrent duplicate counted twice and could make an incomplete upload "complete".
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: A chunk number outside the session's range is a 422 (REQ-chunk-number-out-of-range)
+  Given a session with 2 total chunks
+  When chunk 3 is uploaded
+  Then the response is 422 and nothing is sent to S3
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Another user's session token is a 404 on chunk, complete and abort (REQ-5)
+  Given a session created by user A
+  When user B calls .../chunk, .../complete or .../abort with A's session_token
+  Then each response is 404 and A's session is untouched
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Aborting a session aborts the S3 multipart upload
+  When POST .../abort is called for the caller's session
+  Then AbortMultipartUpload is sent for the session's key and UploadId
+  And the session is marked aborted
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: A failed completion aborts the multipart upload (REQ-6)
+  Given a session with every chunk uploaded
+  And S3 rejects CompleteMultipartUpload
+  When POST .../complete is called
+  Then AbortMultipartUpload is sent for the session's key and UploadId
+  And the session is marked aborted and the response is 500
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
+Scenario: Completing a session with missing chunks leaves it resumable (REQ-6)
+  Given a session with 1 of 2 chunks uploaded
+  When POST .../complete is called
+  Then the response is 500, nothing is sent to S3, and the session keeps its status
+# pinned by: tests/Feature/ChunkedUploadTest.php
+
 Scenario: Completing a chunked upload applies batch metadata
   Given a completed chunked-upload session with metadata_tags/license/copyright/date_obtained
   When POST .../complete is called
@@ -182,16 +273,15 @@ Scenario: Stale upload sessions are aborted by the cleanup command
 
 ## Open questions / future
 
-- There is no dedicated test suite exercising `ChunkedUploadController::initiate`,
-  `uploadChunk`, or `abort` directly (session creation, the idempotent-retry
-  branch in `uploadChunk` — REQ-2 — or `abort`'s success path). The only
-  chunked-upload coverage in `tests/Feature/ChunkedUploadTest.php` targets the
-  `complete` endpoint. Session-lifecycle and idempotency scenarios above (REQ-2,
-  REQ-6) are documented from source but currently unpinned — a gap worth
-  closing with dedicated tests.
 - A sanitization failure in `keep_original_filename` overwrite mode deletes the
   object an existing asset points at: `completeMultipartUpload` has already
   replaced that content with the raw upload, so deleting it is the only way to
   avoid serving unsanitized SVG, and the existing `Asset` row is left without an
   original. Avoiding that would mean assembling to a temporary key and only
   copying over the existing one after sanitization succeeds.
+- `complete` doesn't refuse a session that is already `completed`. A client that
+  retries `complete` after a success whose response was lost runs it again: S3
+  may accept re-completing the upload, and `completeUpload()` then takes the
+  overwrite branch against the asset it just created (derived files are dropped
+  and regenerated). Harmless but wasteful; a guard returning the existing asset
+  for a `completed` session would close it.
