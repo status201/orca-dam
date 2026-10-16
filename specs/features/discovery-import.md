@@ -199,9 +199,10 @@ Scenario: Select all and deselect all drive the import button
 
 - Feature: `tests/Feature/DiscoverTest.php`
 - Unit: `tests/Unit/Jobs/ProcessDiscoveredAssetTest.php`
-- Unit: `tests/Unit/Services/S3ServiceTest.php` — listing through the SDK's real XML
-  parser, so the integer `size` is checked against what S3 actually returns (a
-  `MockHandler` result skips the parser and would hide the string)
+- Unit: `tests/Unit/Services/S3ServiceTest.php` — the listing (scan) and HeadObject
+  metadata (import) both run through the SDK's real response parsers, so the integer
+  `size` is checked against what S3 actually returns (a `MockHandler` result skips
+  the parsers and would hide the listing's string `Size`)
 - E2E: `tests/e2e/discover.spec.js` — scan → select → import against a real bucket,
   guarded by `requiresS3()`. The guard is load-bearing, not defensive:
   `S3Service::listObjects` swallows its exceptions and returns `[]`, so without a
