@@ -1,4 +1,6 @@
 import { generatePdfThumbnail, generateVideoThumbnail, uploadThumbnail } from './thumbnail-generator';
+import { formatBytes } from '../format';
+import { csrfToken } from '../http';
 
 export function assetReplacer() {
     const pageData = window.__pageData || {};
@@ -19,7 +21,6 @@ export function assetReplacer() {
         // Config
         allowedExtension: pageData.allowedExtension,
         maxSize: 512 * 1024 * 1024, // 500MB
-        csrfToken: pageData.csrfToken,
         replaceUrl: pageData.replaceUrl,
         editUrl: pageData.editUrl,
 
@@ -76,13 +77,7 @@ export function assetReplacer() {
             this.$refs.fileInput.value = '';
         },
 
-        formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        },
+        formatFileSize: formatBytes,
 
         async uploadFile() {
             this.showConfirmation = false;
@@ -133,7 +128,7 @@ export function assetReplacer() {
                 });
 
                 xhr.open('POST', this.replaceUrl);
-                xhr.setRequestHeader('X-CSRF-TOKEN', this.csrfToken);
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken());
                 xhr.setRequestHeader('Accept', 'application/json');
                 xhr.send(formData);
 

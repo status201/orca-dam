@@ -6,6 +6,7 @@ import {
     ringStyle,
     shutterStyle,
 } from './demo-geometry';
+import { csrfToken, requestHeaders } from '../http';
 
 /**
  * The guided-demo engine: spotlight one real element at a time, explain it, move on.
@@ -333,19 +334,13 @@ export function guidedDemo() {
          * progress" would be a poor first notification for a brand-new user.
          */
         record(dismissed) {
-            const token = document.querySelector('meta[name="csrf-token"]')?.content;
-
-            if (!this.demo?.completeUrl || !token) {
+            if (!this.demo?.completeUrl || !csrfToken()) {
                 return;
             }
 
             fetch(this.demo.completeUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': token,
-                    Accept: 'application/json',
-                },
+                headers: requestHeaders(),
                 body: JSON.stringify({ dismissed }),
             }).catch(() => {});
         },

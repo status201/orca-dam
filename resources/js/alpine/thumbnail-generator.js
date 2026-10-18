@@ -1,3 +1,5 @@
+import { requestHeaders } from '../http';
+
 /**
  * Shared thumbnail generation utilities for PDFs and videos.
  * Returns base64-encoded JPEG strings (without data URL prefix).
@@ -88,11 +90,7 @@ export async function uploadThumbnail(assetId, base64) {
     try {
         await fetch(`/assets/${assetId}/thumbnail`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
+            headers: requestHeaders(),
             body: JSON.stringify({ thumbnail: base64 }),
         });
     } catch (e) {

@@ -1,4 +1,6 @@
 import { applyFirefoxBgLocalPolyfill } from './firefox-bg-local-polyfill';
+import { formatBytes } from '../format';
+import { requestHeaders } from '../http';
 
 export function systemAdmin() {
     const pageData = window.__systemPageData;
@@ -184,10 +186,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.executeCommand, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ command: this.customCommand }),
                 });
 
@@ -214,10 +213,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.retryJob, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ job_id: uuid }),
                 });
 
@@ -248,10 +244,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.flushQueue, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();
@@ -271,10 +264,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.restartQueue, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();
@@ -295,10 +285,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.processQueue, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();
@@ -345,10 +332,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.regenerateResizedImages, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();
@@ -374,10 +358,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.verifyIntegrity, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();
@@ -426,10 +407,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.updateSetting, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ key, value }),
                 });
 
@@ -466,9 +444,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.foldersScan, {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders({ json: false }),
                 });
 
                 if (!response.ok) {
@@ -503,13 +479,7 @@ export function systemAdmin() {
             }
         },
 
-        formatBytes(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-        },
+        formatBytes,
 
         getLogLineColor(line) {
             if (line.includes('ERROR') || line.includes('Exception')) return 'text-red-400';
@@ -566,10 +536,7 @@ export function systemAdmin() {
             try {
                 const response = await fetch(pageData.routes.runTests, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         suite: this.testSuite,
                         filter: this.testFilter || null,
@@ -705,9 +672,7 @@ export function systemAdmin() {
                 const url = pageData.routes.runTestsAbort.replace('__RUN_ID__', this.testRunId);
                 await fetch(url, {
                     method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders({ json: false }),
                 });
                 // The next poll tick will see status=aborted and call finishTestRun().
             } catch (error) {

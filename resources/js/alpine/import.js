@@ -1,4 +1,5 @@
 import { errorMessageFrom } from '../http-errors';
+import { requestHeaders } from '../http';
 
 function importMetadata() {
     const pageData = window.__pageData?.import || {};
@@ -61,11 +62,7 @@ function importMetadata() {
             try {
                 const response = await fetch(pageData.routes.importPreview, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': pageData.csrfToken,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         csv_data: this.csvData,
                         match_field: this.matchField,
@@ -94,11 +91,7 @@ function importMetadata() {
             try {
                 const response = await fetch(pageData.routes.importImport, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': pageData.csrfToken,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         csv_data: this.csvData,
                         match_field: this.matchField,

@@ -1,3 +1,5 @@
+import { requestHeaders } from '../http';
+
 export function preferencesForm() {
     const pageData = window.__pageData || {};
     const routes = pageData.routes || {};
@@ -20,11 +22,7 @@ export function preferencesForm() {
             try {
                 const response = await fetch(routes.preferencesUpdate, {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         home_folder: this.homeFolder,
                         items_per_page: this.itemsPerPage,

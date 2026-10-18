@@ -397,7 +397,6 @@ window.__pageData = {
     rootFolder: @json($rootFolder),
     uploadUrl: '{{ route('tools.gif-maker.upload') }}',
     tagsSearch: '{{ route('tags.search') }}',
-    csrfToken: '{{ csrf_token() }}',
     translations: {
         framesLoaded: @js(__('Loaded :count frame(s) from TikZ Server')),
         noImagesSelected: @js(__('No image files selected')),

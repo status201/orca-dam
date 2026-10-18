@@ -1,6 +1,8 @@
 import { throwHttpError } from '../http-errors';
 import { generatePdfThumbnail, generateVideoThumbnail, uploadThumbnail } from './thumbnail-generator';
 import { uploadMetadata } from './upload-metadata';
+import { requestHeaders, csrfToken } from '../http';
+import { formatBytes } from '../format';
 
 export function assetUploader() {
     const pageData = window.__pageData || {};
@@ -164,18 +166,7 @@ export function assetUploader() {
             this.fileThumbnails = newThumbnails;
         },
 
-        formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let size = bytes;
-            let unitIndex = 0;
-
-            while (size >= 1024 && unitIndex < units.length - 1) {
-                size /= 1024;
-                unitIndex++;
-            }
-
-            return `${size.toFixed(2)} ${units[unitIndex]}`;
-        },
+        formatFileSize: formatBytes,
 
         async scanFolders() {
             if (this.scanningFolders) return;
@@ -184,11 +175,7 @@ export function assetUploader() {
             try {
                 const response = await fetch(pageData.routes.foldersScan, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                 });
 
                 if (!response.ok) await throwHttpError(response, pageData.translations.failedToScanFolders);
@@ -210,11 +197,7 @@ export function assetUploader() {
             try {
                 const response = await fetch(pageData.routes.foldersStore, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         name: this.newFolderName.trim(),
                         parent: this.selectedFolder,
@@ -420,10 +403,7 @@ export function assetUploader() {
             try {
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders({ json: false }),
                 });
 
                 if (!response.ok) await throwHttpError(response, pageData.translations.restoreFailed);
@@ -535,7 +515,7 @@ export function assetUploader() {
                 });
 
                 xhr.open('POST', pageData.routes.assetsStore);
-                xhr.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]').content);
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken());
                 xhr.setRequestHeader('Accept', 'application/json');
                 xhr.send(formData);
             });
@@ -576,11 +556,7 @@ export function assetUploader() {
         async initiateChunkedUpload(file) {
             const response = await fetch('/api/chunked-upload/init', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
+                headers: requestHeaders(),
                 body: JSON.stringify({
                     // No mime_type: the server types the object by its extension and ignores a claim.
                     filename: file.name,
@@ -617,10 +593,7 @@ export function assetUploader() {
 
             const response = await fetch('/api/chunked-upload/chunk', {
                 method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
+                headers: requestHeaders({ json: false }),
                 body: formData,
             });
 
@@ -632,11 +605,7 @@ export function assetUploader() {
         async completeChunkedUpload(sessionToken, filename) {
             const response = await fetch('/api/chunked-upload/complete', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
+                headers: requestHeaders(),
                 body: JSON.stringify({
                     session_token: sessionToken,
                     ...this.getMetadataPayload(),
@@ -663,11 +632,7 @@ export function assetUploader() {
             try {
                 await fetch('/api/chunked-upload/abort', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ session_token: sessionToken }),
                 });
             } catch (error) {

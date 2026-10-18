@@ -1,5 +1,6 @@
 import { throwHttpError } from '../http-errors';
 import { tagInputCore } from './tag-input-core';
+import { requestHeaders } from '../http';
 
 export function assetGrid() {
     const config = window.assetGridConfig || {};
@@ -162,11 +163,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/tags/by-ids', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ ids: ids.map(id => parseInt(id)) })
                 });
                 if (response.ok) {
@@ -243,10 +240,6 @@ export function assetGrid() {
         },
 
         // Bulk tag management methods
-        getCsrfToken() {
-            return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        },
-
         bulkFilterTagSuggestions() {
             clearTimeout(this._bulkSuggestDebounce);
             this._bulkSuggestDebounce = setTimeout(async () => {
@@ -317,11 +310,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/assets/bulk/tags', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify(payload),
                 });
 
@@ -348,11 +337,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/assets/bulk/tags/list', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         asset_ids: Alpine.store('bulkSelection').selected,
                     }),
@@ -382,11 +367,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/assets/bulk/move', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         asset_ids: Alpine.store('bulkSelection').selected,
                         destination_folder: this.bulkMoveFolder,
@@ -443,11 +424,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/assets/bulk/force-delete', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         _method: 'DELETE',
                         asset_ids: Alpine.store('bulkSelection').selected,
@@ -504,11 +481,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/assets/bulk/trash', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         asset_ids: Alpine.store('bulkSelection').selected,
                     }),
@@ -534,11 +507,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/assets/bulk/download', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/zip',
-                    },
+                    headers: requestHeaders({ accept: 'application/zip' }),
                     body: JSON.stringify({
                         asset_ids: Alpine.store('bulkSelection').selected,
                     }),
@@ -577,11 +546,7 @@ export function assetGrid() {
             try {
                 const response = await fetch('/assets/bulk/tags/remove', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         asset_ids: Alpine.store('bulkSelection').selected,
                         tag_ids: [tagId],
@@ -663,10 +628,6 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
         showSuggestions: false,
         filteredSuggestions: [],
         selectedSuggestionIndex: -1,
-
-        getCsrfToken() {
-            return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        },
 
         showToast(message, type = 'success') {
             // Use existing toast if available, otherwise fallback to console
@@ -771,10 +732,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
             try {
                 const response = await fetch(`/assets/${this.assetId}/tags/${tag.id}`, {
                     method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders({ json: false }),
                 });
 
                 if (!response.ok) await throwHttpError(response, translations.tagRemoveFailed);
@@ -803,11 +761,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
             try {
                 const response = await fetch(`/assets/${this.assetId}/tags`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ tags: names }),
                 });
 
@@ -857,10 +811,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
 
                 const response = await fetch(`/assets/${this.assetId}`, {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders({ json: false }),
                     body: formData,
                 });
 
@@ -894,10 +845,7 @@ export function assetRow(assetId, initialTags, initialLicense, assetUrl) {
             try {
                 const response = await fetch(`/assets/${this.assetId}`, {
                     method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders({ json: false }),
                 });
 
                 if (!response.ok) await throwHttpError(response, translations.assetDeleteFailed);

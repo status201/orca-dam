@@ -908,7 +908,6 @@ window.__pageData = {
     templateUploadUrl: '{{ route('tools.tikz-server.templates.upload') }}',
     tagsSearch: '{{ route('tags.search') }}',
     saveTemplatePrompt: '{{ __('Template name') }}:',
-    csrfToken: '{{ csrf_token() }}',
     compilerAvailable: @json($compilerAvailable),
     colorPackage: @json($colorPackage),
     colorPackageName: @json($colorPackageName),

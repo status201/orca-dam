@@ -1,5 +1,6 @@
 import { errorMessageFrom } from '../http-errors';
 import { tagInputCore } from './tag-input-core';
+import { requestHeaders } from '../http';
 
 async function refreshPreviewThumbnail(thumbnailUrl) {
     const previewImg = document.getElementById('asset-preview');
@@ -271,11 +272,7 @@ export function videoThumbnailGenerator() {
             try {
                 const response = await fetch(pageData.thumbnailStoreUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ thumbnail: base64 }),
                 });
 
@@ -378,11 +375,7 @@ export function pdfThumbnailGenerator() {
             try {
                 const response = await fetch(pageData.thumbnailStoreUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ thumbnail: base64 }),
                 });
 
@@ -417,10 +410,7 @@ export function aiTagManager() {
             try {
                 const response = await fetch(`/assets/${pageData.assetId}/tags/${tagId}`, {
                     method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    }
+                    headers: requestHeaders({ json: false })
                 });
 
                 if (!response.ok) {

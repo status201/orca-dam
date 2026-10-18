@@ -187,6 +187,7 @@
                 </div>
 
                 <button
+                    data-testid="tikz-upload-selected"
                     @click="uploadSelected()"
                     :disabled="anyUploading || selectedCount === 0"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-orca-teal text-white text-sm font-medium rounded-md hover:bg-orca-teal-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
@@ -268,11 +269,12 @@ window.__pageData = {
     folders: @json($folders),
     rootFolder: @json($rootFolder),
     uploadUrl: '{{ route('tools.tikz-svg.upload') }}',
-    csrfToken: '{{ csrf_token() }}',
     translations: {
         noTikzBlocks: @js(__('No \\begin{tikzpicture} blocks found')),
         noDiagramsSelected: @js(__('No diagrams selected')),
         uploadFailed: @js(__('Upload failed: :error')),
+        diagramUploaded: @js(__('1 diagram uploaded successfully!')),
+        diagramsUploaded: @js(__(':count diagrams uploaded successfully!')),
     },
 };
 </script>

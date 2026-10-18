@@ -1,3 +1,5 @@
+import { requestHeaders } from '../http';
+
 export function apiDocs() {
     const pageData = window.__pageData || {};
     const routes = pageData.routes || {};
@@ -146,11 +148,7 @@ export function apiDocs() {
             try {
                 const response = await fetch(routes.settingsUpdate, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ key, value }),
                 });
 
@@ -301,11 +299,7 @@ export function apiDocs() {
 
                 const response = await fetch(routes.tokensStore, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify(body),
                 });
 
@@ -360,11 +354,7 @@ export function apiDocs() {
             try {
                 const response = await fetch(`${routes.tokensBase}/${id}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();
@@ -442,11 +432,7 @@ export function apiDocs() {
             try {
                 const response = await fetch(`${routes.jwtSecretsBase}/${this.jwtSelectedUserId}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();
@@ -481,11 +467,7 @@ export function apiDocs() {
             try {
                 const response = await fetch(`${routes.jwtSecretsBase}/${userId}`, {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
+                    headers: requestHeaders(),
                 });
 
                 const result = await response.json();

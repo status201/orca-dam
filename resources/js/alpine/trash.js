@@ -1,4 +1,5 @@
 import { throwHttpError } from '../http-errors';
+import { requestHeaders, csrfToken } from '../http';
 
 function trashPage() {
     return {
@@ -26,10 +27,6 @@ function trashPage() {
             localStorage.setItem('orcaTrashFitMode', this.fitMode);
         },
 
-        getCsrfToken() {
-            return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        },
-
         restoreAsset(id) {
             if (confirm(window.__pageData.confirmRestore)) {
                 const form = document.createElement('form');
@@ -39,7 +36,7 @@ function trashPage() {
                 const csrfInput = document.createElement('input');
                 csrfInput.type = 'hidden';
                 csrfInput.name = '_token';
-                csrfInput.value = this.getCsrfToken();
+                csrfInput.value = csrfToken();
 
                 form.appendChild(csrfInput);
                 document.body.appendChild(form);
@@ -56,7 +53,7 @@ function trashPage() {
                 const csrfInput = document.createElement('input');
                 csrfInput.type = 'hidden';
                 csrfInput.name = '_token';
-                csrfInput.value = this.getCsrfToken();
+                csrfInput.value = csrfToken();
 
                 const methodInput = document.createElement('input');
                 methodInput.type = 'hidden';
@@ -80,11 +77,7 @@ function trashPage() {
             try {
                 const response = await fetch('/assets/trash/bulk-restore', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         asset_ids: Alpine.store('bulkSelection').selected,
                     }),
@@ -138,11 +131,7 @@ function trashPage() {
             try {
                 const response = await fetch('/assets/trash/bulk-force-delete', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.getCsrfToken(),
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         _method: 'DELETE',
                         asset_ids: Alpine.store('bulkSelection').selected,

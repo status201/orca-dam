@@ -58,11 +58,7 @@ export function myFeatureManager() {
         async doThing() {
             const response = await fetch('/my-endpoint', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
+                headers: requestHeaders(), // import { requestHeaders } from '../http';
                 body: JSON.stringify({ /* ... */ }),
             });
             const data = await response.json();
@@ -155,9 +151,12 @@ the behaviour (never in `e2e-testing.md`, which owns only the harness).
   `window.assetTranslations` for the grid partial, `window.appTranslations`
   only for the base layout's global toasts). See
   [`localization.md`](../features/localization.md).
-- CSRF header + `Accept: application/json` on every `fetch()` — copy the
-  pattern from an existing module (`tags.js`) rather than reconstructing it;
-  a missing CSRF header produces a silent 419 on POST/PATCH/DELETE.
+- Headers come from `requestHeaders()` (`resources/js/http.js`) on every `fetch()`:
+  CSRF token, `Accept: application/json`, and `Content-Type` for a JSON body —
+  `requestHeaders({ json: false })` for `FormData`. Never hand-build the object or
+  copy a token into page data; a missing or stale CSRF token produces a silent 419
+  on POST/PATCH/DELETE ([`error-handling.md`](../features/error-handling.md)
+  REQ-request-headers). Sizes go through `formatBytes()` (`resources/js/format.js`).
 - Genuinely shared logic (used by more than one module) belongs in a mixin
   file, not copy-pasted — see `tag-input-core.js`'s `parseTagNames`/
   `tagInputCore`, reused by all four tag inputs in the app.

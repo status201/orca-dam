@@ -1,6 +1,8 @@
 import GIF from 'gif.js';
 import { uploadMetadata } from './upload-metadata';
 import { applyFirefoxBgLocalPolyfill } from './firefox-bg-local-polyfill';
+import { requestHeaders } from '../http';
+import { formatBytes } from '../format';
 
 function tikzServer() {
     const pageData = window.__pageData || {};
@@ -774,11 +776,7 @@ function tikzServer() {
             try {
                 var res = await fetch(pageData.templateUploadUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': pageData.csrfToken,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         content: this.tikzCode,
                         filename: this.saveTemplateName,
@@ -841,11 +839,7 @@ function tikzServer() {
                 .replace('{extension}', ext);
         },
 
-        formatSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1048576).toFixed(1) + ' MB';
-        },
+        formatSize: (bytes) => formatBytes(bytes, 1),
 
         canvasPixelPreview() {
             var w = Math.round((this.canvasWidthCm || 0) * (this.pngDpi || 0) / 2.54);
@@ -994,11 +988,7 @@ function tikzServer() {
 
                 var res = await fetch(pageData.gifUploadUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': pageData.csrfToken,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify(body),
                 });
 
@@ -1117,11 +1107,7 @@ function tikzServer() {
 
                     var res = await fetch(pageData.renderUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': pageData.csrfToken,
-                            'Accept': 'application/json',
-                        },
+                        headers: requestHeaders(),
                         body: JSON.stringify(body),
                     });
 
@@ -1308,11 +1294,7 @@ function tikzServer() {
 
                     var res = await fetch(uploadUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': pageData.csrfToken,
-                            'Accept': 'application/json',
-                        },
+                        headers: requestHeaders(),
                         body: JSON.stringify(body),
                     });
 

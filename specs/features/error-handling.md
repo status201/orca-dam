@@ -3,7 +3,7 @@
 ```yaml
 id: error-handling
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -97,6 +97,12 @@ driver at all is [`input-validation.md`](input-validation.md); this spec is the 
   field error, then `message`, then `error` — and a hardcoded string is the fallback of last resort,
   not the first choice. Handlers that read the server's message and then discard it in favour of a
   generic toast are the defect this requirement exists to remove.
+- **REQ-request-headers** — Every same-origin `fetch()` takes its headers from
+  `requestHeaders()` in `resources/js/http.js`: the CSRF token, `Accept` (JSON unless the caller
+  names another type) and, for a JSON body, `Content-Type`. The token is read from the page's
+  `<meta name="csrf-token">` **at call time**. Eighty-odd call sites used to build this object by
+  hand in three styles, and the tool pages sent a token copied into page data at load, which
+  does not follow the meta tag that `bootstrap.js` refreshes every 15 minutes.
 - **REQ-12** — A message that reaches a toast is inserted as text, never as HTML. `window.showToast`
   has exactly one definition (`resources/js/app.js`); the two inline copies in the layouts that
   interpolated into `innerHTML` are removed, because surfacing server strings would otherwise turn
@@ -115,6 +121,8 @@ App\Support\ErrorAudience::detail(Throwable $e): ?string          // null for an
 App\Support\ErrorId::current(): string                            // memoised per request
 App\Http\Controllers\Controller::clientError(Throwable $e, string $generic): string   // delegates to ErrorAudience
 resources/js/http-errors.js  →  errorMessageFrom(response, fallback), throwHttpError(response, fallback)
+resources/js/http.js         →  csrfToken(), requestHeaders({ json = true, accept = 'application/json' })   // REQ-request-headers
+resources/js/format.js       →  formatBytes(bytes, decimals = 2)   // "12.5 KB" — every size the UI formats client-side
 ```
 
 `bootstrap/app.php` registers exactly four things, in this order:
