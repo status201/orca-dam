@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -121,6 +121,8 @@ deleteResizedImages(Asset): void
 deleteAssetFiles(Asset, keepOriginal=false): void   # original + thumbnail + resizes
 relocatedDerivedKeys(Asset, newS3Key): array # column => new key, for each derived key the asset holds (REQ-6)
 moveObject(sourceKey, destinationKey): bool # copy + delete
+connectionError(): ?string                  # null when the bucket can be listed, else the error — the
+                                            # one probe that does not swallow it (system-admin.md)
 deleteFile(s3Key): bool
 extractImageDimensions(s3Key, mimeType): ?array   # null for non-images; streams the object to a temp file
                                             # and defers to ImageProcessingService::getImageDimensionsFromPath()

@@ -6,10 +6,12 @@ use App\Jobs\RegenerateResizedImage;
 use App\Jobs\RunTestSuiteJob;
 use App\Models\Asset;
 use App\Models\Setting;
+use App\Services\ArtisanCommandRunner;
 use App\Services\FolderRegistry;
 use App\Services\QueueService;
 use App\Services\SystemService;
 use App\Services\TestRunnerService;
+use App\Support\SettingRules;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,22 +21,13 @@ class SystemController extends Controller
 {
     use AuthorizesRequests;
 
-    protected SystemService $systemService;
-
-    protected TestRunnerService $testRunnerService;
-
-    protected QueueService $queueService;
-
     public function __construct(
-        SystemService $systemService,
-        TestRunnerService $testRunnerService,
-        QueueService $queueService,
+        protected SystemService $systemService,
+        protected ArtisanCommandRunner $commands,
+        protected TestRunnerService $testRunnerService,
+        protected QueueService $queueService,
         protected FolderRegistry $folders,
-    ) {
-        $this->systemService = $systemService;
-        $this->testRunnerService = $testRunnerService;
-        $this->queueService = $queueService;
-    }
+    ) {}
 
     /**
      * Show system administration dashboard
@@ -48,10 +41,10 @@ class SystemController extends Controller
             'systemInfo' => $this->systemService->getSystemInfo(),
             'diskUsage' => $this->systemService->getDiskUsage(),
             'databaseStats' => $this->systemService->getDatabaseStats(),
-            'suggestedCommands' => $this->systemService->getSuggestedCommands(),
-            'settings' => $this->systemService->getSettings(),
-            'availableLanguages' => $this->systemService->getAvailableLanguages(),
-            'availableUiLanguages' => $this->systemService->getAvailableUiLanguages(),
+            'suggestedCommands' => $this->commands->suggestedCommands(),
+            'settings' => Setting::query()->orderBy('group')->orderBy('key')->get()->toArray(),
+            'availableLanguages' => config('orca.rekognition_languages'),
+            'availableUiLanguages' => config('orca.ui_locales'),
             'availableTimezones' => timezone_identifiers_list(),
             'missingAssetsCount' => Asset::missing()->count(),
         ];
@@ -100,7 +93,7 @@ class SystemController extends Controller
         ]);
 
         $command = trim($request->input('command'));
-        $result = $this->systemService->executeCommand($command);
+        $result = $this->commands->executeCommand($command);
 
         return response()->json($result);
     }
@@ -140,7 +133,7 @@ class SystemController extends Controller
             'job_id' => 'required|string',
         ]);
 
-        $result = $this->systemService->executeCommand('queue:retry '.$request->input('job_id'));
+        $result = $this->commands->executeCommand('queue:retry '.$request->input('job_id'));
 
         return response()->json($result);
     }
@@ -152,7 +145,7 @@ class SystemController extends Controller
     {
         $this->authorize('access', SystemController::class);
 
-        $result = $this->systemService->executeCommand('queue:flush');
+        $result = $this->commands->executeCommand('queue:flush');
 
         return response()->json($result);
     }
@@ -164,7 +157,7 @@ class SystemController extends Controller
     {
         $this->authorize('access', SystemController::class);
 
-        $result = $this->systemService->executeCommand('queue:work --max-jobs=50 --tries=3 --stop-when-empty');
+        $result = $this->commands->executeCommand('queue:work --max-jobs=50 --tries=3 --stop-when-empty');
 
         return response()->json($result);
     }
@@ -176,7 +169,7 @@ class SystemController extends Controller
     {
         $this->authorize('access', SystemController::class);
 
-        $result = $this->systemService->executeCommand('queue:restart');
+        $result = $this->commands->executeCommand('queue:restart');
 
         return response()->json($result);
     }
@@ -208,68 +201,14 @@ class SystemController extends Controller
         $key = $request->input('key');
         $value = $request->input('value') ?? '';
 
-        // Validate specific settings
-        $validationRules = [
-            'items_per_page' => function ($v) {
-                return is_numeric($v) && $v >= 10 && $v <= 100;
-            },
-            'rekognition_max_labels' => function ($v) {
-                return is_numeric($v) && $v >= 1 && $v <= 20;
-            },
-            'rekognition_language' => function ($v) {
-                $languages = array_keys($this->systemService->getAvailableLanguages());
-
-                return in_array($v, $languages);
-            },
-            'rekognition_min_confidence' => function ($v) {
-                return is_numeric($v) && $v >= 65 && $v <= 99;
-            },
-            'timezone' => function ($v) {
-                return in_array($v, timezone_identifiers_list());
-            },
-            'locale' => function ($v) {
-                $locales = array_keys($this->systemService->getAvailableUiLanguages());
-
-                return in_array($v, $locales);
-            },
-            's3_root_folder' => function ($v) {
-                // Allow empty string (bucket root) or alphanumeric with hyphens, underscores, slashes
-                return $v === '' || preg_match('/^[a-zA-Z0-9_\-\/]+$/', $v);
-            },
-            'custom_domain' => function ($v) {
-                // Allow empty (disabled) or a valid URL starting with http(s)://
-                return $v === '' || preg_match('/^https?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(\/.*)?$/', $v);
-            },
-            'resize_s_width' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
-            'resize_s_height' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
-            'resize_m_width' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
-            'resize_m_height' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
-            'resize_l_width' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
-            'resize_l_height' => fn ($v) => $v === '' || (is_numeric($v) && $v >= 50 && $v <= 5000),
-            'embed_allowed_domains' => function ($v) {
-                if ($v === '' || $v === '[]') {
-                    return true;
-                }
-                $decoded = json_decode($v, true);
-
-                return is_array($decoded) && collect($decoded)->every(fn ($d) => preg_match('/^https?:\/\/[a-zA-Z0-9\-\.\*]+\.[a-zA-Z]{2,}(\/.*)?$/', $d));
-            },
-            'tikz_color_package_name' => function ($v) {
-                return $v === '' || (strlen($v) <= 50 && preg_match('/^[a-zA-Z0-9_-]+$/', $v));
-            },
-            'tikz_color_package' => function ($v) {
-                return strlen($v) <= 100000;
-            },
-        ];
-
-        if (isset($validationRules[$key]) && ! $validationRules[$key]($value)) {
+        if (! SettingRules::passes($key, $value)) {
             return response()->json([
                 'success' => false,
                 'error' => __('Invalid value for setting: :key', ['key' => $key]),
             ], 422);
         }
 
-        $success = $this->systemService->updateSetting($key, $value);
+        $success = Setting::set($key, $value);
 
         // Every stored folder path is relative to the old root — rebuild the list
         if ($success && $key === 's3_root_folder') {

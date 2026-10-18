@@ -18,7 +18,7 @@ source:
 ORCA ships 19 `artisan` commands covering asset hygiene, auth-secret lifecycle
 management, translation safety, reading the user audit trail, and verifying the live
 schema. They are the CLI counterpart to the System
-admin dashboard (`SystemService::getSuggestedCommands()` surfaces the asset/queue
+admin dashboard (`ArtisanCommandRunner::suggestedCommands()` surfaces the asset/queue
 ones there) and the primary tool for emergency recovery (JWT/2FA/passkey/token
 revocation) when the web UI itself is inaccessible.
 

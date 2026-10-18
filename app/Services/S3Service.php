@@ -984,6 +984,22 @@ class S3Service
     }
 
     /**
+     * Why the bucket cannot be listed, or null when it can. Unlike every other read here this one
+     * reports its failure instead of swallowing it: it backs the System page's connection test,
+     * which listObjects() made pass for a wrong bucket or bad credentials.
+     */
+    public function connectionError(): ?string
+    {
+        try {
+            $this->s3Client->listObjectsV2(['Bucket' => $this->bucket, 'MaxKeys' => 1]);
+
+            return null;
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+    }
+
+    /**
      * Get the S3 bucket endpoint address.
      */
     public function getBucketEndpoint(): string

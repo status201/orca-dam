@@ -6,7 +6,6 @@ use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Setting;
 use App\Services\FolderRegistry;
 use App\Services\S3Service;
-use App\Services\SystemService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,8 +30,7 @@ class ProfileController extends Controller
 
         $globalItemsPerPage = (int) Setting::get('items_per_page', 24);
 
-        $systemService = app(SystemService::class);
-        $availableUiLanguages = $systemService->getAvailableUiLanguages();
+        $availableUiLanguages = config('orca.ui_locales');
         $globalLocale = Setting::get('locale', 'en');
         $globalLocaleLabel = $availableUiLanguages[$globalLocale] ?? 'English';
 

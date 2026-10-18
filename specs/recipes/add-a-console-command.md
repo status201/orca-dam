@@ -124,7 +124,7 @@ php artisan config:clear && php artisan test tests/Feature/Console/
   service for a Mockery double — the command's `handle(Service $service)`
   type-hint is what makes this work; don't `new` the service inside `handle()`.
 - If the command is exposed on the System admin dashboard too
-  (`SystemService::getSuggestedCommands()`), keep its `$description` accurate
+  (`ArtisanCommandRunner::suggestedCommands()`), keep its `$description` accurate
   — it's surfaced there verbatim.
 - A command touching `Tag`s should still route through
   `TagInputParser::parse()`/`Tag::resolve*TagIds()` for name normalization
