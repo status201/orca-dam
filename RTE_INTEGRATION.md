@@ -383,7 +383,7 @@ return [
 | `GET` | `/api/assets/{id}` | Single asset details |
 | `GET` | `/api/assets/meta?url=` | Metadata by URL (**public**, no auth) |
 | `POST` | `/api/assets` | Upload files (can be disabled via admin toggle) |
-| `PATCH` | `/api/assets/{id}` | Update metadata |
+| `PATCH` | `/api/assets/{id}` | Update metadata — an admin token any asset, other tokens only assets they uploaded (`403` otherwise) |
 | `GET` | `/api/tags` | List all tags |
 | `GET` | `/api/folders` | List S3 folders |
 | `POST` | `/api/reference-tags` | Add reference tags to asset(s) (supports batch via `asset_ids`/`s3_keys`) |

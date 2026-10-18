@@ -99,6 +99,13 @@ Add the new ability to the role × ability table in
 `CLAUDE.md`/`architecture.md` if it changes the summary table there) so the
 matrix stays the single source of truth.
 
+Then add it to `policyMatrix()` in `tests/Security/PolicyMatrixTest.php` with the
+roles it grants, and raise the ability count in *the ability scanner sees the
+known policy surface*. The security suite discovers abilities by reflection, so
+CI fails until every ability has stated roles (ADR-002). An ability that depends
+on ownership is listed for an asset someone else uploaded; pin the owner case in
+`tests/Unit/Policies/AssetPolicyTest.php`.
+
 ```bash
 ./vendor/bin/pint
 php artisan config:clear && php artisan test tests/Unit/Policies/AssetPolicyTest.php

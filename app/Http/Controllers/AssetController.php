@@ -233,11 +233,6 @@ class AssetController extends Controller
                         continue;
                     }
 
-                    if ($existingByKey) {
-                        // Overwrite: the old derived files describe the old bytes
-                        $this->s3Service->deleteAssetFiles($existingByKey, keepOriginal: true);
-                    }
-
                     $asset = $this->ingestion->persist([
                         's3_key' => $fileData['s3_key'],
                         'filename' => $fileData['filename'],

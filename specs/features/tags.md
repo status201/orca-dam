@@ -3,7 +3,7 @@
 ```yaml
 id: tags
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -17,6 +17,8 @@ source:
   - database/factories/TagFactory.php
   - resources/js/alpine/tags.js
   - resources/js/alpine/asset-grid.js
+  - app/Support/TagInputParser.php
+  - app/Services/RekognitionService.php
 ```
 
 ## Background / Why
@@ -50,8 +52,14 @@ data model per tag origin.
 - **REQ-5** — Deleting a `Tag` (single or bulk) detaches it from every asset
   via the pivot relationship; no orphaned `asset_tag` rows remain.
 - **REQ-6** — Resolving a tag name to an ID never changes an existing tag's
-  `type`. `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` reuse an
-  existing tag of any type if the name already exists.
+  `type`. `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` / `resolveAiTagIds()`
+  reuse an existing tag of any type if the name already exists — **as the database
+  compares names**, not as PHP does. Production's `utf8mb4_unicode_ci` treats `café` and
+  `cafe` (and `Äpfel` and `äpfel`) as the same name, and the unique index on `tags.name`
+  agrees, so a name the batch lookup did not return exactly is resolved with
+  `firstOrCreate()`, letting the collation find the existing row. Deciding "missing" with an
+  exact PHP comparison created a second row there and failed on the unique index — which
+  broke AI tagging for any label whose existing tag differed only by accent or case.
 - **REQ-tag-name-normalization** — Every path that turns a name into a tag, or looks
   a tag up by name, normalizes it with `Tag::normalizeName()` — trimmed and lowercased
   with `mb_strtolower`, the same rule `TagInputParser` applies. That covers resolving
@@ -183,6 +191,14 @@ submitted this way is rejected with 422 rather than silently reattached.
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: A name the collation already holds reuses that tag instead of failing (regression)
+  Given MySQL/MariaDB with utf8mb4_unicode_ci and an existing tag "cafe"
+  When resolveAiTagIds(['café']) runs
+  Then it returns the id of "cafe" and creates nothing
+  # Driver-specific: SQLite compares names byte-wise, so it cannot express the collision;
+  # the test skips there and runs against MySQL/MariaDB.
+# pinned by: tests/Unit/TagTest.php
+
 Scenario: A non-ASCII tag name is normalized the same way on every path (regression)
   Given a tag created as "été" through the tag input
   When an editor renames another tag to " ÉTÉ " it collides with "été" (422)

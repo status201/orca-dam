@@ -50,7 +50,7 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1319 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1325 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
@@ -149,6 +149,7 @@ orca-dam/
 │   │   └── VerifySchemaCommand.php        # db:verify-schema (MySQL/MariaDB only)
 │   ├── Demos/                             # guided onboarding walkthroughs (one class per demo)
 │   ├── Http/
+│   │   ├── Concerns/                      # ForceDeletesAssets (shared bulk force-delete loop)
 │   │   ├── Controllers/
 │   │   │   ├── Api/
 │   │   │   │   ├── AssetApiController.php # REST asset endpoints
@@ -161,7 +162,7 @@ orca-dam/
 │   │   │   ├── AssetReplaceController.php # replace bytes at the same S3 key
 │   │   │   ├── AssetTrashController.php   # trash, restore, force delete
 │   │   │   ├── ChunkedUploadController.php
-│   │   │   ├── Controller.php             # base: clientError() role-aware errors
+│   │   │   ├── Controller.php             # base: clientError(), successResponse()
 │   │   │   ├── DashboardController.php
 │   │   │   ├── DiscoverController.php     # unmapped S3 objects → import
 │   │   │   ├── ExportController.php       # CSV export
@@ -180,8 +181,7 @@ orca-dam/
 │   │   │   ├── AuthenticateMultiple.php   # auth.multi: session|sanctum|jwt
 │   │   │   ├── SecurityHeaders.php        # nosniff, XFO, Referrer-Policy, HSTS
 │   │   │   └── SetLocale.php              # user pref → setting → config
-│   │   ├── Requests/                      # form requests incl. Auth/LoginRequest
-│   │   └── Resources/                     # API resources
+│   │   └── Requests/                      # form requests incl. Auth/LoginRequest, Tools/
 │   ├── Jobs/
 │   │   ├── GenerateAiTags.php             # Rekognition + Translate
 │   │   ├── ProcessDiscoveredAsset.php     # discovery import
@@ -221,7 +221,15 @@ orca-dam/
 │   │   ├── TikzCompilerService.php        # TeX Live → SVG/PNG, 17 font packages
 │   │   ├── ToolUploadService.php          # tool output → asset
 │   │   └── TwoFactorService.php           # TOTP + recovery codes
-│   └── Support/                           # TagInputParser
+│   └── Support/                           # small single-purpose helpers, e.g.:
+│       ├── AssetFilter.php / AssetSort.php # the asset list's filters and sort orders
+│       ├── AssetKeyLayout.php             # thumbnails/ and resize key naming
+│       ├── ColumnLimits.php               # every varchar width, read by rules + migrations
+│       ├── ErrorAudience.php              # who may see exception detail
+│       ├── SettingRules.php               # System-page setting validation
+│       ├── TagInputParser.php             # free-text tag input → names
+│       ├── UploadMetadata.php             # batch upload metadata value object
+│       └── UploadPolicy.php               # extension allowlist, Content-Type, inline rule
 ├── bootstrap/                             # app.php: middleware + scheduled tasks
 ├── config/                                # incl. jwt.php, uploads.php, tikz.php, services.php
 ├── database/

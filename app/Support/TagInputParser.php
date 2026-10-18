@@ -29,7 +29,7 @@ class TagInputParser
 
         foreach ($pieces as $piece) {
             foreach (explode(',', (string) $piece) as $name) {
-                $name = mb_strtolower(trim($name));
+                $name = Tag::normalizeName($name);
 
                 if ($name !== '' && mb_strlen($name) <= $maxLength) {
                     $names[$name] = true; // keyed dedup preserves first-seen order

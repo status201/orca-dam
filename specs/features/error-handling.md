@@ -21,6 +21,8 @@ source:
   - resources/js/http-errors.js
   - resources/views/errors/500.blade.php
   - resources/views/errors/4xx.blade.php
+  - resources/js/http.js
+  - resources/js/format.js
 ```
 
 ## Background / Why

@@ -219,11 +219,6 @@ class ChunkedUploadService
 
             $dimensions = $this->s3Service->extractImageDimensions($session->s3_key, $session->mime_type) ?? [];
 
-            if ($existingByKey) {
-                // Overwrite: the old derived files describe the old bytes
-                $this->s3Service->deleteAssetFiles($existingByKey, keepOriginal: true);
-            }
-
             $asset = $this->ingestion->persist([
                 's3_key' => $session->s3_key,
                 'filename' => $session->filename,

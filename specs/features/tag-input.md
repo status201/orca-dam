@@ -3,7 +3,7 @@
 ```yaml
 id: tag-input
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -57,7 +57,8 @@ four Alpine tag-input widgets in the browser.
 ```yaml
 App\Support\TagInputParser:
   parse(string|array|null $input, int $maxLength = Tag::MAX_NAME_LENGTH): array<string>
-    # split each piece on ',' -> mb_strtolower(trim()) -> drop '' and len > maxLength
+    # split each piece on ',' -> Tag::normalizeName() (mb_strtolower(trim()), tags.md
+    # REQ-tag-name-normalization) -> drop '' and len > maxLength
     # -> dedupe via keyed array (preserves first-seen order) -> array_keys()
 
 resources/js/alpine/tag-input-core.js:
@@ -106,9 +107,10 @@ Raw input (string | array, possibly comma-joined)
   -> Asset::syncTagsWithAttribution()  (tags.md — attach + attribution)
 ```
 
-`TagInputParser` has no dependency on the DB or the `Tag` model beyond reading
-the `Tag::MAX_NAME_LENGTH` constant for its default — it is a pure string
-transform, safely unit-testable without a database.
+`TagInputParser` has no dependency on the DB. From the `Tag` model it reads only the
+`Tag::MAX_NAME_LENGTH` constant for its default and the pure `Tag::normalizeName()`, so the
+parser and every name lookup share one normalization rule. It is a pure string transform,
+safely unit-testable without a database.
 
 ### Persistence
 

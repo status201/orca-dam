@@ -11,7 +11,8 @@ related:
 source:
   - app/Models/Setting.php
   - app/Http/Controllers/SystemController.php
-  - app/Services/SystemService.php
+  - app/Support/SettingRules.php
+  - app/Services/FolderRegistry.php
   - database/migrations/2026_02_22_000000_seed_missing_settings.php
 ```
 

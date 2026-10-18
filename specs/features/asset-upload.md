@@ -21,6 +21,8 @@ source:
   - app/Services/AssetProcessingService.php
   - app/Services/S3Service.php
   - app/Jobs/GenerateAiTags.php
+  - app/Support/UploadMetadata.php
+  - app/Services/AssetIngestionService.php
 ```
 
 ## Background / Why

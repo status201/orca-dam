@@ -3,7 +3,7 @@
 ```yaml
 id: client-side-tools
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -20,6 +20,7 @@ source:
   - resources/js/alpine/tools-tikz-svg.js
   - resources/js/alpine/tools-tikz-svg-fonts.js
   - resources/js/alpine/tools-tikz-png.js
+  - resources/js/alpine/tikz-results.js
 ```
 
 ## Background / Why
@@ -92,10 +93,11 @@ backend render step, only a backend *persist* step.
   not reliably recognised by the scanner that found this.
 
 - **REQ-tool-upload-error-audience** — A failed tool upload answers
-  `500 {"error": "Upload failed: <detail>"}`, where the detail passes through `ErrorAudience`
-  ([error-handling.md](error-handling.md) REQ-9): an api-role caller gets `"Upload failed."`
-  with no exception text, and a database error shows the driver's sentence, never the SQL with
-  its bindings. The six upload actions used to put `$e->getMessage()` in the body for every role.
+  `500 {"error": "Upload failed. <detail>"}`, built by `Controller::clientError()` like every
+  other role-aware error ([error-handling.md](error-handling.md) REQ-9): an api-role caller
+  gets `"Upload failed."` with no exception text, and a database error shows the driver's
+  sentence, never the SQL with its bindings. The six upload actions used to put
+  `$e->getMessage()` in the body for every role.
 
 ## Technical design
 
@@ -213,7 +215,7 @@ Scenario: A failed tool upload hides the exception from an api-role caller (regr
   Given ToolUploadService throws "secret bucket detail"
   When an api-role user uploads through a tool endpoint
   Then the response is 500 with error "Upload failed." and no exception text
-  But an editor gets "Upload failed: secret bucket detail"
+  But an editor gets "Upload failed. secret bucket detail"
 # pinned by: tests/Feature/ToolsTest.php
 
 Scenario: An unauthenticated request cannot upload a tex template

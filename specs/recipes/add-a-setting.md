@@ -16,6 +16,7 @@ related:
 source:
   - app/Models/Setting.php
   - app/Http/Controllers/SystemController.php
+  - app/Support/SettingRules.php
   - resources/views/system/index.blade.php
   - resources/js/alpine/system-admin.js
 ```
@@ -71,20 +72,21 @@ if (! Setting::get('my_new_setting', false)) {
 }
 ```
 
-### 3. Add server-side validation for the admin endpoint (only for a known key with real constraints) — `SystemController::updateSetting`
+### 3. Add server-side validation (only for a known key with real constraints) — `App\Support\SettingRules`
 
 ```php
-$validationRules = [
+// app/Support/SettingRules.php, rules()
+return [
     // ... existing entries
-    'my_new_setting' => function ($v) {
-        return in_array($v, ['0', '1', 'true', 'false'], true);
-    },
+    'my_new_setting' => fn ($v) => in_array($v, ['0', '1', 'true', 'false'], true),
 ];
 ```
 
-An unknown key without a validation entry is stored as-is — only add a rule
-here if the setting has a real constraint (a numeric range, an enum, a URL
-shape) worth rejecting server-side.
+`SystemController::updateSetting` checks every key through `SettingRules::passes()`.
+An unknown key without an entry is stored as-is — only add a rule if the setting
+has a real constraint (a numeric range, an enum, a URL shape) worth rejecting
+server-side. A list of allowed values that the page also offers (languages,
+locales) belongs in `config/orca.php`, read by both the rule and the view.
 
 ### 4. Expose it on the System settings page — `resources/views/system/index.blade.php`
 
@@ -96,7 +98,7 @@ shape) worth rejecting server-side.
 
 `updateSetting(key, value)` (already defined once in
 `resources/js/alpine/system-admin.js`) POSTs to the existing
-`/system/settings/update` endpoint — no new JS needed unless the setting
+`POST /system/settings` endpoint (`system.update-setting`) — no new JS needed unless the setting
 change should trigger a side effect (see `s3_root_folder`'s existing
 `refreshFolderHierarchy()` follow-up call for the pattern).
 
@@ -116,7 +118,8 @@ php artisan config:clear && php artisan test tests/Feature/SystemTest.php tests/
 - Every `Setting::set()` call busts three cache keys (`setting:{key}`,
   `settings:all`, `settings:grouped`) — a raw `Setting::where(...)->update()`
   bypasses all three and the change won't be visible until the 1-hour TTL
-  expires. Always write through `Setting::set()`.
+  expires. Always write through `Setting::set()`, and delete through
+  `Setting::forget()` (which busts the same three keys).
 - A boolean setting is stored as the **string** `'true'`/`'false'` (or
   `'1'`/`'0'` from a checkbox), cast on read via `Setting::castValue()` using
   `filter_var($value, FILTER_VALIDATE_BOOLEAN)` — don't compare the raw

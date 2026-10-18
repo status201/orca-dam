@@ -3,7 +3,7 @@
 ```yaml
 id: duplicate-detection
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -94,8 +94,11 @@ findDuplicate(?string $etag, ?Asset $existingAtKey = null): ?Asset
 discardDuplicate(string $s3Key, Asset $existing, string $filename): void
   # REQ-3: delete the just-written object and log the match
 persist(array $attributes, ?Asset $overwrite = null): Asset
-  # create, or overwrite $overwrite in place: restore it, reset its derived keys,
-  # set last_modified_by to the uploading user ($attributes['user_id'])
+  # create, or overwrite $overwrite in place: delete its derived S3 objects (they describe
+  # the old bytes), reset their columns, restore it, clear s3_missing_at (the object was just
+  # written), and set last_modified_by to the uploading user ($attributes['user_id'])
+  # deleted_at is set directly, not mass-assigned: it is not fillable, and update() silently
+  # dropped it, so an upload onto a trashed asset's key used to leave the row in the trash
 ```
 
 `Asset::scopeDuplicateOf($query, ?string $etag)` is the query itself: an etag match, and
@@ -148,6 +151,13 @@ REST API (Api\AssetApiController::store):
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: An overwrite cleans up after the old bytes in one place
+  Given a trashed asset flagged missing, with a thumbnail
+  When AssetIngestionService::persist() overwrites it
+  Then its derived S3 objects are deleted once, their columns are null, it is restored,
+  And s3_missing_at is cleared and last_modified_by is the uploader
+# pinned by: tests/Unit/Services/AssetIngestionServiceTest.php
+
 Scenario: A direct web upload with a matching etag is blocked
   Given an existing asset with a known etag
   When a file with the same content is uploaded via POST /assets

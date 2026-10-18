@@ -60,13 +60,14 @@ class FolderRegistry
         }
 
         $root = S3Service::getRootFolder();
-        $derived = Asset::select('s3_key')->get()
-            ->map(fn (Asset $asset) => dirname($asset->s3_key))
-            ->unique()
-            ->values()
-            ->all();
+        $seen = $root !== '' ? [$root => true] : [];
 
-        $folders = array_values(array_unique(array_merge($root !== '' ? [$root] : [], $derived)));
+        // Streamed as plain rows: a large library must not be hydrated into models for this.
+        foreach (Asset::query()->toBase()->select('s3_key')->cursor() as $row) {
+            $seen[dirname($row->s3_key)] = true;
+        }
+
+        $folders = array_map('strval', array_keys($seen));
         sort($folders);
         $this->replace($folders);
 

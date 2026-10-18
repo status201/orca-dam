@@ -246,16 +246,19 @@ class Asset extends Model
      */
     public function syncTagsPreservingAi(?array $userTagIds, ?array $referenceTagIds): void
     {
-        $current = fn (BelongsToMany $relation): array => $relation->get()
-            ->mapWithKeys(fn (Tag $tag) => [$tag->id => ['attached_by' => $tag->pivot->attached_by]])
-            ->all();
+        // The current pivots, by tag type, from one query.
+        $current = $this->tags()->get()
+            ->groupBy('type')
+            ->map(fn ($tags) => $tags
+                ->mapWithKeys(fn (Tag $tag) => [$tag->id => ['attached_by' => $tag->pivot->attached_by]])
+                ->all());
 
-        $aiPivots = $current($this->aiTags());
+        $aiPivots = $current->get('ai', []);
         $referencePivots = $referenceTagIds === null
-            ? $current($this->referenceTags())
+            ? $current->get('reference', [])
             : array_fill_keys($referenceTagIds, ['attached_by' => 'reference']);
         $userPivots = $userTagIds === null
-            ? $current($this->userTags())
+            ? $current->get('user', [])
             : array_fill_keys($userTagIds, ['attached_by' => 'user']);
 
         $this->tags()->sync($aiPivots + $referencePivots + $userPivots);

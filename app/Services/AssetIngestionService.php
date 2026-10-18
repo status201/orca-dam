@@ -59,9 +59,9 @@ class AssetIngestionService
     /**
      * Create the Asset, or overwrite $overwrite in place.
      *
-     * An overwrite brings the row back from the trash, hands it to the uploading user, and forgets
-     * its derived keys — the caller has already deleted those objects, since they describe the
-     * old bytes.
+     * An overwrite deletes the row's derived S3 objects (they describe the old bytes) and forgets
+     * their keys, brings the row back from the trash, clears s3_missing_at (the object was just
+     * written), and hands it to the uploading user.
      *
      * @param  array<string, mixed>  $attributes  s3_key, filename, mime_type, size, etag, width,
      *                                            height and user_id, plus any extra columns
@@ -72,14 +72,21 @@ class AssetIngestionService
             return Asset::create($attributes);
         }
 
-        $overwrite->update(array_merge(
+        $this->s3Service->deleteAssetFiles($overwrite, keepOriginal: true);
+
+        $overwrite->fill(array_merge(
             $attributes,
             Asset::derivedKeyResetAttributes(),
             [
-                'deleted_at' => null,
+                's3_missing_at' => null,
                 'last_modified_by' => $attributes['user_id'] ?? null,
             ],
         ));
+
+        // Set directly, not mass-assigned: deleted_at is not fillable, and passing it to update()
+        // was silently dropped — an upload onto a trashed asset's key stayed in the trash.
+        $overwrite->deleted_at = null;
+        $overwrite->save();
 
         return $overwrite;
     }

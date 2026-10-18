@@ -17,6 +17,8 @@ source:
   - app/Models/Asset.php
   - app/Services/AssetSearchParser.php
   - database/migrations/
+  - app/Support/AssetFilter.php
+  - app/Support/AssetSort.php
 ```
 
 ## Background / Why

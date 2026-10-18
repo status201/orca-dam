@@ -187,6 +187,11 @@ Scenario: An invalid folder name is rejected before touching S3 (REQ-4)
   Then the response is 422
 # pinned by: tests/Feature/FolderTest.php
 
+Scenario: With nothing stored, a picker offers the root folder alone
+  Given root folder "assets" and no s3_folders setting
+  Then forPicker() returns ["assets"]
+# pinned by: tests/Unit/Services/FolderRegistryTest.php
+
 Scenario: Every picker gets the normalised folder list (REQ-picker-folder-list)
   Given root folder "assets" and a stored list that holds a stale "" but not "assets"
   Then forPicker() offers "assets" first and no ""
@@ -205,8 +210,10 @@ Scenario: A non-admin cannot create a folder (REQ-6)
 
 - Feature: `tests/Feature/FolderTest.php` — all seven scenarios; `S3Service` is mocked
   via `$this->app->instance()` so no bucket is touched.
-- Unit: `tests/Unit/S3ServiceTest.php` (`getConfiguredFolders`, `getRootFolder`) and
-  `tests/Unit/Services/S3ServiceTest.php` (`listFolders` pagination) — the primitives
+- Unit: `tests/Unit/Services/FolderRegistryTest.php` — `forPicker()` (fallbacks and the
+  REQ-picker-folder-list normalisation), the REQ-2 back-fill, `add()` and `forget()`;
+  `tests/Unit/S3ServiceTest.php` (`getRootFolder`) and
+  `tests/Unit/Services/S3ServiceTest.php` (`listFolders` pagination) — the S3 primitives
   behind REQ-2/REQ-3, owned by [s3-storage.md](s3-storage.md).
 - Run: `php artisan config:clear && php artisan test tests/Feature/FolderTest.php`
 - Style: `./vendor/bin/pint --test`
@@ -219,10 +226,10 @@ Scenario: A non-admin cannot create a folder (REQ-6)
   individually; the only way to drop one is a `scan` after the prefix disappears from
   S3. Removing a non-empty folder would need an asset-move story first — see
   `bulkMove` in [bulk-operations.md](bulk-operations.md).
-- **REQ-2's back-fill is unpinned.** `FolderTest` always seeds `s3_folders`, so the
-  derive-from-assets branch of `getCachedFolders()` has no test. It is reachable on a
-  fresh install with assets already imported by
-  [discovery-import.md](discovery-import.md).
+- ~~REQ-2's back-fill is unpinned.~~ **Resolved** — `FolderRegistryTest` derives the list
+  from asset keys and asserts it is persisted. It streams key rows rather than hydrating
+  models, so a large library does not exhaust memory on the first request after a
+  root-folder change.
 - The `500` branch of REQ-5 (S3 refuses the write) is also unpinned.
 - Only `POST /folders` is wired into the UI (`assets/create.blade.php`);
   `/folders/scan` and `GET /api/folders` are called by API clients and admin tooling. A

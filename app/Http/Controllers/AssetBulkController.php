@@ -196,6 +196,15 @@ class AssetBulkController extends Controller
 
             $newS3Key = $destinationFolder.'/'.basename($oldS3Key);
 
+            // Another asset already lives there (two keep_original_filename uploads with the same
+            // name). Copying would overwrite its bytes and derived objects (bulk-operations REQ-4).
+            if (Asset::withTrashed()->where('s3_key', $newS3Key)->exists()) {
+                Log::warning("Asset move skipped: {$newS3Key} already belongs to another asset");
+                $failed++;
+
+                continue;
+            }
+
             if (! $this->s3Service->moveObject($oldS3Key, $newS3Key)) {
                 $failed++;
 
@@ -204,9 +213,12 @@ class AssetBulkController extends Controller
 
             $updateData = ['s3_key' => $newS3Key];
 
+            // A column follows its object only when the copy succeeded; otherwise the object is
+            // still at the old key, and that is where the column must keep pointing.
             foreach ($this->s3Service->relocatedDerivedKeys($asset, $newS3Key) as $column => $newKey) {
-                $this->s3Service->moveObject($asset->{$column}, $newKey);
-                $updateData[$column] = $newKey;
+                if ($this->s3Service->moveObject($asset->{$column}, $newKey)) {
+                    $updateData[$column] = $newKey;
+                }
             }
 
             DB::transaction(function () use ($asset, $updateData) {

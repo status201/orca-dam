@@ -100,10 +100,11 @@ class Tag extends Model
         // Batch lookup: 1 query for all existing tags
         $existing = static::whereIn('name', $normalized)->pluck('id', 'name');
 
-        // Create only the missing ones
+        // The rest exist only if the database says so. Its collation decides what "the same name"
+        // means — utf8mb4_unicode_ci matches "cafe" for "café", and so does the unique index —
+        // so an exact PHP comparison against the lookup above cannot decide "missing" (REQ-6).
         foreach ($normalized->diff($existing->keys()) as $name) {
-            $tag = static::create(['name' => $name, 'type' => $type]);
-            $existing[$name] = $tag->id;
+            $existing[$name] = static::firstOrCreate(['name' => $name], ['type' => $type])->id;
         }
 
         return $normalized->map(fn ($n) => $existing[$n])->all();

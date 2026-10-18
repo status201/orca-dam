@@ -16,6 +16,8 @@ source:
   - resources/views/assets/partials/grid-cards.blade.php
   - resources/views/components/asset-cycle-nav.blade.php
   - resources/js/alpine/asset-detail.js
+  - app/Support/AssetFilter.php
+  - app/Support/AssetSort.php
 ```
 
 ## Background / Why
