@@ -27,7 +27,7 @@ class ReferenceTagCreateCommand extends Command
         }
 
         $normalized = collect($names)
-            ->map(fn ($n) => strtolower(trim((string) $n)))
+            ->map(fn ($n) => Tag::normalizeName((string) $n))
             ->filter(fn ($n) => $n !== '')
             ->unique()
             ->values();

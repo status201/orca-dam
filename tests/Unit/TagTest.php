@@ -112,3 +112,8 @@ test('asset referenceTags relationship returns only reference tags', function ()
     expect($asset->referenceTags)->toHaveCount(1);
     expect($asset->referenceTags->first()->type)->toBe('reference');
 });
+
+test('normalizeName trims and lowercases multibyte-safely, like TagInputParser', function () {
+    expect(Tag::normalizeName('  ÉTÉ '))->toBe('été')
+        ->and(Tag::resolveUserTagIds(['ÉTÉ']))->toBe(Tag::resolveUserTagIds(['été']));
+});

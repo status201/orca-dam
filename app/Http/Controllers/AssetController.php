@@ -16,7 +16,6 @@ use App\Support\AssetFilter;
 use App\Support\AssetSort;
 use App\Support\TagInputParser;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -25,8 +24,6 @@ use Illuminate\Validation\Rule;
 
 class AssetController extends Controller
 {
-    use AuthorizesRequests;
-
     /**
      * Query parameters that describe an index result set. Used to detect
      * whether the show page was reached "in context" (from a filtered index)

@@ -6,14 +6,11 @@ use App\Models\Asset;
 use App\Services\CsvExportService;
 use App\Services\FolderRegistry;
 use App\Services\S3Service;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ExportController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(
         protected CsvExportService $csvExportService,
         protected FolderRegistry $folders,

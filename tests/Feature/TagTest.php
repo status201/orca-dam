@@ -696,3 +696,16 @@ test('a tag name over the limit is still rejected on rename', function () {
         ->assertStatus(422)
         ->assertJsonValidationErrors('name');
 });
+
+test('renaming a tag to a differently-cased existing name is a validation error, non-ASCII included (regression)', function () {
+    $user = User::factory()->create();
+    Tag::factory()->create(['name' => 'été', 'type' => 'user']);
+    $other = Tag::factory()->create(['name' => 'winter', 'type' => 'user']);
+
+    $this->actingAs($user)
+        ->patchJson(route('tags.update', $other), ['name' => ' ÉTÉ '])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('name');
+
+    expect($other->fresh()->name)->toBe('winter');
+});

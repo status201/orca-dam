@@ -12,15 +12,12 @@ use App\Services\QueueService;
 use App\Services\SystemService;
 use App\Services\TestRunnerService;
 use App\Support\SettingRules;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use League\CommonMark\GithubFlavoredMarkdownConverter;
 
 class SystemController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(
         protected SystemService $systemService,
         protected ArtisanCommandRunner $commands,

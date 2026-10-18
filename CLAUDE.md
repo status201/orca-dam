@@ -70,7 +70,7 @@ See [`specs/architecture.md`](specs/architecture.md) for the service-layer map, 
 | forceDelete / discover / export | ✓ | ✗ | ✗ |
 | move / bulkForceDelete (also requires `maintenance_mode`) | ✓ | ✗ | ✗ |
 
-`AssetApiController::destroy` routes through `$this->authorize('delete', $asset)`, so API tokens cannot delete assets via the REST API.
+`AssetApiController::destroy` routes through `$this->authorize('delete', $asset)`, so API tokens cannot delete assets via the REST API. `AssetApiController::update` checks `updateViaApi`: admins may update any asset, editors and API tokens only assets they uploaded.
 
 ### Locale
 

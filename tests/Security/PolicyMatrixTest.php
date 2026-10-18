@@ -70,6 +70,9 @@ function policyMatrix(): array
         'AssetPolicy::export' => $adminOnly,
         'AssetPolicy::move' => $adminOnly,
         'AssetPolicy::bulkForceDelete' => $adminOnly,
+        // Against an asset someone else uploaded; an editor's or api token's own upload is
+        // pinned by tests/Unit/Policies/AssetPolicyTest.php.
+        'AssetPolicy::updateViaApi' => $adminOnly,
 
         'UserPolicy::viewAny' => $adminOnly,
         'UserPolicy::create' => $adminOnly,
@@ -315,6 +318,6 @@ test('the matrix covers every role the database permits', function () {
 
 test('the ability scanner sees the known policy surface', function () {
     expect(policyAbilities())
-        ->toHaveCount(21)
+        ->toHaveCount(22)
         ->toHaveKeys(['AssetPolicy::forceDelete', 'UserPolicy::delete', 'SystemPolicy::access']);
 });

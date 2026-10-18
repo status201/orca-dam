@@ -7,11 +7,6 @@ use Illuminate\Http\Request;
 
 class TagController extends Controller
 {
-    public function __construct()
-    {
-        // $this->middleware('auth');
-    }
-
     /**
      * Get tags for autocomplete
      */
@@ -147,24 +142,21 @@ class TagController extends Controller
             ], 403);
         }
 
+        // Normalized first, so the unique rule compares the name as it will be stored — a rename to
+        // "Foo" must collide with "foo" here, not at the database's unique index.
+        if (is_string($request->input('name'))) {
+            $request->merge(['name' => Tag::normalizeName($request->input('name'))]);
+        }
+
         $request->validate([
             // Tag::MAX_NAME_LENGTH, not 50: every creation path allows 100, so a 51-100
             // character tag used to be unrenamable — its own current name failed this rule.
             'name' => 'required|string|max:'.Tag::MAX_NAME_LENGTH.'|unique:tags,name,'.$tag->id,
         ]);
 
-        $tag->update([
-            'name' => strtolower(trim($request->name)),
-        ]);
+        $tag->update(['name' => $request->input('name')]);
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => __('Tag updated successfully'),
-                'tag' => $tag,
-            ]);
-        }
-
-        return redirect()->route('tags.index')->with('success', __('Tag updated successfully'));
+        return $this->successResponse(__('Tag updated successfully'), 'tags.index', ['tag' => $tag]);
     }
 
     /**
@@ -194,12 +186,6 @@ class TagController extends Controller
         // because of the relationship cascade (handled by Laravel)
         $tag->delete();
 
-        if (request()->expectsJson()) {
-            return response()->json([
-                'message' => __('Tag deleted successfully'),
-            ]);
-        }
-
-        return redirect()->route('tags.index')->with('success', __('Tag deleted successfully'));
+        return $this->successResponse(__('Tag deleted successfully'), 'tags.index');
     }
 }

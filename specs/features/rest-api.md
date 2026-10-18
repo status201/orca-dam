@@ -3,7 +3,7 @@
 ```yaml
 id: rest-api
 status: implemented
-version: 6
+version: 7
 owner: core
 related:
   - architecture
@@ -44,10 +44,13 @@ responses, and a role split on error verbosity.
 - **REQ-2** — Every list/search endpoint accepts the same filter vocabulary:
   `search`/`q`, `tags`, `type`, `folder`, `sort`, `per_page` (capped at 100).
 - **REQ-3** — `DELETE /api/assets/{asset}` is policy-gated
-  (`AssetPolicy::delete`) so an `api`-role token gets `403` and cannot delete —
-  every other asset ability on this controller (`view`, `create`, `update`) is
-  open to all three roles, matching the ability matrix in
-  [`authorization-policies.md`](authorization-policies.md).
+  (`AssetPolicy::delete`) so an `api`-role token gets `403` and cannot delete.
+  `PATCH /api/assets/{asset}` is gated by `AssetPolicy::updateViaApi`: an admin may
+  update any asset, an editor or api token only one it uploaded (`403
+  {"message": "Unauthorized"}` otherwise). Viewing and creating are open to all three
+  roles, matching the ability matrix in
+  [`authorization-policies.md`](authorization-policies.md). The update rule used to be
+  hand-written in the controller, and this requirement wrongly described it as open.
 - **REQ-4** — API uploads are gated by the `api_upload_enabled` setting
   (default on); when off, `POST /api/assets` returns `403` before touching S3.
 - **REQ-5** — `GET /api/assets/meta` and `GET /api/health` are public (no auth),
@@ -160,10 +163,10 @@ response: { status: 'ok'|'error', database: 'ok'|'error' }   # 200 or 503
 
 `throttle` → `auth.multi` → `StoreAssetRequest`/`UpdateAssetRequest` (validate)
 → `AssetApiController` (authorize where applicable) → `S3Service` /
-`AssetProcessingService` → `Asset` (Eloquent). `destroy` is the only action that
-calls `$this->authorize()` explicitly; `index`/`show`/`update`/`store` rely on
-the route being open to all three known roles (no policy check beyond
-`isKnownRole`-equivalent access via the guard).
+`AssetProcessingService` → `Asset` (Eloquent). `destroy` calls
+`$this->authorize('delete')` and `update` checks `updateViaApi` through the Gate;
+`index`/`show`/`store` rely on the route being open to all three known roles (no
+policy check beyond `isKnownRole`-equivalent access via the guard).
 
 **Duplicate payload**: `AssetApiController::store` uses
 `DuplicateAssetException::formatDuplicate()` like the web and chunked paths

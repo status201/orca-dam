@@ -15,6 +15,7 @@ test('job extracts dimensions and calls processImageAsset', function () {
         ->andReturn(['width' => 640, 'height' => 480]);
 
     $rekognition = Mockery::mock(RekognitionService::class);
+    $rekognition->shouldReceive('isEnabled')->andReturn(false);
 
     $processing = Mockery::mock(AssetProcessingService::class);
     $processing->shouldReceive('processImageAsset')
@@ -36,6 +37,7 @@ test('job runs AI tagging synchronously when Rekognition is enabled', function (
     $s3 = Mockery::mock(S3Service::class);
 
     $rekognition = Mockery::mock(RekognitionService::class);
+    $rekognition->shouldReceive('isEnabled')->andReturn(true);
     $rekognition->shouldReceive('autoTagAsset')
         ->once()
         ->andReturn(['cat', 'feline']);

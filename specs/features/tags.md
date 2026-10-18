@@ -3,7 +3,7 @@
 ```yaml
 id: tags
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -52,6 +52,13 @@ data model per tag origin.
 - **REQ-6** — Resolving a tag name to an ID never changes an existing tag's
   `type`. `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` reuse an
   existing tag of any type if the name already exists.
+- **REQ-tag-name-normalization** — Every path that turns a name into a tag, or looks
+  a tag up by name, normalizes it with `Tag::normalizeName()` — trimmed and lowercased
+  with `mb_strtolower`, the same rule `TagInputParser` applies. That covers resolving
+  names to ids (user, reference and AI tags), renaming a tag, `reference-tag:create`, and
+  removing reference tags by name. The other paths used to lowercase byte-wise
+  (`strtolower`), which leaves non-ASCII capitals alone, so "ÉTÉ" was created as "été"
+  through the tag input but renamed or looked up as "ÉtÉ".
 - **REQ-tag-pickers-lead-with-user-tags** — Tag-type pickers lead with **User** tags. Reference tags are
   machine-named (`00213478-7efb-…`) and numerous, so an "all types" list sorted by
   name opens on a wall of them. The Tags page tabs and the asset grid's
@@ -71,8 +78,10 @@ data model per tag origin.
 Tag (app/Models/Tag.php):
   MAX_NAME_LENGTH: 100                       # shared by validation + TagInputParser
   assets(): BelongsToMany                    # ->withPivot('attached_by')->withTimestamps()
+  normalizeName(string $name): string       # mb_strtolower(trim()) — REQ-tag-name-normalization
   resolveUserTagIds(array $names): array     # firstOrCreate as type=user; reuses existing tag as-is
   resolveReferenceTagIds(array $names): array # same, type=reference
+  resolveAiTagIds(array $names): array       # same, type=ai — RekognitionService::autoTagAsset()
   scopeUserTags / scopeAiTags / scopeReferenceTags
   scopeSearch(?string $search)               # name LIKE %search%
 
@@ -174,6 +183,12 @@ submitted this way is rejected with 422 rather than silently reattached.
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: A non-ASCII tag name is normalized the same way on every path (regression)
+  Given a tag created as "été" through the tag input
+  When an editor renames another tag to " ÉTÉ " it collides with "été" (422)
+  And reference tags named "ÉTÉ" are removed by name, the reference tag "été" is found
+# pinned by: tests/Feature/TagTest.php, tests/Feature/ApiTest.php
+
 Scenario: A tag can belong to many assets
   Given a tag and three assets
   When the tag is attached to all three

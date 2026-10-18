@@ -60,6 +60,16 @@ class AssetPolicy
     }
 
     /**
+     * Determine whether the user can update the asset through the REST API: an admin any asset,
+     * an editor or api token only one it uploaded (rest-api.md REQ-3).
+     */
+    public function updateViaApi(User $user, Asset $asset): bool
+    {
+        return $user->isAdmin()
+            || (($user->isEditor() || $user->isApiUser()) && $asset->user_id === $user->id);
+    }
+
+    /**
      * Determine whether the user can delete the asset.
      */
     public function delete(User $user, Asset $asset): bool

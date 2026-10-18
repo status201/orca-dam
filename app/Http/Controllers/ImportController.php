@@ -6,14 +6,11 @@ use App\Models\Asset;
 use App\Models\Tag;
 use App\Services\CsvImportService;
 use App\Support\TagInputParser;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ImportController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(protected CsvImportService $csvImportService) {}
 
     public function index()

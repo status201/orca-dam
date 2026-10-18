@@ -174,18 +174,7 @@ class RekognitionService
         }
 
         $labels = $this->detectLabels($asset->s3_key);
-        $tagIds = [];
-
-        foreach ($labels as $label) {
-            // Create or find tag
-            $tag = Tag::firstOrNew(['name' => $label['name']]);
-            if (! $tag->exists) {
-                $tag->type = 'ai';
-                $tag->save();
-            }
-
-            $tagIds[] = $tag->id;
-        }
+        $tagIds = Tag::resolveAiTagIds(array_column($labels, 'name'));
 
         // Attach tags to asset (only AI tags, don't remove user tags)
         if (! empty($tagIds)) {

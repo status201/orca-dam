@@ -68,3 +68,13 @@ test('bulkForceDelete requires admin AND maintenance mode', function () {
     expect($this->policy->bulkForceDelete($this->editor))->toBeFalse();
     expect($this->policy->bulkForceDelete($this->api))->toBeFalse();
 });
+
+test('updateViaApi lets an admin update anything and others only their own uploads', function () {
+    $foreign = Asset::factory()->create();
+
+    expect($this->policy->updateViaApi($this->admin, $foreign))->toBeTrue()
+        ->and($this->policy->updateViaApi($this->editor, $foreign))->toBeFalse()
+        ->and($this->policy->updateViaApi($this->api, $foreign))->toBeFalse()
+        ->and($this->policy->updateViaApi($this->editor, Asset::factory()->create(['user_id' => $this->editor->id])))->toBeTrue()
+        ->and($this->policy->updateViaApi($this->api, Asset::factory()->create(['user_id' => $this->api->id])))->toBeTrue();
+});

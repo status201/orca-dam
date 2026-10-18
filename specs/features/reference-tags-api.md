@@ -3,7 +3,7 @@
 ```yaml
 id: reference-tags-api
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -113,9 +113,10 @@ across the four identifier fields, tracking unresolved `s3_key`/`s3_keys`) →
 `Tag::resolveReferenceTagIds()` / `Tag::referenceTags()` scope →
 `Asset::syncTagsWithAttribution()` or `$asset->tags()->detach()`.
 
-Tag *names* passed to `removeReferenceTagsByName` are lowercased/trimmed
-before lookup, matching the normalization `TagInputParser` applies on create —
-so `POST` and both `DELETE` shapes agree on casing.
+Tag *names* passed to `removeReferenceTagsByName` go through `Tag::normalizeName()`
+before lookup — the normalization `TagInputParser` applies on create
+([`tags.md`](tags.md) REQ-tag-name-normalization) — so `POST` and both `DELETE` shapes
+agree on casing, non-ASCII letters included. (They used `strtolower`, which did not.)
 
 ### Persistence
 
