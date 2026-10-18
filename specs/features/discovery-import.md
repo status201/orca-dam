@@ -15,6 +15,7 @@ related:
 source:
   - app/Http/Controllers/DiscoverController.php
   - app/Jobs/ProcessDiscoveredAsset.php
+  - app/Services/AssetIngestionService.php
 ```
 
 ## Background / Why

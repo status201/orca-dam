@@ -13,6 +13,7 @@ source:
   - app/Console/Commands/LangSafeUpdate.php
   - lang/nl.json
   - app/Http/Controllers/ProfileController.php
+  - config/orca.php
 ```
 
 ## Background / Why

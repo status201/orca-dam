@@ -15,6 +15,8 @@ related:
 source:
   - app/Http/Controllers/AssetTrashController.php
   - app/Policies/AssetPolicy.php
+  - app/Support/BulkAssetIds.php
+  - app/Http/Concerns/ForceDeletesAssets.php
 ```
 
 ## Background / Why

@@ -359,6 +359,8 @@ Admins can move assets between S3 folders when **maintenance mode** is enabled (
 
 All associated files (thumbnail, resize variants S/M/L) are moved automatically.
 
+A file is skipped, and counted as failed in the summary, when the destination folder already holds another asset with the same file name — a move never overwrites another asset.
+
 ---
 
 ## Bulk Permanent Delete (Admin Only)
@@ -527,4 +529,4 @@ Compile TikZ diagrams on the server using a full TeX Live installation. Requires
 - For technical issues, contact your system administrator
 - Admins: see `README.md`, `CLAUDE.md`, and `DEPLOYMENT.md` for technical docs
 
----
+---

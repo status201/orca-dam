@@ -17,6 +17,7 @@ source:
   - app/Http/Controllers/ChunkedUploadController.php
   - app/Models/UploadSession.php
   - routes/web.php
+  - app/Services/AssetIngestionService.php
 ```
 
 ## Background / Why

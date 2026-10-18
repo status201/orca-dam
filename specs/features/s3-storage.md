@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -21,6 +21,7 @@ source:
   - app/Services/S3Service.php
   - app/Support/UploadPolicy.php
   - config/filesystems.php
+  - app/Support/AssetKeyLayout.php
 ```
 
 ## Background / Why
@@ -146,7 +147,8 @@ repairUploadHeaders(s3Key): ?string         # copy onto itself with the headers 
 getObjectContent(s3Key): ?string
 getPublicBaseUrl(): string                  # static — custom_domain setting > AWS_URL
 getUrl(s3Key): string
-getRootFolder() / getConfiguredFolders() / getRootPrefix(): static helpers over the Setting model
+getRootFolder() / getRootPrefix(): static helpers over the Setting model
+                                            # (the folder *list* is FolderRegistry's — folder-management.md)
 setS3Client(S3Client): static               # test seam — swap the underlying AWS client
 __construct(ImageProcessingService)         # builds S3Client from the `s3` disk config,
                                             # incl. endpoint + use_path_style_endpoint (REQ-7)
@@ -203,11 +205,6 @@ call is a live AWS API request.
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: getConfiguredFolders falls back to the root folder when s3_folders is unset
-  Given no s3_folders setting
-  Then getConfiguredFolders() returns [rootFolder]
-# pinned by: tests/Unit/S3ServiceTest.php
-
 Scenario: getRootFolder trims whitespace and slashes
   Given s3_root_folder = " /assets/ "
   Then getRootFolder() returns "assets"

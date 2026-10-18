@@ -23,6 +23,8 @@ source:
   - app/Http/Requests/StoreAssetRequest.php
   - app/Http/Requests/UpdateAssetRequest.php
   - routes/api.php
+  - app/Support/AssetFilter.php
+  - app/Policies/AssetPolicy.php
 ```
 
 ## Background / Why

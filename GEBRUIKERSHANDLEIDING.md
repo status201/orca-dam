@@ -359,6 +359,8 @@ Admins kunnen assets tussen S3-mappen verplaatsen wanneer de **onderhoudsmodus**
 
 Alle bijbehorende bestanden (miniatuur, formaatpresets S/M/L) worden automatisch meeverplaatst.
 
+Een bestand wordt overgeslagen, en in het overzicht als mislukt geteld, wanneer de doelmap al een ander asset met dezelfde bestandsnaam bevat — verplaatsen overschrijft nooit een ander asset.
+
 ---
 
 ## Bulksgewijs permanent verwijderen (alleen admin)

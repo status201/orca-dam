@@ -17,6 +17,8 @@ source:
   - database/factories/TagFactory.php
   - resources/js/alpine/tags.js
   - resources/js/alpine/asset-grid.js
+  - app/Support/TagInputParser.php
+  - app/Services/RekognitionService.php
 ```
 
 ## Background / Why

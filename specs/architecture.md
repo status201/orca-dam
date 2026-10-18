@@ -251,6 +251,20 @@ Passkey / GameScore
   `wordpress-plugin/`). See [ADR-013](decisions/adr-013-wordpress-plugin-separate-stream.md).
 - **Free-text tag input** is normalized by `App\Support\TagInputParser::parse()`
   everywhere (comma-splitting, trim, lowercase, dedup). See [`features/tag-input.md`](features/tag-input.md).
+- **One owner per piece of shared logic.** Each of these used to exist in several copies,
+  and the copies drifted into bugs; a change goes through the owner, not around it:
+  - asset rows from any ingestion path — duplicate check, create or overwrite —
+    `AssetIngestionService` ([`features/duplicate-detection.md`](features/duplicate-detection.md));
+  - derived S3 key names — `App\Support\AssetKeyLayout`; a stored key's name never changes
+    ([`features/s3-storage.md`](features/s3-storage.md) REQ-6);
+  - the folder list (`s3_folders`) — `FolderRegistry` ([`features/folder-management.md`](features/folder-management.md));
+  - asset list filters and sort orders — `App\Support\AssetFilter` / `AssetSort`
+    ([`features/asset-model.md`](features/asset-model.md));
+  - tag names — `Tag::normalizeName()`, resolved by `Tag::resolve*TagIds()` so the database's
+    collation decides what already exists ([`features/tags.md`](features/tags.md));
+  - browser request headers and size formatting — `requestHeaders()` in `resources/js/http.js`,
+    `formatBytes()` in `resources/js/format.js`
+    ([`features/error-handling.md`](features/error-handling.md) REQ-request-headers).
 
 ## Key decisions (ADRs)
 

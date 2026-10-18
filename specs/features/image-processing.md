@@ -11,6 +11,7 @@ related:
   - asset-upload
 source:
   - app/Services/ImageProcessingService.php
+  - app/Support/AssetKeyLayout.php
 ```
 
 ## Background / Why

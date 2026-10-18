@@ -15,6 +15,8 @@ related:
 source:
   - app/Http/Controllers/AssetBulkController.php
   - app/Policies/AssetPolicy.php
+  - app/Support/BulkAssetIds.php
+  - app/Http/Concerns/ForceDeletesAssets.php
 ```
 
 ## Background / Why
@@ -40,7 +42,7 @@ explicit "the system is in a safe window for this" switch (see
   `architecture.md`.
 - **REQ-3** — `bulkMove`'s destination folder must be one of the configured S3
   folders (or a subfolder of one) — validated via a closure comparing against
-  `S3Service::getConfiguredFolders()`, rejecting path traversal outside them.
+  `FolderRegistry::forPicker()`, rejecting path traversal outside them.
 - **REQ-4** — A move updates the asset's `s3_key` **and** all four derived
   keys (`thumbnail_s3_key`, `resize_{s,m,l}_s3_key`) that exist, via
   `S3Service::relocatedDerivedKeys()` + `moveObject()` — never regenerating the
@@ -102,14 +104,17 @@ moves: [{old: s3_key, new: s3_key}, ...]
 
 ```
 bulkMove(): authorize(move, Asset::class)
-  → validate destination_folder against getConfiguredFolders()
+  → validate destination_folder against FolderRegistry::forPicker()
   → per asset: skip if already in destination
     → S3Service::moveObject(original)
-    → relocatedDerivedKeys() → moveObject() for each existing derived key
+    → skip (failed++) if another asset, trashed included, already holds the new key
+    → relocatedDerivedKeys() → moveObject() for each existing derived key; a column takes
+      its new key only when that copy succeeded
     → DB::transaction(asset->update([s3_key, ...derived keys]))
 
 bulkForceDelete(): authorize(bulkForceDelete, Asset::class)
-  → per asset: S3Service::deleteAssetFiles() → DB::transaction(forceDelete())
+  → ForceDeletesAssets::forceDeleteAssets(): per asset S3Service::deleteAssetFiles()
+    → DB::transaction(forceDelete()), counting failures (shared with the trash page's bulk purge)
 
 bulkDownload(): authorize(bulkDownload, Asset::class)
   → validate asset_ids (max 100)

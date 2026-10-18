@@ -20,6 +20,7 @@ source:
   - resources/js/alpine/tools-tikz-svg.js
   - resources/js/alpine/tools-tikz-svg-fonts.js
   - resources/js/alpine/tools-tikz-png.js
+  - resources/js/alpine/tikz-results.js
 ```
 
 ## Background / Why
