@@ -10,7 +10,10 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Services\AssetIngestionService;
 use App\Services\AssetProcessingService;
+use App\Services\FolderRegistry;
 use App\Services\S3Service;
+use App\Support\AssetFilter;
+use App\Support\AssetSort;
 use App\Support\TagInputParser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -37,6 +40,7 @@ class AssetController extends Controller
         protected S3Service $s3Service,
         protected AssetProcessingService $assetProcessingService,
         protected AssetIngestionService $ingestion,
+        protected FolderRegistry $folders,
     ) {}
 
     /**
@@ -75,12 +79,9 @@ class AssetController extends Controller
         $folder = $request->input('folder', $userHomeFolder);
 
         $filterUser = null;
-        if ($userId = $request->input('user')) {
-            if (Auth::user()->isAdmin() || (int) $userId === Auth::id()) {
-                $filterUserModel = User::find($userId);
-                if ($filterUserModel) {
-                    $filterUser = ['id' => $filterUserModel->id, 'name' => $filterUserModel->name];
-                }
+        if ($userId = $this->permittedUserFilter($request)) {
+            if ($filterUserModel = User::find($userId)) {
+                $filterUser = ['id' => $filterUserModel->id, 'name' => $filterUserModel->name];
             }
         }
 
@@ -88,7 +89,7 @@ class AssetController extends Controller
         $perPage = $this->resolvePerPage($request);
 
         $assets = $query->paginate($perPage)->onEachSide(2)->withQueryString();
-        $folders = S3Service::getConfiguredFolders();
+        $folders = $this->folders->forPicker();
 
         $missingCount = Cache::remember('assets:missing_count', 300, fn () => Asset::missing()->count());
 
@@ -111,49 +112,39 @@ class AssetController extends Controller
      */
     private function buildFilteredAssetQuery(Request $request): Builder
     {
-        $query = Asset::query();
-
         // Explicit ids filter (e.g. from upload duplicates panel "Reveal in library").
         // When present, bypass the implicit home-folder restriction so all listed
         // assets are visible regardless of which folder they live in.
         $explicitIds = $this->parseIdsParam($request->input('ids'));
-        if ($explicitIds !== null) {
-            $query->whereIn('id', $explicitIds);
-        }
-
-        if ($search = $request->input('search')) {
-            $query->search($search);
-        }
-
-        if ($tagIds = $request->input('tags')) {
-            $query->withTags(is_array($tagIds) ? $tagIds : explode(',', $tagIds));
-        }
-
-        if ($type = $request->input('type')) {
-            $query->ofType($type);
-        }
 
         // Folder filter: URL param > user home folder. Empty string means "all folders".
-        // When ids[] is given, callers want exactly those assets — skip folder scoping.
-        $userHomeFolder = Auth::user()->getHomeFolder();
-        $folder = $request->input('folder', $userHomeFolder);
-        if ($folder !== '' && $explicitIds === null) {
-            $query->inFolder($folder);
+        $folder = $request->input('folder', Auth::user()->getHomeFolder());
+
+        return (new AssetFilter(
+            search: $request->input('search'),
+            tagIds: AssetFilter::tagIds($request->input('tags')),
+            type: $request->input('type'),
+            folder: $explicitIds === null ? $folder : null,
+            userId: $this->permittedUserFilter($request),
+            missingOnly: $request->boolean('missing'),
+            ids: $explicitIds,
+            sort: $request->input('sort'),
+        ))->apply(Asset::query());
+    }
+
+    /**
+     * The `user` filter, honoured only for an admin or for the viewer filtering by themselves.
+     * The one guard the query, the filter chip and the summary badge share, so a non-admin can
+     * never filter by — or learn the name of — another user (asset-cycle-navigation.md REQ-5).
+     */
+    private function permittedUserFilter(Request $request): ?int
+    {
+        $userId = (int) $request->input('user');
+        if ($userId <= 0) {
+            return null;
         }
 
-        if ($userId = $request->input('user')) {
-            if (Auth::user()->isAdmin() || (int) $userId === Auth::id()) {
-                $query->byUser($userId);
-            }
-        }
-
-        if ($request->boolean('missing')) {
-            $query->missing();
-        }
-
-        $query->applySort($request->input('sort', 'date_desc'));
-
-        return $query;
+        return Auth::user()->isAdmin() || $userId === Auth::id() ? $userId : null;
     }
 
     /**
@@ -203,7 +194,7 @@ class AssetController extends Controller
         $this->authorize('create', Asset::class);
 
         $rootFolder = S3Service::getRootFolder();
-        $folders = S3Service::getConfiguredFolders();
+        $folders = $this->folders->forPicker();
 
         return view('assets.create', compact('folders', 'rootFolder'));
     }
@@ -492,11 +483,9 @@ class AssetController extends Controller
             }
         }
 
-        if ($userId = $request->input('user')) {
-            if (Auth::user()->isAdmin() || (int) $userId === Auth::id()) {
-                if ($user = User::find($userId)) {
-                    $parts[] = __('Uploaded by').' '.$user->name;
-                }
+        if ($userId = $this->permittedUserFilter($request)) {
+            if ($user = User::find($userId)) {
+                $parts[] = __('Uploaded by').' '.$user->name;
             }
         }
 
@@ -515,27 +504,11 @@ class AssetController extends Controller
 
         $sort = $request->input('sort');
         if ($sort && $sort !== 'date_desc') {
-            $sortLabel = $this->sortLabel($sort);
+            $sortLabel = AssetSort::tryFrom($sort)?->label() ?? $sort;
             $summary .= ($summary !== '' ? ' · ' : '').__('sorted by').' '.$sortLabel;
         }
 
         return $summary;
-    }
-
-    private function sortLabel(string $sort): string
-    {
-        return match ($sort) {
-            'date_asc' => __('Oldest First'),
-            'upload_desc' => __('Newest Uploads'),
-            'upload_asc' => __('Oldest Uploads'),
-            'size_desc' => __('Largest First'),
-            'size_asc' => __('Smallest First'),
-            'name_asc' => __('Name A-Z'),
-            'name_desc' => __('Name Z-A'),
-            's3key_asc' => __('S3 Key A-Z'),
-            's3key_desc' => __('S3 Key Z-A'),
-            default => $sort,
-        };
     }
 
     /**

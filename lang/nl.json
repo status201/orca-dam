@@ -1582,6 +1582,7 @@
     "Upload completed successfully": "Upload succesvol voltooid",
     "Upload Endpoints": "Upload endpoints",
     "Upload endpoints are disabled.": "Upload-endpoints zijn uitgeschakeld.",
+    "Upload failed.": "Upload mislukt.",
     "Upload failed. Please try again.": "Upload mislukt. Probeer het opnieuw.",
     "Upload failed: :error": "Upload mislukt: :error",
     "Upload files up to 500MB with drag & drop. Large files are automatically chunked for reliable uploads.": "Upload bestanden tot 500MB met drag & drop. Grote bestanden worden automatisch opgesplitst voor betrouwbare uploads.",

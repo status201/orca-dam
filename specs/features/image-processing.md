@@ -3,7 +3,7 @@
 ```yaml
 id: image-processing
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -57,6 +57,8 @@ S3/AWS SDK involvement.
 createThumbnailContent(imageContent: string, filename: string): ?string   # JPEG bytes, or null for animated GIF
 createResizedContent(imageContent: string, extension: string, ?width: int, ?height: int): array
   # => {content: string, mime_type: string, extension: string}
+  # extension = AssetKeyLayout::resizeOutputExtension($extension) — the same rule the resize
+  # key uses, so the stored key and the encoded bytes cannot disagree (s3-storage.md REQ-6)
 getImageDimensions(UploadedFile): array          # => {width, height} or [] when not applicable (non-image mime)
 getImageDimensionsFromPath(path: string, filename: string): array  # => {width, height} or [] — REQ-4
 hasRasterDimensions(filename: string): bool      # false for EPS/SVG — also lets S3Service skip the download

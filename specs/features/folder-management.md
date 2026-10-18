@@ -3,7 +3,7 @@
 ```yaml
 id: folder-management
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -14,6 +14,7 @@ related:
   - authorization-policies
 source:
   - app/Http/Controllers/FolderController.php
+  - app/Services/FolderRegistry.php
   - app/Services/S3Service.php
   - routes/web.php
   - routes/api.php
@@ -51,6 +52,13 @@ that read, refresh and extend that list; the key layout and the underlying
   response is `500` and `s3_folders` is left untouched — the setting never advertises a
   folder that does not exist in the bucket. On success the path is appended (if absent),
   the list re-sorted, and `201` returned with the resolved path.
+- **REQ-picker-folder-list** — Every folder picker and folder check (upload, grid filter,
+  tools, Discover, export, the profile home folder, bulk-move validation) takes its list from
+  `FolderRegistry::forPicker()`: the stored `s3_folders`, falling back to the root folder
+  alone. With a root folder configured, a stale `''` entry is dropped and the root is always
+  offered; on a bucket-root install `''` ("/ (root)") is always offered first. Discover used
+  to apply that normalisation on its own, so the other pickers could offer "/ (root)" twice
+  or leave the root out.
 - **REQ-6** — Both mutating endpoints authorize with the **`discover`** ability on
   `Asset` (admin-only per [authorization-policies.md](authorization-policies.md)),
   enforced twice: route middleware `can:discover,App\Models\Asset` *and*
@@ -73,7 +81,13 @@ controller (app/Http/Controllers/FolderController.php):
   scan(): JsonResponse                            # { folders: string[] }            200
   store(Request): JsonResponse                    # { folder: string }               201
                                                   # { message: "Failed to create folder" } 500
-  getCachedFolders(): array   # protected — REQ-2 back-fill
+
+service (app/Services/FolderRegistry.php — the only reader and writer of s3_folders):
+  forPicker(): array          # REQ-picker-folder-list
+  cachedOrDerived(): array    # REQ-2 back-fill (was FolderController::getCachedFolders)
+  replace(array $folders)     # REQ-3
+  add(string $folder)         # REQ-5: append if absent, sort
+  forget()                    # when s3_root_folder changes — settings.md
 
 service (app/Services/S3Service.php — see s3-storage.md):
   listFolders(?prefix): array
@@ -101,7 +115,7 @@ when the parent resolves to an empty string (a bucket-root install).
 
 ```
 GET /api/folders
-  → auth.multi                → getCachedFolders()
+  → auth.multi                → FolderRegistry::cachedOrDerived()
       → Setting::get('s3_folders')     ── non-empty ⇒ return
       └─ empty ⇒ derive from Asset s3_keys, union root, sort, Setting::set  (REQ-2)
 
@@ -172,6 +186,13 @@ Scenario: An invalid folder name is rejected before touching S3 (REQ-4)
   When they POST /folders with name "bad name!"
   Then the response is 422
 # pinned by: tests/Feature/FolderTest.php
+
+Scenario: Every picker gets the normalised folder list (REQ-picker-folder-list)
+  Given root folder "assets" and a stored list that holds a stale "" but not "assets"
+  Then forPicker() offers "assets" first and no ""
+  And on a bucket-root install it offers "" first
+  And with nothing stored it offers the root folder alone
+# pinned by: tests/Unit/Services/FolderRegistryTest.php
 
 Scenario: A non-admin cannot create a folder (REQ-6)
   Given an editor

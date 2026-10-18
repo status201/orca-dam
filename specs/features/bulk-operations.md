@@ -3,7 +3,7 @@
 ```yaml
 id: bulk-operations
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -43,8 +43,9 @@ explicit "the system is in a safe window for this" switch (see
   `S3Service::getConfiguredFolders()`, rejecting path traversal outside them.
 - **REQ-4** — A move updates the asset's `s3_key` **and** all four derived
   keys (`thumbnail_s3_key`, `resize_{s,m,l}_s3_key`) that exist, via
-  `S3Service::computeDerivedKeys()` + `moveObject()` — never regenerating the
-  thumbnails/resizes, only relocating them.
+  `S3Service::relocatedDerivedKeys()` + `moveObject()` — never regenerating the
+  thumbnails/resizes, only relocating them, and keeping each one's stored name
+  ([`s3-storage.md`](s3-storage.md) REQ-6).
 - **REQ-5** — `bulkDownload` caps at 100 assets and 500MB total size; a
   per-asset S3 fetch failure is skipped (not fatal to the whole ZIP); a ZIP
   with zero successfully-added files returns 422 instead of an empty
@@ -98,7 +99,7 @@ bulkMove(): authorize(move, Asset::class)
   → validate destination_folder against getConfiguredFolders()
   → per asset: skip if already in destination
     → S3Service::moveObject(original)
-    → computeDerivedKeys() → moveObject() for each existing derived key
+    → relocatedDerivedKeys() → moveObject() for each existing derived key
     → DB::transaction(asset->update([s3_key, ...derived keys]))
 
 bulkForceDelete(): authorize(bulkForceDelete, Asset::class)

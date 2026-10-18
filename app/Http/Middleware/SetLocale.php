@@ -10,8 +10,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SetLocale
 {
-    protected static array $supportedLocales = ['en', 'nl'];
-
     public function handle(Request $request, Closure $next): Response
     {
         $locale = null;
@@ -19,7 +17,7 @@ class SetLocale
         // Priority 1: User preference
         if ($request->user()) {
             $userLocale = $request->user()->getPreference('locale');
-            if ($userLocale && in_array($userLocale, static::$supportedLocales)) {
+            if ($userLocale && in_array($userLocale, static::getSupportedLocales(), true)) {
                 $locale = $userLocale;
             }
         }
@@ -28,7 +26,7 @@ class SetLocale
         if (! $locale) {
             try {
                 $globalLocale = Setting::get('locale', null);
-                if ($globalLocale && in_array($globalLocale, static::$supportedLocales)) {
+                if ($globalLocale && in_array($globalLocale, static::getSupportedLocales(), true)) {
                     $locale = $globalLocale;
                 }
             } catch (\Throwable $e) {
@@ -46,8 +44,11 @@ class SetLocale
         return $next($request);
     }
 
+    /**
+     * The interface locale codes — config('orca.ui_locales'), localization.md REQ-2.
+     */
     public static function getSupportedLocales(): array
     {
-        return static::$supportedLocales;
+        return array_keys(config('orca.ui_locales'));
     }
 }

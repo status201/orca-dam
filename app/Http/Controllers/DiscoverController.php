@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessDiscoveredAsset;
 use App\Models\Asset;
 use App\Services\AssetIngestionService;
+use App\Services\FolderRegistry;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
@@ -22,6 +23,7 @@ class DiscoverController extends Controller
         protected S3Service $s3Service,
         protected RekognitionService $rekognitionService,
         protected AssetIngestionService $ingestion,
+        protected FolderRegistry $folders,
     ) {}
 
     /**
@@ -32,17 +34,7 @@ class DiscoverController extends Controller
         $this->authorize('discover', Asset::class);
 
         $rootFolder = S3Service::getRootFolder();
-        $folders = S3Service::getConfiguredFolders();
-
-        // When root folder is configured (not bucket root), remove any stale '' entries
-        // This prevents duplicate "/ (root)" options in the dropdown
-        if ($rootFolder !== '') {
-            $folders = array_values(array_filter($folders, fn ($f) => $f !== ''));
-            // Ensure root folder is first
-            if (! in_array($rootFolder, $folders)) {
-                array_unshift($folders, $rootFolder);
-            }
-        }
+        $folders = $this->folders->forPicker();
 
         return view('discover.index', compact('folders', 'rootFolder'));
     }

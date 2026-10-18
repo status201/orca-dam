@@ -3,7 +3,7 @@
 ```yaml
 id: settings
 status: implemented
-version: 1
+version: 3
 owner: core
 related:
   - architecture
@@ -38,7 +38,7 @@ rationale and rejected alternatives (`.env`-only, a settings package, no cache).
 - **REQ-4** — Settings are grouped (`general`/`display`/`aws`/`api`, though the group
   is free-form) for the admin UI's section layout (`Setting::allGrouped()`).
 - **REQ-5** — The admin System settings page validates known keys server-side
-  (`SystemController::updateSetting`) before persisting — e.g. `items_per_page`
+  (`SystemController::updateSetting`, rules in `App\Support\SettingRules`) before persisting — e.g. `items_per_page`
   10–100, `rekognition_min_confidence` 65–99, `custom_domain` must be empty or a
   valid `http(s)://` URL, `embed_allowed_domains` must decode to a JSON array of
   URL-shaped strings. Unknown keys skip validation and are stored as-is.
@@ -53,6 +53,7 @@ Setting::set(key, value, type=null, group=null): bool   # upsert + cache-bust
 Setting::allSettings(): array                  # cached flat key => value map
 Setting::allGrouped(): array                   # cached group => [key => {value,type,description}]
 Setting::clearCache(): void                     # forgets every per-key cache + the two aggregates
+Setting::forget(key): void                      # deletes the row, its cache and the two aggregates
 POST /system/settings/update  (SystemController::updateSetting, admin-only, AJAX)
   body: { key: string, value: string }
   -> 422 { success: false, error } on failed validation for a known key
@@ -72,10 +73,12 @@ Setting:                # settings table
 
 ### Layer touchpoints & ordering
 
-Request → `SystemController::updateSetting` (validates known keys) →
-`SystemService::updateSetting()` → `Setting::set()` (upsert + cache-bust). Special
-case: changing `s3_root_folder` also drops the cached `s3_folders` setting so the
-folder list is recomputed. Reads go directly through `Setting::get()` from any
+Request → `SystemController::updateSetting` (validates known keys through
+`SettingRules::passes()`) → `Setting::set()` (upsert + cache-bust). Special
+case: changing `s3_root_folder` also drops the `s3_folders` setting
+(`FolderRegistry::forget()` → `Setting::forget()`) so the folder list is recomputed. It
+used to delete the row and its per-key cache by hand, which left the `settings:all` /
+`settings:grouped` aggregates holding the old list. Reads go directly through `Setting::get()` from any
 service/middleware/model — there is no repository layer.
 
 ### Persistence

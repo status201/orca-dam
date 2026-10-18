@@ -70,6 +70,18 @@ class Setting extends Model
     }
 
     /**
+     * Delete a setting, so Setting::get() falls back to its default again.
+     */
+    public static function forget(string $key): void
+    {
+        self::where('key', $key)->delete();
+
+        Cache::forget(self::CACHE_PREFIX.$key);
+        Cache::forget('settings:all');
+        Cache::forget('settings:grouped');
+    }
+
+    /**
      * Get all settings as key-value array
      */
     public static function allSettings(): array

@@ -12,8 +12,11 @@ use App\Models\Tag;
 use App\Services\AssetIngestionService;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
+use App\Support\AssetFilter;
 use App\Support\ColumnLimits;
 use App\Support\TagInputParser;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -31,38 +34,17 @@ class AssetApiController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Asset::with(['tags', 'user']);
+        $filter = new AssetFilter(
+            search: $request->input('search'),
+            tagIds: AssetFilter::tagIds($request->input('tags')),
+            type: $request->input('type'),
+            folder: $request->input('folder'),
+            // Admins only. Unlike the web grid, the REST API offers no "my uploads" filter.
+            userId: Auth::user()->isAdmin() ? ((int) $request->input('user') ?: null) : null,
+            sort: $request->input('sort'),
+        );
 
-        // Apply filters
-        if ($search = $request->input('search')) {
-            $query->search($search);
-        }
-
-        if ($tagIds = $request->input('tags')) {
-            $query->withTags(is_array($tagIds) ? $tagIds : explode(',', $tagIds));
-        }
-
-        if ($type = $request->input('type')) {
-            $query->ofType($type);
-        }
-
-        if (Auth::user()->isAdmin() && $userId = $request->input('user')) {
-            $query->byUser($userId);
-        }
-
-        if ($folder = $request->input('folder')) {
-            $query->inFolder($folder);
-        }
-
-        // Apply sorting
-        $sort = $request->input('sort', 'date_desc');
-        $query->applySort($sort);
-
-        $perPage = min($request->input('per_page', 24), 100);
-        $assets = $query->paginate($perPage);
-        $assets->through(fn ($a) => $a->append(Asset::APPEND_FIELDS));
-
-        return response()->json($assets);
+        return $this->paginatedJson($filter->apply(Asset::with(['tags', 'user'])), $request);
     }
 
     /**
@@ -182,31 +164,23 @@ class AssetApiController extends Controller
      */
     public function search(Request $request)
     {
-        $query = Asset::with(['tags']);
+        $filter = new AssetFilter(
+            search: $request->input('q'),
+            tagIds: AssetFilter::tagIds($request->input('tags')),
+            type: $request->input('type'),
+            folder: $request->input('folder'),
+            sort: $request->input('sort'),
+        );
 
-        if ($search = $request->input('q')) {
-            $query->search($search);
-        }
+        return $this->paginatedJson($filter->apply(Asset::with(['tags'])), $request);
+    }
 
-        if ($tags = $request->input('tags')) {
-            $tagIds = is_array($tags) ? $tags : explode(',', $tags);
-            $query->withTags($tagIds);
-        }
-
-        if ($type = $request->input('type')) {
-            $query->ofType($type);
-        }
-
-        if ($folder = $request->input('folder')) {
-            $query->inFolder($folder);
-        }
-
-        // Apply sorting
-        $sort = $request->input('sort', 'date_desc');
-        $query->applySort($sort);
-
-        $perPage = min($request->input('per_page', 24), 100);
-        $assets = $query->paginate($perPage);
+    /**
+     * One page of assets with their computed URL fields, as both list endpoints return it.
+     */
+    private function paginatedJson(Builder $query, Request $request): JsonResponse
+    {
+        $assets = $query->paginate(min($request->input('per_page', 24), 100));
         $assets->through(fn ($a) => $a->append(Asset::APPEND_FIELDS));
 
         return response()->json($assets);

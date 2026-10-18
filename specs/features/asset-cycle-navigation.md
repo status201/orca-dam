@@ -3,7 +3,7 @@
 ```yaml
 id: asset-cycle-navigation
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -83,8 +83,11 @@ controller (app/Http/Controllers/AssetController.php, all private):
                   int $perPage, ?Asset): array   # one prev/next entry, page recalculated
   buildBackUrl(Request): string                  # REQ-6
   buildContextSummary(Request): string           # REQ-5, localized via __()
-  sortLabel(string): string                      # sort key → translated label
-  buildFilteredAssetQuery(Request): Builder      # shared with index/embed — REQ-2
+  permittedUserFilter(Request): ?int             # the `user` param, only for an admin or the viewer
+                                                 # themselves — the one guard REQ-2 and REQ-5 share
+  buildFilteredAssetQuery(Request): Builder      # an App\Support\AssetFilter (asset-model.md);
+                                                 # shared with index/embed — REQ-2
+  # the summary's "sorted by" text is AssetSort::label() (asset-model.md)
 
 view data (buildIndexData, so index and embed alike):
   $showSuffix → '' or '?'+http_build_query(extractContextParams())  # REQ-7; the grid

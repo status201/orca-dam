@@ -5,7 +5,8 @@ use App\Jobs\RunTestSuiteJob;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
-use App\Services\SystemService;
+use App\Services\ArtisanCommandRunner;
+use App\Services\S3Service;
 use App\Services\TestRunnerService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -426,8 +427,8 @@ test('system page loads all settings correctly', function () {
 });
 
 test('every suggested command card passes the execute allowlist', function () {
-    $system = app(SystemService::class);
-    $suggested = array_column($system->getSuggestedCommands(), 'command');
+    $system = app(ArtisanCommandRunner::class);
+    $suggested = array_column($system->suggestedCommands(), 'command');
 
     foreach ($suggested as $command) {
         // A card like "reference-tag:create <name>" is edited before it runs.
@@ -436,4 +437,17 @@ test('every suggested command card passes the execute allowlist', function () {
     }
 
     expect($suggested)->toContain('assets:audit-content-types', 'db:verify-schema', 'token:list');
+});
+
+test('the S3 connection test reports a failing bucket as a failure (regression)', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $this->mock(S3Service::class, function ($mock) {
+        $mock->shouldReceive('connectionError')->andReturn('AccessDenied: no ListBucket');
+        $mock->shouldReceive('getBucketEndpoint')->andReturn('bucket.s3.example');
+        $mock->shouldReceive('getBucketVersioning')->andReturn(null);
+    });
+
+    $this->actingAs($admin)->getJson(route('system.test-s3'))
+        ->assertOk()
+        ->assertJson(['success' => false, 'error' => 'AccessDenied: no ListBucket']);
 });

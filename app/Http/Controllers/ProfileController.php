@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Setting;
+use App\Services\FolderRegistry;
 use App\Services\S3Service;
-use App\Services\SystemService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,26 +18,19 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): View
+    public function edit(Request $request, FolderRegistry $folderRegistry): View
     {
         $rootFolder = S3Service::getRootFolder();
-        $folders = S3Service::getConfiguredFolders();
+        $folders = $folderRegistry->forPicker();
 
-        // Filter to folders within global root
+        // A home folder must sit within the global root; forPicker() already lists the root itself.
         if ($rootFolder !== '') {
-            $folders = array_values(array_filter($folders, fn ($f) => $f === $rootFolder || str_starts_with($f, $rootFolder.'/')
-            ));
-
-            // Ensure root folder is in the list
-            if (! in_array($rootFolder, $folders)) {
-                array_unshift($folders, $rootFolder);
-            }
+            $folders = array_values(array_filter($folders, fn ($f) => $f === $rootFolder || str_starts_with($f, $rootFolder.'/')));
         }
 
         $globalItemsPerPage = (int) Setting::get('items_per_page', 24);
 
-        $systemService = app(SystemService::class);
-        $availableUiLanguages = $systemService->getAvailableUiLanguages();
+        $availableUiLanguages = config('orca.ui_locales');
         $globalLocale = Setting::get('locale', 'en');
         $globalLocaleLabel = $availableUiLanguages[$globalLocale] ?? 'English';
 

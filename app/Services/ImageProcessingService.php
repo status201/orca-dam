@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\AssetKeyLayout;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -45,35 +46,17 @@ class ImageProcessingService
         $image = $this->imageManager->decodeBinary($imageContent);
         $image->scaleDown(width: $width, height: $height);
 
-        if ($extension === 'gif') {
-            return [
-                'content' => (string) $image->encode(new JpegEncoder(quality: 85)),
-                'mime_type' => 'image/jpeg',
-                'extension' => 'jpg',
-            ];
-        }
-
-        if ($extension === 'png') {
-            return [
-                'content' => (string) $image->encode(new PngEncoder),
-                'mime_type' => 'image/png',
-                'extension' => 'png',
-            ];
-        }
-
-        if ($extension === 'webp') {
-            return [
-                'content' => (string) $image->encode(new WebpEncoder(quality: 85)),
-                'mime_type' => 'image/webp',
-                'extension' => 'webp',
-            ];
-        }
-
-        $outputExtension = in_array($extension, ['jpg', 'jpeg']) ? $extension : 'jpg';
+        // The same rule names the resize key, so the stored key and the encoded bytes agree.
+        $outputExtension = AssetKeyLayout::resizeOutputExtension($extension);
+        [$encoder, $mimeType] = match ($outputExtension) {
+            'png' => [new PngEncoder, 'image/png'],
+            'webp' => [new WebpEncoder(quality: 85), 'image/webp'],
+            default => [new JpegEncoder(quality: 85), 'image/jpeg'],
+        };
 
         return [
-            'content' => (string) $image->encode(new JpegEncoder(quality: 85)),
-            'mime_type' => 'image/jpeg',
+            'content' => (string) $image->encode($encoder),
+            'mime_type' => $mimeType,
             'extension' => $outputExtension,
         ];
     }

@@ -50,7 +50,7 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1292 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1315 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
@@ -201,7 +201,8 @@ orca-dam/
 │   │   ├── SystemPolicy.php
 │   │   └── UserPolicy.php
 │   ├── Rules/                             # AllowedUploadExtension
-│   ├── Services/                          # 17 services
+│   ├── Services/                          # 19 services
+│   │   ├── ArtisanCommandRunner.php       # System page command allowlist
 │   │   ├── AssetIngestionService.php      # etag dedup + create-or-overwrite
 │   │   ├── AssetProcessingService.php     # thumbnails, resizes, AI-tag dispatch
 │   │   ├── AssetSearchParser.php          # +require / -exclude / "phrases"
@@ -209,6 +210,7 @@ orca-dam/
 │   │   ├── CloudflareService.php          # CDN purge on replace
 │   │   ├── CsvExportService.php
 │   │   ├── CsvImportService.php
+│   │   ├── FolderRegistry.php             # the s3_folders picker list
 │   │   ├── ImageProcessingService.php     # Intervention Image, animated-GIF sniffing
 │   │   ├── PasskeyService.php             # WebAuthn credentials
 │   │   ├── QueueService.php               # queue stats + failed jobs
