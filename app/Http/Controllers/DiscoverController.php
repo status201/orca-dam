@@ -9,7 +9,6 @@ use App\Services\FolderRegistry;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +16,6 @@ use Illuminate\Support\Facades\Log;
 
 class DiscoverController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(
         protected S3Service $s3Service,
         protected RekognitionService $rekognitionService,

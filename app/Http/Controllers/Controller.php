@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Support\ErrorAudience;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Throwable;
 
 abstract class Controller
@@ -22,5 +24,20 @@ abstract class Controller
     protected function clientError(Throwable $e, string $generic): string
     {
         return trim($generic.' '.(ErrorAudience::detail($e) ?? ''));
+    }
+
+    /**
+     * A successful action's answer: JSON for an AJAX caller, otherwise a redirect with the
+     * message flashed — the two shapes every page-or-AJAX action returns.
+     *
+     * @param  array<string, mixed>  $json  extra JSON fields alongside the message
+     */
+    protected function successResponse(string $message, string $redirectRoute, array $json = []): JsonResponse|RedirectResponse
+    {
+        if (request()->expectsJson()) {
+            return response()->json(['message' => $message] + $json);
+        }
+
+        return redirect()->route($redirectRoute)->with('success', $message);
     }
 }

@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Concerns\ForceDeletesAssets;
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Services\FolderRegistry;
 use App\Services\S3Service;
+use App\Support\BulkAssetIds;
 use App\Support\TagInputParser;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ use Illuminate\Validation\Rule;
 
 class AssetBulkController extends Controller
 {
-    use AuthorizesRequests;
+    use ForceDeletesAssets;
 
     public function __construct(
         protected S3Service $s3Service,
@@ -29,8 +30,7 @@ class AssetBulkController extends Controller
     public function bulkAddTags(Request $request)
     {
         $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
+            ...BulkAssetIds::rules(),
             'tags' => 'required_without:reference_tag_ids|array',
             'tags.*' => 'string|max:'.Tag::MAX_NAME_LENGTH,
             'reference_tag_ids' => 'required_without:tags|array',
@@ -74,8 +74,7 @@ class AssetBulkController extends Controller
     public function bulkRemoveTags(Request $request)
     {
         $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
+            ...BulkAssetIds::rules(),
             'tag_ids' => 'required|array',
             'tag_ids.*' => 'integer|exists:tags,id',
         ]);
@@ -103,10 +102,7 @@ class AssetBulkController extends Controller
      */
     public function bulkGetTags(Request $request)
     {
-        $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
-        ]);
+        $request->validate(BulkAssetIds::rules());
 
         $assets = Asset::with('tags')->whereIn('id', $request->asset_ids)->get();
 
@@ -149,36 +145,13 @@ class AssetBulkController extends Controller
     {
         $this->authorize('bulkForceDelete', Asset::class);
 
-        $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
-        ]);
+        $request->validate(BulkAssetIds::rules());
 
-        $assets = Asset::whereIn('id', $request->asset_ids)->get();
-        $deleted = 0;
-        $failed = 0;
-        $deletedKeys = [];
-
-        foreach ($assets as $asset) {
-            try {
-                $this->s3Service->deleteAssetFiles($asset);
-                DB::transaction(function () use ($asset) {
-                    $asset->forceDelete();
-                });
-                $deletedKeys[] = $asset->s3_key;
-                $deleted++;
-            } catch (\Exception $e) {
-                Log::error("Bulk force delete failed for asset {$asset->id}: ".$e->getMessage());
-                $failed++;
-            }
-        }
+        $result = $this->forceDeleteAssets(Asset::whereIn('id', $request->asset_ids)->get(), 'Bulk force delete');
 
         return response()->json([
-            'message' => __(':deleted asset(s) permanently deleted', ['deleted' => $deleted]),
-            'deleted' => $deleted,
-            'failed' => $failed,
-            'deleted_keys' => $deletedKeys,
-        ]);
+            'message' => __(':deleted asset(s) permanently deleted', ['deleted' => $result['deleted']]),
+        ] + $result);
     }
 
     /**
@@ -191,8 +164,7 @@ class AssetBulkController extends Controller
         $configuredFolders = $this->folders->forPicker();
 
         $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
+            ...BulkAssetIds::rules(),
             // 100, matching FolderController's creation cap — the destination becomes part of the
             // s3_key of every moved asset. The column is varchar(1024) now, so this is no longer
             // the overflow guard it was; it is what keeps the LIKE range on
@@ -261,10 +233,7 @@ class AssetBulkController extends Controller
     {
         $this->authorize('bulkDownload', Asset::class);
 
-        $request->validate([
-            'asset_ids' => 'required|array|max:100',
-            'asset_ids.*' => 'integer|exists:assets,id',
-        ]);
+        $request->validate(BulkAssetIds::rules(max: 100));
 
         $assets = Asset::whereIn('id', $request->asset_ids)->get();
 

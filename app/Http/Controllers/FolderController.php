@@ -5,13 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Services\FolderRegistry;
 use App\Services\S3Service;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 
 class FolderController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(
         protected S3Service $s3Service,
         protected FolderRegistry $folders,

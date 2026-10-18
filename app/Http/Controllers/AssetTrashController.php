@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Concerns\ForceDeletesAssets;
 use App\Models\Asset;
 use App\Services\S3Service;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Support\BulkAssetIds;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AssetTrashController extends Controller
 {
-    use AuthorizesRequests;
+    use ForceDeletesAssets;
 
     public function __construct(protected S3Service $s3Service) {}
 
@@ -25,14 +25,7 @@ class AssetTrashController extends Controller
 
         $asset->delete();
 
-        if (request()->expectsJson()) {
-            return response()->json([
-                'message' => __('Asset moved to trash successfully'),
-            ]);
-        }
-
-        return redirect()->route('assets.index')
-            ->with('success', __('Asset moved to trash successfully'));
+        return $this->successResponse(__('Asset moved to trash successfully'), 'assets.index');
     }
 
     /**
@@ -60,14 +53,7 @@ class AssetTrashController extends Controller
 
         $asset->restore();
 
-        if (request()->expectsJson()) {
-            return response()->json([
-                'message' => __('Asset restored successfully'),
-            ]);
-        }
-
-        return redirect()->route('assets.trash')
-            ->with('success', __('Asset restored successfully'));
+        return $this->successResponse(__('Asset restored successfully'), 'assets.trash');
     }
 
     /**
@@ -80,14 +66,7 @@ class AssetTrashController extends Controller
         $this->s3Service->deleteAssetFiles($asset);
         $asset->forceDelete();
 
-        if (request()->expectsJson()) {
-            return response()->json([
-                'message' => __('Asset permanently deleted successfully'),
-            ]);
-        }
-
-        return redirect()->route('assets.trash')
-            ->with('success', __('Asset permanently deleted successfully'));
+        return $this->successResponse(__('Asset permanently deleted successfully'), 'assets.trash');
     }
 
     /**
@@ -97,10 +76,7 @@ class AssetTrashController extends Controller
     {
         $this->authorize('bulkTrash', Asset::class);
 
-        $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer|exists:assets,id',
-        ]);
+        $request->validate(BulkAssetIds::rules());
 
         $assets = Asset::whereIn('id', $request->asset_ids)->get();
         $trashed = 0;
@@ -130,10 +106,7 @@ class AssetTrashController extends Controller
     {
         $this->authorize('bulkRestore', Asset::class);
 
-        $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer',
-        ]);
+        $request->validate(BulkAssetIds::rules(mustExist: false));
 
         $assets = Asset::onlyTrashed()->whereIn('id', $request->asset_ids)->get();
         $restored = 0;
@@ -166,35 +139,15 @@ class AssetTrashController extends Controller
     {
         $this->authorize('forceDelete', Asset::class);
 
-        $request->validate([
-            'asset_ids' => 'required|array|max:500',
-            'asset_ids.*' => 'integer',
-        ]);
+        $request->validate(BulkAssetIds::rules(mustExist: false));
 
-        $assets = Asset::onlyTrashed()->whereIn('id', $request->asset_ids)->get();
-        $deleted = 0;
-        $failed = 0;
-        $deletedKeys = [];
-
-        foreach ($assets as $asset) {
-            try {
-                $this->s3Service->deleteAssetFiles($asset);
-                DB::transaction(function () use ($asset) {
-                    $asset->forceDelete();
-                });
-                $deletedKeys[] = $asset->s3_key;
-                $deleted++;
-            } catch (\Exception $e) {
-                Log::error("Bulk force delete (trash) failed for asset {$asset->id}: ".$e->getMessage());
-                $failed++;
-            }
-        }
+        $result = $this->forceDeleteAssets(
+            Asset::onlyTrashed()->whereIn('id', $request->asset_ids)->get(),
+            'Bulk force delete (trash)',
+        );
 
         return response()->json([
-            'message' => __(':deleted asset(s) permanently deleted', ['deleted' => $deleted]),
-            'deleted' => $deleted,
-            'failed' => $failed,
-            'deleted_keys' => $deletedKeys,
-        ]);
+            'message' => __(':deleted asset(s) permanently deleted', ['deleted' => $result['deleted']]),
+        ] + $result);
     }
 }

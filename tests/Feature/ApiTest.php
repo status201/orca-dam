@@ -1117,3 +1117,18 @@ test('api rejects an s3_key longer than the column, since it can never match a r
 
     $response->assertStatus(422)->assertJsonValidationErrors('s3_key');
 });
+
+test('api remove by name finds a reference tag whatever the case of its non-ASCII letters (regression)', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $asset = Asset::factory()->create();
+    $tag = Tag::factory()->reference()->create(['name' => 'été']);
+    $asset->tags()->attach($tag->id);
+
+    $this->deleteJson('/api/reference-tags', [
+        'tag_names' => ['ÉTÉ'],
+        'asset_ids' => [$asset->id],
+    ])->assertOk();
+
+    expect($asset->fresh()->tags)->toHaveCount(0);
+});

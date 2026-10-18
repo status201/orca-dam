@@ -20,6 +20,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Validator;
 
 class AssetApiController extends Controller
 {
@@ -127,7 +129,7 @@ class AssetApiController extends Controller
      */
     public function update(UpdateAssetRequest $request, Asset $asset)
     {
-        if (! Auth::user()->isAdmin() && $asset->user_id !== Auth::id()) {
+        if (Gate::denies('updateViaApi', $asset)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -245,19 +247,11 @@ class AssetApiController extends Controller
      */
     public function addReferenceTags(Request $request)
     {
-        $validator = validator($request->all(), array_merge($this->assetIdentifierRules(), [
+        if ($failed = $this->validateAssetIdentifiers($request, [
             'tags' => 'required|array|min:1|max:100',
             'tags.*' => 'string|max:100',
-        ]));
-
-        $validator->after(function ($validator) use ($request) {
-            if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
-                $validator->errors()->add('identifiers', 'At least one of asset_id, asset_ids, s3_key, or s3_keys is required.');
-            }
-        });
-
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        ])) {
+            return $failed;
         }
 
         [$assets, $notFoundS3Keys] = $this->collectAssetsFromRequest($request);
@@ -291,16 +285,8 @@ class AssetApiController extends Controller
      */
     public function removeReferenceTag(Request $request, Tag $tag)
     {
-        $validator = validator($request->all(), $this->assetIdentifierRules());
-
-        $validator->after(function ($validator) use ($request) {
-            if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
-                $validator->errors()->add('identifiers', 'At least one of asset_id, asset_ids, s3_key, or s3_keys is required.');
-            }
-        });
-
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        if ($failed = $this->validateAssetIdentifiers($request)) {
+            return $failed;
         }
 
         if ($tag->type !== 'reference') {
@@ -335,23 +321,17 @@ class AssetApiController extends Controller
      */
     public function removeReferenceTagsByName(Request $request)
     {
-        $validator = validator($request->all(), array_merge($this->assetIdentifierRules(), [
+        $failed = $this->validateAssetIdentifiers($request, [
             'tag_name' => 'string|max:100',
             'tag_names' => 'array|min:1|max:100',
             'tag_names.*' => 'string|max:100',
-        ]));
-
-        $validator->after(function ($validator) use ($request) {
+        ], function ($validator) use ($request) {
             if (! $request->hasAny(['tag_name', 'tag_names'])) {
                 $validator->errors()->add('tags', 'At least one of tag_name or tag_names is required.');
             }
-            if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
-                $validator->errors()->add('identifiers', 'At least one of asset_id, asset_ids, s3_key, or s3_keys is required.');
-            }
         });
-
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        if ($failed) {
+            return $failed;
         }
 
         $names = [];
@@ -363,7 +343,7 @@ class AssetApiController extends Controller
         }
 
         $requestedNames = array_values(array_unique(
-            array_map(fn ($n) => strtolower(trim($n)), $names)
+            array_map(fn ($n) => Tag::normalizeName((string) $n), $names)
         ));
 
         $foundTags = Tag::referenceTags()->whereIn('name', $requestedNames)->get();
@@ -400,6 +380,31 @@ class AssetApiController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Validate a reference-tag request: the identifier rules plus $rules, and at least one
+     * identifier present. Returns the 422 response, or null when the request is valid.
+     *
+     * @param  array<string, mixed>  $rules
+     * @param  (callable(Validator): void)|null  $after  extra presence checks, run first
+     */
+    private function validateAssetIdentifiers(Request $request, array $rules = [], ?callable $after = null): ?JsonResponse
+    {
+        $validator = validator($request->all(), array_merge($this->assetIdentifierRules(), $rules));
+
+        $validator->after(function ($validator) use ($request, $after) {
+            if ($after !== null) {
+                $after($validator);
+            }
+            if (! $request->hasAny(['asset_id', 'asset_ids', 's3_key', 's3_keys'])) {
+                $validator->errors()->add('identifiers', 'At least one of asset_id, asset_ids, s3_key, or s3_keys is required.');
+            }
+        });
+
+        return $validator->fails()
+            ? response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422)
+            : null;
     }
 
     /**

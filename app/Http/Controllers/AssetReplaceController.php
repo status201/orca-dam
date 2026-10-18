@@ -10,7 +10,6 @@ use App\Services\CloudflareService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
 use App\Support\ErrorAudience;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -19,8 +18,6 @@ use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class AssetReplaceController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(
         protected S3Service $s3Service,
         protected CloudflareService $cloudflareService,

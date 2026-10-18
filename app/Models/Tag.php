@@ -70,6 +70,16 @@ class Tag extends Model
     }
 
     /**
+     * A tag name as stored and looked up: trimmed and lowercased multibyte-safely, the same rule
+     * TagInputParser applies. strtolower() leaves non-ASCII capitals alone, so "ÉTÉ" and "été"
+     * used to be two different names depending on the path (tags.md REQ-tag-name-normalization).
+     */
+    public static function normalizeName(string $name): string
+    {
+        return mb_strtolower(trim($name));
+    }
+
+    /**
      * Resolve an array of tag names to tag IDs, creating missing tags with the given type.
      *
      * Note: Tag names are unique. If a tag already exists with a different type, the existing
@@ -78,7 +88,7 @@ class Tag extends Model
     private static function resolveTagIds(array $names, string $type): array
     {
         $normalized = collect($names)
-            ->map(fn ($n) => strtolower(trim($n)))
+            ->map(fn ($n) => self::normalizeName((string) $n))
             ->filter(fn ($n) => $n !== '')
             ->unique()
             ->values();
@@ -119,6 +129,15 @@ class Tag extends Model
     public static function resolveReferenceTagIds(array $names): array
     {
         return self::resolveTagIds($names, 'reference');
+    }
+
+    /**
+     * Resolve an array of tag names to tag IDs, creating missing tags as 'ai' type — the labels
+     * Rekognition detects. Like the others, an existing tag of another type is reused as-is.
+     */
+    public static function resolveAiTagIds(array $names): array
+    {
+        return self::resolveTagIds($names, 'ai');
     }
 
     /**

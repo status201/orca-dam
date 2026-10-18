@@ -14,7 +14,6 @@ use App\Support\ColumnLimits;
 use App\Support\UploadMetadata;
 use App\Support\UploadMetadataRules;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,8 +21,6 @@ use Illuminate\Support\Facades\Log;
 
 class ChunkedUploadController extends Controller
 {
-    use AuthorizesRequests;
-
     protected ChunkedUploadService $chunkedUploadService;
 
     protected AssetProcessingService $assetProcessingService;

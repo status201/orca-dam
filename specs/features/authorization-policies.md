@@ -3,7 +3,7 @@
 ```yaml
 id: authorization-policies
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -51,6 +51,7 @@ AssetPolicy:
   view(User, Asset): bool                    # admin, editor, api
   create(User): bool                         # admin, editor, api
   update(User, Asset): bool                  # admin, editor, api
+  updateViaApi(User, Asset): bool            # admin; editor/api only for an asset they uploaded (rest-api.md REQ-3)
   bulkDownload(User): bool                   # admin, editor, api
   replace(User): bool                        # admin, editor
   delete(User, Asset): bool                  # admin, editor

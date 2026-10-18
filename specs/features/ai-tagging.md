@@ -3,7 +3,7 @@
 ```yaml
 id: ai-tagging
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -67,7 +67,7 @@ App\Services\RekognitionService:
     # [] if disabled; catches AWS exceptions -> logs -> []
   detectText(string $s3Key): array<string>       # LINE-type detections with confidence > 80
   autoTagAsset(Asset $asset): array<{name, confidence}>
-    # [] if !$asset->isImage(); else detectLabels() -> Tag::firstOrNew(type=ai) per label
+    # [] if !$asset->isImage(); else detectLabels() -> Tag::resolveAiTagIds(names) (one lookup)
     # -> Asset::syncTagsWithAttribution($tagIds, 'ai')
 
 App\Jobs\GenerateAiTags implements ShouldQueue:
@@ -121,7 +121,8 @@ Upload/replace succeeds
             -> RekognitionService::detectLabels($asset->s3_key)
                  -> AWS Rekognition detectLabels()  (S3Object reference, no local file read)
                  -> per label: if target language != 'en', AWS Translate::translateText()
-            -> Tag::firstOrNew(['name' => lowercased label]); set type='ai' only if new
+            -> Tag::resolveAiTagIds(label names): one lookup, creates only the missing ones as
+               type='ai', reuses an existing tag of any type (tags.md REQ-6)
             -> Asset::syncTagsWithAttribution($tagIds, 'ai')   (tags.md)
 
 Manual re-tag:

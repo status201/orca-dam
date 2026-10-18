@@ -48,7 +48,7 @@ class ProcessDiscoveredAsset implements ShouldQueue
             $assetProcessingService->processImageAsset($asset, dispatchAiTagging: false);
 
             // Step 3: Run AI tagging directly if enabled (already in a queue job, so run synchronously)
-            if (config('services.aws.rekognition_enabled') && $asset->isImage()) {
+            if ($rekognitionService->isEnabled() && $asset->isImage()) {
                 Log::info("ProcessDiscoveredAsset: Running AI tagging for asset {$asset->id}");
                 $labels = $rekognitionService->autoTagAsset($asset);
                 Log::info('ProcessDiscoveredAsset: Generated '.count($labels)." AI tags for asset {$asset->id}");
