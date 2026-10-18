@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Asset;
 use App\Models\Setting;
+use App\Support\AssetKeyLayout;
 use App\Support\UploadPolicy;
 use Aws\CommandPool;
 use Aws\Exception\AwsException;
@@ -285,15 +286,8 @@ class S3Service
                 return null;
             }
 
-            // Extract folder from s3_key and mirror it for thumbnails
-            // e.g., assets/marketing/abc.jpg -> thumbnails/marketing/abc_thumb.jpg
-            $rootPrefix = self::getRootPrefix();
-            $relativePath = ($rootPrefix !== '' && str_starts_with($s3Key, $rootPrefix))
-                ? substr($s3Key, strlen($rootPrefix))
-                : $s3Key;
-            $folder = dirname($relativePath);
-            $folder = ($folder === '.' || $folder === '') ? '' : $folder.'/';
-            $thumbnailKey = 'thumbnails/'.$folder.Str::replaceLast('.', '_thumb.', basename($s3Key));
+            // e.g., assets/marketing/abc.png -> thumbnails/marketing/abc_thumb.png
+            $thumbnailKey = $this->keyLayout()->thumbnailKey($s3Key);
 
             $this->s3Client->putObject([
                 'Bucket' => $this->bucket,
@@ -353,15 +347,7 @@ class S3Service
                 return [];
             }
 
-            // Build relative path for S3 key generation (same logic as generateThumbnail)
-            $rootPrefix = self::getRootPrefix();
-            $relativePath = ($rootPrefix !== '' && str_starts_with($s3Key, $rootPrefix))
-                ? substr($s3Key, strlen($rootPrefix))
-                : $s3Key;
-            $folder = dirname($relativePath);
-            $folder = ($folder === '.' || $folder === '') ? '' : $folder.'/';
-            $basename = pathinfo(basename($s3Key), PATHINFO_FILENAME);
-
+            $layout = $this->keyLayout();
             $resizedKeys = [];
 
             foreach ($sizes as $sizeKey => $dimensions) {
@@ -374,8 +360,7 @@ class S3Service
                 }
 
                 $result = $this->imageProcessingService->createResizedContent($imageContent, $extension, $w, $h);
-                $sizeLabel = strtoupper($sizeKey);
-                $resizedKey = "thumbnails/{$sizeLabel}/{$folder}{$basename}.{$result['extension']}";
+                $resizedKey = $layout->resizeKey($s3Key, $sizeKey, $result['extension']);
 
                 $this->s3Client->putObject([
                     'Bucket' => $this->bucket,
@@ -401,15 +386,7 @@ class S3Service
     public function uploadThumbnail(string $s3Key, string $imageData): ?string
     {
         try {
-            $rootPrefix = self::getRootPrefix();
-            $relativePath = ($rootPrefix !== '' && str_starts_with($s3Key, $rootPrefix))
-                ? substr($s3Key, strlen($rootPrefix))
-                : $s3Key;
-            $folder = dirname($relativePath);
-            $folder = ($folder === '.' || $folder === '') ? '' : $folder.'/';
-            $thumbnailKey = 'thumbnails/'.$folder.Str::replaceLast('.', '_thumb.', basename($s3Key));
-            // Ensure thumbnail extension is .jpg
-            $thumbnailKey = preg_replace('/\.[^.]+$/', '.jpg', $thumbnailKey);
+            $thumbnailKey = $this->keyLayout()->uploadedThumbnailKey($s3Key);
 
             $this->s3Client->putObject([
                 'Bucket' => $this->bucket,
@@ -454,35 +431,40 @@ class S3Service
     }
 
     /**
-     * Compute the expected thumbnail and resize S3 keys for a given s3_key,
-     * mirroring the naming conventions used by uploadThumbnail() and generateResizedImages().
-     * Used when moving assets so derived keys can be updated to their new paths.
+     * Where each derived object the asset holds goes when its original moves to $newS3Key, keyed by
+     * column. Only keys that actually change are returned. Each keeps the name it was stored under —
+     * recomputing it renamed a PNG's abc_thumb.png to abc_thumb.jpg (s3-storage.md REQ-6). A key
+     * outside the expected layout is left out, so the caller leaves that object where it is.
      *
-     * @return array{thumbnail_s3_key: string, resize_s_s3_key: string, resize_m_s3_key: string, resize_l_s3_key: string}
+     * @return array<string, string>
      */
-    public function computeDerivedKeys(string $s3Key): array
+    public function relocatedDerivedKeys(Asset $asset, string $newS3Key): array
     {
-        $rootPrefix = self::getRootPrefix();
-        $relativePath = ($rootPrefix !== '' && str_starts_with($s3Key, $rootPrefix))
-            ? substr($s3Key, strlen($rootPrefix))
-            : $s3Key;
-        $folder = dirname($relativePath);
-        $relativeFolder = ($folder === '.' || $folder === '') ? '' : $folder.'/';
+        $layout = $this->keyLayout();
+        $sizes = array_flip(Asset::RESIZE_KEY_COLUMNS);
+        $relocated = [];
 
-        $basename = pathinfo(basename($s3Key), PATHINFO_FILENAME);
-        $extension = strtolower(pathinfo($s3Key, PATHINFO_EXTENSION));
+        foreach (Asset::DERIVED_KEY_COLUMNS as $column) {
+            $current = $asset->{$column};
+            if (! $current) {
+                continue;
+            }
 
-        $thumbnailKey = 'thumbnails/'.$relativeFolder.Str::replaceLast('.', '_thumb.', basename($s3Key));
-        $thumbnailKey = preg_replace('/\.[^.]+$/', '.jpg', $thumbnailKey);
+            $newKey = $layout->relocate($current, $sizes[$column] ?? null, $asset->s3_key, $newS3Key);
+            if ($newKey !== null && $newKey !== $current) {
+                $relocated[$column] = $newKey;
+            }
+        }
 
-        $outputExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp']) ? $extension : 'jpg';
+        return $relocated;
+    }
 
-        return [
-            'thumbnail_s3_key' => $thumbnailKey,
-            'resize_s_s3_key' => "thumbnails/S/{$relativeFolder}{$basename}.{$outputExtension}",
-            'resize_m_s3_key' => "thumbnails/M/{$relativeFolder}{$basename}.{$outputExtension}",
-            'resize_l_s3_key' => "thumbnails/L/{$relativeFolder}{$basename}.{$outputExtension}",
-        ];
+    /**
+     * Derived-key naming for the configured root folder.
+     */
+    private function keyLayout(): AssetKeyLayout
+    {
+        return new AssetKeyLayout(self::getRootPrefix());
     }
 
     /**

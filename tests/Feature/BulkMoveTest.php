@@ -27,7 +27,7 @@ test('admin can move assets when maintenance mode is enabled', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
-        $mock->shouldReceive('computeDerivedKeys')->passthru();
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -85,7 +85,7 @@ test('assets already in target folder are skipped', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->never();
-        $mock->shouldReceive('computeDerivedKeys')->passthru();
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -113,7 +113,7 @@ test('partial S3 failures report correct counts', function () {
             // First call succeeds, second fails
             return $callCount === 1;
         });
-        $mock->shouldReceive('computeDerivedKeys')->passthru();
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -140,7 +140,7 @@ test('all key columns are updated after move', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
-        $mock->shouldReceive('computeDerivedKeys')->passthru();
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -201,7 +201,7 @@ test('moves response includes old and new keys', function () {
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
-        $mock->shouldReceive('computeDerivedKeys')->passthru();
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -229,7 +229,7 @@ test('assets at root folder are moved with thumbnails and resizes', function () 
 
     $this->mock(S3Service::class, function ($mock) {
         $mock->shouldReceive('moveObject')->andReturn(true);
-        $mock->shouldReceive('computeDerivedKeys')->passthru();
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
     });
 
     $response = $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
@@ -269,4 +269,44 @@ test('path traversal in destination folder is rejected', function () {
     ]);
     $response->assertUnprocessable();
     $response->assertJsonValidationErrors('destination_folder');
+});
+
+test('a move keeps each derived object\'s stored name, only changing its folder (regression)', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Setting::set('maintenance_mode', '1');
+
+    // generateThumbnail() keeps the original's extension (its bytes are JPEG regardless), so a PNG's
+    // thumbnail really is *_thumb.png. The move used to recompute it as *_thumb.jpg and rename it.
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/photos/abc.png',
+        'thumbnail_s3_key' => 'thumbnails/photos/abc_thumb.png',
+        'resize_s_s3_key' => 'thumbnails/S/photos/abc.png',
+        'resize_m_s3_key' => null,
+        'resize_l_s3_key' => null,
+    ]);
+
+    $moves = [];
+    $this->mock(S3Service::class, function ($mock) use (&$moves) {
+        $mock->shouldReceive('moveObject')->andReturnUsing(function ($from, $to) use (&$moves) {
+            $moves[$from] = $to;
+
+            return true;
+        });
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
+    });
+
+    $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
+        'asset_ids' => [$asset->id],
+        'destination_folder' => 'assets/archive',
+    ])->assertOk();
+
+    $asset->refresh();
+    expect($asset->thumbnail_s3_key)->toBe('thumbnails/archive/abc_thumb.png')
+        ->and($asset->resize_s_s3_key)->toBe('thumbnails/S/archive/abc.png')
+        ->and($asset->resize_m_s3_key)->toBeNull()
+        ->and($moves)->toBe([
+            'assets/photos/abc.png' => 'assets/archive/abc.png',
+            'thumbnails/photos/abc_thumb.png' => 'thumbnails/archive/abc_thumb.png',
+            'thumbnails/S/photos/abc.png' => 'thumbnails/S/archive/abc.png',
+        ]);
 });

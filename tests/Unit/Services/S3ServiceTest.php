@@ -388,3 +388,64 @@ test('repairUploadHeaders copies the object onto itself with the headers an uplo
         ->and($copy['ContentType'])->toBe('text/plain')
         ->and($copy['ContentDisposition'])->toBe('attachment');
 });
+
+// ─── derived-key layout, pinned (s3-storage.md REQ-1) ────────────────────────
+// These record the keys S3Service actually writes. AssetKeyLayout was extracted from four
+// copies of this logic; existing objects never move, so these outputs must never change.
+
+function withAssetsRoot(): void
+{
+    Setting::set('s3_root_folder', 'assets');
+}
+
+function pngBytes(int $w = 40, int $h = 20): string
+{
+    $img = imagecreatetruecolor($w, $h);
+    ob_start();
+    imagepng($img);
+    $png = ob_get_clean();
+    imagedestroy($img);
+
+    return $png;
+}
+
+test('generateThumbnail keeps the source extension in the thumbnail key, under the mirrored folder', function () {
+    withAssetsRoot();
+    $history = new History;
+    $handler = new MockHandler([new Result(['Body' => pngBytes()]), new Result([])]);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
+
+    expect($service->generateThumbnail('assets/photos/abc.png'))->toBe('thumbnails/photos/abc_thumb.png')
+        ->and($history->getLastCommand()['ContentType'])->toBe('image/jpeg');
+});
+
+test('uploadThumbnail always writes a .jpg thumbnail key', function () {
+    withAssetsRoot();
+    $service = s3ServiceReturning([[]]);
+
+    expect($service->uploadThumbnail('assets/videos/clip.mp4', 'jpeg-bytes'))->toBe('thumbnails/videos/clip_thumb.jpg')
+        ->and(s3ServiceReturning([[]])->uploadThumbnail('assets/a.b.pdf', 'x'))->toBe('thumbnails/a.b_thumb.jpg');
+});
+
+test('generateResizedImages names each variant by size, folder and output extension', function () {
+    withAssetsRoot();
+    $handler = new MockHandler([new Result(['Body' => pngBytes(1400, 700)]), new Result([]), new Result([]), new Result([])]);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler));
+
+    expect($service->generateResizedImages('assets/photos/abc.png'))->toBe([
+        's' => 'thumbnails/S/photos/abc.png',
+        'm' => 'thumbnails/M/photos/abc.png',
+        'l' => 'thumbnails/L/photos/abc.png',
+    ]);
+});
+
+test('a key at the root folder, and with a bucket-root setup, gets no folder segment', function () {
+    withAssetsRoot();
+    $history = new History;
+    $handler = new MockHandler([new Result(['Body' => pngBytes()]), new Result([])]);
+    $service = app(S3Service::class)->setS3Client(fakeS3Client($handler, $history));
+    expect($service->generateThumbnail('assets/abc.png'))->toBe('thumbnails/abc_thumb.png');
+
+    Setting::set('s3_root_folder', '');
+    expect(s3ServiceReturning([[]])->uploadThumbnail('photos/clip.mp4', 'x'))->toBe('thumbnails/photos/clip_thumb.jpg');
+});

@@ -228,12 +228,9 @@ class AssetBulkController extends Controller
 
             $updateData = ['s3_key' => $newS3Key];
 
-            $derivedKeys = $this->s3Service->computeDerivedKeys($newS3Key);
-            foreach ($derivedKeys as $column => $newKey) {
-                if ($asset->{$column} && $newKey !== $asset->{$column}) {
-                    $this->s3Service->moveObject($asset->{$column}, $newKey);
-                    $updateData[$column] = $newKey;
-                }
+            foreach ($this->s3Service->relocatedDerivedKeys($asset, $newS3Key) as $column => $newKey) {
+                $this->s3Service->moveObject($asset->{$column}, $newKey);
+                $updateData[$column] = $newKey;
             }
 
             DB::transaction(function () use ($asset, $updateData) {

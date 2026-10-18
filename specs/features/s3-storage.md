@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -36,8 +36,11 @@ derived-asset (thumbnail/resize) key generation and cleanup.
 
 - **REQ-1** — S3 keys follow `assets/{folder}/{uuid}.{ext}` for originals (or
   the sanitized original filename when `keep_original_filename` is used), and
-  `thumbnails/{folder}/{uuid}_thumb.jpg` / `thumbnails/{S,M,L}/{folder}/{name}.{ext}`
-  for derived variants. `s3_key` is immutable once written — see
+  `thumbnails/{folder}/{name}_thumb.{ext}` / `thumbnails/{S,M,L}/{folder}/{name}.{ext}`
+  for derived variants. A generated thumbnail keeps the original's extension even
+  though its bytes are always JPEG (`abc.png` → `abc_thumb.png`, served as
+  `image/jpeg`); a browser-generated one for a video/PDF is always `{name}_thumb.jpg`.
+  A stored key's *name* never changes after it is written — see REQ-6. `s3_key` is immutable once written — see
   [ADR-006](../decisions/adr-006-immutable-s3-key.md).
 - **REQ-2** — Every upload is streamed to S3 (not buffered fully in memory)
   except SVGs, which are small enough to sanitize in-memory before storage.
@@ -73,10 +76,14 @@ derived-asset (thumbnail/resize) key generation and cleanup.
   set, otherwise the configured S3 bucket URL — this is the single point every
   computed asset URL passes through, so a custom-domain change or Cloudflare
   cutover needs no data migration.
-- **REQ-6** — Derived-key computation (`computeDerivedKeys()`) mirrors the
-  naming used by `generateThumbnail()`/`generateResizedImages()` exactly, so
-  moving an asset (bulk move) can predict where its thumbnails/resizes will
-  land without regenerating them.
+- **REQ-6** — Derived keys are named in one place, `App\Support\AssetKeyLayout`, which
+  every writer (`generateThumbnail()`, `generateResizedImages()`, `uploadThumbnail()`)
+  uses. Moving an asset (bulk move) relocates each derived key that exists by
+  swapping only its folder segment (`relocatedDerivedKeys()`), keeping the name it
+  was stored under — it never recomputes the name. Recomputing is what renamed a
+  PNG's `abc_thumb.png` to `abc_thumb.jpg` on every move, because the move assumed
+  `.jpg` while `generateThumbnail()` keeps the extension. A derived key that does not
+  sit under the folder its original implies (a legacy layout) is left where it is.
 - **REQ-7** — The `S3Client` is built from the `s3` disk config *including*
   `endpoint` and `use_path_style_endpoint` when they are set, so the service can
   be pointed at any S3-compatible endpoint (the RustFS bucket the E2E suite runs
@@ -112,7 +119,7 @@ generateResizedImages(s3Key): array         # {s,m,l} => key; skips non-image ex
 uploadThumbnail(s3Key, imageData): ?string  # browser-generated thumb (video/PDF)
 deleteResizedImages(Asset): void
 deleteAssetFiles(Asset, keepOriginal=false): void   # original + thumbnail + resizes
-computeDerivedKeys(s3Key): array            # {thumbnail_s3_key, resize_s_s3_key, resize_m_s3_key, resize_l_s3_key}
+relocatedDerivedKeys(Asset, newS3Key): array # column => new key, for each derived key the asset holds (REQ-6)
 moveObject(sourceKey, destinationKey): bool # copy + delete
 deleteFile(s3Key): bool
 extractImageDimensions(s3Key, mimeType): ?array   # null for non-images; streams the object to a temp file
@@ -159,13 +166,21 @@ width / height: int|null
 
 ### Layer touchpoints & ordering
 
-`generateThumbnail()`/`generateResizedImages()` both derive the destination
-folder by stripping the configured root prefix from the source `s3_key`
-(`getRootPrefix()`), then re-apply it under `thumbnails/` or `thumbnails/{S,M,L}/`
-— this exact folder-stripping logic is duplicated (not shared) across
-`generateThumbnail`, `generateResizedImages`, `uploadThumbnail`, and
-`computeDerivedKeys`, so a change to one must be mirrored in the others (a
-noted internal seam, not a public contract concern). Resize dimensions come
+Every derived key is built by `App\Support\AssetKeyLayout`, a pure class
+constructed with the root prefix (`new AssetKeyLayout(S3Service::getRootPrefix())`):
+it strips that prefix from the source `s3_key` to get the relative folder, then
+re-applies it under `thumbnails/` or `thumbnails/{S,M,L}/`. The same logic used to be
+copied into four `S3Service` methods, and the copies had drifted (REQ-6).
+
+```yaml
+App\Support\AssetKeyLayout:
+  relativeFolder(s3Key): string                 # '' or 'sub/folder/' — root prefix stripped
+  thumbnailKey(s3Key): string                   # thumbnails/{rel}{name}_thumb.{ext}  (generated)
+  uploadedThumbnailKey(s3Key): string           # thumbnails/{rel}{name}_thumb.jpg    (browser-generated)
+  resizeKey(s3Key, size, extension): string     # thumbnails/{SIZE}/{rel}{filename}.{extension}
+  resizeOutputExtension(sourceExtension): string # static — png/webp/jpg/jpeg keep theirs; everything else 'jpg'
+  relocate(derivedKey, column, oldS3Key, newS3Key): ?string  # null when the key is not in the layout
+``` Resize dimensions come
 from `Setting::get('resize_{s,m,l}_width|height', ...)`, read live (not cached
 beyond the `Setting` model's own 1h cache).
 
@@ -175,7 +190,7 @@ S3 key layout (see also `architecture.md` → "S3 + CDN topology"):
 
 ```
 assets/{folder}/{uuid}.{ext}                  # original
-thumbnails/{folder}/{uuid}_thumb.jpg           # 300x300 JPEG thumbnail
+thumbnails/{folder}/{uuid}_thumb.{ext}         # 300x300 JPEG bytes; .jpg for a browser-generated (video/PDF) thumb
 thumbnails/{S|M|L}/{folder}/{basename}.{ext}   # resize variants
 chunked-staging/{session_token}.svg            # transient: a chunked SVG before sanitization (chunked-upload REQ-4)
 ```
@@ -289,6 +304,21 @@ Scenario: No endpoint config leaves AWS addressing untouched
   Then its S3Client resolves the regional AWS endpoint and is not path-style
 # pinned by: tests/Unit/Services/S3ServiceEndpointTest.php
 
+Scenario: Each writer's derived key is pinned to the layout existing objects use
+  Given the root folder "assets"
+  Then generateThumbnail("assets/photos/abc.png") writes thumbnails/photos/abc_thumb.png as image/jpeg
+  And uploadThumbnail("assets/videos/clip.mp4") writes thumbnails/videos/clip_thumb.jpg
+  And generateResizedImages("assets/photos/abc.png") writes thumbnails/{S,M,L}/photos/abc.png
+  And a key directly under the root, or a bucket-root setup, gets no folder segment
+# pinned by: tests/Unit/Services/S3ServiceTest.php, tests/Unit/Support/AssetKeyLayoutTest.php
+
+Scenario: A bulk move keeps each derived object's stored name (regression)
+  Given a PNG asset whose generated thumbnail is thumbnails/photos/abc_thumb.png
+  When it is moved to assets/archive
+  Then the thumbnail moves to thumbnails/archive/abc_thumb.png, not abc_thumb.jpg
+  And only the derived keys the asset holds are moved
+# pinned by: tests/Feature/BulkMoveTest.php
+
 # — browser-level (see e2e-testing.md for the harness; skips without a bucket) —
 
 Scenario: Bytes round-trip through a real S3-compatible bucket
@@ -314,7 +344,8 @@ Scenario: Bytes round-trip through a real S3-compatible bucket
   dedicated unit test; they're exercised through feature tests that mock
   `S3Service` and by the browser suite. `uploadFile`'s `ContentType` /
   `ContentDisposition` params are now asserted directly (`S3ServiceTest.php`).
-- `generateThumbnail()`, `generateResizedImages()`, `deleteAssetFiles()`, and
-  `computeDerivedKeys()` are likewise only covered indirectly (through
+- `deleteAssetFiles()` is likewise only covered indirectly. The key each writer produces
+  is now pinned directly (`S3ServiceTest.php`, `AssetKeyLayoutTest.php`); the rest of
+  `generateThumbnail()`/`generateResizedImages()` is covered indirectly (through
   `AssetProcessingServiceTest.php` and the bulk-move feature tests) rather than
   as isolated `S3Service` unit tests.
