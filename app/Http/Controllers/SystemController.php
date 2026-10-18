@@ -6,6 +6,7 @@ use App\Jobs\RegenerateResizedImage;
 use App\Jobs\RunTestSuiteJob;
 use App\Models\Asset;
 use App\Models\Setting;
+use App\Services\FolderRegistry;
 use App\Services\QueueService;
 use App\Services\SystemService;
 use App\Services\TestRunnerService;
@@ -24,8 +25,12 @@ class SystemController extends Controller
 
     protected QueueService $queueService;
 
-    public function __construct(SystemService $systemService, TestRunnerService $testRunnerService, QueueService $queueService)
-    {
+    public function __construct(
+        SystemService $systemService,
+        TestRunnerService $testRunnerService,
+        QueueService $queueService,
+        protected FolderRegistry $folders,
+    ) {
         $this->systemService = $systemService;
         $this->testRunnerService = $testRunnerService;
         $this->queueService = $queueService;
@@ -266,10 +271,9 @@ class SystemController extends Controller
 
         $success = $this->systemService->updateSetting($key, $value);
 
-        // Clear cached folder list when root folder changes
+        // Every stored folder path is relative to the old root — rebuild the list
         if ($success && $key === 's3_root_folder') {
-            Setting::where('key', 's3_folders')->delete();
-            cache()->forget('setting:s3_folders');
+            $this->folders->forget();
         }
 
         return response()->json([

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\Tag;
+use App\Services\FolderRegistry;
 use App\Services\S3Service;
 use App\Support\TagInputParser;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -17,7 +18,10 @@ class AssetBulkController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(protected S3Service $s3Service) {}
+    public function __construct(
+        protected S3Service $s3Service,
+        protected FolderRegistry $folders,
+    ) {}
 
     /**
      * Add tags to multiple assets at once
@@ -184,7 +188,7 @@ class AssetBulkController extends Controller
     {
         $this->authorize('move', Asset::class);
 
-        $configuredFolders = S3Service::getConfiguredFolders();
+        $configuredFolders = $this->folders->forPicker();
 
         $request->validate([
             'asset_ids' => 'required|array|max:500',

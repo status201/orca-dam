@@ -8,24 +8,29 @@ use App\Http\Requests\Tools\StoreTexTemplateRequest;
 use App\Http\Requests\Tools\StoreTikzPngRequest;
 use App\Http\Requests\Tools\StoreTikzSvgFontsRequest;
 use App\Http\Requests\Tools\StoreTikzSvgRequest;
+use App\Http\Requests\Tools\ToolUploadRequest;
 use App\Models\Asset;
 use App\Models\Setting;
+use App\Services\FolderRegistry;
 use App\Services\S3Service;
 use App\Services\TikzCompilerService;
 use App\Services\ToolUploadService;
+use App\Support\ErrorAudience;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
 class ToolsController extends Controller
 {
     public function __construct(
         protected S3Service $s3Service,
         protected ToolUploadService $toolUploadService,
-        protected TikzCompilerService $tikzCompilerService
+        protected TikzCompilerService $tikzCompilerService,
+        protected FolderRegistry $folders,
     ) {}
 
     public function index()
@@ -33,108 +38,40 @@ class ToolsController extends Controller
         return view('tools.index');
     }
 
-    public function latexMathml()
+    public function latexMathml(): View
     {
-        $folders = S3Service::getConfiguredFolders();
-        $rootFolder = S3Service::getRootFolder();
-
-        return view('tools.latex-mathml', compact('folders', 'rootFolder'));
+        return $this->folderPickerView('tools.latex-mathml');
     }
 
     public function uploadMathml(StoreMathmlRequest $request): JsonResponse
     {
-        $folder = $request->input('folder', S3Service::getRootFolder());
-        $filename = S3Service::ensureExtension($request->input('filename'), 'mml', 'formula.mml');
-
-        try {
-            $asset = $this->toolUploadService->store(
-                content: $request->input('content'),
-                filename: $filename,
-                mimeType: 'application/mathml+xml',
-                folder: $folder,
-                attributes: [
-                    'user_id' => Auth::id(),
-                    'alt_text' => $request->input('latex') ?: null,
-                    'caption' => $request->input('caption') ?: null,
-                ],
-            );
-        } catch (\Throwable $e) {
-            Log::error('MathML upload failed: '.$e->getMessage());
-
-            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
-        }
-
-        return $this->assetJson($asset);
+        return $this->storeToolAsset($request, 'MathML', $request->input('content'), 'application/mathml+xml', 'mml', 'formula.mml', [
+            'alt_text' => $request->input('latex') ?: null,
+        ]);
     }
 
-    public function tikzSvg()
+    public function tikzSvg(): View
     {
-        $folders = S3Service::getConfiguredFolders();
-        $rootFolder = S3Service::getRootFolder();
-
-        return view('tools.tikz-svg', compact('folders', 'rootFolder'));
+        return $this->folderPickerView('tools.tikz-svg');
     }
 
     public function uploadTikzSvg(StoreTikzSvgRequest $request): JsonResponse
     {
-        $folder = $request->input('folder', S3Service::getRootFolder());
-        $filename = S3Service::ensureExtension($request->input('filename'), 'svg', 'diagram.svg');
-
-        try {
-            $asset = $this->toolUploadService->store(
-                content: $request->input('content'),
-                filename: $filename,
-                mimeType: 'image/svg+xml',
-                folder: $folder,
-                attributes: [
-                    'user_id' => Auth::id(),
-                    'parent_id' => $request->input('parent_asset_id'),
-                    'caption' => $request->input('caption') ?: null,
-                ],
-                metadata: $request->uploadMetadata(),
-            );
-        } catch (\Throwable $e) {
-            Log::error('TikZ SVG upload failed: '.$e->getMessage());
-
-            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
-        }
-
-        return $this->assetJson($asset);
+        return $this->storeToolAsset($request, 'TikZ SVG', $request->input('content'), 'image/svg+xml', 'svg', 'diagram.svg', [
+            'parent_id' => $request->input('parent_asset_id'),
+        ]);
     }
 
-    public function tikzSvgFonts()
+    public function tikzSvgFonts(): View
     {
-        $folders = S3Service::getConfiguredFolders();
-        $rootFolder = S3Service::getRootFolder();
-
-        return view('tools.tikz-svg-fonts', compact('folders', 'rootFolder'));
+        return $this->folderPickerView('tools.tikz-svg-fonts');
     }
 
     public function uploadTikzSvgFonts(StoreTikzSvgFontsRequest $request): JsonResponse
     {
-        $folder = $request->input('folder', S3Service::getRootFolder());
-        $filename = S3Service::ensureExtension($request->input('filename'), 'svg', 'diagram.svg');
-
-        try {
-            $asset = $this->toolUploadService->store(
-                content: $request->input('content'),
-                filename: $filename,
-                mimeType: 'image/svg+xml',
-                folder: $folder,
-                attributes: [
-                    'user_id' => Auth::id(),
-                    'parent_id' => $request->input('parent_asset_id'),
-                    'caption' => $request->input('caption') ?: null,
-                ],
-                metadata: $request->uploadMetadata(),
-            );
-        } catch (\Throwable $e) {
-            Log::error('TikZ SVG (embedded fonts) upload failed: '.$e->getMessage());
-
-            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
-        }
-
-        return $this->assetJson($asset);
+        return $this->storeToolAsset($request, 'TikZ SVG (embedded fonts)', $request->input('content'), 'image/svg+xml', 'svg', 'diagram.svg', [
+            'parent_id' => $request->input('parent_asset_id'),
+        ]);
     }
 
     public function bakomaFont(string $name)
@@ -172,58 +109,33 @@ class ToolsController extends Controller
             ->header('Cache-Control', 'public, max-age=31536000, immutable');
     }
 
-    public function tikzPng()
+    public function tikzPng(): View
     {
-        $folders = S3Service::getConfiguredFolders();
-        $rootFolder = S3Service::getRootFolder();
-
-        return view('tools.tikz-png', compact('folders', 'rootFolder'));
+        return $this->folderPickerView('tools.tikz-png');
     }
 
     public function uploadTikzPng(StoreTikzPngRequest $request): JsonResponse
     {
-        $folder = $request->input('folder', S3Service::getRootFolder());
-        $filename = S3Service::ensureExtension($request->input('filename'), 'png', 'diagram.png');
-
         $binaryData = $this->decodeBase64Content($request->input('content'));
         if ($binaryData === null) {
             return response()->json(['error' => __('Invalid base64 data')], 422);
         }
 
-        try {
-            $asset = $this->toolUploadService->store(
-                content: $binaryData,
-                filename: $filename,
-                mimeType: 'image/png',
-                folder: $folder,
-                attributes: [
-                    'user_id' => Auth::id(),
-                    'width' => $request->input('width'),
-                    'height' => $request->input('height'),
-                    'parent_id' => $request->input('parent_asset_id'),
-                    'caption' => $request->input('caption') ?: null,
-                ],
-                metadata: $request->uploadMetadata(),
-            );
-        } catch (\Throwable $e) {
-            Log::error('TikZ PNG upload failed: '.$e->getMessage());
-
-            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
-        }
-
-        return $this->assetJson($asset);
+        return $this->storeToolAsset($request, 'TikZ PNG', $binaryData, 'image/png', 'png', 'diagram.png', [
+            'width' => $request->input('width'),
+            'height' => $request->input('height'),
+            'parent_id' => $request->input('parent_asset_id'),
+        ]);
     }
 
-    public function tikzServer()
+    public function tikzServer(): View
     {
-        $folders = S3Service::getConfiguredFolders();
-        $rootFolder = S3Service::getRootFolder();
-        $compilerAvailable = $this->tikzCompilerService->isAvailable();
-        $fontPackages = TikzCompilerService::fontPackages();
-        $colorPackage = Setting::get('tikz_color_package', '');
-        $colorPackageName = Setting::get('tikz_color_package_name', '');
-
-        return view('tools.tikz-server', compact('folders', 'rootFolder', 'compilerAvailable', 'fontPackages', 'colorPackage', 'colorPackageName'));
+        return $this->folderPickerView('tools.tikz-server', [
+            'compilerAvailable' => $this->tikzCompilerService->isAvailable(),
+            'fontPackages' => TikzCompilerService::fontPackages(),
+            'colorPackage' => Setting::get('tikz_color_package', ''),
+            'colorPackageName' => Setting::get('tikz_color_package_name', ''),
+        ]);
     }
 
     public function renderTikzServer(Request $request)
@@ -326,70 +238,84 @@ class ToolsController extends Controller
 
     public function uploadTexTemplate(StoreTexTemplateRequest $request): JsonResponse
     {
-        $folder = $request->input('folder', S3Service::getRootFolder());
-        $filename = S3Service::ensureExtension($request->input('filename'), 'tex', 'template.tex');
-
-        try {
-            $asset = $this->toolUploadService->store(
-                content: $request->input('content'),
-                filename: $filename,
-                mimeType: 'application/x-tex',
-                folder: $folder,
-                attributes: [
-                    'user_id' => Auth::id(),
-                    'caption' => $request->input('caption') ?: null,
-                ],
-                process: false,
-            );
-        } catch (\Throwable $e) {
-            Log::error('TeX template upload failed: '.$e->getMessage());
-
-            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
-        }
-
-        return $this->assetJson($asset);
+        return $this->storeToolAsset($request, 'TeX template', $request->input('content'), 'application/x-tex', 'tex', 'template.tex', process: false);
     }
 
-    public function gifMaker()
+    public function gifMaker(): View
     {
-        $folders = S3Service::getConfiguredFolders();
-        $rootFolder = S3Service::getRootFolder();
-
-        return view('tools.gif-maker', compact('folders', 'rootFolder'));
+        return $this->folderPickerView('tools.gif-maker');
     }
 
     public function uploadGif(StoreGifRequest $request): JsonResponse
     {
-        $folder = $request->input('folder', S3Service::getRootFolder());
-        $filename = S3Service::ensureExtension($request->input('filename'), 'gif', 'animation.gif');
-
         $binaryData = $this->decodeBase64Content($request->input('content'));
         if ($binaryData === null) {
             return response()->json(['error' => __('Invalid base64 data')], 422);
         }
 
+        return $this->storeToolAsset($request, 'GIF', $binaryData, 'image/gif', 'gif', 'animation.gif', [
+            'width' => $request->input('width'),
+            'height' => $request->input('height'),
+            'parent_id' => $request->input('parent_asset_id'),
+        ]);
+    }
+
+    /**
+     * The body every tool upload shares: name the file, store it as an asset with the caller as
+     * uploader and the request's caption (and batch metadata, where the request carries it), and
+     * answer with the standard payload.
+     *
+     * @param  string  $label  names the tool in the log line
+     * @param  array<string, mixed>  $attributes  tool-specific Asset columns
+     */
+    private function storeToolAsset(
+        ToolUploadRequest $request,
+        string $label,
+        string $content,
+        string $mimeType,
+        string $extension,
+        string $fallbackName,
+        array $attributes = [],
+        bool $process = true,
+    ): JsonResponse {
         try {
             $asset = $this->toolUploadService->store(
-                content: $binaryData,
-                filename: $filename,
-                mimeType: 'image/gif',
-                folder: $folder,
-                attributes: [
+                content: $content,
+                filename: S3Service::ensureExtension($request->input('filename'), $extension, $fallbackName),
+                mimeType: $mimeType,
+                folder: $request->input('folder', S3Service::getRootFolder()),
+                attributes: array_merge([
                     'user_id' => Auth::id(),
-                    'width' => $request->input('width'),
-                    'height' => $request->input('height'),
-                    'parent_id' => $request->input('parent_asset_id'),
                     'caption' => $request->input('caption') ?: null,
-                ],
+                ], $attributes),
+                process: $process,
                 metadata: $request->uploadMetadata(),
             );
         } catch (\Throwable $e) {
-            Log::error('GIF upload failed: '.$e->getMessage());
+            Log::error("{$label} upload failed: ".$e->getMessage());
 
-            return response()->json(['error' => __('Upload failed: :error', ['error' => $e->getMessage()])], 500);
+            // REQ-tool-upload-error-audience: an api-role caller gets no exception text.
+            $detail = ErrorAudience::detail($e);
+
+            return response()->json([
+                'error' => $detail === null ? __('Upload failed.') : __('Upload failed: :error', ['error' => $detail]),
+            ], 500);
         }
 
         return $this->assetJson($asset);
+    }
+
+    /**
+     * A tool page with its folder picker filled in.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function folderPickerView(string $view, array $data = []): View
+    {
+        return view($view, [
+            'folders' => $this->folders->forPicker(),
+            'rootFolder' => S3Service::getRootFolder(),
+        ] + $data);
     }
 
     /**

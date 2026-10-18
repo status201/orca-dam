@@ -3,7 +3,7 @@
 ```yaml
 id: asset-model
 status: implemented
-version: 6
+version: 7
 owner: core
 related:
   - architecture
@@ -78,10 +78,29 @@ Scopes: `scopeSearch($query, ?string $search)` (delegates to
 `AssetSearchParser::apply`), `scopeWithTags($query, array $tagIds)`,
 `scopeOfType($query, ?string $type)` (accepts `images`/`videos`/`documents`
 aliases in addition to the canonical categories), `scopeByUser($query, ?int $userId)`,
-`scopeInFolder($query, ?string $folder)`, `scopeApplySort($query, string $sort)`,
+`scopeInFolder($query, ?string $folder)`, `scopeApplySort($query, ?string $sort)`,
 `scopeMissing($query)`, `scopeDuplicateOf($query, ?string $etag)` (the one definition of
 "same bytes" — see [`duplicate-detection.md`](duplicate-detection.md); callers add
 `withTrashed()`).
+
+**Sorting.** `App\Support\AssetSort` is a string-backed enum of the ten sort keys
+(`date_desc` … `s3key_desc`). Each case owns its ordering (`apply()`) and its translated
+label (`label()`); `AssetSort::fromInput(?string)` maps an unknown **or empty** value to
+`date_desc`. `scopeApplySort`, the cycle-nav summary and the grid's sort `<select>` all read
+it — three hand-kept copies of the same list before.
+
+**Listing.** `App\Support\AssetFilter` applies every list filter once:
+
+```yaml
+new AssetFilter(search?, tagIds=[], type?, folder?, userId?, missingOnly=false, ids?, sort='date_desc')
+  ->apply(Builder $query): Builder   # where-clauses, then AssetSort::fromInput($sort)->apply()
+AssetFilter::tagIds(mixed $raw): array   # the `tags` param as an array or a comma-separated string
+```
+
+The web index/embed/cycle-nav query (`AssetController::buildFilteredAssetQuery()`) and the
+REST `index`/`search` endpoints each build one. Each maps its own request parameters and
+decides its own `user` filter (web: an admin, or the viewer filtering by themselves; REST:
+admins only) — the filter applies what it is given.
 
 **Derived S3 objects.** The thumbnail and resize columns are named once, as constants, and
 every caller that deletes, purges, resets or fills them reads from here rather than spelling
@@ -255,6 +274,19 @@ Scenario: the edit form no longer offers a license expiry input
   Then no license expiry input is rendered
   But the detail page still shows the stored expiry date
 # pinned by: tests/Feature/AssetTest.php
+
+Scenario: An empty sort parameter falls back to the default order (regression)
+  Given an authenticated admin
+  When GET /assets?sort= and GET /api/assets?sort= are requested
+  Then both respond 200, ordered as date_desc
+  # ConvertEmptyStringsToNull turns ?sort= into null, which reached the non-nullable
+  # string $sort of scopeApplySort and threw a TypeError (500) on both endpoints.
+# pinned by: tests/Feature/AssetTest.php
+
+Scenario: Every sort key has one ordering and one label
+  Then each AssetSort case applies its own ordering and has a translated label
+  And AssetSort::fromInput() maps an unknown, null or empty value to date_desc
+# pinned by: tests/Unit/AssetSortScopeTest.php
 
 Scenario: The derived-key helpers name the same four columns in a fixed order
   Given an asset with a thumbnail and only an S resize

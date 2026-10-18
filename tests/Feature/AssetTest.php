@@ -1193,3 +1193,14 @@ test('guests cannot unlink parent relation', function () {
     $response->assertRedirect(route('login'));
     expect($child->fresh()->parent_id)->toBe($parent->id);
 });
+
+test('an empty sort parameter falls back to the default order instead of failing (regression)', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $older = Asset::factory()->create(['updated_at' => now()->subDay()]);
+    $newer = Asset::factory()->create(['updated_at' => now()]);
+
+    $this->actingAs($admin)->get(route('assets.index', ['sort' => '', 'folder' => '']))->assertOk();
+
+    $ids = collect($this->actingAs($admin)->getJson('/api/assets?sort=')->assertOk()->json('data'))->pluck('id')->all();
+    expect($ids)->toBe([$newer->id, $older->id]);
+});

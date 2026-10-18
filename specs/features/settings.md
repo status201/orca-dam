@@ -3,7 +3,7 @@
 ```yaml
 id: settings
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -53,6 +53,7 @@ Setting::set(key, value, type=null, group=null): bool   # upsert + cache-bust
 Setting::allSettings(): array                  # cached flat key => value map
 Setting::allGrouped(): array                   # cached group => [key => {value,type,description}]
 Setting::clearCache(): void                     # forgets every per-key cache + the two aggregates
+Setting::forget(key): void                      # deletes the row, its cache and the two aggregates
 POST /system/settings/update  (SystemController::updateSetting, admin-only, AJAX)
   body: { key: string, value: string }
   -> 422 { success: false, error } on failed validation for a known key
@@ -74,8 +75,10 @@ Setting:                # settings table
 
 Request → `SystemController::updateSetting` (validates known keys) →
 `SystemService::updateSetting()` → `Setting::set()` (upsert + cache-bust). Special
-case: changing `s3_root_folder` also drops the cached `s3_folders` setting so the
-folder list is recomputed. Reads go directly through `Setting::get()` from any
+case: changing `s3_root_folder` also drops the `s3_folders` setting
+(`FolderRegistry::forget()` → `Setting::forget()`) so the folder list is recomputed. It
+used to delete the row and its per-key cache by hand, which left the `settings:all` /
+`settings:grouped` aggregates holding the old list. Reads go directly through `Setting::get()` from any
 service/middleware/model — there is no repository layer.
 
 ### Persistence
