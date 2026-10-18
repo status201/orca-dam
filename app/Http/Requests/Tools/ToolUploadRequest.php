@@ -4,6 +4,7 @@ namespace App\Http\Requests\Tools;
 
 use App\Models\Asset;
 use App\Support\ColumnLimits;
+use App\Support\UploadMetadata;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -32,4 +33,13 @@ abstract class ToolUploadRequest extends FormRequest
      * fields (width/height/parent_asset_id/latex/metadata).
      */
     abstract protected function extraRules(): array;
+
+    /**
+     * Batch upload metadata for the asset. None by default; a tool whose request uses
+     * HasUploadMetadataRules gets that trait's accessor instead.
+     */
+    public function uploadMetadata(): ?UploadMetadata
+    {
+        return null;
+    }
 }

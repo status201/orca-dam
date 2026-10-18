@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Services\CsvExportService;
+use App\Services\FolderRegistry;
 use App\Services\S3Service;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ class ExportController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(protected CsvExportService $csvExportService) {}
+    public function __construct(
+        protected CsvExportService $csvExportService,
+        protected FolderRegistry $folders,
+    ) {}
 
     /**
      * Show the export page
@@ -37,7 +41,7 @@ class ExportController extends Controller
             ->values();
 
         $rootFolder = S3Service::getRootFolder();
-        $folders = S3Service::getConfiguredFolders();
+        $folders = $this->folders->forPicker();
 
         return view('export.index', [
             'fileTypes' => $fileTypes,

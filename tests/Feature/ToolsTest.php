@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\User;
 use App\Services\S3Service;
 use App\Services\TikzCompilerService;
+use App\Services\ToolUploadService;
 
 // ---------------------------------------------------------------------------
 // Route access — authentication
@@ -530,4 +531,20 @@ test('api users cannot access tools pages', function () {
     // Actually — tools routes are in the general auth group, so API users CAN access them.
     // This test documents the current behavior.
     $this->actingAs($apiUser)->get(route('tools.index'))->assertOk();
+});
+
+test('a failed tool upload hides the exception from an api-role caller (regression)', function () {
+    $this->mock(ToolUploadService::class, fn ($mock) => $mock->shouldReceive('store')
+        ->andThrow(new RuntimeException('secret bucket detail')));
+    $payload = ['content' => '<svg xmlns="http://www.w3.org/2000/svg"/>', 'filename' => 'd.svg'];
+
+    $api = User::factory()->create(['role' => 'api']);
+    $this->actingAs($api)->postJson(route('tools.tikz-svg.upload'), $payload)
+        ->assertStatus(500)
+        ->assertExactJson(['error' => 'Upload failed.']);
+
+    $editor = User::factory()->create(['role' => 'editor']);
+    $this->actingAs($editor)->postJson(route('tools.tikz-svg.upload'), $payload)
+        ->assertStatus(500)
+        ->assertJsonPath('error', 'Upload failed: secret bucket detail');
 });

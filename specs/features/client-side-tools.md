@@ -3,7 +3,7 @@
 ```yaml
 id: client-side-tools
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -91,6 +91,12 @@ backend render step, only a backend *persist* step.
   security check should be readable without following a call, and a check inside a helper is
   not reliably recognised by the scanner that found this.
 
+- **REQ-tool-upload-error-audience** — A failed tool upload answers
+  `500 {"error": "Upload failed: <detail>"}`, where the detail passes through `ErrorAudience`
+  ([error-handling.md](error-handling.md) REQ-9): an api-role caller gets `"Upload failed."`
+  with no exception text, and a database error shows the driver's sentence, never the SQL with
+  its bindings. The six upload actions used to put `$e->getMessage()` in the body for every role.
+
 ## Technical design
 
 ### Contract / public interface
@@ -123,6 +129,14 @@ GET  tools/bakoma-font/{name}     -> ToolsController::bakomaFont     (proxies+ca
 
 ToolUploadService::store(content, filename, mimeType, folder, attributes, process, metadata): Asset
   # shared by every tool above — see tikz-render.md for the full contract.
+
+ToolsController (private):
+  storeToolAsset(ToolUploadRequest, label, content, mimeType, extension, fallbackName,
+                 attributes=[], process=true): JsonResponse
+    # the body of all six upload actions: ensureExtension() → store() with user_id, caption and
+    # $request->uploadMetadata() (null for a request without HasUploadMetadataRules) → assetJson();
+    # a failure → uploadFailed() (REQ-tool-upload-error-audience)
+  folderPickerView(view, data=[]): View   # folders (FolderRegistry::forPicker()) + rootFolder
 ```
 
 ### Data shapes
@@ -178,6 +192,13 @@ Live pipeline in [tikz-render.md](tikz-render.md)).
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: A failed tool upload hides the exception from an api-role caller (regression)
+  Given ToolUploadService throws "secret bucket detail"
+  When an api-role user uploads through a tool endpoint
+  Then the response is 500 with error "Upload failed." and no exception text
+  But an editor gets "Upload failed: secret bucket detail"
+# pinned by: tests/Feature/ToolsTest.php
+
 Scenario: An unauthenticated request cannot upload a tex template
   When a guest POSTs tools/tikz-server/templates/upload
   Then the response is 401

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\AssetSearchParser;
 use App\Services\S3Service;
+use App\Support\AssetSort;
 use App\Support\S3KeyHash;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -688,22 +689,11 @@ class Asset extends Model
     }
 
     /**
-     * Scope: Apply sorting
+     * Scope: Apply sorting. Unknown, null and empty all mean date_desc (see AssetSort).
      */
-    public function scopeApplySort($query, string $sort = 'date_desc')
+    public function scopeApplySort($query, ?string $sort = 'date_desc')
     {
-        return match ($sort) {
-            'date_asc' => $query->oldest('updated_at'),
-            'upload_asc' => $query->oldest('created_at'),
-            'upload_desc' => $query->latest('created_at'),
-            'size_asc' => $query->orderBy('size', 'asc'),
-            'size_desc' => $query->orderBy('size', 'desc'),
-            'name_asc' => $query->orderBy('filename', 'asc'),
-            'name_desc' => $query->orderBy('filename', 'desc'),
-            's3key_asc' => $query->orderBy('s3_key', 'asc'),
-            's3key_desc' => $query->orderBy('s3_key', 'desc'),
-            default => $query->latest('updated_at'), // date_desc
-        };
+        return AssetSort::fromInput($sort)->apply($query);
     }
 
     /**

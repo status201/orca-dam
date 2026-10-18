@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Asset;
+use App\Support\AssetSort;
 
 test('applySort defaults to date_desc ordering by updated_at descending', function () {
     $old = Asset::factory()->create(['updated_at' => now()->subDays(2)]);
@@ -65,4 +66,16 @@ test('applySort with unknown value falls back to date_desc', function () {
     $results = Asset::applySort('invalid_sort')->pluck('id')->all();
 
     expect($results)->toBe([$new->id, $old->id]);
+});
+
+test('AssetSort maps unknown, null and empty input to date_desc and labels every case', function () {
+    expect(AssetSort::fromInput('name_asc'))->toBe(AssetSort::NameAsc)
+        ->and(AssetSort::fromInput('bogus'))->toBe(AssetSort::DateDesc)
+        ->and(AssetSort::fromInput(null))->toBe(AssetSort::DateDesc)
+        ->and(AssetSort::fromInput(''))->toBe(AssetSort::DateDesc);
+
+    foreach (AssetSort::cases() as $case) {
+        expect($case->label())->toBeString()->not->toBe('');
+    }
+    expect(AssetSort::S3KeyDesc->label())->toBe('S3 Key Z-A');
 });

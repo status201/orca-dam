@@ -72,16 +72,9 @@
                             @change="applyFilters"
                             :class="sort !== 'date_desc' ? 'ring-2 ring-orca-black border-orca-black' : ''"
                             class="pr-dropdown px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
-                        <option value="date_desc">{{ __('Newest First') }}</option>
-                        <option value="date_asc">{{ __('Oldest First') }}</option>
-                        <option value="upload_desc">{{ __('Newest Uploads') }}</option>
-                        <option value="upload_asc">{{ __('Oldest Uploads') }}</option>
-                        <option value="size_desc">{{ __('Largest First') }}</option>
-                        <option value="size_asc">{{ __('Smallest First') }}</option>
-                        <option value="name_asc">{{ __('Name A-Z') }}</option>
-                        <option value="name_desc">{{ __('Name Z-A') }}</option>
-                        <option value="s3key_asc">{{ __('S3 Key A-Z') }}</option>
-                        <option value="s3key_desc">{{ __('S3 Key Z-A') }}</option>
+                        @foreach (\App\Support\AssetSort::cases() as $sortOption)
+                            <option value="{{ $sortOption->value }}">{{ $sortOption->label() }}</option>
+                        @endforeach
                     </select>
 
                     <!-- Upload button -->
