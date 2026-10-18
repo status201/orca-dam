@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Tag;
 use App\Support\ColumnLimits;
+use App\Support\TagInputParser;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -42,5 +43,52 @@ class UpdateAssetRequest extends FormRequest
                 Rule::exists('tags', 'id')->where(fn ($q) => $q->where('type', 'reference')),
             ],
         ];
+    }
+
+    /**
+     * The editable metadata columns present in this request. s3_key is never among them
+     * (ADR-006); filename is the editable display name.
+     *
+     * @return array<string, mixed>
+     */
+    public function metadataAttributes(): array
+    {
+        return $this->only([
+            'filename', 'alt_text', 'caption', 'license_type',
+            'license_expiry_date', 'date_obtained', 'copyright', 'copyright_source',
+        ]);
+    }
+
+    /**
+     * Whether the request means to change tags at all. Tags are only touched when sent.
+     */
+    public function touchesTags(): bool
+    {
+        return $this->has('tags') || $this->has('reference_tag_ids');
+    }
+
+    /**
+     * The submitted user tags as ids (created on demand), or null to leave user tags alone.
+     * Free text goes through TagInputParser like every other tag input (tag-input.md REQ-4).
+     *
+     * @return list<int>|null
+     */
+    public function userTagIds(): ?array
+    {
+        return $this->has('tags')
+            ? Tag::resolveUserTagIds(TagInputParser::parse($this->input('tags', [])))
+            : null;
+    }
+
+    /**
+     * The submitted reference tag ids, or null to leave reference tags alone.
+     *
+     * @return list<int>|null
+     */
+    public function referenceTagIds(): ?array
+    {
+        return $this->has('reference_tag_ids')
+            ? array_map('intval', (array) $this->input('reference_tag_ids', []))
+            : null;
     }
 }

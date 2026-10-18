@@ -114,11 +114,12 @@ Registered in `bootstrap/app.php`; the web group in order:
 
 ### Service-layer map
 
-The heart of the app (`app/Services/`, 16 services). One-line each; read the source
+The heart of the app (`app/Services/`, 17 services). One-line each; read the source
 or the governing feature spec for detail:
 
 ```yaml
 S3Service:               # all S3 ops (upload/delete/list/move), SVG sanitize, CDN URL
+AssetIngestionService:   # dedup by etag + create-or-overwrite the Asset row, for every ingestion path
 AssetProcessingService:  # shared post-upload work (thumbnail, resizes, dimensions, AI dispatch)
 ImageProcessingService:  # Intervention/GD wrapper (thumbs, resizes, dimensions, animated-GIF)
 AssetSearchParser:       # pure parser for search input (+req -excl "phrase")
@@ -276,7 +277,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1287 tests,
+- `php artisan config:clear && php artisan test` — the full Pest suite (1292 tests,
   97 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security

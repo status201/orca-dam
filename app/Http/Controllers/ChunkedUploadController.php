@@ -11,6 +11,7 @@ use App\Services\AssetProcessingService;
 use App\Services\ChunkedUploadService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
+use App\Support\UploadMetadata;
 use App\Support\UploadMetadataRules;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -186,16 +187,7 @@ class ChunkedUploadController extends Controller
             // Generate thumbnail, resized images, and AI tags
             $this->assetProcessingService->processImageAsset($asset);
 
-            // Apply batch upload metadata
-            $this->assetProcessingService->applyUploadMetadata(
-                $asset,
-                $request->input('metadata_tags'),
-                $request->input('metadata_license_type'),
-                $request->input('metadata_copyright'),
-                $request->input('metadata_copyright_source'),
-                $request->input('metadata_reference_tag_ids'),
-                dateObtained: $request->input('metadata_date_obtained'),
-            );
+            $this->assetProcessingService->applyUploadMetadata($asset, UploadMetadata::fromRequest($request));
 
             return response()->json([
                 'message' => __('Upload completed successfully'),

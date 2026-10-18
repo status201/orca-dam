@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessDiscoveredAsset;
 use App\Models\Asset;
+use App\Services\AssetIngestionService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
@@ -17,15 +18,11 @@ class DiscoverController extends Controller
 {
     use AuthorizesRequests;
 
-    protected S3Service $s3Service;
-
-    protected RekognitionService $rekognitionService;
-
-    public function __construct(S3Service $s3Service, RekognitionService $rekognitionService)
-    {
-        $this->s3Service = $s3Service;
-        $this->rekognitionService = $rekognitionService;
-    }
+    public function __construct(
+        protected S3Service $s3Service,
+        protected RekognitionService $rekognitionService,
+        protected AssetIngestionService $ingestion,
+    ) {}
 
     /**
      * Show the discover page
@@ -143,31 +140,28 @@ class DiscoverController extends Controller
                     continue;
                 }
 
-                // Quick ETag duplicate check (including trashed)
-                if (! empty($metadata['etag'])) {
-                    $existingAsset = Asset::withTrashed()->where('etag', $metadata['etag'])->first();
-                    if ($existingAsset) {
-                        Log::info("Asset with ETag {$metadata['etag']} already exists (ID: {$existingAsset->id})");
-                        $skipped++;
+                // Quick ETag duplicate check (including trashed). The object is the bucket's own,
+                // not an upload, so it is skipped rather than deleted.
+                $existingAsset = $this->ingestion->findDuplicate($metadata['etag'] ?? null);
+                if ($existingAsset) {
+                    Log::info("Asset with ETag {$metadata['etag']} already exists (ID: {$existingAsset->id})");
+                    $skipped++;
 
-                        continue;
-                    }
+                    continue;
                 }
 
                 // Extract filename from S3 key
                 $filename = basename($s3Key);
 
                 // Create asset record and dispatch job atomically
-                $asset = DB::transaction(function () use ($s3Key, $metadata, $filename) {
-                    return Asset::create([
-                        's3_key' => $s3Key,
-                        'etag' => $metadata['etag'] ?? null,
-                        'filename' => $filename,
-                        'mime_type' => $metadata['mime_type'],
-                        'size' => $metadata['size'],
-                        'user_id' => Auth::id(),
-                    ]);
-                });
+                $asset = DB::transaction(fn () => $this->ingestion->persist([
+                    's3_key' => $s3Key,
+                    'etag' => $metadata['etag'] ?? null,
+                    'filename' => $filename,
+                    'mime_type' => $metadata['mime_type'],
+                    'size' => $metadata['size'],
+                    'user_id' => Auth::id(),
+                ]));
 
                 // Dispatch background job to process thumbnails and AI tagging
                 ProcessDiscoveredAsset::dispatch($asset->id);

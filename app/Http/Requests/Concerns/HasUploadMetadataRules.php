@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Concerns;
 
+use App\Support\UploadMetadata;
 use App\Support\UploadMetadataRules;
 
 /**
@@ -21,17 +22,10 @@ trait HasUploadMetadataRules
     }
 
     /**
-     * The batch metadata payload, shaped for AssetProcessingService::applyUploadMetadata().
+     * The batch metadata payload, for AssetProcessingService::applyUploadMetadata().
      */
-    public function uploadMetadata(): array
+    public function uploadMetadata(): UploadMetadata
     {
-        return [
-            'tags' => $this->input('metadata_tags'),
-            'license_type' => $this->input('metadata_license_type'),
-            'copyright' => $this->input('metadata_copyright'),
-            'copyright_source' => $this->input('metadata_copyright_source'),
-            'reference_tag_ids' => $this->input('metadata_reference_tag_ids'),
-            'date_obtained' => $this->input('metadata_date_obtained'),
-        ];
+        return UploadMetadata::fromRequest($this);
     }
 }

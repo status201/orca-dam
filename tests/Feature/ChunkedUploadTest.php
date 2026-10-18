@@ -4,6 +4,7 @@ use App\Exceptions\DuplicateAssetException;
 use App\Models\Asset;
 use App\Models\UploadSession;
 use App\Models\User;
+use App\Services\AssetIngestionService;
 use App\Services\ChunkedUploadService;
 use App\Services\ImageProcessingService;
 use App\Services\S3Service;
@@ -57,7 +58,7 @@ function chunkedServiceWith(MockHandler $handler): array
     $s3 = Mockery::mock(S3Service::class, [app(ImageProcessingService::class)])->makePartial();
     $s3->setS3Client(fakeS3Client($handler, $history));
 
-    $service = new ChunkedUploadService($s3);
+    $service = new ChunkedUploadService($s3, new AssetIngestionService($s3));
     app()->instance(ChunkedUploadService::class, $service);
 
     return [$service, $history, $s3];

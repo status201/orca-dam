@@ -21,12 +21,10 @@ class ChunkedUploadService
     /** The part size the server dictates; init returns it and the uploader slices by it. */
     public const CHUNK_SIZE = 10 * 1024 * 1024;
 
-    protected S3Service $s3Service;
-
-    public function __construct(S3Service $s3Service)
-    {
-        $this->s3Service = $s3Service;
-    }
+    public function __construct(
+        protected S3Service $s3Service,
+        protected AssetIngestionService $ingestion,
+    ) {}
 
     /**
      * Initialize multipart upload session
@@ -207,63 +205,35 @@ class ChunkedUploadService
                 $etag = $newEtag;
             }
 
-            // Check if an asset with this s3_key already exists (original filename mode)
-            $existingByKey = Asset::withTrashed()->where('s3_key', $session->s3_key)->first();
+            // An existing row at this key is an overwrite (original filename mode), which also
+            // switches the duplicate check off — duplicate-detection.md REQ-2.
+            $existingByKey = $this->ingestion->existingAtKey($session->s3_key);
 
-            // Check for duplicate by etag (skip when overwriting by s3_key)
-            if (! $existingByKey && ! empty($etag)) {
-                $existing = Asset::withTrashed()->where('etag', $etag)->first();
-                if ($existing) {
-                    // Clean up the just-completed S3 object
-                    $this->s3Service->deleteFile($session->s3_key);
-                    $session->update(['status' => 'failed']);
+            $existing = $this->ingestion->findDuplicate($etag, $existingByKey);
+            if ($existing) {
+                $this->ingestion->discardDuplicate($session->s3_key, $existing, $session->filename);
+                $session->update(['status' => 'failed']);
 
-                    Log::warning('Duplicate chunked upload detected', [
-                        'filename' => $session->filename,
-                        'existing_asset_id' => $existing->id,
-                        'etag' => $etag,
-                    ]);
-
-                    throw new DuplicateAssetException($existing);
-                }
+                throw new DuplicateAssetException($existing);
             }
 
             $dimensions = $this->s3Service->extractImageDimensions($session->s3_key, $session->mime_type) ?? [];
 
             if ($existingByKey) {
-                // Overwrite: clean up old derived files, update existing record
+                // Overwrite: the old derived files describe the old bytes
                 $this->s3Service->deleteAssetFiles($existingByKey, keepOriginal: true);
-
-                $existingByKey->update([
-                    'filename' => $session->filename,
-                    'mime_type' => $session->mime_type,
-                    'size' => $session->file_size,
-                    'etag' => $etag,
-                    'width' => $dimensions['width'] ?? null,
-                    'height' => $dimensions['height'] ?? null,
-                    'thumbnail_s3_key' => null,
-                    'resize_s_s3_key' => null,
-                    'resize_m_s3_key' => null,
-                    'resize_l_s3_key' => null,
-                    'user_id' => $session->user_id,
-                    'deleted_at' => null,
-                    'last_modified_by' => $session->user_id,
-                ]);
-
-                $asset = $existingByKey;
-            } else {
-                // Create Asset record
-                $asset = Asset::create([
-                    's3_key' => $session->s3_key,
-                    'filename' => $session->filename,
-                    'mime_type' => $session->mime_type,
-                    'size' => $session->file_size,
-                    'etag' => $etag,
-                    'width' => $dimensions['width'] ?? null,
-                    'height' => $dimensions['height'] ?? null,
-                    'user_id' => $session->user_id,
-                ]);
             }
+
+            $asset = $this->ingestion->persist([
+                's3_key' => $session->s3_key,
+                'filename' => $session->filename,
+                'mime_type' => $session->mime_type,
+                'size' => $session->file_size,
+                'etag' => $etag,
+                'width' => $dimensions['width'] ?? null,
+                'height' => $dimensions['height'] ?? null,
+                'user_id' => $session->user_id,
+            ], $existingByKey);
 
             // Mark session as completed
             $session->update(['status' => 'completed']);

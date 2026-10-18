@@ -3,7 +3,7 @@
 ```yaml
 id: asset-upload
 status: implemented
-version: 6
+version: 7
 owner: core
 related:
   - architecture
@@ -89,13 +89,15 @@ when `$dispatchAiTagging` and `RekognitionService::isEnabled()`. Each step is
 independently try/caught and logged — a thumbnail failure doesn't block resize
 generation or AI dispatch.
 
-`AssetProcessingService::applyUploadMetadata(Asset $asset, ?array $tagNames, ?string $licenseType, ?string $copyright, ?string $copyrightSource, ?array $referenceTagIds = null, ?string $dateObtained = null): void`
-— `$dateObtained` is **appended** rather than slotted in beside `$copyrightSource`, for
-the same reason `date_obtained` became CSV column 34 and not column 18
-([`csv-export-import.md`](csv-export-import.md)): existing positional callers must not
-shift. The `$updates` array it feeds is keyed, so column grouping is unaffected. Callers
-pass it by name. The method applies non-null/non-empty license fields via one `update()`, parses
-`$tagNames` through `TagInputParser::parse()` (comma-splitting — see
+`AssetProcessingService::applyUploadMetadata(Asset $asset, UploadMetadata $metadata): void`
+— `App\Support\UploadMetadata` is a small readonly value object (`tags`,
+`referenceTagIds`, `licenseType`, `copyright`, `copyrightSource`, `dateObtained`, all
+nullable) built by `UploadMetadata::fromRequest($request)` from the `metadata_*` fields
+(the web upload, chunked completion, and — via `HasUploadMetadataRules::uploadMetadata()` —
+the tool endpoints all share it). It replaced seven positional parameters, which is what had
+forced `dateObtained` to be appended at the end rather than kept beside its neighbours.
+The method applies non-null/non-empty license fields via one `update()`, parses
+`tags` through `TagInputParser::parse()` (comma-splitting — see
 [`tag-input.md`](tag-input.md)) then `Tag::resolveUserTagIds()` +
 `syncTagsWithAttribution(..., 'user')`; reference tag ids are synced with
 `attached_by = 'reference'`.
@@ -106,14 +108,14 @@ pass it by name. The method applies non-null/non-empty license fields via one `u
 StoreAssetRequest validation
   → AssetPolicy::create authorization
   → per file: S3Service::uploadFile() (folder + keepOriginalFilename)
-      → s3_key lookup FIRST — its result gates the next step        [duplicate-detection.md]
-      → etag dedup check (skipped only when that key collided)      [duplicate-detection.md]
+      → AssetIngestionService::existingAtKey() FIRST — it gates the next step [duplicate-detection.md]
+      → AssetIngestionService::findDuplicate() (skipped only when that key collided)
       → s3_key collision handling (keepOriginalFilename overwrite branch:
         deletes old derived files via S3Service::deleteAssetFiles(keepOriginal: true),
         updates the existing Asset row in place instead of creating a new one)
-      → Asset::create() (or update, for the overwrite branch)
+      → AssetIngestionService::persist() (create, or overwrite the collided row in place)
       → AssetProcessingService::processImageAsset($asset)
-      → AssetProcessingService::applyUploadMetadata($asset, ...)
+      → AssetProcessingService::applyUploadMetadata($asset, UploadMetadata::fromRequest($request))
   → aggregate response: uploaded assets + duplicates[] (409 payloads)
 ```
 
@@ -223,13 +225,8 @@ Scenario: A disallowed file type is rejected in the browser
 
 ## Open questions / future
 
-- `applyUploadMetadata()` now takes seven positional parameters, four of them nullable
-  strings, which makes a call like `applyUploadMetadata($asset, null, null, null, null)`
-  unreadable at the call site and easy to mis-order. Folding them into a single keyed
-  array (or a small DTO) is the obvious fix, but it would rewrite three production call
-  sites and ~10 test ones and force `## Technical design` edits — and therefore version
-  bumps — in four specs for reasons unrelated to any of them. Worth doing on its own,
-  not folded into a field addition.
+- ~~`applyUploadMetadata()` takes seven positional parameters.~~ **Resolved** — it takes an
+  `UploadMetadata` value object, so a new field is one property, not a re-ordered signature.
 
 - ~~The `keep_original_filename` overwrite branch has no dedicated test.~~ **Resolved** — all four
   combinations of the flag are now pinned in `tests/Feature/DuplicatePreventionTest.php`

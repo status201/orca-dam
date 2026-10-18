@@ -6,6 +6,7 @@ use App\Jobs\GenerateAiTags;
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Support\TagInputParser;
+use App\Support\UploadMetadata;
 use Illuminate\Support\Facades\Log;
 
 class AssetProcessingService
@@ -39,11 +40,7 @@ class AssetProcessingService
         try {
             $resizedKeys = $this->s3Service->generateResizedImages($asset->s3_key);
             if (! empty($resizedKeys)) {
-                $asset->update([
-                    'resize_s_s3_key' => $resizedKeys['s'] ?? null,
-                    'resize_m_s3_key' => $resizedKeys['m'] ?? null,
-                    'resize_l_s3_key' => $resizedKeys['l'] ?? null,
-                ]);
+                $asset->update(Asset::resizeKeyAttributes($resizedKeys));
             }
         } catch (\Exception $e) {
             Log::error("Resize generation failed for {$asset->filename}: ".$e->getMessage());
@@ -61,28 +58,16 @@ class AssetProcessingService
 
     /**
      * Apply batch upload metadata (tags, license, copyright, date obtained) to a newly created asset.
-     *
-     * $dateObtained is appended rather than slotted in beside $copyrightSource, for the same reason
-     * date_obtained became CSV column 34 and not column 18: existing positional callers must not
-     * shift. The $updates array below is keyed, so the column still reads next to its neighbours.
-     * Callers pass it by name.
      */
-    public function applyUploadMetadata(
-        Asset $asset,
-        ?array $tagNames,
-        ?string $licenseType,
-        ?string $copyright,
-        ?string $copyrightSource,
-        ?array $referenceTagIds = null,
-        ?string $dateObtained = null
-    ): void {
+    public function applyUploadMetadata(Asset $asset, UploadMetadata $metadata): void
+    {
         // The '' arm is load-bearing, not defensive: a cleared <input type="date"> submits an empty
         // string, and '' must not reach the 'date' cast or overwrite a stored value with nothing.
         $updates = array_filter([
-            'license_type' => $licenseType,
-            'copyright' => $copyright,
-            'copyright_source' => $copyrightSource,
-            'date_obtained' => $dateObtained,
+            'license_type' => $metadata->licenseType,
+            'copyright' => $metadata->copyright,
+            'copyright_source' => $metadata->copyrightSource,
+            'date_obtained' => $metadata->dateObtained,
         ], fn ($v) => $v !== null && $v !== '');
 
         if (! empty($updates)) {
@@ -90,14 +75,14 @@ class AssetProcessingService
         }
 
         // Split any comma-separated entries so a single "a,b,c" value still works.
-        $tagNames = TagInputParser::parse($tagNames);
+        $tagNames = TagInputParser::parse($metadata->tags);
         if (! empty($tagNames)) {
             $tagIds = Tag::resolveUserTagIds($tagNames);
             $asset->syncTagsWithAttribution($tagIds, 'user');
         }
 
-        if (! empty($referenceTagIds)) {
-            $asset->syncTagsWithAttribution(array_map('intval', $referenceTagIds), 'reference');
+        if (! empty($metadata->referenceTagIds)) {
+            $asset->syncTagsWithAttribution(array_map('intval', $metadata->referenceTagIds), 'reference');
         }
     }
 }

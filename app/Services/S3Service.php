@@ -431,10 +431,8 @@ class S3Service
      */
     public function deleteResizedImages(Asset $asset): void
     {
-        foreach (['resize_s_s3_key', 'resize_m_s3_key', 'resize_l_s3_key'] as $field) {
-            if ($asset->{$field}) {
-                $this->deleteFile($asset->{$field});
-            }
+        foreach ($asset->derivedS3Keys(resizesOnly: true) as $key) {
+            $this->deleteFile($key);
         }
     }
 

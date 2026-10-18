@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\AssetProcessingService;
+use App\Support\UploadMetadata;
 
 beforeEach(function () {
     $this->admin = User::factory()->create(['role' => 'admin']);
@@ -255,11 +256,7 @@ test('applyUploadMetadata attaches reference tag with attached_by=reference', fu
 
     app(AssetProcessingService::class)->applyUploadMetadata(
         $asset,
-        ['summer'],
-        null,
-        null,
-        null,
-        [$refTag->id],
+        new UploadMetadata(tags: ['summer'], referenceTagIds: [$refTag->id]),
     );
 
     $asset->refresh()->load('tags');
