@@ -3,7 +3,7 @@
 ```yaml
 id: client-side-tools
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -130,6 +130,16 @@ GET  tools/bakoma-font/{name}     -> ToolsController::bakomaFont     (proxies+ca
 ToolUploadService::store(content, filename, mimeType, folder, attributes, process, metadata): Asset
   # shared by every tool above — see tikz-render.md for the full contract.
 
+resources/js/alpine/tikz-results.js:   # shared by tikz-svg, tikz-svg-fonts and tikz-png
+  TIKZ_EXAMPLES                          # the example snippets
+  tikzResults({ uploadPayload }): object # spread into the tool's x-data: init, parseSnippets,
+                                         # loadExample, clearCode, selectAll, deselectAll,
+                                         # uploadSelected. uploadPayload(result) returns the
+                                         # tool-specific body fields (content, width/height).
+  # The tools keep `anyUploading` and `selectedCount` as their own getters: spreading an
+  # object copies a getter's value, not the getter. The success toast is translated
+  # (diagramUploaded / diagramsUploaded in __pageData.translations).
+
 ToolsController (private):
   storeToolAsset(ToolUploadRequest, label, content, mimeType, extension, fallbackName,
                  attributes=[], process=true): JsonResponse
@@ -192,6 +202,13 @@ Live pipeline in [tikz-render.md](tikz-render.md)).
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: Uploading selected diagrams posts each one with a live CSRF token
+  Given a TikZ tool page (svg, svg-fonts or png) holding two rendered results
+  When the selected results are uploaded
+  Then each is posted once with its content, name and folder, and the page's current CSRF token
+  And one translated success toast reports the count
+# pinned by: tests/e2e/tools.spec.js
+
 Scenario: A failed tool upload hides the exception from an api-role caller (regression)
   Given ToolUploadService throws "secret bucket detail"
   When an api-role user uploads through a tool endpoint

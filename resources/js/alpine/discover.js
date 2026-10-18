@@ -1,4 +1,6 @@
 import { applyShiftSelect } from '../shift-select';
+import { requestHeaders } from '../http';
+import { formatBytes } from '../format';
 
 function discoverObjects() {
     const pageData = window.__pageData?.discover || {};
@@ -20,11 +22,7 @@ function discoverObjects() {
             try {
                 const response = await fetch(pageData.routes.foldersScan, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                 });
 
                 if (!response.ok) {
@@ -51,11 +49,7 @@ function discoverObjects() {
             try {
                 const response = await fetch(pageData.routes.discoverScan, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ folder: this.selectedFolder }),
                 });
 
@@ -98,11 +92,7 @@ function discoverObjects() {
             try {
                 const response = await fetch(pageData.routes.discoverImport, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         keys: this.selectedObjects
                     }),
@@ -141,18 +131,7 @@ function discoverObjects() {
             }
         },
 
-        formatFileSize(bytes) {
-            const units = ['B', 'KB', 'MB', 'GB'];
-            let size = bytes;
-            let unitIndex = 0;
-
-            while (size >= 1024 && unitIndex < units.length - 1) {
-                size /= 1024;
-                unitIndex++;
-            }
-
-            return `${size.toFixed(2)} ${units[unitIndex]}`;
-        },
+        formatFileSize: formatBytes,
 
         formatDate(dateString) {
             const date = new Date(dateString);

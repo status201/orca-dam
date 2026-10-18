@@ -57,7 +57,7 @@ php artisan config:clear && php artisan test --filter="asset"
 
 npm run test:e2e:install                 # once: Chromium + OS deps
 npm run e2e:up                           # RustFS on :9100 (skip → S3 specs skip)
-npm run test:e2e                         # 142 Playwright tests, 21 spec files
+npm run test:e2e                         # 145 Playwright tests, 21 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js
 npm run e2e:reset                        # rebuild database/e2e.sqlite
 npm run e2e:down

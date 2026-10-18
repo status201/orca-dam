@@ -1,3 +1,5 @@
+import { requestHeaders } from '../http';
+
 function latexMathml() {
     const pageData = window.__pageData || {};
     const t = pageData.translations || {};
@@ -171,11 +173,7 @@ function latexMathml() {
             try {
                 const res = await fetch(pageData.uploadUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': pageData.csrfToken,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         content: this.mathmlOutput,
                         filename: filename,

@@ -277,7 +277,6 @@ window.__pageData = {
     folders: @json($folders),
     rootFolder: @json($rootFolder),
     uploadUrl: '{{ route('tools.latex-mathml.upload') }}',
-    csrfToken: '{{ csrf_token() }}',
     translations: {
         mathmlUploaded: @js(__('MathML uploaded successfully!')),
         uploadFailed: @js(__('Upload failed: :error')),

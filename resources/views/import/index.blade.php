@@ -386,7 +386,6 @@
 <script>
 window.__pageData = window.__pageData || {};
 window.__pageData.import = {
-    csrfToken: @js(csrf_token()),
     routes: {
         importPreview: @js(route('import.preview')),
         importImport: @js(route('import.import')),

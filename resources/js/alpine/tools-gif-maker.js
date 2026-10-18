@@ -1,6 +1,8 @@
 import GIF from 'gif.js';
 import Sortable from 'sortablejs';
 import { uploadMetadata } from './upload-metadata';
+import { requestHeaders } from '../http';
+import { formatBytes } from '../format';
 
 function gifMaker() {
     const pageData = window.__pageData || {};
@@ -523,11 +525,7 @@ function gifMaker() {
 
                 const res = await fetch(pageData.uploadUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': pageData.csrfToken,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify(Object.assign({
                         content: base64,
                         filename: this.uploadFilename || 'animation.gif',
@@ -566,11 +564,7 @@ function gifMaker() {
             this.generateProgress = 0;
         },
 
-        formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        },
+        formatFileSize: (bytes) => formatBytes(bytes, 1),
     };
 }
 

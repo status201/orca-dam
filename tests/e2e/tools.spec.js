@@ -1,7 +1,7 @@
 // The client-side tool pages — pins specs/features/client-side-tools.md and the
 // server-render entry point of specs/features/tikz-render.md. These are the most
 // JS-heavy pages in the app, so a bundle/registration error surfaces here first.
-import { expect, test, testid } from './support/fixtures.js';
+import { expect, expectToast, test, testid } from './support/fixtures.js';
 
 // The deprecated tikz pages are in here too: they are still routed, still boot an
 // Alpine module, and a bundle or registration error is exactly what this catches.
@@ -207,4 +207,59 @@ test.describe('tikz server template deep link', () => {
         );
         expect(linkedId).toBe(4242);
     });
+});
+
+// specs/features/client-side-tools.md — the tikzResults() mixin the three client-side TikZ tools
+// share. Rendering needs the TikZJax CDN, which the network-isolation fixture blocks, so the test
+// seeds `results` directly and exercises everything after the render: selection, the upload
+// requests and the toast. The upload endpoint is intercepted, which also lets the test rotate the
+// page's CSRF meta tag first and prove the header is read at call time (REQ-request-headers).
+// One `{` per entry on purpose — see messageTools above.
+const uploadTools = [
+    { url: '/tools/tikz-svg', root: 'tool-tikz-svg', upload: '**/tools/tikz-svg/upload', field: 'svg' },
+    { url: '/tools/tikz-svg-fonts', root: 'tool-tikz-svg-fonts', upload: '**/tools/tikz-svg-fonts/upload', field: 'svg' },
+    { url: '/tools/tikz-png', root: 'tool-tikz-png', upload: '**/tools/tikz-png/upload', field: 'png' },
+];
+
+test.describe('client-side tikz upload', () => {
+    for (const tool of uploadTools) {
+        test(`${tool.root} uploads each selected result once with a live CSRF token`, async ({ page }) => {
+            const requests = [];
+            await page.route(tool.upload, async (route) => {
+                const request = route.request();
+                requests.push({ token: request.headers()['x-csrf-token'], body: request.postDataJSON() });
+                await route.fulfill({ json: { asset_id: requests.length, asset_url: '/assets/1', filename: 'x' } });
+            });
+
+            await page.goto(tool.url);
+            const root = page.locator(testid(tool.root));
+            await expect(root).toBeVisible();
+
+            await root.evaluate((el, field) => {
+                const content = field === 'svg' ? '<svg xmlns="http://www.w3.org/2000/svg"></svg>' : 'iVBORw0KGgo=';
+                window.Alpine.$data(el).results = [1, 2].map((n) => ({
+                    [field]: content,
+                    name: `diagram-${n}.${field}`,
+                    width: 10,
+                    height: 5,
+                    selected: true,
+                    uploading: false,
+                    uploaded: null,
+                }));
+                document.querySelector('meta[name="csrf-token"]').setAttribute('content', 'rotated-token');
+            }, tool.field);
+
+            await page.click(testid('tikz-upload-selected'));
+
+            const expected = await page.evaluate(() => window.__pageData.translations.diagramsUploaded.replace(':count', 2));
+            await expectToast(page, expected);
+
+            expect(requests.map((r) => r.token)).toEqual(['rotated-token', 'rotated-token']);
+            expect(requests.map((r) => r.body.filename)).toEqual([`diagram-1.${tool.field}`, `diagram-2.${tool.field}`]);
+            expect(requests[0].body.content).toBeTruthy();
+            if (tool.field === 'png') {
+                expect(requests[0].body).toMatchObject({ width: 10, height: 5 });
+            }
+        });
+    }
 });

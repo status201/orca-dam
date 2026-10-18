@@ -260,7 +260,6 @@
 <script>
     window.__pageData = {
         allowedExtension: @js($extension),
-        csrfToken: '{{ csrf_token() }}',
         replaceUrl: '{{ route('assets.replace.store', $asset) }}',
         editUrl: '{{ route('assets.edit', $asset) }}',
         translations: {

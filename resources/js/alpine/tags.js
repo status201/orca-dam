@@ -1,4 +1,5 @@
 import { applyShiftSelect } from '../shift-select';
+import { requestHeaders } from '../http';
 
 export function tagManager() {
     const t = window.__pageData?.translations || {};
@@ -170,11 +171,7 @@ export function tagManager() {
             try {
                 const response = await fetch('/tags/bulk', {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({ ids: this.selected })
                 });
 
@@ -215,11 +212,7 @@ export function tagManager() {
             try {
                 const response = await fetch(`/tags/${this.editingTagId}`, {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    },
+                    headers: requestHeaders(),
                     body: JSON.stringify({
                         name: this.editingTagName
                     })
@@ -253,10 +246,7 @@ export function tagManager() {
             try {
                 const response = await fetch(`/tags/${id}`, {
                     method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                    }
+                    headers: requestHeaders({ json: false })
                 });
 
                 const data = await response.json();
