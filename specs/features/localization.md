@@ -3,7 +3,7 @@
 ```yaml
 id: localization
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -33,8 +33,11 @@ why that command is wrapped and gated.
   The middleware never throws — a DB error reading the setting (e.g. during
   migrations, before the `settings` table exists) is caught and falls through to the
   config default.
-- **REQ-2** — Only `en` and `nl` are supported (`SetLocale::$supportedLocales`); an
-  unsupported value at any tier is ignored and the next tier is tried.
+- **REQ-2** — Only `en` and `nl` are supported. The list lives once, in
+  `config('orca.ui_locales')` (code → display name), and everything that accepts or
+  offers a locale reads it: `SetLocale`, the `POST /locale` switcher, the System settings
+  dropdown and its validation, and the profile page. An unsupported value at any tier is
+  ignored and the next tier is tried.
 - **REQ-3** — `lang/nl.json` is project-owned and hand-maintained. Every new `__()`
   string added to `app/` or `resources/views/` gets a Dutch entry, inserted in
   alphabetical order. Refreshing framework translations goes through
@@ -51,7 +54,7 @@ why that command is wrapped and gated.
 
 ```yaml
 SetLocale::handle(Request, Closure): Response
-SetLocale::getSupportedLocales(): array          # ['en', 'nl']
+SetLocale::getSupportedLocales(): array          # array_keys(config('orca.ui_locales')) — ['en', 'nl']
 php artisan lang:safe-update                      # wraps lang:update; protects nl.json
 ```
 

@@ -449,3 +449,10 @@ test('a key at the root folder, and with a bucket-root setup, gets no folder seg
     Setting::set('s3_root_folder', '');
     expect(s3ServiceReturning([[]])->uploadThumbnail('photos/clip.mp4', 'x'))->toBe('thumbnails/photos/clip_thumb.jpg');
 });
+
+test('connectionError reports a failed listing instead of swallowing it', function () {
+    $failing = new MockHandler([new S3Exception('Access Denied', new Command('ListObjectsV2'))]);
+    expect(app(S3Service::class)->setS3Client(fakeS3Client($failing))->connectionError())->toContain('Access Denied');
+
+    expect(s3ServiceReturning([['Contents' => []]])->connectionError())->toBeNull();
+});

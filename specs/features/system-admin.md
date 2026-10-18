@@ -3,7 +3,7 @@
 ```yaml
 id: system-admin
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -11,6 +11,8 @@ related:
 source:
   - app/Http/Controllers/SystemController.php
   - app/Services/SystemService.php
+  - app/Services/ArtisanCommandRunner.php
+  - app/Support/SettingRules.php
   - app/Services/QueueService.php
   - app/Services/TestRunnerService.php
   - app/Jobs/RunTestSuiteJob.php
@@ -34,17 +36,23 @@ three narrow services, gated entirely by `SystemPolicy::access` (admin only, see
   (belt-and-braces).
 - **REQ-2** — Ad-hoc command execution (`executeCommand`, and the retry/flush/
   restart/process-queue shortcuts) only ever runs commands on
-  `SystemService::ALLOWED_COMMANDS` — never arbitrary shell input. Non-whitelisted
+  `ArtisanCommandRunner::ALLOWED_COMMANDS` — never arbitrary shell input. Non-whitelisted
   commands are logged as a warning and rejected with `success: false`.
 - **REQ-suggested-commands-runnable** — Every suggested command card passes the
-  same allowlist check `executeCommand` applies (`SystemService::isAllowed()`, with
+  same allowlist check `executeCommand` applies (`ArtisanCommandRunner::isAllowed()`, with
   any `<placeholder>` argument removed), so a card can never lead to a rejection.
   The cards fill a three-column grid; three were added together — the
   content-type audit (dry run), `db:verify-schema` and `token:list` — to keep the
   last row full.
 - **REQ-3** — Setting updates (`updateSetting`) validate known keys against
-  per-key closures (ranges, regex, enum membership) before writing through
-  `Setting::set()`; unknown keys skip validation and are written as-is.
+  per-key closures (ranges, regex, enum membership) in `App\Support\SettingRules`
+  before writing through `Setting::set()`; unknown keys skip validation and are written
+  as-is. A new setting adds its rule there, not to the controller.
+- **REQ-s3-test-reports-failure** — The "Test S3 connection" check (`testS3`) reports
+  `success: false` with the error when the bucket cannot be listed. It used to call
+  `S3Service::listObjects()`, which logs and swallows every failure (ADR-010), so it
+  reported success for a wrong bucket, bad credentials or an unreachable endpoint — the
+  three things it exists to catch. It now asks `S3Service::connectionError()`.
 - **REQ-4** — The web test runner never blocks the HTTP request: `runTests` seeds a
   `queued` cache entry and dispatches `RunTestSuiteJob` on the queue; the browser
   polls `runTestsStatus` and can call `runTestsAbort` to SIGTERM/`taskkill` the
@@ -78,7 +86,7 @@ SystemController:
   queueStatus()                  # GET  system/queue-status           — {stats, pending_jobs, failed_jobs}
   logs(Request)                  # GET  system/logs?lines=            — tail laravel.log, clamped 10-500
   executeCommand(Request)        # POST system/execute-command        — {command} -> whitelisted Artisan::call
-  testS3()                       # GET  system/test-s3                — S3Service::listObjects('', 1) smoke test
+  testS3()                       # GET  system/test-s3                — S3Service::connectionError() probe (REQ-s3-test-reports-failure)
   cacheStats()                   # GET  ...not routed directly; used internally
   retryJob(Request)              # POST system/retry-job              — {job_id} -> queue:retry <id>
   flushQueue()                   # POST system/flush-queue            — queue:flush
@@ -94,15 +102,25 @@ SystemController:
   runTestsAbort(string $runId)   # DELETE system/run-tests/{runId}
   documentation(Request)         # GET  system/documentation?file=    — renders an allow-listed *.md as sanitized HTML
 
-SystemService:
+ArtisanCommandRunner:                             # the dashboard's command surface
   executeCommand(string, array): array           # whitelist-checked Artisan::call wrapper
   isAllowed(string $command): bool               # the whitelist check itself — full command or base command
+  suggestedCommands(): array                      # the System page's cards — REQ-suggested-commands-runnable
+  # Arguments: `--opt` / `--opt=value` for every command. Other words go to the command's
+  # positional argument when POSITIONAL_ARGUMENTS names one (queue:retry → id,
+  # reference-tag:create → names); otherwise only 2-character short flags (-v) are passed.
+
+SystemService:                                    # read-only diagnostics; S3Service injected
   getSystemInfo/getDiskUsage/getDatabaseStats/getCacheStats(): array
-  testS3Connection(): array
+  getLogTail(int $lines): array
+  testS3Connection(): array                       # REQ-s3-test-reports-failure
   getSupervisorStatus(): array                    # Windows -> {available: false}; else parses supervisorctl
-  getSuggestedCommands(): array
-  getSettings(): array
-  updateSetting(string, mixed): bool
+
+SettingRules::passes(string $key, mixed $value): bool   # REQ-3; true for a key it has no rule for
+
+config/orca.php:
+  ui_locales:             { en: English, nl: Nederlands (Dutch) }     # localization.md REQ-2
+  rekognition_languages:  { en: English, nl: Dutch (Nederlands), … }  # the AI-tag language picker
 
 QueueService:
   getQueueStats(): array                          # {pending, failed, batches}
@@ -141,7 +159,7 @@ stats: object|null            # set on completion — parseTestOutput() result +
 exit_code: int|null
 error: string|null
 
-# SystemService::ALLOWED_COMMANDS (executeCommand whitelist)
+# ArtisanCommandRunner::ALLOWED_COMMANDS (executeCommand whitelist)
 cache: [clear, config:clear, route:clear, view:clear, optimize:clear, optimize, config:cache, route:cache, view:cache]
 tags: [reference-tag:create]
 storage: [storage:link]
@@ -184,9 +202,22 @@ isn't possible.
 ```gherkin
 Scenario: Every suggested command card is runnable (REQ-suggested-commands-runnable)
   Given the suggested commands on the System page
-  Then each one, with any <placeholder> removed, passes SystemService::isAllowed()
+  Then each one, with any <placeholder> removed, passes ArtisanCommandRunner::isAllowed()
   And the list includes assets:audit-content-types, db:verify-schema and token:list
 # pinned by: tests/Feature/SystemTest.php
+
+Scenario: The S3 connection test reports a failing bucket as a failure (regression)
+  Given an S3 endpoint that rejects every request
+  When an admin GETs system/test-s3
+  Then the response carries success false and the error
+  # It used to report success: listObjects() swallows the failure.
+# pinned by: tests/Feature/SystemTest.php
+
+Scenario: Command arguments are mapped the same way the three hand-written loops did
+  Given "queue:retry all --queue=default", "reference-tag:create a b" and "migrate --force -v"
+  Then they map to {id: [all], --queue: default}, {names: [a, b]} and {--force: true, -v: true}
+  And a positional word for a command without a declared argument is dropped
+# pinned by: tests/Unit/Services/ArtisanCommandRunnerTest.php
 
 Scenario: Only admins can reach the system dashboard
   Given a guest, an editor, and an admin
@@ -308,7 +339,7 @@ Scenario: The queue-status and log-viewer endpoints answer
 
 ## Open questions / future
 
-- `SystemService::getSupervisorStatus()`, `testS3Connection()`, `getLogTail()`,
+- `SystemService::getSupervisorStatus()`, `getLogTail()`,
   `getSystemInfo()`/`getDiskUsage()`/`getDatabaseStats()`, and the
   `documentation()` markdown-rendering endpoint have no direct test coverage
   (SystemTest.php exercises settings/regenerate/test-run flows but not these

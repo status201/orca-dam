@@ -52,4 +52,48 @@ return [
 
     'php_cli_path' => env('PHP_CLI_PATH'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Interface languages
+    |--------------------------------------------------------------------------
+    |
+    | The locales the UI ships in (code => name), the one list SetLocale, the
+    | locale switcher, the profile page and the System settings all read — see
+    | specs/features/localization.md REQ-2. Adding one also needs its
+    | lang/{code}.json.
+    |
+    */
+
+    'ui_locales' => [
+        'en' => 'English',
+        'nl' => 'Nederlands (Dutch)',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI tag languages
+    |--------------------------------------------------------------------------
+    |
+    | Target languages offered for Rekognition labels (translated through AWS
+    | Translate when not English) — the System settings picker and its
+    | validation read this list.
+    |
+    */
+
+    'rekognition_languages' => [
+        'en' => 'English',
+        'nl' => 'Dutch (Nederlands)',
+        'fr' => 'French (Français)',
+        'de' => 'German (Deutsch)',
+        'es' => 'Spanish (Español)',
+        'it' => 'Italian (Italiano)',
+        'pt' => 'Portuguese (Português)',
+        'pl' => 'Polish (Polski)',
+        'ja' => 'Japanese (日本語)',
+        'ko' => 'Korean (한국어)',
+        'zh' => 'Chinese (中文)',
+        'ar' => 'Arabic (العربية)',
+        'ru' => 'Russian (Русский)',
+    ],
+
 ];

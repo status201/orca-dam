@@ -50,7 +50,7 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1309 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1315 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
@@ -201,7 +201,8 @@ orca-dam/
 │   │   ├── SystemPolicy.php
 │   │   └── UserPolicy.php
 │   ├── Rules/                             # AllowedUploadExtension
-│   ├── Services/                          # 18 services
+│   ├── Services/                          # 19 services
+│   │   ├── ArtisanCommandRunner.php       # System page command allowlist
 │   │   ├── AssetIngestionService.php      # etag dedup + create-or-overwrite
 │   │   ├── AssetProcessingService.php     # thumbnails, resizes, AI-tag dispatch
 │   │   ├── AssetSearchParser.php          # +require / -exclude / "phrases"
