@@ -487,7 +487,7 @@ test('replace accepts file with same extension', function () {
         'height' => 1080,
     ]);
     $s3Service->shouldReceive('deleteFile')->andReturn(true);
-    $s3Service->shouldReceive('deleteResizedImages')->once();
+    $s3Service->shouldReceive('deleteAssetFiles')->once()->with(Mockery::type(Asset::class), true);
     $s3Service->shouldReceive('generateThumbnail')->andReturn('thumbnails/new_thumb.jpg');
     $s3Service->shouldReceive('generateResizedImages')->andReturn(['s' => 'thumbnails/S/new.jpg', 'm' => 'thumbnails/M/new.jpg', 'l' => 'thumbnails/L/new.jpg']);
     $this->app->instance(S3Service::class, $s3Service);
@@ -587,7 +587,7 @@ test('replace accepts file with different case extension', function () {
         'height' => 600,
     ]);
     $s3Service->shouldReceive('deleteFile')->andReturn(true);
-    $s3Service->shouldReceive('deleteResizedImages')->once();
+    $s3Service->shouldReceive('deleteAssetFiles')->once()->with(Mockery::type(Asset::class), true);
     $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
     $this->app->instance(S3Service::class, $s3Service);
@@ -621,7 +621,7 @@ test('replace uses s3_key extension not filename extension', function () {
         'height' => 600,
     ]);
     $s3Service->shouldReceive('deleteFile')->andReturn(true);
-    $s3Service->shouldReceive('deleteResizedImages')->once();
+    $s3Service->shouldReceive('deleteAssetFiles')->once()->with(Mockery::type(Asset::class), true);
     $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
     $this->app->instance(S3Service::class, $s3Service);
@@ -657,7 +657,7 @@ test('replace preserves tags after replacement', function () {
         'height' => 600,
     ]);
     $s3Service->shouldReceive('deleteFile')->andReturn(true);
-    $s3Service->shouldReceive('deleteResizedImages')->once();
+    $s3Service->shouldReceive('deleteAssetFiles')->once()->with(Mockery::type(Asset::class), true);
     $s3Service->shouldReceive('generateThumbnail')->andReturn(null);
     $s3Service->shouldReceive('generateResizedImages')->andReturn([]);
     $this->app->instance(S3Service::class, $s3Service);

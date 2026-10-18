@@ -590,3 +590,57 @@ test('asset scope withTags filters by tag ids', function () {
 
     expect($results)->toHaveCount(2);
 });
+
+test('derived-key helpers name the same four columns in a fixed order', function () {
+    $asset = Asset::factory()->create([
+        'thumbnail_s3_key' => 'thumbnails/a_thumb.jpg',
+        'resize_s_s3_key' => 'thumbnails/S/a.jpg',
+        'resize_m_s3_key' => null,
+        'resize_l_s3_key' => null,
+    ]);
+
+    expect($asset->derivedS3Keys())->toBe(['thumbnails/a_thumb.jpg', 'thumbnails/S/a.jpg']);
+    expect($asset->derivedS3Keys(resizesOnly: true))->toBe(['thumbnails/S/a.jpg']);
+    expect(Asset::derivedKeyResetAttributes())->toBe([
+        'thumbnail_s3_key' => null,
+        'resize_s_s3_key' => null,
+        'resize_m_s3_key' => null,
+        'resize_l_s3_key' => null,
+    ]);
+    expect(Asset::resizeKeyAttributes(['s' => 'thumbnails/S/a.jpg']))->toBe([
+        'resize_s_s3_key' => 'thumbnails/S/a.jpg',
+        'resize_m_s3_key' => null,
+        'resize_l_s3_key' => null,
+    ]);
+});
+
+test('syncTagsPreservingAi replaces one tag type and keeps the others with their attribution', function () {
+    $asset = Asset::factory()->create();
+    $ai = Tag::create(['name' => 'ai-label', 'type' => 'ai']);
+    $reference = Tag::create(['name' => 'ref-label', 'type' => 'reference']);
+    $oldUser = Tag::create(['name' => 'old-user', 'type' => 'user']);
+    $newUser = Tag::create(['name' => 'new-user', 'type' => 'user']);
+    $asset->tags()->attach([
+        $ai->id => ['attached_by' => 'ai'],
+        $reference->id => ['attached_by' => 'reference'],
+        $oldUser->id => ['attached_by' => 'user'],
+    ]);
+
+    $asset->syncTagsPreservingAi([$newUser->id], null);
+
+    $pivots = $asset->fresh()->tags->mapWithKeys(fn ($t) => [$t->name => $t->pivot->attached_by])->all();
+    expect($pivots)->toEqualCanonicalizing(['ai-label' => 'ai', 'ref-label' => 'reference', 'new-user' => 'user']);
+
+    $asset->syncTagsPreservingAi(null, []);
+
+    expect($asset->fresh()->tags->pluck('name')->all())->toEqualCanonicalizing(['ai-label', 'new-user']);
+});
+
+test('duplicateOf matches by etag and never matches a missing etag', function () {
+    $asset = Asset::factory()->create(['etag' => 'abc']);
+    Asset::factory()->create(['etag' => null]);
+
+    expect(Asset::duplicateOf('abc')->pluck('id')->all())->toBe([$asset->id]);
+    expect(Asset::duplicateOf(null)->count())->toBe(0);
+    expect(Asset::duplicateOf('')->count())->toBe(0);
+});

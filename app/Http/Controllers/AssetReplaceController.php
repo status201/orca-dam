@@ -96,25 +96,21 @@ class AssetReplaceController extends Controller
                 $asset->s3_key
             );
 
-            if ($asset->thumbnail_s3_key) {
-                $this->s3Service->deleteFile($asset->thumbnail_s3_key);
-            }
+            // The derived files describe the old bytes; the original was just overwritten in place.
+            $this->s3Service->deleteAssetFiles($asset, keepOriginal: true);
 
-            $this->s3Service->deleteResizedImages($asset);
-
-            $asset->update([
-                'filename' => $fileData['filename'],
-                'mime_type' => $fileData['mime_type'],
-                'size' => $fileData['size'],
-                'etag' => $fileData['etag'],
-                'width' => $fileData['width'],
-                'height' => $fileData['height'],
-                'thumbnail_s3_key' => null,
-                'resize_s_s3_key' => null,
-                'resize_m_s3_key' => null,
-                'resize_l_s3_key' => null,
-                'last_modified_by' => Auth::id(),
-            ]);
+            $asset->update(array_merge(
+                [
+                    'filename' => $fileData['filename'],
+                    'mime_type' => $fileData['mime_type'],
+                    'size' => $fileData['size'],
+                    'etag' => $fileData['etag'],
+                    'width' => $fileData['width'],
+                    'height' => $fileData['height'],
+                    'last_modified_by' => Auth::id(),
+                ],
+                Asset::derivedKeyResetAttributes(),
+            ));
 
             $this->assetProcessingService->processImageAsset($asset);
 

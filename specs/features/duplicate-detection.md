@@ -3,7 +3,7 @@
 ```yaml
 id: duplicate-detection
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -13,6 +13,7 @@ related:
   - discovery-import
 source:
   - app/Exceptions/DuplicateAssetException.php
+  - app/Services/AssetIngestionService.php
   - app/Http/Controllers/AssetController.php
   - app/Http/Controllers/Api/AssetApiController.php
   - app/Services/ChunkedUploadService.php
@@ -35,8 +36,9 @@ etag is a **storage-representation** hash, not a content hash: a single
 `PutObject` yields a plain MD5, while `completeMultipartUpload` yields a
 composite `md5-of-md5s-N`. The same bytes therefore cannot match across the
 10 MB direct/chunked threshold (see Open questions). And dedup is an
-application-level invariant only — there is no `UNIQUE` on `assets.etag`, and
-the check is open-coded at each call site rather than behind a model scope.
+application-level invariant only — there is no `UNIQUE` on `assets.etag`. The check
+used to be open-coded at each of the four call sites, which is how REQ-2 shipped broken
+in one of them; it now lives in `AssetIngestionService` behind `Asset::scopeDuplicateOf()`.
 
 ## Requirements
 
@@ -80,6 +82,26 @@ dup.
 `DuplicateAssetException::formatDuplicate(Asset $existing, ?string $attemptedFilename = null): array`
 — the shared payload builder (see Data shapes).
 
+`App\Services\AssetIngestionService` — the one place the ingestion paths decide
+"duplicate, overwrite, or new". Every path calls it; none queries `etag` itself:
+
+```yaml
+existingAtKey(string $s3Key): ?Asset
+  # the row (trashed or not) already at this key — an overwrite target, not a duplicate
+findDuplicate(?string $etag, ?Asset $existingAtKey = null): ?Asset
+  # null when $existingAtKey is given (REQ-2) or $etag is empty;
+  # otherwise Asset::withTrashed()->duplicateOf($etag)->first() (REQ-1)
+discardDuplicate(string $s3Key, Asset $existing, string $filename): void
+  # REQ-3: delete the just-written object and log the match
+persist(array $attributes, ?Asset $overwrite = null): Asset
+  # create, or overwrite $overwrite in place: restore it, reset its derived keys,
+  # set last_modified_by to the uploading user ($attributes['user_id'])
+```
+
+`Asset::scopeDuplicateOf($query, ?string $etag)` is the query itself: an etag match, and
+a match on nothing for a null/empty etag, so a legacy row without one can never be
+reported as a duplicate of another.
+
 ### Data shapes
 
 ```yaml
@@ -116,7 +138,11 @@ Chunked (ChunkedUploadService::completeUpload):
   completeMultipartUpload → sanitizeStoredSvg (if SVG) → etag check → [dup] → S3Service::deleteFile() → throw DuplicateAssetException
   ChunkedUploadController::complete catches it → formatDuplicate() → 409
 Discovery (DiscoverController::import):
-  per-key etag check against Asset::withTrashed() → skip (not queued) on match
+  per-key AssetIngestionService::findDuplicate() → skip (not queued) on match
+  The discovered object is never deleted — it is the bucket's own, not an upload.
+REST API (Api\AssetApiController::store):
+  same as direct. Its keys are always fresh UUIDs, so existingAtKey() is always null
+  there and the etag check always applies.
 ```
 
 ## Scenarios (BDD)
@@ -241,12 +267,11 @@ Scenario: Re-uploading identical bytes is reported as a duplicate, not stored tw
   server), with dedup preferring it and falling back to etag. Deliberately **not** done here: the
   backfill would have to download every existing object from S3 to hash it, which is an
   operational job with real cost and deserves its own change.
-- **`assets.etag` has no `UNIQUE` constraint and no model scope.** The invariant is enforced by
-  four hand-copied queries (`AssetController`, `Api\AssetApiController`, `ChunkedUploadService`,
-  `DiscoverController`); one of them being subtly wrong is exactly how REQ-2 shipped broken. An
-  `Asset::scopeDuplicateOf()` would give the four one definition to share. A DB-level `UNIQUE` is
-  *not* the answer — a null etag is legal, and a hard constraint would turn a duplicate upload
-  into a driver error rather than the 409 with a payload that REQ-4 specifies.
+- **`assets.etag` has no `UNIQUE` constraint.** The invariant is now enforced in one
+  place (`AssetIngestionService::findDuplicate()` over `Asset::scopeDuplicateOf()`), not four
+  hand-copied queries. A DB-level `UNIQUE` is still *not* the answer — a null etag is legal,
+  and a hard constraint would turn a duplicate upload into a driver error rather than the 409
+  with a payload that REQ-4 specifies.
 - **`assets:deduplicate` uses a bare `Asset::where`**, so unlike upload-time dedup (REQ-1) it does
   not see trashed rows. The retroactive and the preventive definitions of "duplicate" therefore
   differ slightly, and the command will leave a live row that an upload would have refused.

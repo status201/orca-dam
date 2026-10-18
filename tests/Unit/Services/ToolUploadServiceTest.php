@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use App\Services\ToolUploadService;
+use App\Support\UploadMetadata;
 
 test('store uploads content and creates an asset with merged attributes', function () {
     $user = User::factory()->create();
@@ -70,9 +71,17 @@ test('store forwards the metadata payload to applyUploadMetadata', function () {
 
     $processing = Mockery::mock(AssetProcessingService::class);
     $processing->shouldReceive('processImageAsset')->once();
+    $metadata = new UploadMetadata(
+        tags: ['a'],
+        referenceTagIds: [7],
+        licenseType: 'cc_by',
+        copyright: '© x',
+        copyrightSource: 'src',
+        dateObtained: '2026-05-01',
+    );
     $processing->shouldReceive('applyUploadMetadata')
         ->once()
-        ->with(Mockery::type(Asset::class), ['a'], 'cc_by', '© x', 'src', [7], '2026-05-01');
+        ->with(Mockery::type(Asset::class), $metadata);
 
     (new ToolUploadService($s3, $processing))->store(
         content: 'GIF',
@@ -80,14 +89,7 @@ test('store forwards the metadata payload to applyUploadMetadata', function () {
         mimeType: 'image/gif',
         folder: 'assets',
         attributes: ['user_id' => $user->id],
-        metadata: [
-            'tags' => ['a'],
-            'license_type' => 'cc_by',
-            'copyright' => '© x',
-            'copyright_source' => 'src',
-            'reference_tag_ids' => [7],
-            'date_obtained' => '2026-05-01',
-        ],
+        metadata: $metadata,
     );
 });
 

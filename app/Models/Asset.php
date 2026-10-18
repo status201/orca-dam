@@ -96,6 +96,66 @@ class Asset extends Model
     ];
 
     /**
+     * The resize-variant columns, keyed by the size label S3Service::generateResizedImages() returns.
+     */
+    public const RESIZE_KEY_COLUMNS = [
+        's' => 'resize_s_s3_key',
+        'm' => 'resize_m_s3_key',
+        'l' => 'resize_l_s3_key',
+    ];
+
+    /**
+     * Every column holding an S3 object derived from the original, in deletion/purge order:
+     * thumbnail first, then the resize variants.
+     */
+    public const DERIVED_KEY_COLUMNS = [
+        'thumbnail_s3_key',
+        'resize_s_s3_key',
+        'resize_m_s3_key',
+        'resize_l_s3_key',
+    ];
+
+    /**
+     * Attributes that forget every derived object, for when the original's bytes change
+     * (overwrite, replace) and the old thumbnail/resizes no longer describe it.
+     *
+     * @return array<string, null>
+     */
+    public static function derivedKeyResetAttributes(): array
+    {
+        return array_fill_keys(self::DERIVED_KEY_COLUMNS, null);
+    }
+
+    /**
+     * The resize columns for a generateResizedImages() result; a size it skipped maps to null.
+     *
+     * @param  array<string, string>  $resizedKeys  e.g. ['s' => 'thumbnails/S/…', 'm' => …]
+     * @return array<string, string|null>
+     */
+    public static function resizeKeyAttributes(array $resizedKeys): array
+    {
+        $attributes = [];
+        foreach (self::RESIZE_KEY_COLUMNS as $size => $column) {
+            $attributes[$column] = $resizedKeys[$size] ?? null;
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * The derived S3 keys this asset currently holds (thumbnail, then resizes), skipping empty columns.
+     *
+     * @param  bool  $resizesOnly  leave the thumbnail out
+     * @return list<string>
+     */
+    public function derivedS3Keys(bool $resizesOnly = false): array
+    {
+        $columns = $resizesOnly ? self::RESIZE_KEY_COLUMNS : self::DERIVED_KEY_COLUMNS;
+
+        return array_values(array_filter(array_map(fn (string $column) => $this->{$column}, $columns)));
+    }
+
+    /**
      * Get the user who uploaded this asset
      *
      * @return BelongsTo<User, $this>
@@ -174,6 +234,33 @@ class Asset extends Model
     }
 
     /**
+     * Replace the asset's user and/or reference tags while keeping its AI tags.
+     *
+     * A null list leaves that tag type exactly as it is, attribution included; an array (even an
+     * empty one) becomes the complete set for that type. AI pivots are always preserved verbatim.
+     * Shared by the web and REST update endpoints so their tag semantics cannot drift.
+     *
+     * @param  list<int>|null  $userTagIds
+     * @param  list<int>|null  $referenceTagIds
+     */
+    public function syncTagsPreservingAi(?array $userTagIds, ?array $referenceTagIds): void
+    {
+        $current = fn (BelongsToMany $relation): array => $relation->get()
+            ->mapWithKeys(fn (Tag $tag) => [$tag->id => ['attached_by' => $tag->pivot->attached_by]])
+            ->all();
+
+        $aiPivots = $current($this->aiTags());
+        $referencePivots = $referenceTagIds === null
+            ? $current($this->referenceTags())
+            : array_fill_keys($referenceTagIds, ['attached_by' => 'reference']);
+        $userPivots = $userTagIds === null
+            ? $current($this->userTags())
+            : array_fill_keys($userTagIds, ['attached_by' => 'user']);
+
+        $this->tags()->sync($aiPivots + $referencePivots + $userPivots);
+    }
+
+    /**
      * Get only user-created tags
      *
      * @return BelongsToMany<Tag, $this>
@@ -204,6 +291,14 @@ class Asset extends Model
     }
 
     /**
+     * The public URL for one of this asset's S3 keys, or null when the column is empty.
+     */
+    private function publicUrlFor(?string $s3Key): ?string
+    {
+        return $s3Key ? S3Service::getPublicBaseUrl().'/'.$s3Key : null;
+    }
+
+    /**
      * Get the full S3 URL
      */
     public function getUrlAttribute(): string
@@ -217,18 +312,11 @@ class Asset extends Model
     public function getThumbnailUrlAttribute(): ?string
     {
         if (! $this->thumbnail_s3_key) {
-            // For GIFs without thumbnails, use the original
-            if ($this->mime_type === 'image/gif') {
-                return $this->url;
-            }
-            if ($this->isSvg()) {
-                return $this->url;
-            }
-
-            return null;
+            // GIFs and SVGs without a thumbnail fall back to the original
+            return $this->mime_type === 'image/gif' || $this->isSvg() ? $this->url : null;
         }
 
-        return S3Service::getPublicBaseUrl().'/'.$this->thumbnail_s3_key;
+        return $this->publicUrlFor($this->thumbnail_s3_key);
     }
 
     /**
@@ -236,11 +324,7 @@ class Asset extends Model
      */
     public function getResizeSUrlAttribute(): ?string
     {
-        if (! $this->resize_s_s3_key) {
-            return null;
-        }
-
-        return S3Service::getPublicBaseUrl().'/'.$this->resize_s_s3_key;
+        return $this->publicUrlFor($this->resize_s_s3_key);
     }
 
     /**
@@ -248,11 +332,7 @@ class Asset extends Model
      */
     public function getResizeMUrlAttribute(): ?string
     {
-        if (! $this->resize_m_s3_key) {
-            return null;
-        }
-
-        return S3Service::getPublicBaseUrl().'/'.$this->resize_m_s3_key;
+        return $this->publicUrlFor($this->resize_m_s3_key);
     }
 
     /**
@@ -260,11 +340,7 @@ class Asset extends Model
      */
     public function getResizeLUrlAttribute(): ?string
     {
-        if (! $this->resize_l_s3_key) {
-            return null;
-        }
-
-        return S3Service::getPublicBaseUrl().'/'.$this->resize_l_s3_key;
+        return $this->publicUrlFor($this->resize_l_s3_key);
     }
 
     /**
@@ -628,6 +704,18 @@ class Asset extends Model
             's3key_desc' => $query->orderBy('s3_key', 'desc'),
             default => $query->latest('updated_at'), // date_desc
         };
+    }
+
+    /**
+     * Scope: assets holding the same stored bytes, by etag (duplicate-detection.md). A null or empty
+     * etag matches nothing, so a legacy row without one is never anyone's duplicate. Callers that
+     * must also see trashed rows (every upload path — REQ-1) add withTrashed() themselves.
+     */
+    public function scopeDuplicateOf($query, ?string $etag)
+    {
+        return $etag === null || $etag === ''
+            ? $query->whereRaw('1 = 0')
+            : $query->where('etag', $etag);
     }
 
     /**

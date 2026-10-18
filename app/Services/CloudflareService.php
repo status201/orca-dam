@@ -52,22 +52,11 @@ class CloudflareService
         }
 
         $baseUrl = S3Service::getPublicBaseUrl();
-        $urls = [$baseUrl.'/'.$asset->s3_key];
 
-        if ($asset->thumbnail_s3_key) {
-            $urls[] = $baseUrl.'/'.$asset->thumbnail_s3_key;
-        }
-        if ($asset->resize_s_s3_key) {
-            $urls[] = $baseUrl.'/'.$asset->resize_s_s3_key;
-        }
-        if ($asset->resize_m_s3_key) {
-            $urls[] = $baseUrl.'/'.$asset->resize_m_s3_key;
-        }
-        if ($asset->resize_l_s3_key) {
-            $urls[] = $baseUrl.'/'.$asset->resize_l_s3_key;
-        }
-
-        return $urls;
+        return array_map(
+            fn (string $key) => $baseUrl.'/'.$key,
+            [$asset->s3_key, ...$asset->derivedS3Keys()],
+        );
     }
 
     /**

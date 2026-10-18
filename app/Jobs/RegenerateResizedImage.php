@@ -45,11 +45,7 @@ class RegenerateResizedImage implements ShouldQueue
             // Generate new resized images
             $resizedKeys = $s3Service->generateResizedImages($asset->s3_key);
 
-            $asset->update([
-                'resize_s_s3_key' => $resizedKeys['s'] ?? null,
-                'resize_m_s3_key' => $resizedKeys['m'] ?? null,
-                'resize_l_s3_key' => $resizedKeys['l'] ?? null,
-            ]);
+            $asset->update(Asset::resizeKeyAttributes($resizedKeys));
 
             Log::info("RegenerateResizedImage: Successfully processed asset {$asset->id}");
         } catch (\Exception $e) {

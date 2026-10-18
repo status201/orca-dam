@@ -3,7 +3,7 @@
 ```yaml
 id: tag-input
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -73,8 +73,10 @@ Callers (backend), all passing raw request/CSV input straight through:
 ```yaml
 AssetController::addTags:             TagInputParser::parse($request->input('tags', []))
 AssetBulkController::bulkAddTags:     TagInputParser::parse($request->input('tags', []))
-AssetProcessingService::applyUploadMetadata: TagInputParser::parse($tagNames)   # metadata_tags[] from upload
-Api\AssetApiController::update:       TagInputParser::parse($request->input('tags', []))
+AssetProcessingService::applyUploadMetadata: TagInputParser::parse($metadata->tags)  # metadata_tags[] from upload
+AssetController::update,
+Api\AssetApiController::update:       UpdateAssetRequest::userTagIds()
+                                       -> TagInputParser::parse($this->input('tags', []))
 Api\AssetApiController::addReferenceTags: TagInputParser::parse($request->input('tags'))
 ImportController (CSV import):        TagInputParser::parse($row['user_tags'] ?? null)
                                        TagInputParser::parse($row['reference_tags'] ?? null)
@@ -162,6 +164,15 @@ Scenario: Adding tags dedups within a single request across mixed values
   Given an authenticated user and an asset
   When POST /assets/{asset}/tags is sent with tags=["red", "red, blue", "RED"]
   Then the asset ends up with exactly 2 tags: red, blue
+# pinned by: tests/Feature/TagTest.php
+
+Scenario: Saving the edit form splits a comma-joined tag value (regression)
+  Given an authenticated user and an asset
+  When PATCH /assets/{asset} is sent with tags=["landscape, mountain"]
+  Then the asset ends up with 2 separate user tags: landscape, mountain
+  And sending tags=null clears the user tags instead of failing with a TypeError
+  # The web update was the one call site REQ-4 names that resolved raw input directly;
+  # it now shares UpdateAssetRequest::userTagIds() with the REST update.
 # pinned by: tests/Feature/TagTest.php
 
 Scenario: Bulk add tags splits comma-joined values across every targeted asset

@@ -375,6 +375,30 @@ test('add tags splits a comma-joined value into multiple tags', function () {
         ->toBe(['landscape', 'mountain', 'sunset']);
 });
 
+test('saving the edit form splits a comma-joined tag value (regression)', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create();
+
+    $this->actingAs($user)
+        ->patchJson(route('assets.update', $asset), ['tags' => ['landscape, mountain']])
+        ->assertOk();
+
+    expect($asset->fresh()->userTags->pluck('name')->sort()->values()->toArray())
+        ->toBe(['landscape', 'mountain']);
+});
+
+test('saving the edit form with tags=null clears user tags instead of failing', function () {
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create();
+    $asset->tags()->attach(Tag::factory()->create(['type' => 'user']), ['attached_by' => 'user']);
+
+    $this->actingAs($user)
+        ->patchJson(route('assets.update', $asset), ['tags' => null])
+        ->assertOk();
+
+    expect($asset->fresh()->userTags)->toHaveCount(0);
+});
+
 test('add tags dedups within a single request', function () {
     $user = User::factory()->create();
     $asset = Asset::factory()->create();

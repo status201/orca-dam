@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Asset;
+use App\Support\UploadMetadata;
 use Illuminate\Http\UploadedFile;
 
 /**
@@ -26,7 +27,7 @@ class ToolUploadService
      * @param  string  $filename  Final (already sanitised + extensioned) filename.
      * @param  array<string, mixed>  $attributes  Extra Asset columns (user_id, width, height, parent_id, alt_text, caption).
      * @param  bool  $process  Run AssetProcessingService::processImageAsset() (thumbnail/resizes/AI tagging).
-     * @param  array<string, mixed>|null  $metadata  Batch metadata for applyUploadMetadata(), or null to skip.
+     * @param  UploadMetadata|null  $metadata  Batch metadata for applyUploadMetadata(), or null to skip.
      */
     public function store(
         string $content,
@@ -35,7 +36,7 @@ class ToolUploadService
         string $folder,
         array $attributes = [],
         bool $process = true,
-        ?array $metadata = null,
+        ?UploadMetadata $metadata = null,
     ): Asset {
         $tmpPath = tempnam(sys_get_temp_dir(), 'orca_tool_');
         file_put_contents($tmpPath, $content);
@@ -57,15 +58,7 @@ class ToolUploadService
             }
 
             if ($metadata !== null) {
-                $this->assetProcessingService->applyUploadMetadata(
-                    $asset,
-                    $metadata['tags'] ?? null,
-                    $metadata['license_type'] ?? null,
-                    $metadata['copyright'] ?? null,
-                    $metadata['copyright_source'] ?? null,
-                    $metadata['reference_tag_ids'] ?? null,
-                    dateObtained: $metadata['date_obtained'] ?? null,
-                );
+                $this->assetProcessingService->applyUploadMetadata($asset, $metadata);
             }
 
             return $asset;

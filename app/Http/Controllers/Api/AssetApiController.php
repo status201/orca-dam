@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\Tag;
+use App\Services\AssetIngestionService;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use App\Support\ColumnLimits;
@@ -19,15 +20,11 @@ use Illuminate\Support\Facades\Auth;
 
 class AssetApiController extends Controller
 {
-    protected S3Service $s3Service;
-
-    protected AssetProcessingService $assetProcessingService;
-
-    public function __construct(S3Service $s3Service, AssetProcessingService $assetProcessingService)
-    {
-        $this->s3Service = $s3Service;
-        $this->assetProcessingService = $assetProcessingService;
-    }
+    public function __construct(
+        protected S3Service $s3Service,
+        protected AssetProcessingService $assetProcessingService,
+        protected AssetIngestionService $ingestion,
+    ) {}
 
     /**
      * Get paginated list of assets
@@ -83,28 +80,26 @@ class AssetApiController extends Controller
         foreach ($request->file('files') as $file) {
             $fileData = $this->s3Service->uploadFile($file);
 
-            // Check for duplicate by etag
-            if (! empty($fileData['etag'])) {
-                $existing = Asset::withTrashed()->where('etag', $fileData['etag'])->first();
-                if ($existing) {
-                    // Clean up the just-uploaded S3 object
-                    $this->s3Service->deleteFile($fileData['s3_key']);
-                    // The shared payload (duplicate-detection.md REQ-4), not a hand-rolled subset:
-                    // this used to return 3 of the 12 documented fields, so an API caller could not
-                    // render the duplicates panel the web paths produce.
-                    //
-                    // Additive on purpose. existing_asset_url pre-dates formatDuplicate() and is not
-                    // in it — and its `public_url` is NOT a substitute, since that stays non-null for
-                    // a trashed asset where this is null. Dropping it would break existing consumers.
-                    $duplicates[] = DuplicateAssetException::formatDuplicate($existing, $fileData['filename']) + [
-                        'existing_asset_url' => $existing->trashed() ? null : $existing->url,
-                    ];
+            // The key is always a fresh UUID here, so there is no overwrite target and the etag
+            // check always applies.
+            $existing = $this->ingestion->findDuplicate($fileData['etag'] ?? null);
+            if ($existing) {
+                $this->ingestion->discardDuplicate($fileData['s3_key'], $existing, $fileData['filename']);
+                // The shared payload (duplicate-detection.md REQ-4), not a hand-rolled subset:
+                // this used to return 3 of the 12 documented fields, so an API caller could not
+                // render the duplicates panel the web paths produce.
+                //
+                // Additive on purpose. existing_asset_url pre-dates formatDuplicate() and is not
+                // in it — and its `public_url` is NOT a substitute, since that stays non-null for
+                // a trashed asset where this is null. Dropping it would break existing consumers.
+                $duplicates[] = DuplicateAssetException::formatDuplicate($existing, $fileData['filename']) + [
+                    'existing_asset_url' => $existing->trashed() ? null : $existing->url,
+                ];
 
-                    continue;
-                }
+                continue;
             }
 
-            $asset = Asset::create([
+            $asset = $this->ingestion->persist([
                 's3_key' => $fileData['s3_key'],
                 'filename' => $fileData['filename'],
                 'mime_type' => $fileData['mime_type'],
@@ -154,51 +149,12 @@ class AssetApiController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Persist every metadata field UpdateAssetRequest validates, mirroring the
-        // web AssetController::update so the two contracts don't drift. s3_key is
-        // never touched (ADR-006); filename is the editable display name.
-        $asset->update(array_merge(
-            $request->only([
-                'filename', 'alt_text', 'caption', 'license_type',
-                'license_expiry_date', 'date_obtained', 'copyright', 'copyright_source',
-            ]),
-            ['last_modified_by' => Auth::id()]
-        ));
+        // The same metadata + tag handling as the web AssetController::update, through the same
+        // request helpers, so the two contracts can't drift. s3_key is never touched (ADR-006).
+        $asset->update(array_merge($request->metadataAttributes(), ['last_modified_by' => Auth::id()]));
 
-        // Handle tags / reference tags only if explicitly included in the request
-        if ($request->has('tags') || $request->has('reference_tag_ids')) {
-            $tagIds = $request->has('tags')
-                ? Tag::resolveUserTagIds(TagInputParser::parse($request->input('tags', [])))
-                : null; // null signals "do not touch user tags"
-
-            // Always preserve AI pivots verbatim
-            $aiPivotData = [];
-            foreach ($asset->aiTags as $aiTag) {
-                $aiPivotData[$aiTag->id] = ['attached_by' => $aiTag->pivot->attached_by];
-            }
-
-            // Reference pivots: sync to the submitted list when present, else preserve
-            if ($request->has('reference_tag_ids')) {
-                $referenceIds = array_map('intval', $request->input('reference_tag_ids', []));
-                $referencePivotData = array_fill_keys($referenceIds, ['attached_by' => 'reference']);
-            } else {
-                $referencePivotData = [];
-                foreach ($asset->referenceTags as $refTag) {
-                    $referencePivotData[$refTag->id] = ['attached_by' => $refTag->pivot->attached_by];
-                }
-            }
-
-            // User pivots: sync to the submitted list when present, else preserve
-            if ($tagIds !== null) {
-                $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
-            } else {
-                $userPivotData = [];
-                foreach ($asset->userTags as $userTag) {
-                    $userPivotData[$userTag->id] = ['attached_by' => $userTag->pivot->attached_by];
-                }
-            }
-
-            $asset->tags()->sync($aiPivotData + $referencePivotData + $userPivotData);
+        if ($request->touchesTags()) {
+            $asset->syncTagsPreservingAi($request->userTagIds(), $request->referenceTagIds());
         }
 
         return response()->json([

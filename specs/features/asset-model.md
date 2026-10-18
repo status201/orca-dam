@@ -3,7 +3,7 @@
 ```yaml
 id: asset-model
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -59,7 +59,9 @@ user → reference → ai), `userTags()`/`aiTags()`/`referenceTags()` (filtered
 `tags()` by `type`).
 
 Methods: `syncTagsWithAttribution(array $tagIds, string $attachedBy): void`,
-`wasModified(): bool`, `isImage()`/`isVideo()`/`isPdf()`/`isSvg()`/`isEps()`/
+`syncTagsPreservingAi(?array $userTagIds, ?array $referenceTagIds): void` (a null list
+leaves that type untouched, an array — even empty — becomes its complete set; AI pivots are
+always kept verbatim), `wasModified(): bool`, `isImage()`/`isVideo()`/`isPdf()`/`isSvg()`/`isEps()`/
 `isMathMl()`/`isTex()`, `getFileIcon()`/`getIconColorClass()`,
 `licenseTypes(): array` (static), `getLicenseLabel(): string`,
 `typeCategories(): array<string>` (static) and
@@ -77,7 +79,21 @@ Scopes: `scopeSearch($query, ?string $search)` (delegates to
 `scopeOfType($query, ?string $type)` (accepts `images`/`videos`/`documents`
 aliases in addition to the canonical categories), `scopeByUser($query, ?int $userId)`,
 `scopeInFolder($query, ?string $folder)`, `scopeApplySort($query, string $sort)`,
-`scopeMissing($query)`.
+`scopeMissing($query)`, `scopeDuplicateOf($query, ?string $etag)` (the one definition of
+"same bytes" — see [`duplicate-detection.md`](duplicate-detection.md); callers add
+`withTrashed()`).
+
+**Derived S3 objects.** The thumbnail and resize columns are named once, as constants, and
+every caller that deletes, purges, resets or fills them reads from here rather than spelling
+the four columns out:
+
+```yaml
+Asset::RESIZE_KEY_COLUMNS:  { s: resize_s_s3_key, m: resize_m_s3_key, l: resize_l_s3_key }
+Asset::DERIVED_KEY_COLUMNS: [thumbnail_s3_key, resize_s_s3_key, resize_m_s3_key, resize_l_s3_key]
+Asset::derivedKeyResetAttributes(): array        # every derived column => null
+Asset::resizeKeyAttributes(array $resizedKeys)   # generateResizedImages() result => columns (missing size => null)
+$asset->derivedS3Keys(bool $resizesOnly = false) # the non-empty derived keys, thumbnail first
+```
 
 Computed attributes (accessors): `url`, `thumbnail_url` (falls back to `url` for
 GIF/SVG when no `thumbnail_s3_key`), `resize_s_url`/`resize_m_url`/`resize_l_url`
@@ -124,6 +140,11 @@ does a `syncWithoutDetaching` followed by a single bulk `UPDATE` over
 `asset_tag` (not N per-tag updates) to set `attached_by` — callers in
 `AssetController`, `AssetBulkController`, and `CsvImportService` all funnel
 through this one method rather than touching the pivot directly.
+`syncTagsPreservingAi()` is the *replacing* counterpart used by the two metadata-update
+endpoints (`AssetController::update`, `Api\AssetApiController::update`, both via
+`UpdateAssetRequest::userTagIds()` / `referenceTagIds()`). It was a 35-line block copied
+into each controller, and the two copies had already drifted apart (see
+[`tag-input.md`](tag-input.md) REQ-4).
 
 ## Scenarios (BDD)
 
@@ -234,6 +255,25 @@ Scenario: the edit form no longer offers a license expiry input
   Then no license expiry input is rendered
   But the detail page still shows the stored expiry date
 # pinned by: tests/Feature/AssetTest.php
+
+Scenario: The derived-key helpers name the same four columns in a fixed order
+  Given an asset with a thumbnail and only an S resize
+  Then derivedS3Keys() lists the thumbnail key then the S key, and derivedS3Keys(true) only the S key
+  And derivedKeyResetAttributes() nulls all four derived columns
+  And resizeKeyAttributes(['s' => k]) maps k to resize_s_s3_key and nulls M and L
+# pinned by: tests/Unit/AssetTest.php
+
+Scenario: Replacing user tags keeps AI and reference tags with their attribution
+  Given an asset with an AI tag, a reference tag and a user tag
+  When syncTagsPreservingAi([newUserTag], null) runs
+  Then the AI and reference pivots survive unchanged and the user set is exactly [newUserTag]
+  And syncTagsPreservingAi(null, []) clears only the reference tags
+# pinned by: tests/Unit/AssetTest.php
+
+Scenario: duplicateOf matches by etag and never matches a missing etag
+  Given an asset with etag "abc"
+  Then Asset::duplicateOf("abc") finds it and Asset::duplicateOf(null) finds nothing
+# pinned by: tests/Unit/AssetTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
 

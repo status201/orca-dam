@@ -6,6 +6,7 @@ use App\Models\Tag;
 use App\Services\AssetProcessingService;
 use App\Services\RekognitionService;
 use App\Services\S3Service;
+use App\Support\UploadMetadata;
 use Illuminate\Support\Facades\Bus;
 
 test('processImageAsset skips non-image assets', function () {
@@ -171,13 +172,11 @@ test('applyUploadMetadata writes license, copyright, and copyright source', func
         'copyright_source' => null,
     ]);
 
-    makeProcessingService()->applyUploadMetadata(
-        $asset,
-        null,
-        'cc_by',
-        '© 2026 ACME',
-        'https://example.com/license',
-    );
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata(
+        licenseType: 'cc_by',
+        copyright: '© 2026 ACME',
+        copyrightSource: 'https://example.com/license',
+    ));
 
     $asset->refresh();
     expect($asset->license_type)->toBe('cc_by');
@@ -188,14 +187,7 @@ test('applyUploadMetadata writes license, copyright, and copyright source', func
 test('applyUploadMetadata writes date_obtained', function () {
     $asset = Asset::factory()->create(['date_obtained' => null]);
 
-    makeProcessingService()->applyUploadMetadata(
-        $asset,
-        null,
-        null,
-        null,
-        null,
-        dateObtained: '2026-05-01',
-    );
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata(dateObtained: '2026-05-01'));
 
     $asset->refresh();
     expect($asset->date_obtained)->not->toBeNull();
@@ -212,14 +204,7 @@ test('applyUploadMetadata skips null and empty-string values without overwriting
 
     // '' is the value a cleared <input type="date"> submits — it must not reach the 'date' cast
     // and must not blank a stored date.
-    makeProcessingService()->applyUploadMetadata(
-        $asset,
-        null,
-        null,
-        '',
-        null,
-        dateObtained: '',
-    );
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata(copyright: '', dateObtained: ''));
 
     $asset->refresh();
     expect($asset->license_type)->toBe('cc_by_sa');
@@ -231,13 +216,7 @@ test('applyUploadMetadata skips null and empty-string values without overwriting
 test('applyUploadMetadata attaches user tags with user attribution', function () {
     $asset = Asset::factory()->create();
 
-    makeProcessingService()->applyUploadMetadata(
-        $asset,
-        ['Landscape', 'nature'],
-        null,
-        null,
-        null,
-    );
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata(tags: ['Landscape', 'nature']));
 
     $asset->refresh()->load('tags');
     $tagNames = $asset->tags->pluck('name')->all();
@@ -258,8 +237,15 @@ test('applyUploadMetadata is a no-op when all inputs are null or empty', functio
         'date_obtained' => '2026-01-01',
     ]);
 
-    makeProcessingService()->applyUploadMetadata($asset, null, null, null, null, null, null);
-    makeProcessingService()->applyUploadMetadata($asset, [], '', '', '', [], '');
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata);
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata(
+        tags: [],
+        referenceTagIds: [],
+        licenseType: '',
+        copyright: '',
+        copyrightSource: '',
+        dateObtained: '',
+    ));
 
     $asset->refresh();
     expect($asset->license_type)->toBe('public_domain');
@@ -276,13 +262,7 @@ test('applyUploadMetadata with tags only does not modify license or copyright fi
         'copyright_source' => 'preserved-src',
     ]);
 
-    makeProcessingService()->applyUploadMetadata(
-        $asset,
-        ['photo'],
-        null,
-        null,
-        null,
-    );
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata(tags: ['photo']));
 
     $asset->refresh()->load('tags');
     expect($asset->license_type)->toBe('cc_by_nc');
@@ -295,13 +275,7 @@ test('applyUploadMetadata reuses existing user tags without duplicating them', f
     $existing = Tag::factory()->create(['name' => 'sunset', 'type' => 'user']);
     $asset = Asset::factory()->create();
 
-    makeProcessingService()->applyUploadMetadata(
-        $asset,
-        ['Sunset'],
-        null,
-        null,
-        null,
-    );
+    makeProcessingService()->applyUploadMetadata($asset, new UploadMetadata(tags: ['Sunset']));
 
     $asset->refresh()->load('tags');
     expect($asset->tags)->toHaveCount(1);

@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateAssetRequest;
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\AssetIngestionService;
 use App\Services\AssetProcessingService;
 use App\Services\S3Service;
 use App\Support\TagInputParser;
@@ -35,6 +36,7 @@ class AssetController extends Controller
     public function __construct(
         protected S3Service $s3Service,
         protected AssetProcessingService $assetProcessingService,
+        protected AssetIngestionService $ingestion,
     ) {}
 
     /**
@@ -228,86 +230,41 @@ class AssetController extends Controller
                     // Resolved BEFORE the etag check, because it is what decides whether that check
                     // applies. Only reachable in keep_original_filename mode: otherwise the key is
                     // a fresh UUID and can never collide.
-                    $existingByKey = Asset::withTrashed()->where('s3_key', $fileData['s3_key'])->first();
-
-                    // Check for duplicate by etag (skip when overwriting by s3_key).
                     //
                     // Gated on the collision, not on keep_original_filename. Those are not the same
                     // thing, and conflating them is what let identical bytes upload twice under
-                    // different names: the flag was set, so this was skipped, and the key check
-                    // below then missed because the keys differed. An overwrite is not a duplicate;
-                    // a second copy under another name is. ChunkedUploadService has always gated it
-                    // this way — see duplicate-detection.md REQ-2.
-                    //
-                    // The guard has to stay: on a real overwrite the existing row already carries
-                    // this etag, so without it the upload would report as a duplicate of itself.
-                    if (! $existingByKey && ! empty($fileData['etag'])) {
-                        $existing = Asset::withTrashed()->where('etag', $fileData['etag'])->first();
-                        if ($existing) {
-                            // Clean up the just-uploaded S3 object
-                            $this->s3Service->deleteFile($fileData['s3_key']);
-                            Log::warning('Duplicate upload detected', [
-                                'filename' => $fileData['filename'],
-                                'existing_asset_id' => $existing->id,
-                                'etag' => $fileData['etag'],
-                            ]);
+                    // different names. An overwrite is not a duplicate; a second copy under another
+                    // name is — see duplicate-detection.md REQ-2.
+                    $existingByKey = $this->ingestion->existingAtKey($fileData['s3_key']);
 
-                            $duplicates[] = DuplicateAssetException::formatDuplicate($existing, $fileData['filename']);
+                    $existing = $this->ingestion->findDuplicate($fileData['etag'] ?? null, $existingByKey);
+                    if ($existing) {
+                        $this->ingestion->discardDuplicate($fileData['s3_key'], $existing, $fileData['filename']);
+                        $duplicates[] = DuplicateAssetException::formatDuplicate($existing, $fileData['filename']);
 
-                            continue;
-                        }
+                        continue;
                     }
 
-                    // Handle s3_key collision when keeping original filename
                     if ($existingByKey) {
-                        // Clean up old thumbnails and resized images
+                        // Overwrite: the old derived files describe the old bytes
                         $this->s3Service->deleteAssetFiles($existingByKey, keepOriginal: true);
-
-                        // Update existing asset record
-                        $existingByKey->update([
-                            'filename' => $fileData['filename'],
-                            'mime_type' => $fileData['mime_type'],
-                            'size' => $fileData['size'],
-                            'etag' => $fileData['etag'] ?? null,
-                            'width' => $fileData['width'],
-                            'height' => $fileData['height'],
-                            'thumbnail_s3_key' => null,
-                            'resize_s_s3_key' => null,
-                            'resize_m_s3_key' => null,
-                            'resize_l_s3_key' => null,
-                            'user_id' => Auth::id(),
-                            'deleted_at' => null,
-                            'last_modified_by' => Auth::id(),
-                        ]);
-
-                        $asset = $existingByKey;
-                    } else {
-                        // Create asset record
-                        $asset = Asset::create([
-                            's3_key' => $fileData['s3_key'],
-                            'filename' => $fileData['filename'],
-                            'mime_type' => $fileData['mime_type'],
-                            'size' => $fileData['size'],
-                            'etag' => $fileData['etag'] ?? null,
-                            'width' => $fileData['width'],
-                            'height' => $fileData['height'],
-                            'user_id' => Auth::id(),
-                        ]);
                     }
+
+                    $asset = $this->ingestion->persist([
+                        's3_key' => $fileData['s3_key'],
+                        'filename' => $fileData['filename'],
+                        'mime_type' => $fileData['mime_type'],
+                        'size' => $fileData['size'],
+                        'etag' => $fileData['etag'] ?? null,
+                        'width' => $fileData['width'],
+                        'height' => $fileData['height'],
+                        'user_id' => Auth::id(),
+                    ], $existingByKey);
 
                     // Generate thumbnail, resized images, and AI tags
                     $this->assetProcessingService->processImageAsset($asset);
 
-                    // Apply batch upload metadata
-                    $this->assetProcessingService->applyUploadMetadata(
-                        $asset,
-                        $request->input('metadata_tags'),
-                        $request->input('metadata_license_type'),
-                        $request->input('metadata_copyright'),
-                        $request->input('metadata_copyright_source'),
-                        $request->input('metadata_reference_tag_ids'),
-                        dateObtained: $request->input('metadata_date_obtained'),
-                    );
+                    $this->assetProcessingService->applyUploadMetadata($asset, $request->uploadMetadata());
 
                     $uploadedAssets[] = $asset;
                 } catch (\Exception $e) {
@@ -600,46 +557,11 @@ class AssetController extends Controller
     {
         $this->authorize('update', $asset);
 
-        // Update metadata
-        $asset->update(array_merge(
-            $request->only(['filename', 'alt_text', 'caption', 'license_type', 'license_expiry_date', 'date_obtained', 'copyright', 'copyright_source']),
-            ['last_modified_by' => Auth::id()]
-        ));
+        $asset->update(array_merge($request->metadataAttributes(), ['last_modified_by' => Auth::id()]));
 
         // Handle tags only if explicitly included in request
-        if ($request->has('tags') || $request->has('reference_tag_ids')) {
-            $tagIds = $request->has('tags')
-                ? Tag::resolveUserTagIds($request->input('tags', []))
-                : null; // null signals "do not touch user tags"
-
-            // Always preserve AI pivots verbatim
-            $aiPivotData = [];
-            foreach ($asset->aiTags as $aiTag) {
-                $aiPivotData[$aiTag->id] = ['attached_by' => $aiTag->pivot->attached_by];
-            }
-
-            // Reference pivots: sync to submitted list when present, otherwise preserve
-            if ($request->has('reference_tag_ids')) {
-                $referenceIds = array_map('intval', $request->input('reference_tag_ids', []));
-                $referencePivotData = array_fill_keys($referenceIds, ['attached_by' => 'reference']);
-            } else {
-                $referencePivotData = [];
-                foreach ($asset->referenceTags as $refTag) {
-                    $referencePivotData[$refTag->id] = ['attached_by' => $refTag->pivot->attached_by];
-                }
-            }
-
-            // User pivots: sync to submitted list when present, otherwise preserve
-            if ($tagIds !== null) {
-                $userPivotData = array_fill_keys($tagIds, ['attached_by' => 'user']);
-            } else {
-                $userPivotData = [];
-                foreach ($asset->userTags as $userTag) {
-                    $userPivotData[$userTag->id] = ['attached_by' => $userTag->pivot->attached_by];
-                }
-            }
-
-            $asset->tags()->sync($aiPivotData + $referencePivotData + $userPivotData);
+        if ($request->touchesTags()) {
+            $asset->syncTagsPreservingAi($request->userTagIds(), $request->referenceTagIds());
         }
 
         if ($request->expectsJson()) {
