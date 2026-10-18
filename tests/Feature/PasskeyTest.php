@@ -417,6 +417,25 @@ test('passkey login with remember=true issues the recaller cookie', function () 
     $response->assertCookie(Auth::guard('web')->getRecallerName());
 });
 
+test('the passkey recaller cookie alone signs the user back in once the session is gone', function () {
+    $user = User::factory()->create(['role' => 'editor']);
+    $recaller = Auth::guard('web')->getRecallerName();
+
+    $cookie = passkeyLoginWithRemember($this, $user, true)->getCookie($recaller)->getValue();
+
+    // The next morning: the session has expired and no user is held in memory.
+    Auth::forgetGuards();
+    $this->flushSession();
+
+    // Control: without the cookie the same request is sent to the login page...
+    $this->get(route('assets.index'))->assertRedirect(route('login'));
+    Auth::forgetGuards();
+
+    // ...and with only the cookie it is let through as that user.
+    $this->withCookie($recaller, $cookie)->get(route('assets.index'))->assertOk();
+    $this->assertAuthenticatedAs($user, 'web');
+});
+
 test('passkey login without remember is session-only', function (?bool $remember) {
     $user = User::factory()->create(['role' => 'editor']);
 

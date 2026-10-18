@@ -209,6 +209,14 @@ Scenario: Passkey sign-in with "Remember me" ticked issues the recaller cookie
   And the response sets the remember_web_* cookie
 # pinned by: tests/Feature/PasskeyTest.php
 
+Scenario: The passkey recaller cookie alone restores the sign-in after the session is gone
+  Given a user who signed in by passkey with "Remember me" ticked
+  And their session has since expired
+  When they request an authenticated page carrying only the remember_web_* cookie
+  Then they are let through as that user, not sent to the login page
+  And the same request without the cookie is redirected to /login
+# pinned by: tests/Feature/PasskeyTest.php
+
 Scenario: Passkey sign-in without "Remember me" is session-only
   Given a user with a registered passkey and stashed login options
   When they POST /passkey/login with a verified assertion and remember = false or absent
