@@ -15,7 +15,6 @@ use App\Services\FolderRegistry;
 use App\Services\S3Service;
 use App\Services\TikzCompilerService;
 use App\Services\ToolUploadService;
-use App\Support\ErrorAudience;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -295,11 +294,7 @@ class ToolsController extends Controller
             Log::error("{$label} upload failed: ".$e->getMessage());
 
             // REQ-tool-upload-error-audience: an api-role caller gets no exception text.
-            $detail = ErrorAudience::detail($e);
-
-            return response()->json([
-                'error' => $detail === null ? __('Upload failed.') : __('Upload failed: :error', ['error' => $detail]),
-            ], 500);
+            return response()->json(['error' => $this->clientError($e, __('Upload failed.'))], 500);
         }
 
         return $this->assetJson($asset);

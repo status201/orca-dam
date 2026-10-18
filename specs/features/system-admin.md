@@ -3,7 +3,7 @@
 ```yaml
 id: system-admin
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -48,6 +48,12 @@ three narrow services, gated entirely by `SystemPolicy::access` (admin only, see
   per-key closures (ranges, regex, enum membership) in `App\Support\SettingRules`
   before writing through `Setting::set()`; unknown keys skip validation and are written
   as-is. A new setting adds its rule there, not to the controller.
+- **REQ-diagnostics-without-s3** — The System page and its endpoints work when the S3
+  configuration is missing or broken: `SystemService` resolves `S3Service` only when an S3
+  check runs, and reports a failure to construct it as that check's error. Building the
+  client eagerly (`AWS_BUCKET` unset makes its typed properties throw) took every System
+  route down with it — the log tail, settings and command runner an admin needs to fix the
+  configuration.
 - **REQ-s3-test-reports-failure** — The "Test S3 connection" check (`testS3`) reports
   `success: false` with the error when the bucket cannot be listed. It used to call
   `S3Service::listObjects()`, which logs and swallows every failure (ADR-010), so it
@@ -110,7 +116,7 @@ ArtisanCommandRunner:                             # the dashboard's command surf
   # positional argument when POSITIONAL_ARGUMENTS names one (queue:retry → id,
   # reference-tag:create → names); otherwise only 2-character short flags (-v) are passed.
 
-SystemService:                                    # read-only diagnostics; S3Service injected
+SystemService:                                    # read-only diagnostics; S3Service resolved per check (REQ-diagnostics-without-s3)
   getSystemInfo/getDiskUsage/getDatabaseStats/getCacheStats(): array
   getLogTail(int $lines): array
   testS3Connection(): array                       # REQ-s3-test-reports-failure
@@ -211,6 +217,12 @@ Scenario: The S3 connection test reports a failing bucket as a failure (regressi
   When an admin GETs system/test-s3
   Then the response carries success false and the error
   # It used to report success: listObjects() swallows the failure.
+# pinned by: tests/Feature/SystemTest.php
+
+Scenario: The System page stays up when S3 is not configured (regression)
+  Given filesystems.disks.s3.bucket is null
+  When an admin opens the log tail and runs the S3 connection test
+  Then the log tail answers 200 and the S3 test reports success false with the error
 # pinned by: tests/Feature/SystemTest.php
 
 Scenario: Command arguments are mapped the same way the three hand-written loops did

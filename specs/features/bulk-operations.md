@@ -3,7 +3,7 @@
 ```yaml
 id: bulk-operations
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -45,7 +45,13 @@ explicit "the system is in a safe window for this" switch (see
   keys (`thumbnail_s3_key`, `resize_{s,m,l}_s3_key`) that exist, via
   `S3Service::relocatedDerivedKeys()` + `moveObject()` — never regenerating the
   thumbnails/resizes, only relocating them, and keeping each one's stored name
-  ([`s3-storage.md`](s3-storage.md) REQ-6).
+  ([`s3-storage.md`](s3-storage.md) REQ-6). Two guards keep a move from corrupting data:
+  an asset whose destination key already belongs to another asset (trashed included) is
+  skipped and counted as `failed`, before anything is copied — two `keep_original_filename`
+  uploads named `photo.jpg` in different folders otherwise overwrite each other's bytes and
+  derived objects, and the request then fails on the unique `s3_key_hash`; and a derived
+  key's column changes only when its own copy succeeded, so a failed thumbnail copy leaves
+  the column pointing at the object that still exists.
 - **REQ-5** — `bulkDownload` caps at 100 assets and 500MB total size; a
   per-asset S3 fetch failure is skipped (not fatal to the whole ZIP); a ZIP
   with zero successfully-added files returns 422 instead of an empty
@@ -115,6 +121,17 @@ bulkDownload(): authorize(bulkDownload, Asset::class)
 ## Scenarios (BDD)
 
 ```gherkin
+Scenario: A move onto a key another asset already holds is skipped (regression)
+  Given assets at assets/a/photo.jpg and assets/b/photo.jpg
+  When the first is moved to assets/b
+  Then nothing is copied, the response counts it as failed, and both rows are unchanged
+# pinned by: tests/Feature/BulkMoveTest.php
+
+Scenario: A failed derived copy keeps that column on its old key (regression)
+  Given the thumbnail copy fails during a move
+  Then the asset's s3_key moves but thumbnail_s3_key keeps the key whose object still exists
+# pinned by: tests/Feature/BulkMoveTest.php
+
 Scenario: Admin can bulk-move assets when maintenance mode is enabled
   Given maintenance_mode is true and an admin user
   When bulkMove is called with a valid destination_folder

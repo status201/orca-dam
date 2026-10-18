@@ -405,11 +405,9 @@ class S3Service
             $this->deleteFile($asset->s3_key);
         }
 
-        if ($asset->thumbnail_s3_key) {
-            $this->deleteFile($asset->thumbnail_s3_key);
+        foreach ($asset->derivedS3Keys() as $key) {
+            $this->deleteFile($key);
         }
-
-        $this->deleteResizedImages($asset);
     }
 
     /**

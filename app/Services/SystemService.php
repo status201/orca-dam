@@ -8,7 +8,15 @@ use Illuminate\Support\Facades\Log;
 
 class SystemService
 {
-    public function __construct(protected S3Service $s3Service) {}
+    /**
+     * S3Service, built only when an S3 check runs. Its constructor throws when the bucket or
+     * region is missing, and the rest of the System page must keep working for an admin to fix
+     * exactly that (REQ-diagnostics-without-s3).
+     */
+    private function s3(): S3Service
+    {
+        return app(S3Service::class);
+    }
 
     /**
      * Read last N lines from laravel.log
@@ -110,7 +118,11 @@ class SystemService
      */
     public function testS3Connection(): array
     {
-        $error = $this->s3Service->connectionError();
+        try {
+            $error = $this->s3()->connectionError();
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+        }
 
         if ($error !== null) {
             return [
@@ -317,8 +329,8 @@ class SystemService
     private function getS3BucketEndpoint(): ?string
     {
         try {
-            return $this->s3Service->getBucketEndpoint();
-        } catch (\Exception $e) {
+            return $this->s3()->getBucketEndpoint();
+        } catch (\Throwable $e) {
             return null;
         }
     }
@@ -331,14 +343,14 @@ class SystemService
     private function getS3Versioning(): ?bool
     {
         try {
-            $status = $this->s3Service->getBucketVersioning();
+            $status = $this->s3()->getBucketVersioning();
 
             if ($status === null) {
                 return null;
             }
 
             return $status === 'Enabled';
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return null;
         }
     }

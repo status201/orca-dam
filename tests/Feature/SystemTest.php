@@ -451,3 +451,15 @@ test('the S3 connection test reports a failing bucket as a failure (regression)'
         ->assertOk()
         ->assertJson(['success' => false, 'error' => 'AccessDenied: no ListBucket']);
 });
+
+test('the System page stays up when S3 is not configured (regression)', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    config(['filesystems.disks.s3.bucket' => null]);
+
+    $this->actingAs($admin)->getJson(route('system.logs'))->assertOk();
+
+    $this->actingAs($admin)->getJson(route('system.test-s3'))
+        ->assertOk()
+        ->assertJsonPath('success', false)
+        ->assertJsonStructure(['error']);
+});

@@ -310,3 +310,49 @@ test('a move keeps each derived object\'s stored name, only changing its folder 
             'thumbnails/S/photos/abc.png' => 'thumbnails/S/archive/abc.png',
         ]);
 });
+
+test('a move onto a key another asset already holds is skipped (regression)', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Setting::set('maintenance_mode', '1');
+
+    $moving = Asset::factory()->create(['s3_key' => 'assets/a/photo.jpg']);
+    $occupant = Asset::factory()->create(['s3_key' => 'assets/b/photo.jpg']);
+
+    $this->mock(S3Service::class, function ($mock) {
+        $mock->shouldReceive('moveObject')->never();
+    });
+
+    $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
+        'asset_ids' => [$moving->id],
+        'destination_folder' => 'assets/b',
+    ])->assertOk()->assertJsonPath('moved', 0)->assertJsonPath('failed', 1);
+
+    expect($moving->fresh()->s3_key)->toBe('assets/a/photo.jpg')
+        ->and($occupant->fresh()->s3_key)->toBe('assets/b/photo.jpg');
+});
+
+test('a failed derived copy keeps that column on its old key (regression)', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    Setting::set('maintenance_mode', '1');
+
+    $asset = Asset::factory()->create([
+        's3_key' => 'assets/photos/abc.jpg',
+        'thumbnail_s3_key' => 'thumbnails/photos/abc_thumb.jpg',
+        'resize_s_s3_key' => 'thumbnails/S/photos/abc.jpg',
+    ]);
+
+    $this->mock(S3Service::class, function ($mock) {
+        $mock->shouldReceive('moveObject')->andReturnUsing(fn ($from) => $from !== 'thumbnails/photos/abc_thumb.jpg');
+        $mock->shouldReceive('relocatedDerivedKeys')->passthru();
+    });
+
+    $this->actingAs($admin)->postJson(route('assets.bulk.move'), [
+        'asset_ids' => [$asset->id],
+        'destination_folder' => 'assets/archive',
+    ])->assertOk()->assertJsonPath('moved', 1);
+
+    $asset->refresh();
+    expect($asset->s3_key)->toBe('assets/archive/abc.jpg')
+        ->and($asset->thumbnail_s3_key)->toBe('thumbnails/photos/abc_thumb.jpg')
+        ->and($asset->resize_s_s3_key)->toBe('thumbnails/S/archive/abc.jpg');
+});

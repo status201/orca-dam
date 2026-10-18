@@ -3,6 +3,7 @@
 use App\Models\Asset;
 use App\Models\Tag;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 test('tag can have many assets', function () {
     $tag = Tag::factory()->create();
@@ -117,3 +118,13 @@ test('normalizeName trims and lowercases multibyte-safely, like TagInputParser',
     expect(Tag::normalizeName('  ÉTÉ '))->toBe('été')
         ->and(Tag::resolveUserTagIds(['ÉTÉ']))->toBe(Tag::resolveUserTagIds(['été']));
 });
+
+test('a name the collation already holds reuses that tag instead of failing on the unique index (regression)', function () {
+    $cafe = Tag::create(['name' => 'cafe', 'type' => 'user']);
+
+    expect(Tag::resolveAiTagIds(['café']))->toBe([$cafe->id])
+        ->and(Tag::count())->toBe(1);
+})->skip(
+    fn () => ! in_array(DB::getDriverName(), ['mysql', 'mariadb'], true),
+    'SQLite compares names byte-wise, so "cafe" and "café" are different names there; runs on MySQL/MariaDB.',
+);

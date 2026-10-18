@@ -546,5 +546,5 @@ test('a failed tool upload hides the exception from an api-role caller (regressi
     $editor = User::factory()->create(['role' => 'editor']);
     $this->actingAs($editor)->postJson(route('tools.tikz-svg.upload'), $payload)
         ->assertStatus(500)
-        ->assertJsonPath('error', 'Upload failed: secret bucket detail');
+        ->assertJsonPath('error', 'Upload failed. secret bucket detail');
 });
