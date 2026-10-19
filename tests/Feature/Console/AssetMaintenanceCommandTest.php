@@ -97,14 +97,14 @@ test('uploads:cleanup is a no-op when no stale sessions', function () {
 
 // ─── assets:audit-content-types (maintenance-commands REQ-audit-content-types) ────
 
-test('assets:audit-content-types reports mismatched objects, trashed ones included, and changes nothing', function () {
+test('assets:audit-content-types reports mismatched objects, trashed ones included, changes nothing, and exits 0 unless --strict', function () {
     $html = Asset::factory()->create(['s3_key' => 'assets/photo.jpg', 'mime_type' => 'image/jpeg']);
     $trashed = Asset::factory()->create(['s3_key' => 'assets/notes.txt', 'mime_type' => 'text/plain']);
     $trashed->delete();
     Asset::factory()->create(['s3_key' => 'assets/logo.png', 'mime_type' => 'image/png']);
 
     $s3 = Mockery::mock(S3Service::class);
-    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+    $s3->shouldReceive('getObjectHeaders')->twice()->andReturn([
         'assets/photo.jpg' => ['content_type' => 'text/html', 'content_disposition' => null],
         'assets/notes.txt' => ['content_type' => 'text/plain; charset=utf-8', 'content_disposition' => null],
         'assets/logo.png' => ['content_type' => 'image/png', 'content_disposition' => null],
@@ -118,9 +118,27 @@ test('assets:audit-content-types reports mismatched objects, trashed ones includ
         ->expectsOutputToContain("#{$trashed->id} (trashed)")
         ->doesntExpectOutputToContain('assets/logo.png')
         ->expectsOutputToContain('Run with --fix')
-        ->assertExitCode(1);
+        // Findings are the report, not a failure: System → Commands and Forge show non-zero as "Failed".
+        ->assertExitCode(0);
+
+    $this->artisan('assets:audit-content-types', ['--strict' => true])->assertExitCode(1);
 
     expect($html->fresh()->etag)->toBe($html->etag);
+});
+
+test('assets:audit-content-types --fix exits 1 when it could not rewrite an object', function () {
+    Asset::factory()->create(['s3_key' => 'assets/photo.jpg', 'mime_type' => 'image/jpeg']);
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+        'assets/photo.jpg' => ['content_type' => 'text/html', 'content_disposition' => null],
+    ]);
+    $s3->shouldReceive('repairUploadHeaders')->once()->andReturnNull();
+    $this->app->instance(S3Service::class, $s3);
+
+    $this->artisan('assets:audit-content-types', ['--fix' => true])
+        ->expectsOutputToContain('Could not rewrite')
+        ->assertExitCode(1);
 });
 
 test('assets:audit-content-types exits 0 when every object matches, counting missing ones', function () {
@@ -196,7 +214,7 @@ test('assets:audit-content-types counts a database type out of step, and --fix s
     $asset = Asset::factory()->create(['s3_key' => 'assets/diagram.tex', 'mime_type' => 'text/x-tex']);
 
     $s3 = Mockery::mock(S3Service::class);
-    $s3->shouldReceive('getObjectHeaders')->twice()->andReturn([
+    $s3->shouldReceive('getObjectHeaders')->times(3)->andReturn([
         'assets/diagram.tex' => ['content_type' => 'application/x-tex', 'content_disposition' => 'attachment'],
     ]);
     $s3->shouldNotReceive('repairUploadHeaders');
@@ -215,7 +233,8 @@ test('assets:audit-content-types counts a database type out of step, and --fix s
             ['Database type out of step', 1],
             ['Missing or unreadable (see assets:verify-integrity)', 0],
         ])
-        ->assertExitCode(1);
+        ->assertExitCode(0);
+    $this->artisan('assets:audit-content-types', ['--strict' => true])->assertExitCode(1);
     expect($asset->fresh()->mime_type)->toBe('text/x-tex');
 
     $this->artisan('assets:audit-content-types', ['--fix' => true])->assertExitCode(0);

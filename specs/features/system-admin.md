@@ -3,7 +3,7 @@
 ```yaml
 id: system-admin
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -177,7 +177,7 @@ passkeys: [passkeys:list, passkeys:revoke]
 assets: [assets:backfill-etags, "assets:deduplicate", "assets:deduplicate --force", assets:verify-integrity,
          assets:audit-content-types]    # base command allowed, so --fix can be typed; the card runs the dry run
 tokens: [token:list]                     # read-only: names, owners, dates — tokens are stored hashed
-schema: [db:verify-schema]               # read-only; exit 2 = driver cannot answer (maintenance-commands REQ-6)
+schema: [db:verify-schema]               # read-only; exits 0 whatever it finds, --strict for 1/2 (maintenance-commands REQ-6)
 ```
 
 ### Layer touchpoints & ordering

@@ -120,6 +120,10 @@ php artisan config:clear && php artisan test tests/Feature/Console/
 - A command that fails a lookup should return `Command::FAILURE` (exit 1)
   with a clear `$this->error(...)` message — never silently return
   `Command::SUCCESS` on a miss (REQ-2 of `maintenance-commands.md`).
+- A report or dry run that *finds* something still returns `Command::SUCCESS`:
+  System → Commands and Forge both label any non-zero exit "Failed". If a script
+  needs to gate on the findings, add a `--strict` option that makes them non-zero
+  (REQ-findings-exit-zero of `maintenance-commands.md`).
 - `$this->app->instance(Service::class, $mock)` is how these tests swap a
   service for a Mockery double — the command's `handle(Service $service)`
   type-hint is what makes this work; don't `new` the service inside `handle()`.

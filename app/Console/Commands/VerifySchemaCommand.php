@@ -18,7 +18,10 @@ use Illuminate\Support\Facades\DB;
  * specs/features/input-validation.md recorded these as manual checks to run by hand against a real
  * MariaDB. A checklist in a document is one nobody runs, so this is that checklist as code.
  *
- * Exit codes are three-valued on purpose:
+ * It exits 0 whatever it finds, because System → Commands and Forge label any other exit code
+ * "Failed" (maintenance-commands REQ-findings-exit-zero); the output says what was found, and
+ * prints "Schema verified." only when every check ran and passed. Under --strict the exit code is
+ * three-valued on purpose:
  *   0  every check passed
  *   1  at least one check FAILED — the schema disagrees with what the application believes
  *   2  the checks could not be RUN, because the driver cannot answer them
@@ -33,7 +36,8 @@ use Illuminate\Support\Facades\DB;
  */
 class VerifySchemaCommand extends Command
 {
-    protected $signature = 'db:verify-schema';
+    protected $signature = 'db:verify-schema
+                            {--strict : Exit 1 when a check fails and 2 when this driver cannot be verified, for scripts that gate on the result}';
 
     protected $description = 'Verify the live schema against ColumnLimits and InnoDB index limits (MySQL/MariaDB only)';
 
@@ -79,7 +83,7 @@ class VerifySchemaCommand extends Command
             $this->line('');
 
             // Not FAILURE: nothing is known to be wrong. See the exit-code note in the class docblock.
-            return 2;
+            return $this->option('strict') ? 2 : Command::SUCCESS;
         }
 
         $database = $connection->getDatabaseName();
@@ -96,7 +100,7 @@ class VerifySchemaCommand extends Command
         if ($this->failures > 0) {
             $this->components->error($this->failures.' check(s) failed. The schema disagrees with the application.');
 
-            return Command::FAILURE;
+            return $this->option('strict') ? Command::FAILURE : Command::SUCCESS;
         }
 
         $this->components->info('Schema verified.');

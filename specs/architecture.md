@@ -293,7 +293,7 @@ The *why* behind the choices above — and the alternatives each rejected — li
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1329 tests,
+- `php artisan config:clear && php artisan test` — the full Pest suite (1330 tests,
   101 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`,`Support/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security

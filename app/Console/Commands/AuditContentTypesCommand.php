@@ -13,11 +13,14 @@ use Illuminate\Support\Facades\Log;
  * Finds stored objects served with headers their extension doesn't call for — what uploads stored
  * before upload-policy REQ-content-type-from-extension, when the uploader chose the type. Dry run
  * by default; --fix rewrites the headers in place (maintenance-commands REQ-audit-content-types).
+ * Findings exit 0 — System → Commands and Forge show any other code as "Failed" — unless --strict
+ * asks for them to fail (REQ-findings-exit-zero).
  */
 class AuditContentTypesCommand extends Command
 {
     protected $signature = 'assets:audit-content-types
-                            {--fix : Rewrite the headers of every mismatched object in place (default is a dry-run report)}';
+                            {--fix : Rewrite the headers of every mismatched object in place (default is a dry-run report)}
+                            {--strict : Exit 1 while any mismatch remains, for scripts that gate on the result}';
 
     protected $description = 'Find stored objects served with a Content-Type or Content-Disposition their extension does not call for';
 
@@ -111,7 +114,10 @@ class AuditContentTypesCommand extends Command
             $this->warn('Run with --fix to record the type each extension maps to.');
         }
 
-        return count($mismatches) + count($staleTypes) - $fixed === 0 ? Command::SUCCESS : Command::FAILURE;
+        // A repair that failed is a failure; a finding is only one under --strict.
+        $remaining = count($mismatches) + count($staleTypes) - $fixed;
+
+        return $failed > 0 || ($this->option('strict') && $remaining > 0) ? Command::FAILURE : Command::SUCCESS;
     }
 
     /**
