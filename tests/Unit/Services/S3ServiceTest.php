@@ -335,12 +335,33 @@ test('uploadFile types the object by its extension, not by sniffing its bytes', 
     $file = new UploadedFile($path, 'pixel.png', 'text/html', null, true);
     expect($file->getMimeType())->toBe('text/html');   // what used to be stored
 
-    $service->uploadFile($file, 'assets');
+    $stored = $service->uploadFile($file, 'assets');
 
     $put = $history->getLastCommand();
     expect($put->getName())->toBe('PutObject')
         ->and($put['ContentType'])->toBe('image/png')
-        ->and($put->hasParam('ContentDisposition'))->toBeFalse();
+        ->and($put->hasParam('ContentDisposition'))->toBeFalse()
+        // The asset row records the served type too, not the sniffed one.
+        ->and($stored['mime_type'])->toBe('image/png');
+
+    @unlink($path);
+});
+
+test('replaceFile records the extension\'s type, so a .tex is application/x-tex in S3 and in the database', function () {
+    // Regression: the direct paths recorded the sniffed text/x-tex in assets.mime_type while S3
+    // served application/x-tex, so the same file type had two types depending on how it arrived.
+    $history = new History;
+    $service = app(S3Service::class)
+        ->setS3Client(fakeS3Client(new MockHandler([new Result(['ETag' => '"e"'])]), $history));
+
+    $path = tempnam(sys_get_temp_dir(), 'tex_');
+    file_put_contents($path, "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}\n");
+    $file = new UploadedFile($path, 'diagram.tex', 'text/x-tex', null, true);
+
+    $stored = $service->replaceFile($file, 'assets/diagram.tex');
+
+    expect($history->getLastCommand()['ContentType'])->toBe('application/x-tex')
+        ->and($stored['mime_type'])->toBe('application/x-tex');
 
     @unlink($path);
 });

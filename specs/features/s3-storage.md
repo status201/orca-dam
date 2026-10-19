@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 6
+version: 7
 owner: core
 related:
   - architecture
@@ -162,7 +162,7 @@ ensureExtension(filename, ext, fallback): string   # static
 # uploadFile()/replaceFile() return shape
 s3_key: string        # only in uploadFile() — replaceFile keeps the existing key
 filename: string       # client original name
-mime_type: string
+mime_type: string      # UploadPolicy::contentType(key) — upload-policy REQ-content-type-from-extension, never sniffed
 size: int
 etag: string           # ETag with surrounding quotes stripped
 width / height: int|null

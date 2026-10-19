@@ -3,7 +3,7 @@
 ```yaml
 id: maintenance-commands
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -64,7 +64,15 @@ revocation) when the web UI itself is inaccessible.
   the asset (a former multipart object's composite ETag becomes a plain MD5), and
   purges the original's URL from Cloudflare when purging is configured. An object
   that is missing from the bucket is counted, not repaired: that is
-  `assets:verify-integrity`'s job.
+  `assets:verify-integrity`'s job. It also counts assets whose `mime_type` column
+  differs from the type their extension maps to — the direct upload path recorded
+  the sniffed type (`text/x-tex` for a `.tex` S3 serves as `application/x-tex`) —
+  and `--fix` writes that type to the column, for the rows whose headers it
+  rewrites and for rows whose headers were already right (no S3 copy, no purge).
+  Only allowlisted extensions are synced: a discovered off-list file (`.bmp`,
+  `.tiff`) keeps its classification instead of becoming `application/octet-stream`.
+  Both column writes are query updates: a repair is not an edit, so no model events
+  or audit trail. The exit code counts both kinds of mismatch.
 
 ## Technical design
 
@@ -88,8 +96,11 @@ assets:audit-content-types {--fix}:
   # sweep per chunk (S3Service::getObjectHeaders), judged by UploadPolicy::servedHeaderMismatch(). Lists dangerous mismatches first, then
   # the rest (capped at 100 rows, with a count of the remainder); prints a
   # Checked/Mismatched/Dangerous/Missing(/Fixed/Failed) table. --fix: per mismatch,
-  # S3Service::repairUploadHeaders() → asset etag update when it changed → one
-  # CloudflareService::purgeUrls() call per 30 URLs. Exit 0 clean or all fixed; 1 otherwise.
+  # S3Service::repairUploadHeaders() → one query update of etag (when it changed) and
+  # mime_type (when stale) → one CloudflareService::purgeUrls() call per 30 URLs.
+  # "Database type out of step": assets with matching headers whose mime_type ≠
+  # UploadPolicy::contentType(s3_key), allowlisted extensions only — counted, not listed;
+  # --fix updates the column only. Exit 0 clean or all fixed; 1 otherwise.
 
 # API token lifecycle (Sanctum)
 token:create {email?} {--name=} {--new} {--user-name=}:
@@ -201,6 +212,26 @@ Scenario: --fix rewrites the headers in place, records the new etag and purges t
   When assets:audit-content-types --fix runs
   Then its headers are rewritten in place, the asset's etag becomes the copy's etag
   And its URL is purged from Cloudflare, and the command exits 0
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: --fix also gives a repaired asset its extension's mime_type (REQ-audit-content-types)
+  Given an asset diagram.tex stored as text/x-tex inline, with mime_type text/x-tex
+  When assets:audit-content-types --fix runs
+  Then its headers are rewritten and its mime_type becomes application/x-tex
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: A database type out of step is counted, and --fix syncs it without touching S3 (REQ-audit-content-types)
+  Given an asset diagram.tex served correctly as application/x-tex, download, but with mime_type text/x-tex
+  When assets:audit-content-types runs
+  Then it reports 1 database type out of step, lists no header mismatch, and exits 1
+  When assets:audit-content-types --fix runs
+  Then no object is copied and nothing is purged, its mime_type becomes application/x-tex, and it exits 0
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: An off-list extension keeps its mime_type (REQ-audit-content-types)
+  Given a discovered asset scan.bmp with mime_type image/bmp, served as image/bmp
+  When assets:audit-content-types --fix runs
+  Then its mime_type is still image/bmp
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
 Scenario: uploads:cleanup aborts only sessions past the activity threshold

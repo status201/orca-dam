@@ -98,10 +98,10 @@ test('uploads:cleanup is a no-op when no stale sessions', function () {
 // ─── assets:audit-content-types (maintenance-commands REQ-audit-content-types) ────
 
 test('assets:audit-content-types reports mismatched objects, trashed ones included, and changes nothing', function () {
-    $html = Asset::factory()->create(['s3_key' => 'assets/photo.jpg']);
-    $trashed = Asset::factory()->create(['s3_key' => 'assets/notes.txt']);
+    $html = Asset::factory()->create(['s3_key' => 'assets/photo.jpg', 'mime_type' => 'image/jpeg']);
+    $trashed = Asset::factory()->create(['s3_key' => 'assets/notes.txt', 'mime_type' => 'text/plain']);
     $trashed->delete();
-    Asset::factory()->create(['s3_key' => 'assets/logo.png']);
+    Asset::factory()->create(['s3_key' => 'assets/logo.png', 'mime_type' => 'image/png']);
 
     $s3 = Mockery::mock(S3Service::class);
     $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
@@ -124,9 +124,9 @@ test('assets:audit-content-types reports mismatched objects, trashed ones includ
 });
 
 test('assets:audit-content-types exits 0 when every object matches, counting missing ones', function () {
-    Asset::factory()->create(['s3_key' => 'assets/logo.png']);
-    Asset::factory()->create(['s3_key' => 'assets/report.pdf']);
-    Asset::factory()->create(['s3_key' => 'assets/gone.zip']);
+    Asset::factory()->create(['s3_key' => 'assets/logo.png', 'mime_type' => 'image/png']);
+    Asset::factory()->create(['s3_key' => 'assets/report.pdf', 'mime_type' => 'application/pdf']);
+    Asset::factory()->create(['s3_key' => 'assets/gone.zip', 'mime_type' => 'application/zip']);
 
     $s3 = Mockery::mock(S3Service::class);
     $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
@@ -142,13 +142,14 @@ test('assets:audit-content-types exits 0 when every object matches, counting mis
             ['Checked', 3],
             ['Mismatched', 0],
             ['Dangerous (active type served inline)', 0],
+            ['Database type out of step', 0],
             ['Missing or unreadable (see assets:verify-integrity)', 1],
         ])
         ->assertExitCode(0);
 });
 
 test('assets:audit-content-types --fix rewrites the headers, records the new etag and purges the URL', function () {
-    $asset = Asset::factory()->create(['s3_key' => 'assets/photo.jpg', 'etag' => 'composite-2']);
+    $asset = Asset::factory()->create(['s3_key' => 'assets/photo.jpg', 'mime_type' => 'image/jpeg', 'etag' => 'composite-2']);
 
     $s3 = Mockery::mock(S3Service::class);
     $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
@@ -167,4 +168,76 @@ test('assets:audit-content-types --fix rewrites the headers, records the new eta
         ->assertExitCode(0);
 
     expect($asset->fresh()->etag)->toBe('plainmd5');
+});
+
+test('assets:audit-content-types --fix also gives a repaired asset its extension type', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'assets/diagram.tex', 'mime_type' => 'text/x-tex', 'etag' => 'e1']);
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+        'assets/diagram.tex' => ['content_type' => 'text/x-tex', 'content_disposition' => null],
+    ]);
+    $s3->shouldReceive('repairUploadHeaders')->once()->with('assets/diagram.tex')->andReturn('e1');
+    $s3->shouldReceive('getUrl')->andReturn('https://cdn.example.test/assets/diagram.tex');
+    $this->app->instance(S3Service::class, $s3);
+
+    $cloudflare = Mockery::mock(CloudflareService::class);
+    $cloudflare->shouldReceive('purgeUrls')->once()->andReturnTrue();
+    $this->app->instance(CloudflareService::class, $cloudflare);
+
+    $this->artisan('assets:audit-content-types', ['--fix' => true])->assertExitCode(0);
+
+    expect($asset->fresh())
+        ->mime_type->toBe('application/x-tex')
+        ->etag->toBe('e1');
+});
+
+test('assets:audit-content-types counts a database type out of step, and --fix syncs it without touching S3', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'assets/diagram.tex', 'mime_type' => 'text/x-tex']);
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->twice()->andReturn([
+        'assets/diagram.tex' => ['content_type' => 'application/x-tex', 'content_disposition' => 'attachment'],
+    ]);
+    $s3->shouldNotReceive('repairUploadHeaders');
+    $this->app->instance(S3Service::class, $s3);
+
+    $cloudflare = Mockery::mock(CloudflareService::class);
+    $cloudflare->shouldNotReceive('purgeUrls');
+    $this->app->instance(CloudflareService::class, $cloudflare);
+
+    $this->artisan('assets:audit-content-types')
+        ->expectsOutputToContain('Every stored object is served with the headers its extension calls for')
+        ->expectsTable(['Result', 'Count'], [
+            ['Checked', 1],
+            ['Mismatched', 0],
+            ['Dangerous (active type served inline)', 0],
+            ['Database type out of step', 1],
+            ['Missing or unreadable (see assets:verify-integrity)', 0],
+        ])
+        ->assertExitCode(1);
+    expect($asset->fresh()->mime_type)->toBe('text/x-tex');
+
+    $this->artisan('assets:audit-content-types', ['--fix' => true])->assertExitCode(0);
+    expect($asset->fresh()->mime_type)->toBe('application/x-tex');
+});
+
+test('assets:audit-content-types --fix leaves the mime_type of an off-list extension alone', function () {
+    $asset = Asset::factory()->create(['s3_key' => 'assets/scan.bmp', 'mime_type' => 'image/bmp']);
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+        'assets/scan.bmp' => ['content_type' => 'image/bmp', 'content_disposition' => null],
+    ]);
+    $s3->shouldReceive('repairUploadHeaders')->once()->andReturn($asset->etag);
+    $s3->shouldReceive('getUrl')->andReturn('https://cdn.example.test/assets/scan.bmp');
+    $this->app->instance(S3Service::class, $s3);
+
+    $cloudflare = Mockery::mock(CloudflareService::class);
+    $cloudflare->shouldReceive('purgeUrls')->andReturnTrue();
+    $this->app->instance(CloudflareService::class, $cloudflare);
+
+    $this->artisan('assets:audit-content-types', ['--fix' => true])->assertExitCode(0);
+
+    expect($asset->fresh()->mime_type)->toBe('image/bmp');
 });

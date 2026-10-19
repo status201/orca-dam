@@ -37,11 +37,12 @@ class AuditContentTypesCommand extends Command
         $checked = 0;
         $missing = 0;
         $mismatches = [];
+        $staleTypes = [];
 
         // Trashed assets too: soft delete keeps the object, and it stays publicly readable.
         Asset::withTrashed()
-            ->select(['id', 's3_key', 'etag', 'deleted_at'])
-            ->chunkById(500, function ($assets) use ($s3Service, &$checked, &$missing, &$mismatches) {
+            ->select(['id', 's3_key', 'mime_type', 'etag', 'deleted_at'])
+            ->chunkById(500, function ($assets) use ($s3Service, &$checked, &$missing, &$mismatches, &$staleTypes) {
                 $headers = $s3Service->getObjectHeaders($assets->pluck('s3_key')->all());
 
                 foreach ($assets as $asset) {
@@ -61,6 +62,9 @@ class AuditContentTypesCommand extends Command
                     );
                     if ($mismatch !== null) {
                         $mismatches[] = ['asset' => $asset] + $mismatch;
+                    } elseif (self::staleMimeType($asset) !== null) {
+                        // Served right, recorded wrong: only the column needs repairing.
+                        $staleTypes[] = $asset;
                     }
                 }
             });
@@ -80,12 +84,19 @@ class AuditContentTypesCommand extends Command
         if ($fix && $mismatches !== []) {
             [$fixed, $failed] = $this->repair($mismatches, $s3Service, $cloudflare);
         }
+        if ($fix) {
+            foreach ($staleTypes as $asset) {
+                Asset::withTrashed()->whereKey($asset->id)->update(['mime_type' => self::staleMimeType($asset)]);
+            }
+            $fixed += count($staleTypes);
+        }
 
         $this->newLine();
         $rows = [
             ['Checked', $checked],
             ['Mismatched', count($mismatches)],
             ['Dangerous (active type served inline)', $dangerous],
+            ['Database type out of step', count($staleTypes)],
             ['Missing or unreadable (see assets:verify-integrity)', $missing],
         ];
         if ($fix) {
@@ -96,9 +107,26 @@ class AuditContentTypesCommand extends Command
 
         if (! $fix && $mismatches !== []) {
             $this->warn('Run with --fix to rewrite these headers in place (same key, same bytes).');
+        } elseif (! $fix && $staleTypes !== []) {
+            $this->warn('Run with --fix to record the type each extension maps to.');
         }
 
-        return count($mismatches) - $fixed === 0 ? Command::SUCCESS : Command::FAILURE;
+        return count($mismatches) + count($staleTypes) - $fixed === 0 ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /**
+     * The mime_type the asset should record when its column disagrees with the type its extension
+     * maps to, or null when it agrees. An off-list extension (a discovered .bmp) keeps its
+     * classification: contentType() would make it application/octet-stream.
+     */
+    private static function staleMimeType(Asset $asset): ?string
+    {
+        if (! UploadPolicy::isAllowed($asset->s3_key)) {
+            return null;
+        }
+        $expected = UploadPolicy::contentType($asset->s3_key);
+
+        return $asset->mime_type === $expected ? null : $expected;
     }
 
     /**
@@ -124,8 +152,8 @@ class AuditContentTypesCommand extends Command
     }
 
     /**
-     * Rewrite each mismatched object's headers, keep the asset's etag in step with the copy, and
-     * purge the original's URL from Cloudflare (a no-op unless purging is configured).
+     * Rewrite each mismatched object's headers, keep the asset's etag and mime_type in step with the
+     * copy, and purge the original's URL from Cloudflare (a no-op unless purging is configured).
      *
      * @param  list<array{asset: Asset, dangerous: bool}>  $mismatches
      * @return array{0: int, 1: int} fixed, failed
@@ -148,9 +176,13 @@ class AuditContentTypesCommand extends Command
             }
 
             $fixed++;
-            if ($etag !== $asset->etag) {
+            $changes = array_filter([
+                'etag' => $etag !== $asset->etag ? $etag : null,
+                'mime_type' => self::staleMimeType($asset),
+            ]);
+            if ($changes !== []) {
                 // A query update: a header repair is not an edit, so no model events or audit trail.
-                Asset::withTrashed()->whereKey($asset->id)->update(['etag' => $etag]);
+                Asset::withTrashed()->whereKey($asset->id)->update($changes);
             }
             $purge[] = $s3Service->getUrl($asset->s3_key);
         }
