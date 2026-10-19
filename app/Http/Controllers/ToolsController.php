@@ -44,7 +44,7 @@ class ToolsController extends Controller
 
     public function uploadMathml(StoreMathmlRequest $request): JsonResponse
     {
-        return $this->storeToolAsset($request, 'MathML', $request->input('content'), 'application/mathml+xml', 'mml', 'formula.mml', [
+        return $this->storeToolAsset($request, 'MathML', $request->input('content'), 'mml', 'formula.mml', [
             'alt_text' => $request->input('latex') ?: null,
         ]);
     }
@@ -56,7 +56,7 @@ class ToolsController extends Controller
 
     public function uploadTikzSvg(StoreTikzSvgRequest $request): JsonResponse
     {
-        return $this->storeToolAsset($request, 'TikZ SVG', $request->input('content'), 'image/svg+xml', 'svg', 'diagram.svg', [
+        return $this->storeToolAsset($request, 'TikZ SVG', $request->input('content'), 'svg', 'diagram.svg', [
             'parent_id' => $request->input('parent_asset_id'),
         ]);
     }
@@ -68,7 +68,7 @@ class ToolsController extends Controller
 
     public function uploadTikzSvgFonts(StoreTikzSvgFontsRequest $request): JsonResponse
     {
-        return $this->storeToolAsset($request, 'TikZ SVG (embedded fonts)', $request->input('content'), 'image/svg+xml', 'svg', 'diagram.svg', [
+        return $this->storeToolAsset($request, 'TikZ SVG (embedded fonts)', $request->input('content'), 'svg', 'diagram.svg', [
             'parent_id' => $request->input('parent_asset_id'),
         ]);
     }
@@ -120,7 +120,7 @@ class ToolsController extends Controller
             return response()->json(['error' => __('Invalid base64 data')], 422);
         }
 
-        return $this->storeToolAsset($request, 'TikZ PNG', $binaryData, 'image/png', 'png', 'diagram.png', [
+        return $this->storeToolAsset($request, 'TikZ PNG', $binaryData, 'png', 'diagram.png', [
             'width' => $request->input('width'),
             'height' => $request->input('height'),
             'parent_id' => $request->input('parent_asset_id'),
@@ -237,7 +237,7 @@ class ToolsController extends Controller
 
     public function uploadTexTemplate(StoreTexTemplateRequest $request): JsonResponse
     {
-        return $this->storeToolAsset($request, 'TeX template', $request->input('content'), 'application/x-tex', 'tex', 'template.tex', process: false);
+        return $this->storeToolAsset($request, 'TeX template', $request->input('content'), 'tex', 'template.tex', process: false);
     }
 
     public function gifMaker(): View
@@ -252,7 +252,7 @@ class ToolsController extends Controller
             return response()->json(['error' => __('Invalid base64 data')], 422);
         }
 
-        return $this->storeToolAsset($request, 'GIF', $binaryData, 'image/gif', 'gif', 'animation.gif', [
+        return $this->storeToolAsset($request, 'GIF', $binaryData, 'gif', 'animation.gif', [
             'width' => $request->input('width'),
             'height' => $request->input('height'),
             'parent_id' => $request->input('parent_asset_id'),
@@ -271,7 +271,6 @@ class ToolsController extends Controller
         ToolUploadRequest $request,
         string $label,
         string $content,
-        string $mimeType,
         string $extension,
         string $fallbackName,
         array $attributes = [],
@@ -281,7 +280,6 @@ class ToolsController extends Controller
             $asset = $this->toolUploadService->store(
                 content: $content,
                 filename: S3Service::ensureExtension($request->input('filename'), $extension, $fallbackName),
-                mimeType: $mimeType,
                 folder: $request->input('folder', S3Service::getRootFolder()),
                 attributes: array_merge([
                     'user_id' => Auth::id(),

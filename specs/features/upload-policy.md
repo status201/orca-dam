@@ -132,7 +132,8 @@ SVGs on write, and one private `uploadHeaders()` sets `ContentType` from
 for both `putUploadedFile()` (direct, replace, tools) and `createMultipartUpload()`
 (chunked). `S3Service::uploadFile()` and `replaceFile()` return that same
 `UploadPolicy::contentType()` as `mime_type`, which the controllers write to
-`assets.mime_type`; chunked completion and `ToolUploadService` record it too.
+`assets.mime_type`; chunked completion records it too, and `ToolUploadService`
+takes it from `uploadFile()` rather than from its caller.
 
 ### Persistence
 

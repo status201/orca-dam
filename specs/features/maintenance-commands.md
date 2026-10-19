@@ -78,16 +78,20 @@ revocation) when the web UI itself is inaccessible.
   the asset (a former multipart object's composite ETag becomes a plain MD5), and
   purges the original's URL from Cloudflare when purging is configured. An object
   that is missing from the bucket is counted, not repaired: that is
-  `assets:verify-integrity`'s job. It also counts assets whose `mime_type` column
-  differs from the type their extension maps to — the direct upload path recorded
-  the sniffed type (`text/x-tex` for a `.tex` S3 serves as `application/x-tex`) —
-  and `--fix` writes that type to the column, for the rows whose headers it
-  rewrites and for rows whose headers were already right (no S3 copy, no purge).
-  Only allowlisted extensions are synced: a discovered off-list file (`.bmp`,
-  `.tiff`) keeps its classification instead of becoming `application/octet-stream`.
-  Both column writes are query updates: a repair is not an edit, so no model events
-  or audit trail. `--strict` counts both kinds of mismatch. `--fix` exits `1` when
-  it could not rewrite an object, with or without `--strict`: that repair failed.
+  `assets:verify-integrity`'s job. It also counts **every** asset whose `mime_type`
+  column differs from the type its extension maps to, whether or not its headers
+  match — the direct upload path recorded the sniffed type (`text/x-tex` for a
+  `.tex` S3 serves as `application/x-tex`) — so the dry run's count is exactly the
+  rows `--fix` will change. `--fix` writes that type to the column, one update per
+  type rather than per row; a row whose headers were already right gets no S3 copy
+  and no purge. Only allowlisted extensions are synced: a discovered off-list file
+  (`.bmp`, `.tiff`) keeps its classification instead of becoming
+  `application/octet-stream`. Both column writes (`etag`, `mime_type`) are plain
+  query updates that leave `updated_at` alone: a repair is not an edit, so it fires
+  no model events, writes no audit trail, and doesn't move the asset to the top of
+  the date sort or the TeX template picker. `--strict` counts both kinds of
+  mismatch. `--fix` exits `1` when it could not rewrite an object, with or without
+  `--strict`: that repair failed.
 
 ## Technical design
 
@@ -111,11 +115,11 @@ assets:audit-content-types {--fix} {--strict}:
   # sweep per chunk (S3Service::getObjectHeaders), judged by UploadPolicy::servedHeaderMismatch(). Lists dangerous mismatches first, then
   # the rest (capped at 100 rows, with a count of the remainder); prints a
   # Checked/Mismatched/Dangerous/Missing(/Fixed/Failed) table. --fix: per mismatch,
-  # S3Service::repairUploadHeaders() → one query update of etag (when it changed) and
-  # mime_type (when stale) → one CloudflareService::purgeUrls() call per 30 URLs.
-  # "Database type out of step": assets with matching headers whose mime_type ≠
-  # UploadPolicy::contentType(s3_key), allowlisted extensions only — counted, not listed;
-  # --fix updates the column only. Exit 0, unless --fix failed to rewrite an object (1);
+  # S3Service::repairUploadHeaders() → toBase() update of etag when it changed → one
+  # CloudflareService::purgeUrls() call per 30 URLs. "Database type out of step": every
+  # asset whose mime_type ≠ UploadPolicy::contentType(s3_key), allowlisted extensions
+  # only — counted, not listed; --fix: one toBase() whereIn update per expected type
+  # (ids chunked by 1000), so updated_at is untouched. Exit 0, unless --fix failed to rewrite an object (1);
   # --strict: also 1 while any mismatch of either kind remains.
 
 # API token lifecycle (Sanctum)
@@ -243,7 +247,11 @@ Scenario: --fix rewrites the headers in place, records the new etag and purges t
 Scenario: --fix also gives a repaired asset its extension's mime_type (REQ-audit-content-types)
   Given an asset diagram.tex stored as text/x-tex inline, with mime_type text/x-tex
   When assets:audit-content-types --fix runs
-  Then its headers are rewritten and its mime_type becomes application/x-tex
+  Then the dry run counts it as a database type out of step as well as a header mismatch
+  And --fix rewrites its headers and its mime_type becomes application/x-tex
+  And its updated_at is unchanged
+# Regression: the dry run left such rows out of the database count although --fix changed them,
+# and both column writes bumped updated_at, reordering the grid's date sort.
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
 Scenario: A database type out of step is counted, and --fix syncs it without touching S3 (REQ-audit-content-types)

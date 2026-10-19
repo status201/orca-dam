@@ -40,6 +40,7 @@ class AuditContentTypesCommand extends Command
         $checked = 0;
         $missing = 0;
         $mismatches = [];
+        /** @var array<int, string> $staleTypes asset id => the mime_type its extension maps to */
         $staleTypes = [];
 
         // Trashed assets too: soft delete keeps the object, and it stays publicly readable.
@@ -50,6 +51,12 @@ class AuditContentTypesCommand extends Command
 
                 foreach ($assets as $asset) {
                     $checked++;
+                    // Counted whatever the headers say, so the dry run names every row --fix changes.
+                    $staleType = self::staleMimeType($asset);
+                    if ($staleType !== null) {
+                        $staleTypes[$asset->id] = $staleType;
+                    }
+
                     $stored = $headers[$asset->s3_key] ?? null;
 
                     if ($stored === null) {
@@ -65,9 +72,6 @@ class AuditContentTypesCommand extends Command
                     );
                     if ($mismatch !== null) {
                         $mismatches[] = ['asset' => $asset] + $mismatch;
-                    } elseif (self::staleMimeType($asset) !== null) {
-                        // Served right, recorded wrong: only the column needs repairing.
-                        $staleTypes[] = $asset;
                     }
                 }
             });
@@ -87,12 +91,7 @@ class AuditContentTypesCommand extends Command
         if ($fix && $mismatches !== []) {
             [$fixed, $failed] = $this->repair($mismatches, $s3Service, $cloudflare);
         }
-        if ($fix) {
-            foreach ($staleTypes as $asset) {
-                Asset::withTrashed()->whereKey($asset->id)->update(['mime_type' => self::staleMimeType($asset)]);
-            }
-            $fixed += count($staleTypes);
-        }
+        $synced = $fix ? $this->syncMimeTypes($staleTypes) : 0;
 
         $this->newLine();
         $rows = [
@@ -105,6 +104,7 @@ class AuditContentTypesCommand extends Command
         if ($fix) {
             $rows[] = ['Fixed', $fixed];
             $rows[] = ['Failed', $failed];
+            $rows[] = ['Database types synced', $synced];
         }
         $this->table(['Result', 'Count'], $rows);
 
@@ -115,7 +115,7 @@ class AuditContentTypesCommand extends Command
         }
 
         // A repair that failed is a failure; a finding is only one under --strict.
-        $remaining = count($mismatches) + count($staleTypes) - $fixed;
+        $remaining = count($mismatches) - $fixed + count($staleTypes) - $synced;
 
         return $failed > 0 || ($this->option('strict') && $remaining > 0) ? Command::FAILURE : Command::SUCCESS;
     }
@@ -133,6 +133,33 @@ class AuditContentTypesCommand extends Command
         $expected = UploadPolicy::contentType($asset->s3_key);
 
         return $asset->mime_type === $expected ? null : $expected;
+    }
+
+    /**
+     * Record each stale asset's extension type: one update per type, not per row. A query update
+     * through toBase(), so updated_at stays put — a repair is not an edit, and a bumped timestamp
+     * would move every synced asset to the top of the date sort.
+     *
+     * @param  array<int, string>  $staleTypes  asset id => mime_type
+     */
+    private function syncMimeTypes(array $staleTypes): int
+    {
+        $byType = [];
+        foreach ($staleTypes as $id => $type) {
+            $byType[$type][] = $id;
+        }
+
+        foreach ($byType as $type => $ids) {
+            foreach (array_chunk($ids, 1000) as $chunk) {
+                Asset::withTrashed()->whereKey($chunk)->toBase()->update(['mime_type' => $type]);
+            }
+        }
+
+        if ($staleTypes !== []) {
+            Log::info('assets:audit-content-types synced recorded mime types', ['synced' => count($staleTypes)]);
+        }
+
+        return count($staleTypes);
     }
 
     /**
@@ -158,8 +185,9 @@ class AuditContentTypesCommand extends Command
     }
 
     /**
-     * Rewrite each mismatched object's headers, keep the asset's etag and mime_type in step with the
-     * copy, and purge the original's URL from Cloudflare (a no-op unless purging is configured).
+     * Rewrite each mismatched object's headers, keep the asset's etag in step with the copy, and
+     * purge the original's URL from Cloudflare (a no-op unless purging is configured). The
+     * mime_type column is syncMimeTypes()'s job.
      *
      * @param  list<array{asset: Asset, dangerous: bool}>  $mismatches
      * @return array{0: int, 1: int} fixed, failed
@@ -182,13 +210,10 @@ class AuditContentTypesCommand extends Command
             }
 
             $fixed++;
-            $changes = array_filter([
-                'etag' => $etag !== $asset->etag ? $etag : null,
-                'mime_type' => self::staleMimeType($asset),
-            ]);
-            if ($changes !== []) {
-                // A query update: a header repair is not an edit, so no model events or audit trail.
-                Asset::withTrashed()->whereKey($asset->id)->update($changes);
+            if ($etag !== $asset->etag) {
+                // A plain query update: a header repair is not an edit, so no model events, no audit
+                // trail, and no updated_at bump.
+                Asset::withTrashed()->whereKey($asset->id)->toBase()->update(['etag' => $etag]);
             }
             $purge[] = $s3Service->getUrl($asset->s3_key);
         }

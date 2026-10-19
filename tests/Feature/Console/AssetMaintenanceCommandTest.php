@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Services\ChunkedUploadService;
 use App\Services\CloudflareService;
 use App\Services\S3Service;
+use App\Support\UploadPolicy;
+use Illuminate\Support\Facades\DB;
 
 test('assets:backfill-etags is a no-op when all assets have etags', function () {
     Asset::factory()->image()->create(['etag' => 'existing-etag']);
@@ -188,14 +190,18 @@ test('assets:audit-content-types --fix rewrites the headers, records the new eta
     expect($asset->fresh()->etag)->toBe('plainmd5');
 });
 
-test('assets:audit-content-types --fix also gives a repaired asset its extension type', function () {
+test('assets:audit-content-types counts a mismatched row with a stale mime_type, and --fix syncs it without touching updated_at', function () {
+    // Regression: the dry run left rows with wrong headers out of the database count although --fix
+    // changed their mime_type, and both column writes bumped updated_at — every repaired asset jumped
+    // to the top of the date sort.
     $asset = Asset::factory()->create(['s3_key' => 'assets/diagram.tex', 'mime_type' => 'text/x-tex', 'etag' => 'e1']);
+    Asset::whereKey($asset->id)->toBase()->update(['updated_at' => '2026-01-01 00:00:00']);
 
     $s3 = Mockery::mock(S3Service::class);
-    $s3->shouldReceive('getObjectHeaders')->once()->andReturn([
+    $s3->shouldReceive('getObjectHeaders')->twice()->andReturn([
         'assets/diagram.tex' => ['content_type' => 'text/x-tex', 'content_disposition' => null],
     ]);
-    $s3->shouldReceive('repairUploadHeaders')->once()->with('assets/diagram.tex')->andReturn('e1');
+    $s3->shouldReceive('repairUploadHeaders')->once()->with('assets/diagram.tex')->andReturn('e2');
     $s3->shouldReceive('getUrl')->andReturn('https://cdn.example.test/assets/diagram.tex');
     $this->app->instance(S3Service::class, $s3);
 
@@ -203,11 +209,48 @@ test('assets:audit-content-types --fix also gives a repaired asset its extension
     $cloudflare->shouldReceive('purgeUrls')->once()->andReturnTrue();
     $this->app->instance(CloudflareService::class, $cloudflare);
 
+    $this->artisan('assets:audit-content-types')
+        ->expectsTable(['Result', 'Count'], [
+            ['Checked', 1],
+            ['Mismatched', 1],
+            ['Dangerous (active type served inline)', 0],
+            ['Database type out of step', 1],
+            ['Missing or unreadable (see assets:verify-integrity)', 0],
+        ])
+        ->assertExitCode(0);
+
     $this->artisan('assets:audit-content-types', ['--fix' => true])->assertExitCode(0);
 
-    expect($asset->fresh())
-        ->mime_type->toBe('application/x-tex')
-        ->etag->toBe('e1');
+    $fresh = $asset->fresh();
+    expect($fresh->mime_type)->toBe('application/x-tex')
+        ->and($fresh->etag)->toBe('e2')
+        ->and($fresh->updated_at->toDateTimeString())->toBe('2026-01-01 00:00:00');
+});
+
+test('assets:audit-content-types --fix syncs stale rows with one update per type', function () {
+    $markdown = collect(range(1, 3))->map(fn ($i) => Asset::factory()->create([
+        's3_key' => "assets/n{$i}.md", 'mime_type' => 'text/plain',
+    ]));
+    $wav = Asset::factory()->create(['s3_key' => 'assets/a.wav', 'mime_type' => 'audio/x-wav']);
+
+    // Every object is already served right: only the column is stale.
+    $headers = $markdown->push($wav)->mapWithKeys(fn ($a) => [$a->s3_key => [
+        'content_type' => UploadPolicy::contentType($a->s3_key),
+        'content_disposition' => UploadPolicy::isInline($a->s3_key) ? null : 'attachment',
+    ]])->all();
+
+    $s3 = Mockery::mock(S3Service::class);
+    $s3->shouldReceive('getObjectHeaders')->once()->andReturn($headers);
+    $s3->shouldNotReceive('repairUploadHeaders');
+    $this->app->instance(S3Service::class, $s3);
+
+    DB::enableQueryLog();
+    $this->artisan('assets:audit-content-types', ['--fix' => true])->assertExitCode(0);
+    $updates = collect(DB::getQueryLog())->filter(fn ($q) => str_starts_with(strtolower($q['query']), 'update'));
+
+    expect($updates)->toHaveCount(2)
+        ->and(Asset::where('mime_type', 'text/markdown')->count())->toBe(3)
+        ->and($wav->fresh()->mime_type)->toBe('audio/wav');
 });
 
 test('assets:audit-content-types counts a database type out of step, and --fix syncs it without touching S3', function () {

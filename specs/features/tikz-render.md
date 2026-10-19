@@ -3,7 +3,7 @@
 ```yaml
 id: tikz-render
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -113,8 +113,9 @@ TikzCompilerService:
   fontLatex(string $key): string                    # static — LaTeX preamble line(s) for a font key
 
 ToolUploadService:
-  store(content, filename, mimeType, folder, attributes=[], process=true, metadata=null): Asset
-    # tempnam() -> UploadedFile -> S3Service::uploadFile() -> Asset::create()
+  store(content, filename, folder, attributes=[], process=true, metadata=null): Asset
+    # tempnam() -> UploadedFile -> S3Service::uploadFile() -> Asset::create() with uploadFile()'s
+    # mime_type, the filename extension's type (upload-policy REQ-content-type-from-extension)
     # -> (if $process) AssetProcessingService::processImageAsset(dispatchAiTagging: true)
     # -> (if $metadata) AssetProcessingService::applyUploadMetadata(...)
     # temp file always unlinked, even on exception

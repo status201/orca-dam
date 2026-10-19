@@ -13,7 +13,7 @@ test('store uploads content and creates an asset with merged attributes', functi
     $s3 = Mockery::mock(S3Service::class);
     $s3->shouldReceive('uploadFile')
         ->once()
-        ->andReturn(['s3_key' => 'assets/x.svg', 'size' => 123, 'etag' => 'etag-1']);
+        ->andReturn(['s3_key' => 'assets/x.svg', 'mime_type' => 'image/svg+xml', 'size' => 123, 'etag' => 'etag-1']);
 
     $processing = Mockery::mock(AssetProcessingService::class);
     $processing->shouldReceive('processImageAsset')->once();
@@ -22,7 +22,6 @@ test('store uploads content and creates an asset with merged attributes', functi
     $asset = (new ToolUploadService($s3, $processing))->store(
         content: '<svg/>',
         filename: 'x.svg',
-        mimeType: 'image/svg+xml',
         folder: 'assets',
         attributes: ['user_id' => $user->id, 'caption' => 'hi'],
     );
@@ -42,7 +41,7 @@ test('store skips processing and metadata when process is false', function () {
     $s3 = Mockery::mock(S3Service::class);
     $s3->shouldReceive('uploadFile')
         ->once()
-        ->andReturn(['s3_key' => 'assets/t.tex', 'size' => 1, 'etag' => null]);
+        ->andReturn(['s3_key' => 'assets/t.tex', 'mime_type' => 'application/x-tex', 'size' => 1, 'etag' => null]);
 
     $processing = Mockery::mock(AssetProcessingService::class);
     $processing->shouldNotReceive('processImageAsset');
@@ -51,12 +50,12 @@ test('store skips processing and metadata when process is false', function () {
     $asset = (new ToolUploadService($s3, $processing))->store(
         content: 'x',
         filename: 't.tex',
-        mimeType: 'application/x-tex',
         folder: 'assets',
         attributes: ['user_id' => $user->id],
         process: false,
     );
 
+    // uploadFile()'s type, from the extension: the tool no longer supplies its own.
     expect($asset->mime_type)->toBe('application/x-tex');
     expect($asset->etag)->toBeNull();
 });
@@ -67,7 +66,7 @@ test('store forwards the metadata payload to applyUploadMetadata', function () {
     $s3 = Mockery::mock(S3Service::class);
     $s3->shouldReceive('uploadFile')
         ->once()
-        ->andReturn(['s3_key' => 'assets/g.gif', 'size' => 5, 'etag' => 'e']);
+        ->andReturn(['s3_key' => 'assets/g.gif', 'mime_type' => 'image/gif', 'size' => 5, 'etag' => 'e']);
 
     $processing = Mockery::mock(AssetProcessingService::class);
     $processing->shouldReceive('processImageAsset')->once();
@@ -86,7 +85,6 @@ test('store forwards the metadata payload to applyUploadMetadata', function () {
     (new ToolUploadService($s3, $processing))->store(
         content: 'GIF',
         filename: 'g.gif',
-        mimeType: 'image/gif',
         folder: 'assets',
         attributes: ['user_id' => $user->id],
         metadata: $metadata,
@@ -103,7 +101,7 @@ test('store always removes the temp file, even on success', function () {
         ->andReturnUsing(function ($file) use (&$capturedPath) {
             $capturedPath = $file->getRealPath();
 
-            return ['s3_key' => 'assets/x.svg', 'size' => 1, 'etag' => null];
+            return ['s3_key' => 'assets/x.svg', 'mime_type' => 'image/svg+xml', 'size' => 1, 'etag' => null];
         });
 
     $processing = Mockery::mock(AssetProcessingService::class);
@@ -112,7 +110,6 @@ test('store always removes the temp file, even on success', function () {
     (new ToolUploadService($s3, $processing))->store(
         content: '<svg/>',
         filename: 'x.svg',
-        mimeType: 'image/svg+xml',
         folder: 'assets',
         attributes: ['user_id' => $user->id],
     );
