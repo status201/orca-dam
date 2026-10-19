@@ -36,9 +36,9 @@ php artisan uploads:cleanup [--hours=48]
 php artisan assets:verify-integrity      # Queue S3 integrity checks
 php artisan assets:backfill-etags        # Fetch etags from S3
 php artisan assets:deduplicate [--force] # Soft-delete duplicates by etag
-php artisan assets:audit-content-types [--fix]  # Served Content-Type/Disposition vs extension; dry-run, exit 1 on findings
+php artisan assets:audit-content-types [--fix] [--strict]  # Served Content-Type/Disposition vs extension; dry-run; --strict = exit 1 on findings
 php artisan lang:safe-update             # Refresh laravel-lang files; protects project nl.json (never use raw lang:update)
-php artisan db:verify-schema             # MySQL/MariaDB only: live schema vs ColumnLimits + InnoDB index limits. Exit 2 = driver cannot answer (not a pass)
+php artisan db:verify-schema [--strict]  # MySQL/MariaDB only: live schema vs ColumnLimits + InnoDB index limits. --strict: exit 1 = failed, 2 = driver cannot answer (not a pass)
 
 # API Tokens / JWT / Passkeys
 php artisan token:list / token:create [user@email] [--name="…"] / token:revoke <id|--user=email> [--force]

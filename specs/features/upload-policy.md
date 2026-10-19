@@ -3,7 +3,7 @@
 ```yaml
 id: upload-policy
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -57,6 +57,11 @@ of truth so validation (`AllowedUploadExtension`) and storage decisions
   bucket or custom domain then served that object inline as a page, which is
   stored XSS on the asset domain. With the type pinned to the extension, the
   worst a mislabelled file can do is fail to render as the image it claims to be.
+  The asset row's `mime_type` records that same type on every path, so what the
+  UI and API classify an asset as is what the bucket serves it as: the direct
+  path used to record the sniffed type, so a `.tex` was `text/x-tex` in the
+  database and `application/x-tex` in S3, and a `.mml` sniffed as `text/xml` was
+  not recognised as MathML.
 - **REQ-6** — Expensive or publicly reachable routes carry rate limiting: bulk
   download, AI tagging (`assets.ai-tag`), the TikZ server-render tool, chunked
   upload, and the public API surface all declare `throttle` middleware.
@@ -125,8 +130,10 @@ Storage-time decisions read the same `UploadPolicy` helpers: `S3Service` sanitiz
 SVGs on write, and one private `uploadHeaders()` sets `ContentType` from
 `UploadPolicy::contentType()` and `Content-Disposition` from `UploadPolicy::isInline()`
 for both `putUploadedFile()` (direct, replace, tools) and `createMultipartUpload()`
-(chunked). `assets.mime_type` on the direct path still records the sniffed type —
-it classifies the asset in the UI and API and is never served as a header.
+(chunked). `S3Service::uploadFile()` and `replaceFile()` return that same
+`UploadPolicy::contentType()` as `mime_type`, which the controllers write to
+`assets.mime_type`; chunked completion records it too, and `ToolUploadService`
+takes it from `uploadFile()` rather than from its caller.
 
 ### Persistence
 
@@ -142,9 +149,11 @@ Scenario: An object's Content-Type comes from its extension, not the client or t
   And a direct upload of "pixel.png" whose bytes are an HTML page
   When each is stored
   Then the chunked object is created with Content-Type image/jpeg, and the asset records image/jpeg
-  And the direct object is put with Content-Type image/png
+  And the direct object is put with Content-Type image/png, and records image/png
+  And a .tex replaced with LaTeX bytes records application/x-tex, not the sniffed text/x-tex
 # Regression: chunked init stored the client's mime_type and the direct path stored the
-# sniffed type, so both served text/html inline from the asset domain (stored XSS).
+# sniffed type, so both served text/html inline from the asset domain (stored XSS). The
+# direct path also kept recording the sniffed type in assets.mime_type after the header fix.
 # pinned by: tests/Feature/ChunkedUploadTest.php, tests/Unit/Services/S3ServiceTest.php
 
 Scenario: Stored headers are judged against what an upload would set today

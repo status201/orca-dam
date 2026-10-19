@@ -291,6 +291,7 @@ test('upload tex template creates asset', function () {
     $s3Mock = Mockery::mock(S3Service::class)->makePartial();
     $s3Mock->shouldReceive('uploadFile')->andReturn([
         's3_key' => 'assets/test-uuid.tex',
+        'mime_type' => 'application/x-tex',
         'size' => 42,
         'etag' => '"abc123"',
     ]);
@@ -321,6 +322,7 @@ test('svg upload creates asset with svg mime type', function () {
     $s3Mock = Mockery::mock(S3Service::class)->makePartial();
     $s3Mock->shouldReceive('uploadFile')->andReturn([
         's3_key' => 'assets/diagram-uuid.svg',
+        'mime_type' => 'image/svg+xml',
         'size' => 100,
         'etag' => '"def456"',
     ]);
@@ -348,6 +350,7 @@ test('svg upload applies batch metadata to created asset', function () {
     $s3Mock = Mockery::mock(S3Service::class)->makePartial();
     $s3Mock->shouldReceive('uploadFile')->andReturn([
         's3_key' => 'assets/svg-meta.svg',
+        'mime_type' => 'image/svg+xml',
         'size' => 100,
         'etag' => '"meta-svg"',
     ]);
@@ -389,6 +392,7 @@ test('svg-fonts upload applies batch metadata to created asset', function () {
     $s3Mock = Mockery::mock(S3Service::class)->makePartial();
     $s3Mock->shouldReceive('uploadFile')->andReturn([
         's3_key' => 'assets/svgfonts-meta.svg',
+        'mime_type' => 'image/svg+xml',
         'size' => 100,
         'etag' => '"meta-svgfonts"',
     ]);
@@ -450,6 +454,7 @@ test('png upload creates asset with dimensions', function () {
     $s3Mock = Mockery::mock(S3Service::class)->makePartial();
     $s3Mock->shouldReceive('uploadFile')->andReturn([
         's3_key' => 'assets/diagram-uuid.png',
+        'mime_type' => 'image/png',
         'size' => 200,
         'etag' => '"ghi789"',
     ]);
@@ -484,6 +489,7 @@ test('png upload applies batch metadata to created asset', function () {
     $s3Mock = Mockery::mock(S3Service::class)->makePartial();
     $s3Mock->shouldReceive('uploadFile')->andReturn([
         's3_key' => 'assets/png-meta.png',
+        'mime_type' => 'image/png',
         'size' => 200,
         'etag' => '"meta-png"',
     ]);

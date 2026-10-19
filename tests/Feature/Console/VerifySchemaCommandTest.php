@@ -37,8 +37,14 @@ test('the command refuses to report success on a driver it cannot verify', funct
     // The suite runs SQLite, so this is the real path, not a simulated one.
     expect(config('database.default'))->not->toBeIn(['mysql', 'mariadb']);
 
+    // Without --strict it exits 0, as every report does (System → Commands and Forge show non-zero
+    // as "Failed"), but the output must never claim a verification that did not happen.
     $this->artisan('db:verify-schema')
         ->expectsOutputToContain('Cannot verify a sqlite schema.')
+        ->doesntExpectOutputToContain('Schema verified.')
+        ->assertExitCode(0);
+
+    $this->artisan('db:verify-schema', ['--strict' => true])
         // 2, not 0 and not 1: nothing is known to be wrong, but nothing was checked either. A
         // pipeline has to be able to tell those apart — see the class docblock.
         ->assertExitCode(2);

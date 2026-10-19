@@ -373,8 +373,9 @@ Scenario: The upload page's copyright fields show their limit as it is approache
   asserts the row format is `DYNAMIC` — nothing pins it, `config/database.php` has
   `'engine' => null`, and five `varchar(1024)` columns under `COMPACT` fail with errno 1118 — and
   measures **every** index against the 3072-byte limit rather than only the ones this spec knows
-  about. Exit `0` verified, `1` failed, `2` the driver could not answer; `2` is not `0`, so a run
-  that checked nothing can never read as a pass.
+  about. It exits `0` and says what it found; with `--strict` it exits `0` verified, `1` failed,
+  `2` the driver could not answer — `2` is not `0`, so a strict run that checked nothing can never
+  read as a pass.
 - **Still genuinely manual**, because it is a property of the deploy rather than of the schema: the
   widening migration is **not transactional on MySQL**. If it dies between the index drops and the
   recreations, the table is left wide and unindexed — `db:verify-schema` will say so on the next run

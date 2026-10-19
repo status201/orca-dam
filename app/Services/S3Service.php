@@ -121,7 +121,8 @@ class S3Service
         return [
             's3_key' => $s3Key,
             'filename' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
+            // The type the object is served with, not the sniffed one (upload-policy REQ-content-type-from-extension).
+            'mime_type' => UploadPolicy::contentType($s3Key),
             'size' => $file->getSize(),
             'etag' => self::etag($result),
             'width' => $dimensions['width'] ?? null,
@@ -228,7 +229,7 @@ class S3Service
 
         return [
             'filename' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
+            'mime_type' => UploadPolicy::contentType($existingS3Key),
             'size' => $file->getSize(),
             'etag' => self::etag($result),
             'width' => $dimensions['width'] ?? null,

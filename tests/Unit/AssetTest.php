@@ -644,3 +644,18 @@ test('duplicateOf matches by etag and never matches a missing etag', function ()
     expect(Asset::duplicateOf(null)->count())->toBe(0);
     expect(Asset::duplicateOf('')->count())->toBe(0);
 });
+
+test('every allowlisted non-raster type has a file icon', function () {
+    // Regression: once assets recorded the extension's type instead of the sniffed one, .md became
+    // text/markdown (was text/plain) and fell back to the generic icon; m4a/aac/flac, mml and the
+    // ODF types never had one. Raster images show their thumbnail, not an icon.
+    foreach ((array) config('uploads.allowed_extensions') as $extension => $type) {
+        if (str_starts_with($type, 'image/') && $type !== 'image/svg+xml') {
+            continue;
+        }
+
+        $asset = new Asset(['mime_type' => $type, 'filename' => "file.{$extension}"]);
+
+        expect($asset->getFileIcon())->not->toBe('fa-file', "{$extension} ({$type}) has no icon");
+    }
+});

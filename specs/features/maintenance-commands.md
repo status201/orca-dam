@@ -3,7 +3,7 @@
 ```yaml
 id: maintenance-commands
 status: implemented
-version: 3
+version: 5
 owner: core
 related:
   - architecture
@@ -43,13 +43,26 @@ revocation) when the web UI itself is inaccessible.
   with a warning and the exit code reflects the failure only when *every*
   requested name collided.
 - **REQ-6** — `db:verify-schema` makes the schema assertions the suite structurally
-  cannot, and **never reports success for a check it did not run**. Its exit code is
-  three-valued: `0` verified, `1` a check failed, `2` the driver cannot answer. `2`
-  is distinct from `1` because a pipeline must be able to tell "verified wrong" from
-  "not verified" — SQLite is a supported deployment (`DEPLOYMENT.md`), so refusing to
-  run is not the same as a broken schema, and returning `0` would turn an unverified
-  run into a passing one. See [`input-validation.md`](input-validation.md) REQ-1 and
+  cannot, and **never reports success for a check it did not run**: it prints
+  "Schema verified." only when every check ran and passed, says which checks failed,
+  and on a driver it cannot read says that nothing was checked. It exits `0` for all
+  three (REQ-findings-exit-zero). Under `--strict` the exit code is three-valued:
+  `0` verified, `1` a check failed, `2` the driver cannot answer. `2` is distinct
+  from `1` because a pipeline must be able to tell "verified wrong" from "not
+  verified" — SQLite is a supported deployment (`DEPLOYMENT.md`), so refusing to run
+  is not the same as a broken schema, and a strict `0` would turn an unverified run
+  into a passing one. See [`input-validation.md`](input-validation.md) REQ-1 and
   REQ-10 to REQ-12 for what it checks and why nothing else can.
+- **REQ-findings-exit-zero** — A report command exits `0` when it ran, whatever it
+  found: findings are its output, not a failure. Both places operators run commands
+  — System → Commands and Forge's command runner — label any non-zero exit as
+  "Failed", so a dry run that found work to do read as a broken command. Non-zero is
+  for a run that could not do its job: a lookup that doesn't resolve (REQ-2), bad
+  input, or a repair that failed. A report a script may want to gate on takes
+  `--strict`, which makes findings non-zero. `assets:deduplicate`,
+  `assets:verify-integrity` and `assets:backfill-etags` already exited `0`;
+  `assets:audit-content-types` and `db:verify-schema` exited non-zero on findings
+  until this rule.
 - **REQ-audit-content-types** — `assets:audit-content-types` finds stored objects
   whose served headers disagree with
   [`upload-policy.md`](upload-policy.md) REQ-content-type-from-extension — objects
@@ -58,13 +71,27 @@ revocation) when the web UI itself is inaccessible.
   the object's `Content-Type` and `Content-Disposition` with what an upload would
   set today, and flags as **dangerous** any mismatch served inline under an active
   type (HTML, XHTML, XML, JavaScript, or SVG behind a non-SVG extension). It is a
-  dry-run report by default and exits `1` while any mismatch remains, so a script
-  can tell clean from not. `--fix` rewrites each mismatched object's headers in
+  dry-run report by default and exits `0` whatever it finds (REQ-findings-exit-zero);
+  `--strict` makes it exit `1` while any mismatch remains, so a script can tell clean
+  from not. `--fix` rewrites each mismatched object's headers in
   place — same key, same bytes (s3-storage REQ-1) — records the copy's new ETag on
   the asset (a former multipart object's composite ETag becomes a plain MD5), and
   purges the original's URL from Cloudflare when purging is configured. An object
   that is missing from the bucket is counted, not repaired: that is
-  `assets:verify-integrity`'s job.
+  `assets:verify-integrity`'s job. It also counts **every** asset whose `mime_type`
+  column differs from the type its extension maps to, whether or not its headers
+  match — the direct upload path recorded the sniffed type (`text/x-tex` for a
+  `.tex` S3 serves as `application/x-tex`) — so the dry run's count is exactly the
+  rows `--fix` will change. `--fix` writes that type to the column, one update per
+  type rather than per row; a row whose headers were already right gets no S3 copy
+  and no purge. Only allowlisted extensions are synced: a discovered off-list file
+  (`.bmp`, `.tiff`) keeps its classification instead of becoming
+  `application/octet-stream`. Both column writes (`etag`, `mime_type`) are plain
+  query updates that leave `updated_at` alone: a repair is not an edit, so it fires
+  no model events, writes no audit trail, and doesn't move the asset to the top of
+  the date sort or the TeX template picker. `--strict` counts both kinds of
+  mismatch. `--fix` exits `1` when it could not rewrite an object, with or without
+  `--strict`: that repair failed.
 
 ## Technical design
 
@@ -83,13 +110,17 @@ assets:backfill-etags:
 assets:deduplicate {--force}:
   # Groups assets by etag (excluding null/empty), keeps the oldest per group,
   # skips duplicates carrying a reference tag, soft-deletes the rest under --force.
-assets:audit-content-types {--fix}:
+assets:audit-content-types {--fix} {--strict}:
   # REQ-audit-content-types. Assets withTrashed(), chunked by id; one concurrent HEAD
   # sweep per chunk (S3Service::getObjectHeaders), judged by UploadPolicy::servedHeaderMismatch(). Lists dangerous mismatches first, then
   # the rest (capped at 100 rows, with a count of the remainder); prints a
   # Checked/Mismatched/Dangerous/Missing(/Fixed/Failed) table. --fix: per mismatch,
-  # S3Service::repairUploadHeaders() → asset etag update when it changed → one
-  # CloudflareService::purgeUrls() call per 30 URLs. Exit 0 clean or all fixed; 1 otherwise.
+  # S3Service::repairUploadHeaders() → toBase() update of etag when it changed → one
+  # CloudflareService::purgeUrls() call per 30 URLs. "Database type out of step": every
+  # asset whose mime_type ≠ UploadPolicy::contentType(s3_key), allowlisted extensions
+  # only — counted, not listed; --fix: one toBase() whereIn update per expected type
+  # (ids chunked by 1000), so updated_at is untouched. Exit 0, unless --fix failed to rewrite an object (1);
+  # --strict: also 1 while any mismatch of either kind remains.
 
 # API token lifecycle (Sanctum)
 token:create {email?} {--name=} {--new} {--user-name=}:
@@ -134,7 +165,7 @@ users:audit {--user=} {--event=} {--limit=50}:
   # no UI, so this is the only way to read it — see user-audit-log.md.
 
 # Schema verification (MySQL/MariaDB only — REQ-6)
-db:verify-schema:
+db:verify-schema {--strict}:
   # Reads information_schema and compares the LIVE schema against what the application
   # believes: every ColumnLimits::CHARS varchar width, every TEXT_BYTES capacity, the
   # row format (DYNAMIC, or the index and row-size limits collapse), and the byte size
@@ -146,7 +177,8 @@ db:verify-schema:
   # those are already pinned by name in tests/Feature/S3KeyWidthTest.php, which SQLite
   # can run. What SQLite cannot do is add up the bytes — so this is what tells the next
   # person to widen an indexed column before they meet errno 1071 in production.
-  # Exit 0 verified / 1 failed / 2 not verifiable on this driver.
+  # Exit 0 always (REQ-findings-exit-zero); the output says verified / N failed / not
+  # verifiable. --strict: 0 verified / 1 failed / 2 not verifiable on this driver.
 
 # Translations
 lang:safe-update:
@@ -187,7 +219,16 @@ Scenario: The content-type audit reports objects whose headers disagree with the
   And an asset logo.png stored correctly as image/png
   When assets:audit-content-types runs
   Then photo.jpg is listed as dangerous and notes.txt as a mismatch, logo.png is not listed
-  And nothing is rewritten, and the command exits 1
+  And nothing is rewritten, and the command exits 0
+  When it runs again with --strict
+  Then it exits 1
+# Regression: the dry run exited 1 on findings, which System → Commands and Forge show as "Failed".
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: --fix exits 1 when it could not rewrite an object (REQ-audit-content-types)
+  Given an asset photo.jpg stored as text/html, whose header rewrite fails
+  When assets:audit-content-types --fix runs
+  Then it reports the failure and exits 1
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
 Scenario: The content-type audit exits 0 when every object matches (REQ-audit-content-types)
@@ -201,6 +242,30 @@ Scenario: --fix rewrites the headers in place, records the new etag and purges t
   When assets:audit-content-types --fix runs
   Then its headers are rewritten in place, the asset's etag becomes the copy's etag
   And its URL is purged from Cloudflare, and the command exits 0
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: --fix also gives a repaired asset its extension's mime_type (REQ-audit-content-types)
+  Given an asset diagram.tex stored as text/x-tex inline, with mime_type text/x-tex
+  When assets:audit-content-types --fix runs
+  Then the dry run counts it as a database type out of step as well as a header mismatch
+  And --fix rewrites its headers and its mime_type becomes application/x-tex
+  And its updated_at is unchanged
+# Regression: the dry run left such rows out of the database count although --fix changed them,
+# and both column writes bumped updated_at, reordering the grid's date sort.
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: A database type out of step is counted, and --fix syncs it without touching S3 (REQ-audit-content-types)
+  Given an asset diagram.tex served correctly as application/x-tex, download, but with mime_type text/x-tex
+  When assets:audit-content-types runs
+  Then it reports 1 database type out of step, lists no header mismatch, and exits 0 (1 under --strict)
+  When assets:audit-content-types --fix runs
+  Then no object is copied and nothing is purged, its mime_type becomes application/x-tex, and it exits 0
+# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
+
+Scenario: An off-list extension keeps its mime_type (REQ-audit-content-types)
+  Given a discovered asset scan.bmp with mime_type image/bmp, served as image/bmp
+  When assets:audit-content-types --fix runs
+  Then its mime_type is still image/bmp
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
 Scenario: uploads:cleanup aborts only sessions past the activity threshold
@@ -311,7 +376,9 @@ Scenario: reference-tag:create succeeds when at least one of several names is cr
 Scenario: db:verify-schema declines rather than passing on a driver it cannot read
   Given the connection is SQLite
   When db:verify-schema runs
-  Then it exits 2 and explains that no check was performed
+  Then it explains that no check was performed, never prints "Schema verified.", and exits 0
+  When it runs with --strict
+  Then it exits 2
 # pinned by: tests/Feature/Console/VerifySchemaCommandTest.php
 
 Scenario: db:verify-schema measures a prefixed utf8mb4 index at four bytes per character

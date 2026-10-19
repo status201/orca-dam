@@ -3,7 +3,7 @@
 ```yaml
 id: client-side-tools
 status: implemented
-version: 6
+version: 7
 owner: core
 related:
   - architecture
@@ -129,7 +129,7 @@ GET  tools/tikz-png               -> tools.tikz-png           (client rasterizes
 POST tools/tikz-png/upload        -> ToolsController::uploadTikzPng  (StoreTikzPngRequest)
 GET  tools/bakoma-font/{name}     -> ToolsController::bakomaFont     (proxies+caches BaKoMa TTFs used by the svg-fonts variant)
 
-ToolUploadService::store(content, filename, mimeType, folder, attributes, process, metadata): Asset
+ToolUploadService::store(content, filename, folder, attributes, process, metadata): Asset
   # shared by every tool above — see tikz-render.md for the full contract.
 
 resources/js/alpine/tikz-results.js:   # shared by tikz-svg, tikz-svg-fonts and tikz-png
@@ -143,7 +143,7 @@ resources/js/alpine/tikz-results.js:   # shared by tikz-svg, tikz-svg-fonts and 
   # (diagramUploaded / diagramsUploaded in __pageData.translations).
 
 ToolsController (private):
-  storeToolAsset(ToolUploadRequest, label, content, mimeType, extension, fallbackName,
+  storeToolAsset(ToolUploadRequest, label, content, extension, fallbackName,
                  attributes=[], process=true): JsonResponse
     # the body of all six upload actions: ensureExtension() → store() with user_id, caption and
     # $request->uploadMetadata() (null for a request without HasUploadMetadataRules) → assetJson();

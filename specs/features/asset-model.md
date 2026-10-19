@@ -226,6 +226,13 @@ Scenario: scopeOfType accepts plural/friendly aliases
   Then only image/* assets are returned
 # pinned by: tests/Unit/AssetTest.php
 
+Scenario: Every allowlisted non-raster type has a file icon (regression)
+  Given an asset of each type config/uploads.php maps an extension to, raster images aside
+  Then getFileIcon() returns a specific icon, not the generic fa-file
+# Regression: once assets recorded the extension's type instead of the sniffed one, .md became
+# text/markdown (was text/plain) and lost its icon; m4a/aac/flac, mml and the ODF types had none.
+# pinned by: tests/Unit/AssetTest.php
+
 Scenario: A mime type maps to its category, not its prefix
   Given the mime type application/pdf
   When Asset::typeCategoryFor() is called

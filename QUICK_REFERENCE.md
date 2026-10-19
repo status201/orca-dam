@@ -50,7 +50,7 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1325 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1332 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
@@ -105,10 +105,10 @@ php artisan uploads:cleanup [--hours=48]      # stale chunked upload sessions
 php artisan assets:verify-integrity           # queue S3 integrity checks
 php artisan assets:backfill-etags             # fetch etags from S3 for dedup
 php artisan assets:deduplicate [--force]      # dry-run, or soft-delete duplicates
-php artisan assets:audit-content-types [--fix]  # served headers vs extension; dry-run, exit 1 on findings
+php artisan assets:audit-content-types [--fix] [--strict]  # served headers vs extension; dry-run; --strict = exit 1 on findings
 php artisan lang:safe-update                  # NEVER raw lang:update — it eats nl.json
-php artisan db:verify-schema                  # widths/row format/index bytes vs ColumnLimits
-                                              # MySQL/MariaDB only; exit 2 = not verifiable here
+php artisan db:verify-schema [--strict]       # widths/row format/index bytes vs ColumnLimits
+                                              # MySQL/MariaDB only; --strict: 1 = failed, 2 = not verifiable here
 
 # Queue (dev; production uses Supervisor — see DEPLOYMENT.md)
 php artisan queue:work --tries=3
