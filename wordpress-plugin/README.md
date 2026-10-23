@@ -139,10 +139,16 @@ The script validates the version format, rewrites all four locations, and prints
 git diff orca-dam-picker.php readme.txt package.json package-lock.json
 ```
 
+Write the changelog entry in two places: a `= 0.1.1 =` section at the top of `== Changelog ==` in `readme.txt`, and an `<h4>0.1.1</h4>` block at the top of `changelog()` in `src/Updater/PluginDetailsContent.php`. The `readme.txt` entry becomes the GitHub release notes, and sites still on an older version show those notes in WordPress's "View version 0.1.1 details" window. The release fails if the entry is missing. Preview exactly what will be published:
+
+```bash
+bash bin/release-notes.sh 0.1.1
+```
+
 Then commit (still from `wordpress-plugin/`, or use the full paths from repo root):
 
 ```bash
-git add orca-dam-picker.php readme.txt package.json package-lock.json
+git add orca-dam-picker.php readme.txt package.json package-lock.json src/Updater/PluginDetailsContent.php
 git commit -m "Bump WP plugin to 0.1.1"
 git push origin main
 ```
@@ -163,12 +169,13 @@ git push origin wp-v0.1.1
 Open <https://github.com/status201/orca-dam/actions> and watch the **WordPress Plugin Release** workflow run. It will:
 
 1. Check out your tag.
-2. Install Composer + npm dependencies (`npm ci` — relies on `package-lock.json` being committed).
-3. Build the React assets.
-4. Compile translations (`.po → .mo`) and generate JS translation JSON files.
-5. Re-stamp the version number into the plugin header (defensive, in case B.3 was skipped).
-6. Zip everything (excluding stuff in `.distignore`).
-7. Create a GitHub Release and attach the zip.
+2. Take this version's `readme.txt` changelog entry as the release notes (fails here if there is none).
+3. Install Composer + npm dependencies (`npm ci` — relies on `package-lock.json` being committed).
+4. Build the React assets.
+5. Compile translations (`.po → .mo`) and generate JS translation JSON files.
+6. Re-stamp the version number into the plugin header (defensive, in case B.3 was skipped).
+7. Zip everything (excluding stuff in `.distignore`).
+8. Create a GitHub Release with those notes and attach the zip.
 
 If anything turns red, click into the failed step to see why. The two most common failures are an out-of-date `package-lock.json` (run `npm install` locally, commit, push, re-tag) and a missing translation file (re-run the `.po → .mo` step from A.6 locally to reproduce).
 
