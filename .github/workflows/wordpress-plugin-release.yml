@@ -16,7 +16,15 @@ jobs:
 
       - name: Determine version
         id: version
-        run: echo "version=${GITHUB_REF_NAME#wp-v}" >> "$GITHUB_OUTPUT"
+        # Later steps paste the version into shell commands, and a tag name may
+        # contain `$(…)`. Accept only what bin/bump-version.sh accepts.
+        run: |
+          version="${GITHUB_REF_NAME#wp-v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} is not wp-vX.Y.Z" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       # The release body is this version's readme.txt entry, not GitHub's generated
       # notes (those list every PR since the previous tag, mostly app changes).

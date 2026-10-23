@@ -25,15 +25,11 @@ final class GitHubUpdater
 
         $vcsApi = $checker->getVcsApi();
         if ($vcsApi !== null) {
-            $vcsApi->enableReleaseAssets('/orca-dam-picker.*\.zip/i');
-            // Only consider tags shaped like `wp-vX.Y.Z` so the updater never
-            // pulls a Laravel-app release tag from the same repo. Examine the
-            // API maximum of 100 releases: app releases land between plugin
-            // releases, and a `wp-v*` release outside the window is never seen.
-            $vcsApi->setReleaseVersionFilter('/^wp-v\d+\.\d+\.\d+/', $vcsApi::RELEASE_FILTER_SKIP_PRERELEASE, 100);
+            self::configureReleaseLookup($vcsApi);
         }
 
         add_filter('puc_vcs_update_detection_strategies-orca-dam-picker', [self::class, 'releasesOnly']);
+        add_filter('pre_http_request', [self::class, 'skipRepoRootLookups'], 10, 3);
 
         if (method_exists($checker, 'setBranch')) {
             $checker->setBranch('main');
@@ -76,6 +72,21 @@ final class GitHubUpdater
     }
 
     /**
+     * @param object $vcsApi PUC's GitHubApi (namespace varies by PUC minor).
+     */
+    public static function configureReleaseLookup(object $vcsApi): void
+    {
+        // Require the built zip. Without it PUC falls back to the release's
+        // source zipball — the whole orca-dam repo, not the plugin.
+        $vcsApi->enableReleaseAssets('/orca-dam-picker.*\.zip/i', $vcsApi::REQUIRE_RELEASE_ASSETS);
+        // Only consider tags shaped like `wp-vX.Y.Z` so the updater never
+        // pulls a Laravel-app release tag from the same repo. Examine the
+        // API maximum of 100 releases: app releases land between plugin
+        // releases, and a `wp-v*` release outside the window is never seen.
+        $vcsApi->setReleaseVersionFilter('/^wp-v\d+\.\d+\.\d+/', $vcsApi::RELEASE_FILTER_SKIP_PRERELEASE, 100);
+    }
+
+    /**
      * The installed copy's changelog stops at the installed version, so a site
      * that is behind never saw the offered version in "View version X details".
      * Put the offered release's notes on top: the GitHub release body, which
@@ -106,5 +117,32 @@ final class GitHubUpdater
     public static function releasesOnly(array $strategies): array
     {
         return array_intersect_key($strategies, ['latest_release' => true]);
+    }
+
+    /**
+     * Answer PUC's two repo-root file lookups with a local 404. PUC expects the
+     * plugin at the repo root, so each check also fetches `orca-dam-picker.php`
+     * and `readme.txt` there; they live in `wordpress-plugin/`, so both always
+     * 404. That is 2 of every 3 unauthenticated GitHub calls (60/hour per IP),
+     * and running out of those is what hides updates.
+     *
+     * @param false|array<string, mixed>|\WP_Error $preempt
+     * @param array<string, mixed> $args
+     * @return false|array<string, mixed>|\WP_Error
+     */
+    public static function skipRepoRootLookups($preempt, $args, $url)
+    {
+        if ($preempt !== false || ! is_string($url)
+            || ! preg_match('#^https://api\.github\.com/repos/status201/orca-dam/contents/(?:orca-dam-picker\.php|readme\.txt)(?:\?|$)#', $url)) {
+            return $preempt;
+        }
+
+        return [
+            'headers'  => [],
+            'body'     => '',
+            'response' => ['code' => 404, 'message' => 'Not Found'],
+            'cookies'  => [],
+            'filename' => null,
+        ];
     }
 }

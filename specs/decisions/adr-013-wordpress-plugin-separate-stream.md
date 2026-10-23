@@ -45,3 +45,8 @@ spec requirement — it is not part of the Laravel production tree.
 - **Good:** clear boundary — the SDD gate ignores it.
 - **Trade-off:** two release processes to run and document; a breaking API change
   must consciously consider the plugin's release timeline.
+- **Trade-off (seen 2026-10):** the plugin's updater reads the same repo, so it also
+  sees the app's `v*` tags and releases. It must consider only `wp-v*` releases.
+  plugin-update-checker's fallback to the highest tag ignored that filter and offered
+  app `v1.8.0` to plugin 0.4.8 sites; plugin 0.4.9 turned the tag and branch
+  fallbacks off (`GitHubUpdater::releasesOnly()`).

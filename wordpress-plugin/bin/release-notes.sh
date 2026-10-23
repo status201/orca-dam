@@ -21,11 +21,18 @@ if [[ -z "$VERSION" ]]; then
     exit 1
 fi
 
-# The entry runs from `= X.Y.Z =` to the next `= …` / `== … ==` line. Leading and
-# trailing blank lines are dropped; CRs are stripped for Windows checkouts.
+# The entry runs from `= X.Y.Z =` to the next `= …` / `== … ==` line. Spacing in
+# the header is loose, as in WordPress's readme parser (`=  0.5.0 = ` matches).
+# Leading and trailing blank lines are dropped; CRs are stripped for Windows checkouts.
 NOTES=$(awk -v want="= ${VERSION} =" '
     { sub(/\r$/, "") }
-    $0 == want { found = 1; next }
+    !found {
+        header = $0
+        gsub(/[[:space:]]+/, " ", header)
+        sub(/^ /, "", header)
+        sub(/ $/, "", header)
+        if (header == want) { found = 1; next }
+    }
     found && /^=/ { exit }
     found { lines[++n] = $0 }
     END {

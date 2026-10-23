@@ -42,3 +42,15 @@ if (! class_exists('WP_Post')) {
         }
     }
 }
+
+if (! class_exists('WP_Error')) {
+    final class WP_Error
+    {
+        public function __construct(
+            public string|int $code = '',
+            public string $message = '',
+            public mixed $data = '',
+        ) {
+        }
+    }
+}
