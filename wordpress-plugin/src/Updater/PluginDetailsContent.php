@@ -9,6 +9,9 @@ namespace OrcaDam\Updater;
  * (Plugins → "View version X details"). PUC reads $info->sections and
  * pipes each key into its own tab; we set description / installation /
  * changelog directly so we don't depend on WP-org-style readme.txt parsing.
+ * This is the installed copy's content, so its changelog stops at the
+ * installed version; GitHubUpdater::changelog() puts the offered release's
+ * notes on top.
  */
 final class PluginDetailsContent
 {

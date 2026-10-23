@@ -36,7 +36,7 @@ npm run build        # compiles the React picker into assets/build/
 
 What just happened:
 
-- `composer install` reads `composer.json`, downloads things like Action Scheduler and the plugin-update-checker, and puts them in `vendor/`.
+- `composer install` reads `composer.json`, downloads the plugin-update-checker library (plus the test tools), and puts them in `vendor/`. There's no `composer.lock` in git, so you get the newest versions `composer.json` allows — the same as the release build.
 - `npm ci` reads `package.json`, downloads `@wordpress/scripts` and friends, and puts them in `node_modules/`.
 - `npm run build` takes the React code from `assets/src/` and produces the files WordPress actually loads, in `assets/build/`. You need to re-run this whenever JS code changes (unless you're using `npm run start`, see below).
 
@@ -188,10 +188,17 @@ Go to <https://github.com/status201/orca-dam/releases> — your new release shou
 If the new release is broken, don't try to fix it in place. Delete the tag and the release on GitHub, fix the code, bump to the next patch number with the script in B.3, and tag again. Marketing's WordPress sites will auto-update past the bad version.
 
 ```bash
-git tag -d wp-v0.1.1                          # delete local tag
-git push origin :refs/tags/wp-v0.1.1          # delete remote tag
-# then delete the matching release in the GitHub UI
+gh release delete wp-v0.1.1 --cleanup-tag --yes   # delete the release and the remote tag
+git tag -d wp-v0.1.1                              # delete local tag
 ```
+
+**Rebuilding the same version instead.** Reusing a version number is only safe while no site has installed it: a site already on 0.1.1 is never offered a second 0.1.1. Check the zip's download count first (any download by you counts too):
+
+```bash
+gh api repos/status201/orca-dam/releases/tags/wp-v0.1.1 --jq '.assets[] | "\(.name): \(.download_count)"'
+```
+
+If nobody has it, merge the fix to `main`, then delete the release and tag with the commands above, and run `git tag wp-v0.1.1 && git push origin wp-v0.1.1` on the new `main`. Delete the release first: the workflow fails when a release for the tag already exists. Otherwise, ship the fix as the next patch version.
 
 ---
 
@@ -202,7 +209,7 @@ You only do this once per WordPress site. You don't need to be a developer.
 ### C.1 Get the .zip
 
 1. Open <https://github.com/status201/orca-dam/releases> in your browser.
-2. Find the most recent release (top of the list). Its name starts with `wp-v`.
+2. Find the newest release whose name starts with `wp-v`. The ORCA app's own releases (named `v1.8.0` and so on) are in the same list and are often on top — skip those, they are not the plugin.
 3. Under **Assets**, click `orca-dam-picker-X.Y.Z.zip` to download it. Save it somewhere you can find it — your Downloads folder is fine.
 
 ### C.2 Upload it to WordPress
@@ -251,7 +258,9 @@ That's it. The first save also tells ORCA "this post uses this image", so market
 
 ## Phase D — Updating the plugin later (marketing, whenever a new version is released)
 
-The plugin checks for new releases on GitHub once a day and shows you a banner when one is available.
+The plugin checks for new releases on GitHub every 12 hours and shows you a banner when one is available.
+
+> **Plugin versions start with 0.** If WordPress ever offers "ORCA DAM Picker 1.x", don't install it: that is the ORCA app's version number, which plugin 0.4.8 could pick up by mistake (fixed in 0.4.9). Update to the newest `wp-v` release instead.
 
 ### D.1 The normal path (auto-update)
 
@@ -263,10 +272,12 @@ The plugin checks for new releases on GitHub once a day and shows you a banner w
 
 ### D.2 If auto-update doesn't show up
 
-GitHub's release feed sometimes takes up to 12 hours to be noticed. To force an immediate check:
+Because the plugin only checks every 12 hours, a new release can take that long to show up. To check right away, do either of these:
 
-1. Go to **Dashboard → Updates** in WordPress admin.
-2. Click **Check Again** near the top.
+- Open **Dashboard → Updates** in WordPress admin. Visiting that page makes the plugin check (at most once a minute).
+- On the **Plugins** page, click **Check for updates** under "ORCA DAM Picker".
+
+If it still doesn't show up, the site's server may be unable to reach GitHub's API for now (GitHub limits how often one server may ask). The plugin then offers no update rather than a wrong one. Try again later, or use D.3.
 
 ### D.3 Manual update (if auto-update is broken for some reason)
 
@@ -274,7 +285,7 @@ This is the same as a fresh install: download the new `.zip` from GitHub Release
 
 ### D.4 Going back to an older version (rollback)
 
-1. Go to <https://github.com/status201/orca-dam/releases> and pick an older release.
+1. Go to <https://github.com/status201/orca-dam/releases> and pick an older release whose name starts with `wp-v`.
 2. Download its `.zip`.
 3. In WordPress, go to **Plugins**, click **Deactivate** under "ORCA DAM Picker", then **Delete**.
 4. Upload the older `.zip` the same way as in C.2. Your settings (URL, token) are preserved across uninstall/reinstall.

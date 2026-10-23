@@ -95,6 +95,7 @@ final class PluginBootTest extends WpTestCase
     {
         $this->assertNotFalse(has_filter('puc_request_info_result-orca-dam-picker'));
         $this->assertNotFalse(has_filter('puc_vcs_update_detection_strategies-orca-dam-picker', [GitHubUpdater::class, 'releasesOnly']));
+        $this->assertNotFalse(has_filter('pre_http_request', [GitHubUpdater::class, 'skipRepoRootLookups']));
     }
 
     public function test_every_rest_route_is_registered_behind_a_capability(): void
