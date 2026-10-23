@@ -24,6 +24,7 @@ ORCA DAM Picker integrates an ORCA DAM library into the WordPress block editor, 
 
 = 0.4.9 =
 * Fix: the updater could offer "1.8.0" — the ORCA app's own release, not a plugin version. When the GitHub lookup for plugin releases failed (for example when GitHub rate-limited the server), the updater fell back to the highest version tag in the repository, which belongs to the app. It now offers only plugin releases, and a failed lookup offers no update. If your site shows an update to 1.8.0, do not install it: it is not the plugin. Install 0.4.9 instead.
+* Fix: "View version X details" now shows what's new in version X. It used to list changes only up to the installed version. You'll see this from the next update on.
 * Maintenance: build-toolchain and dependency security updates. No other changes to plugin behaviour.
 
 = 0.4.8 =

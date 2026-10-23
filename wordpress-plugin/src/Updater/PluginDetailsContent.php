@@ -138,6 +138,7 @@ HTML;
 <h4>0.4.9</h4>
 <ul>
     <li>Fix: the updater could offer "1.8.0" — the ORCA app's own release, not a plugin version. When the GitHub lookup for plugin releases failed (for example when GitHub rate-limited the server), it fell back to the app's version tags. It now offers only plugin releases, and a failed lookup offers no update. If you were offered 1.8.0, don't install it.</li>
+    <li>Fix: "View version X details" now shows what's new in version X. It used to list changes only up to the installed version. You'll see this from the next update on.</li>
     <li>Maintenance: build-toolchain and dependency security updates. No other changes to plugin behaviour.</li>
 </ul>
 
