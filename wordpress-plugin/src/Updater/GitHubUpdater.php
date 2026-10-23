@@ -27,9 +27,13 @@ final class GitHubUpdater
         if ($vcsApi !== null) {
             $vcsApi->enableReleaseAssets('/orca-dam-picker.*\.zip/i');
             // Only consider tags shaped like `wp-vX.Y.Z` so the updater never
-            // pulls a Laravel-app release tag from the same repo.
-            $vcsApi->setReleaseVersionFilter('/^wp-v\d+\.\d+\.\d+/');
+            // pulls a Laravel-app release tag from the same repo. Examine the
+            // API maximum of 100 releases: app releases land between plugin
+            // releases, and a `wp-v*` release outside the window is never seen.
+            $vcsApi->setReleaseVersionFilter('/^wp-v\d+\.\d+\.\d+/', $vcsApi::RELEASE_FILTER_SKIP_PRERELEASE, 100);
         }
+
+        add_filter('puc_vcs_update_detection_strategies-orca-dam-picker', [self::class, 'releasesOnly']);
 
         if (method_exists($checker, 'setBranch')) {
             $checker->setBranch('main');
@@ -61,5 +65,20 @@ final class GitHubUpdater
             $info->sections = PluginDetailsContent::sections();
             return $info;
         });
+    }
+
+    /**
+     * Keep only PUC's "latest release" strategy. When no `wp-v*` release is
+     * found (rate-limited GitHub API, network error) PUC falls back to the
+     * highest version tag — which ignores the release filter and picks an app
+     * tag like `v1.8.0`, offering the app's source zip as plugin "1.8.0" — and
+     * then to the `main` branch. No update beats the wrong one.
+     *
+     * @param array<string, callable> $strategies
+     * @return array<string, callable>
+     */
+    public static function releasesOnly(array $strategies): array
+    {
+        return array_intersect_key($strategies, ['latest_release' => true]);
     }
 }
