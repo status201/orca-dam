@@ -61,10 +61,36 @@ final class GitHubUpdater
             ];
             // Inject rich content for the "View details" modal. Without this
             // WP shows only the plugin-header one-liner — see image of the
-            // pre-0.4.2 modal for how bare that looked.
+            // pre-0.4.2 modal for how bare that looked. PUC filled the
+            // changelog with the release's notes; keep them for the merge.
+            $releaseNotes = $info->sections['changelog'] ?? '';
             $info->sections = PluginDetailsContent::sections();
+            $info->sections['changelog'] = self::changelog(
+                ORCA_DAM_PICKER_VERSION,
+                (string) ($info->version ?? ''),
+                is_string($releaseNotes) ? $releaseNotes : '',
+                $info->sections['changelog'],
+            );
             return $info;
         });
+    }
+
+    /**
+     * The installed copy's changelog stops at the installed version, so a site
+     * that is behind never saw the offered version in "View version X details".
+     * Put the offered release's notes on top: the GitHub release body, which
+     * the release workflow fills from readme.txt and PUC already fetched. Only
+     * the newest release's notes arrive; versions in between are not shown.
+     */
+    public static function changelog(string $installedVersion, string $offeredVersion, string $releaseNotes, string $installedChangelog): string
+    {
+        $placeholder = __('There is no changelog available.', 'plugin-update-checker');
+        if (trim($releaseNotes) === '' || $releaseNotes === $placeholder
+            || ! version_compare($offeredVersion, $installedVersion, '>')) {
+            return $installedChangelog;
+        }
+
+        return '<h4>' . esc_html($offeredVersion) . "</h4>\n" . $releaseNotes . "\n\n" . $installedChangelog;
     }
 
     /**

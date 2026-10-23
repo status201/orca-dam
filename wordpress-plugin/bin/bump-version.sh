@@ -61,8 +61,13 @@ git diff --stat -- orca-dam-picker.php readme.txt package.json package-lock.json
 echo
 echo "Next steps (run from repo root):"
 echo
+echo "  Add a '= ${NEW} =' changelog entry to readme.txt (the release fails without it;"
+echo "  preview with: bash wordpress-plugin/bin/release-notes.sh ${NEW}) and an"
+echo "  <h4>${NEW}</h4> block to src/Updater/PluginDetailsContent.php."
+echo
 echo "  git add wordpress-plugin/orca-dam-picker.php \\"
 echo "          wordpress-plugin/readme.txt \\"
+echo "          wordpress-plugin/src/Updater/PluginDetailsContent.php \\"
 echo "          wordpress-plugin/package.json \\"
 echo "          wordpress-plugin/package-lock.json"
 echo "  git commit -m 'Bump WP plugin to ${NEW}'"

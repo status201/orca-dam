@@ -18,6 +18,13 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#wp-v}" >> "$GITHUB_OUTPUT"
 
+      # The release body is this version's readme.txt entry, not GitHub's generated
+      # notes (those list every PR since the previous tag, mostly app changes).
+      # plugin-update-checker shows it in WordPress's "View version X details"
+      # window on sites still on an older version. Fails early if the entry is missing.
+      - name: Extract release notes from readme.txt
+        run: bash wordpress-plugin/bin/release-notes.sh "${{ steps.version.outputs.version }}" > "$RUNNER_TEMP/release-notes.md"
+
       - name: Verify PHP and Composer
         run: |
           php --version
@@ -77,4 +84,4 @@ jobs:
         run: |
           gh release create "${GITHUB_REF_NAME}" \
             "dist/orca-dam-picker-${{ steps.version.outputs.version }}.zip" \
-            --generate-notes
+            --notes-file "$RUNNER_TEMP/release-notes.md"
