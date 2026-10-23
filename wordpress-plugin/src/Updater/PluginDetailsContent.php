@@ -135,6 +135,12 @@ HTML;
     private static function changelog(): string
     {
         return <<<HTML
+<h4>0.4.9</h4>
+<ul>
+    <li>Fix: the updater could offer "1.8.0" — the ORCA app's own release, not a plugin version. When the GitHub lookup for plugin releases failed (for example when GitHub rate-limited the server), it fell back to the app's version tags. It now offers only plugin releases, and a failed lookup offers no update. If you were offered 1.8.0, don't install it.</li>
+    <li>Maintenance: build-toolchain and dependency security updates. No other changes to plugin behaviour.</li>
+</ul>
+
 <h4>0.4.8</h4>
 <ul>
     <li>Maintenance release: build-toolchain and dependency security updates. No changes to plugin behaviour.</li>
