@@ -15,6 +15,7 @@ use OrcaDam\Maintenance\OrphanScanner;
 use OrcaDam\Plugin;
 use OrcaDam\Settings\SettingsPage;
 use OrcaDam\Tests\Support\WpTestCase;
+use OrcaDam\Updater\GitHubUpdater;
 use OrcaDam\Usage\PostObserver;
 use OrcaDam\Usage\TagSyncJob;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -93,6 +94,7 @@ final class PluginBootTest extends WpTestCase
     public function test_boot_configures_the_update_checker(): void
     {
         $this->assertNotFalse(has_filter('puc_request_info_result-orca-dam-picker'));
+        $this->assertNotFalse(has_filter('puc_vcs_update_detection_strategies-orca-dam-picker', [GitHubUpdater::class, 'releasesOnly']));
     }
 
     public function test_every_rest_route_is_registered_behind_a_capability(): void
