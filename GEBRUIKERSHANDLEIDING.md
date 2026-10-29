@@ -261,9 +261,9 @@ Als je het bestandsformaat volledig wilt wijzigen, moet je verwijderen en opnieu
 Hier komt Asset vervangen echt tot zijn recht:
 
 1. **Upload placeholders** met duidelijke namen zoals `hero-image-DRAFT.jpg` — tag ze met `draft`!
-2. **Link ze in Studyflow** via de ORCA-URLs
+2. **Link ze in de content** via de ORCA-URLs
 3. **Vervang wanneer gereed** — wissel de definitieve versies in
-4. **Geen gebroken links** — Studyflow toont automatisch de nieuwe afbeeldingen
+4. **Geen gebroken links** — Spark toont automatisch de nieuwe afbeeldingen
 
 Filter op de `draft`-tag om al je placeholders te zien, vervang ze één voor één en verwijder de tag als je klaar bent.
 
@@ -331,7 +331,7 @@ Als de onderhoudsmodus niet beschikbaar is, of je een enkel bestand zonder admin
 2. **Soft delete** het origineel in ORCA
 3. Vraag een **admin om permanent te verwijderen** uit de prullenbak
 4. **Upload** het bestand naar de juiste map
-5. **Werk alle links bij** in Studyflow naar de nieuwe URL
+5. **Werk alle links bij** in de content naar de nieuwe URL
 
 Ja, het is omslachtig. Dat is met opzet — het dwingt je om goed na te denken en herinnert je eraan die links bij te werken.
 

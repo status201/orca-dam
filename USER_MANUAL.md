@@ -263,7 +263,7 @@ This is where Asset Replace really shines:
 1. **Upload placeholders** with clear names like `hero-image-DRAFT.jpg` — tag them `draft`!
 2. **Link them in the content** using the ORCA URLs
 3. **Replace when ready** — swap in the final versions
-4. **No broken links** — Studyflow automatically shows the new images
+4. **No broken links** — Spark automatically shows the new images
 
 Filter by the `draft` tag to see all your placeholders, replace each one, and remove the tag when done.
 
