@@ -1,7 +1,3 @@
-<!--
-  The landing page after login: library statistics plus the feature tour.
--->
-
 # Dashboard
 
 ```yaml
@@ -23,15 +19,9 @@ source:
 
 ## Background / Why
 
-`GET /dashboard` is where every authenticated session lands, so it does two jobs:
-report the state of the library in numbers, and point people at the features they
-have not found yet. The tour exists because ORCA's capabilities (discovery, CSV
-export, the tools) are spread across the nav and were going unused — it is a
-carousel of one slide per feature, built from the viewer's role so nobody is shown
-a link they will get a 403 from.
-
-This spec was written after the fact, when the tour gained browser coverage: the
-behaviour predates it and had no governing spec.
+`GET /dashboard` is where every session lands: it reports the library in numbers and points people
+at features they have not found yet, via a carousel of one slide per feature built from the
+viewer's role (nobody is shown a link that would 403).
 
 ## Requirements
 
@@ -45,10 +35,9 @@ behaviour predates it and had no governing spec.
 - **REQ-3** — The tour renders one slide per feature the viewer can reach: six
   base slides for everyone, seven more for admins, and a passkey-promotion slide
   for a user who *may* register a passkey but has none. So the slide count is
-  role-dependent by design, and nothing may assume a fixed number.
+  role-dependent; nothing may assume a fixed number.
 - **REQ-3a** — The first base slide starts the Welcome guided demo
-  ([`guided-demos.md`](guided-demos.md)). Because a demo is armed by a URL, that slide is an
-  ordinary link like every other and needs no new slide field or markup branch.
+  ([`guided-demos.md`](guided-demos.md)); a demo is armed by URL, so it is an ordinary link slide.
 - **REQ-4** — The tour autoplays, advancing every 7s, and any manual navigation
   (next, previous, or a dot) stops it. The play/pause control reports and toggles
   that state.
@@ -94,10 +83,8 @@ stats:
 
 ### Layer touchpoints & ordering
 
-Two consolidated `DB::selectOne` aggregates (assets, tags) rather than six
-`count()` queries — the numbers are shown together and the page is hit on every
-login. `User::count()` and `Asset::onlyTrashed()->count()` stay separate. Nothing
-is cached: the counts are cheap and a stale dashboard reads as a bug.
+Two consolidated `DB::selectOne` aggregates (assets, tags) plus separate `User::count()` and
+`Asset::onlyTrashed()->count()`. Nothing is cached — a stale dashboard reads as a bug.
 
 ## Scenarios (BDD)
 
@@ -137,8 +124,7 @@ Scenario: Navigating the tour steps through the slides and wraps at the ends
 Scenario: Manual navigation stops the autoplay
   Given the tour autoplaying on load
   When any slide control is used
-  Then autoplay reports itself stopped, so the slide no longer changes underneath
-    the reader
+  Then autoplay reports itself stopped
 # pinned by: tests/e2e/dashboard-tour.spec.js
 
 Scenario: The autoplay control toggles both ways
@@ -150,18 +136,13 @@ Scenario: The autoplay control toggles both ways
 
 ## Tests & verification
 
-- E2E: `tests/e2e/dashboard-tour.spec.js` — the tour's navigation, wrapping and
-  autoplay. Slide counts are asserted relative to what the page reports, never
-  hardcoded, because they are role-dependent (REQ-3).
-- `tests/e2e/role-matrix.spec.js` — that each role lands on a dashboard naming
-  them.
+- E2E: `tests/e2e/dashboard-tour.spec.js` (slide counts asserted relative to the page, never
+  hardcoded — REQ-3), `tests/e2e/role-matrix.spec.js` (each role lands on a dashboard naming them).
 - `npm run test:e2e`; `php artisan config:clear && php artisan test`.
 
 ## Open questions / future
 
-- The statistics have no Pest coverage of their own; the counts are only asserted
-  through the browser. A Feature test asserting `stats` for a seeded library would
-  pin REQ-1/REQ-2 far more cheaply than the E2E suite can.
-- The *carousel* has no "seen it" state, so it restarts from slide one on every
-  login. That is about the carousel only — a guided demo's completion **is** recorded
-  ([`guided-demos.md`](guided-demos.md) REQ-11); the two are separate pieces of state.
+- The statistics (REQ-1/REQ-2) have no Pest coverage; the three statistics scenarios are unpinned.
+  A Feature test asserting `stats` for a seeded library would pin them.
+- The carousel has no "seen it" state and restarts on every login (distinct from guided-demo
+  completion, [`guided-demos.md`](guided-demos.md) REQ-11).

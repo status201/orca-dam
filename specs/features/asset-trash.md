@@ -65,24 +65,18 @@ DELETE assets/{asset}/force-delete:           AssetTrashController::forceDelete 
 DELETE assets/trash/bulk-force-delete:        AssetTrashController::bulkForceDeleteTrashed  # assets.trash.bulk-force-delete
 ```
 
-Policy abilities used: `delete`, `bulkTrash`, `restore`, `bulkRestore` (admin+editor),
-`forceDelete` (admin only) — see [`authorization-policies.md`](authorization-policies.md).
+Policy abilities: `delete`, `bulkTrash`, `restore`, `bulkRestore` (admin+editor), `forceDelete`
+(admin only) — [`authorization-policies.md`](authorization-policies.md).
 
 ### Layer touchpoints & ordering
 
 ```
-destroy():            authorize(delete)      → asset->delete()                    [S3 untouched]
-restore():            authorize(restore)     → asset->restore()                   [S3 untouched]
-forceDelete():        authorize(forceDelete) → S3Service::deleteAssetFiles()       → asset->forceDelete()
+destroy():   authorize(delete)      → asset->delete()                [S3 untouched]
+restore():   authorize(restore)     → asset->restore()               [S3 untouched]
+forceDelete(): authorize(forceDelete) → S3Service::deleteAssetFiles() → asset->forceDelete()
 bulkForceDeleteTrashed(): authorize(forceDelete, Asset::class)
-  → per trashed asset: S3Service::deleteAssetFiles() → DB::transaction(forceDelete())
+  → ForceDeletesAssets: per trashed asset deleteAssetFiles() → DB::transaction(forceDelete())
 ```
-
-### Persistence
-
-Soft delete: `assets.deleted_at` set; S3 objects (original, thumbnail, S/M/L
-resizes) untouched. Force delete: DB row removed; all associated S3 objects
-removed via `deleteAssetFiles()`.
 
 ## Scenarios (BDD)
 
@@ -93,69 +87,26 @@ Scenario: A soft-deleted asset is excluded from the index but keeps its S3 objec
   Then it is excluded from default queries and its S3 objects still exist
 # pinned by: tests/Feature/AssetTest.php
 
-Scenario: Editors and admins can view trash and restore
-  Given an editor or admin user
-  When they view the trash page or restore an asset
-  Then the action succeeds
-# pinned by: tests/Feature/BulkTrashTest.php
-
 Scenario: Only admins can force-delete a single asset
   Given an editor user
   When they attempt to force-delete an asset
   Then the response is 403
 # pinned by: tests/Feature/AssetTest.php
 
-Scenario: Admin can bulk-trash assets from the index
-  Given a set of live assets and an admin user
-  When bulkTrash is called with their ids
-  Then all are soft-deleted and S3 objects are preserved
+Scenario: Trash, restore and bulk trash
+  Given an editor or admin
+  Then viewing trash and restoring an asset succeed
+  And bulkTrash soft-deletes every given asset and preserves S3 objects
+  And bulkRestore restores only the ids that are actually trashed
+  And bulkTrash is 403 for an api-role user, and a validation error for missing/malformed asset_ids
 # pinned by: tests/Feature/BulkTrashTest.php
 
-Scenario: An API-role user gets 403 on bulk trash
-  Given an api-role user
-  When they call bulkTrash
-  Then the response is 403
-# pinned by: tests/Feature/BulkTrashTest.php
-
-Scenario: bulkTrash validates asset_ids
-  Given a request missing or malformed asset_ids
-  Then the request is rejected with a validation error
-# pinned by: tests/Feature/BulkTrashTest.php
-
-Scenario: Admin can bulk restore trashed assets
-  Given several trashed assets
-  When bulkRestore is called with their ids
-  Then all are restored and reappear in default queries
-# pinned by: tests/Feature/BulkTrashTest.php
-
-Scenario: Bulk restore only restores assets that are actually trashed
-  Given a mix of trashed and live asset ids
-  When bulkRestore is called
-  Then only the trashed ones are affected
-# pinned by: tests/Feature/BulkTrashTest.php
-
-Scenario: Admin can bulk force-delete trashed assets, cleaning up S3
-  Given trashed assets with S3 files
-  When bulkForceDeleteTrashed is called
-  Then the DB rows and all associated S3 objects (original + thumbnail + resizes) are removed
-# pinned by: tests/Feature/BulkTrashTest.php
-
-Scenario: bulkForceDeleteTrashed does NOT require maintenance_mode
-  Given maintenance_mode is disabled and an admin user
-  When bulkForceDeleteTrashed is called on trashed assets
-  Then the operation still succeeds
-# pinned by: tests/Feature/BulkTrashTest.php
-
-Scenario: A non-admin gets 403 on bulk force-delete of trashed assets
-  Given an editor or api-role user
-  When they call bulkForceDeleteTrashed
-  Then the response is 403
-# pinned by: tests/Feature/BulkTrashTest.php
-
-Scenario: bulkForceDeleteTrashed only affects assets that are trashed
-  Given a mix of trashed and live asset ids
-  When bulkForceDeleteTrashed is called
-  Then only the trashed ones are permanently removed
+Scenario: Bulk force-delete of trashed assets (REQ-6)
+  Given trashed assets with S3 files and maintenance_mode disabled
+  When an admin calls bulkForceDeleteTrashed
+  Then the DB rows and all associated S3 objects are removed
+  And live ids in the same request are untouched
+  And an editor or api-role user gets 403
 # pinned by: tests/Feature/BulkTrashTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
@@ -183,5 +134,5 @@ Scenario: An admin permanently deletes a trashed asset
 
 - Feature: `tests/Feature/AssetTest.php`, `tests/Feature/BulkTrashTest.php`
 - Unit: `tests/Unit/Policies/AssetPolicyTest.php` (role matrix for delete/restore/forceDelete)
+- E2E: `tests/e2e/asset-trash.spec.js`
 - Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/asset-trash.spec.js` — delete → trash → restore, and an admin permanent delete, driven through the UI.

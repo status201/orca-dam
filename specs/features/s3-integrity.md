@@ -17,13 +17,11 @@ source:
 
 ## Background / Why
 
-S3 objects can go missing behind ORCA's back (manual bucket edits, lifecycle
-rules, accidental deletion outside the app). Rather than checking on every
-read, integrity is verified out-of-band: `assets:verify-integrity` dispatches
-one queued job per asset, each of which HEADs its S3 object and flips
-`assets.s3_missing_at` accordingly. The System dashboard surfaces the current
-missing-count and lets an admin trigger a fresh sweep or filter the index down
-to just the missing assets (`?missing=1`).
+S3 objects can go missing behind ORCA's back (manual bucket edits, lifecycle rules, deletion
+outside the app). Rather than checking on every read, integrity is verified out-of-band:
+`assets:verify-integrity` dispatches one queued job per asset, each HEADing its object and
+flipping `assets.s3_missing_at`. The System dashboard shows the missing count, can trigger a
+sweep, and the index filters to missing assets with `?missing=1`.
 
 ## Requirements
 
@@ -47,32 +45,25 @@ to just the missing assets (`?missing=1`).
 ### Contract / public interface
 
 ```yaml
-php artisan assets:verify-integrity   # dispatches VerifyAssetIntegrity job per Asset id
+php artisan assets:verify-integrity   # dispatches VerifyAssetIntegrity per Asset id
+
+App\Jobs\VerifyAssetIntegrity:        # $timeout = 60, $tries = 2
+  handle(S3Service): void
+    # S3Service::getObjectMetadata(s3_key): null → set s3_missing_at (if unset); non-null → clear it (if set);
+    # either change forgets assets:missing_count. Unexpected exceptions are re-thrown (queue retries);
+    # failed() logs a permanent failure.
+
+GET  system/integrity-status:  SystemController::integrityStatus   # admin — missing/total counts
+POST system/verify-integrity:  SystemController::verifyIntegrity   # admin — runs the command
+
+Asset::scopeMissing($query)            # whereNotNull('s3_missing_at') — owned here
+Asset::is_missing                      # accessor, asset-model.md
 ```
-
-`VerifyAssetIntegrity` job (`public $timeout = 60`, `public $tries = 2`) —
-`handle(S3Service $s3Service)`: looks up the asset by id; calls
-`S3Service::getObjectMetadata($asset->s3_key)`; `null` result → object
-missing → set `s3_missing_at = now()` (only if not already set) + forget
-`assets:missing_count`; non-null result → object exists → clear
-`s3_missing_at` (only if it was set) + forget the same cache key. Re-throws on
-an unexpected exception so the queue retries (`tries = 2`); logs via
-`failed()` on permanent failure.
-
-System routes (admin-gated): `GET system/integrity-status`
-(`SystemController::integrityStatus` — missing/total counts),
-`POST system/verify-integrity` (`SystemController::verifyIntegrity` —
-triggers the command).
-
-Model surface: `Asset::scopeMissing($query)` (filters
-`whereNotNull('s3_missing_at')`), `Asset::getIsMissingAttribute(): bool` — see
-[`asset-model.md`](asset-model.md).
 
 ### Persistence
 
-`assets.s3_missing_at` (nullable datetime, cast `datetime`). Cache key
-`assets:missing_count` (300s TTL, forgotten eagerly on state change — see
-REQ-3).
+`assets.s3_missing_at` (nullable datetime). Cache key `assets:missing_count` (300s TTL, forgotten
+eagerly on state change — REQ-3).
 
 ## Scenarios (BDD)
 
@@ -81,72 +72,34 @@ Scenario: assets:verify-integrity dispatches one job per asset
   Given N assets in the database
   When assets:verify-integrity runs
   Then N VerifyAssetIntegrity jobs are dispatched, one per asset id
+  And with zero assets nothing is dispatched and it exits successfully
 # pinned by: tests/Feature/Console/VerifyAssetIntegrityCommandTest.php
 
-Scenario: assets:verify-integrity is a no-op with no assets
-  Given zero assets
-  When the command runs
-  Then no jobs are dispatched and it exits successfully
-# pinned by: tests/Feature/Console/VerifyAssetIntegrityCommandTest.php
-
-Scenario: The job sets s3_missing_at when the S3 object is missing
+Scenario: The job flips s3_missing_at only on a state change (REQ-2)
   Given an asset whose S3 object does not exist
-  When VerifyAssetIntegrity job runs
-  Then s3_missing_at is set to the current time
-# pinned by: tests/Unit/Jobs/VerifyAssetIntegrityTest.php, tests/Feature/IntegrityTest.php
-
-Scenario: The job clears s3_missing_at when the object is found again
-  Given an asset with s3_missing_at already set, whose S3 object now exists
   When the job runs
-  Then s3_missing_at is cleared
+  Then s3_missing_at is set to now
+  And a later run while still missing keeps the original timestamp
+  And a run after the object reappears clears it
 # pinned by: tests/Unit/Jobs/VerifyAssetIntegrityTest.php, tests/Feature/IntegrityTest.php
 
-Scenario: The job preserves the original missing timestamp on repeat checks
-  Given an asset already flagged missing at time T
-  When the job runs again and the object is still missing
-  Then s3_missing_at remains T (not updated to now)
-# pinned by: tests/Unit/Jobs/VerifyAssetIntegrityTest.php, tests/Feature/IntegrityTest.php
-
-Scenario: The job flushes the missing-count cache when state changes
+Scenario: The job flushes the missing-count cache and ignores vanished assets (REQ-3, REQ-4)
   Given the assets:missing_count cache is warm
   When a job changes an asset's missing state
   Then the cache key is forgotten
+  And a job for a force-deleted asset id completes without error or changes
 # pinned by: tests/Unit/Jobs/VerifyAssetIntegrityTest.php
 
-Scenario: The job is a silent no-op when the asset no longer exists in the DB
-  Given a job dispatched for an asset id that has since been force-deleted
-  When the job runs
-  Then it completes without error and makes no changes
-# pinned by: tests/Unit/Jobs/VerifyAssetIntegrityTest.php
-
-Scenario: scopeMissing returns only assets flagged missing
+Scenario: Missing assets can be listed
   Given a mix of flagged and unflagged assets
-  When querying Asset::missing()
-  Then only the flagged ones are returned
+  Then Asset::missing() and the index with ?missing=1 return only the flagged ones
 # pinned by: tests/Feature/IntegrityTest.php
 
-Scenario: The asset index with ?missing=1 shows only missing assets
-  Given a mix of flagged and unflagged assets
-  When the index is requested with missing=1
-  Then only flagged assets appear in the results
-# pinned by: tests/Feature/IntegrityTest.php
-
-Scenario: The integrity-status and verify-integrity endpoints require admin
+Scenario: The System endpoints are admin-only (REQ-5)
   Given a non-admin user
-  When they call either endpoint
-  Then the response is 403
-# pinned by: tests/Feature/IntegrityTest.php
-
-Scenario: The integrity-status endpoint returns correct counts for admin
-  Given a mix of missing/present assets and an admin user
-  When the endpoint is called
-  Then it returns the correct missing/total counts
-# pinned by: tests/Feature/IntegrityTest.php
-
-Scenario: The verify-integrity endpoint dispatches jobs for admin
-  Given an admin user
-  When they POST system/verify-integrity
-  Then jobs are dispatched for the current asset set
+  Then integrity-status and verify-integrity are 403
+  And for an admin integrity-status returns correct missing/total counts
+  And verify-integrity dispatches jobs for the current asset set
 # pinned by: tests/Feature/IntegrityTest.php
 ```
 

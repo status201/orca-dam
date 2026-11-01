@@ -20,13 +20,10 @@ source:
 
 ## Background / Why
 
-Files can land in the S3 bucket outside of ORCA's upload flow (manual console
-upload, migration scripts, another system writing to the same bucket).
-Discovery lets an admin scan for S3 objects that have no matching `Asset` row,
-review them, and import a chosen subset — creating `Asset` rows immediately
-(cheap, synchronous) while deferring the expensive per-file work (dimensions,
-thumbnail, resizes, AI tagging) to a background job so the import request
-itself returns fast even for a large batch.
+Files can land in the bucket outside ORCA's upload flow (console uploads, migration scripts,
+another system). Discovery lets an admin scan for S3 objects with no `Asset` row, review them, and
+import a chosen subset — creating rows synchronously (cheap) while deferring dimensions,
+thumbnails, resizes and AI tagging to a background job so a large import returns fast.
 
 ## Requirements
 
@@ -60,32 +57,25 @@ POST discover/scan:    DiscoverController::scan      # discover.scan
 POST discover/import:  DiscoverController::import    # discover.import
 ```
 
-`scan(Request)` — validates none (folder is optional query input); calls
-`S3Service::findUnmappedObjects($prefix)`, enriches each with
-`getObjectMetadata()` and soft-delete status (`Asset::onlyTrashed()` lookup
-batched in one query), returns `{ count, objects: [...] }`.
-
-`import(Request)` — validates `keys` (required array of strings); for each
-key not already mapped (batched pre-fetch of existing `s3_key`s) and whose
-etag doesn't already exist: creates the `Asset` row, dispatches
-`ProcessDiscoveredAsset::dispatch($asset->id)`. Returns
-`{ success, message, imported, skipped, queued_asset_ids }`.
-
-`ProcessDiscoveredAsset` job (`timeout = 300`, `tries = 3`) —
-`handle(S3Service, RekognitionService, AssetProcessingService)`: backfills
-missing width/height via `S3Service::extractImageDimensions()`; runs
-`AssetProcessingService::processImageAsset($asset, dispatchAiTagging: false)`
-for thumbnail/resizes; then, if Rekognition is enabled and the asset is an
-image, calls `RekognitionService::autoTagAsset()` directly (see REQ-5).
-Re-throws on failure to trigger the job's own retry.
+```yaml
+scan(Request):     # optional folder; S3Service::findUnmappedObjects($prefix) + getObjectMetadata(),
+                   # trashed status in one batched lookup → { count, objects: [...] }
+import(Request):   # keys: required string[]; skips mapped keys (batched, withTrashed) and duplicate etags
+                   # (duplicate-detection.md) → { success, message, imported, skipped, queued_asset_ids }
+ProcessDiscoveredAsset:   # $timeout = 300, $tries = 3
+  handle(S3Service, RekognitionService, AssetProcessingService)
+    # backfill width/height (extractImageDimensions) → processImageAsset($asset, dispatchAiTagging: false)
+    # → autoTagAsset() directly if Rekognition enabled + image (REQ-5); missing asset id = no-op;
+    # re-throws on failure so the queue retries
+```
 
 ### Data shapes
 
 ```yaml
-# scan() response object shape
+# scan() response object
 key: string
 filename: string
-size: int
+size: int                       # cast: the SDK parses ListObjectsV2 Size as a string
 last_modified: datetime
 mime_type: string
 url: string
@@ -96,22 +86,16 @@ deleted_at: datetime-string|null
 ### Layer touchpoints & ordering
 
 ```
-scan(): S3Service::findUnmappedObjects() → batch pre-fetch trashed s3_keys → per-object getObjectMetadata()
-import(): batch pre-fetch existing s3_keys (withTrashed)
-  → per key: [already mapped? skip] → getObjectMetadata() → [etag dup? skip]
-    → DB::transaction(AssetIngestionService::persist(...)) → ProcessDiscoveredAsset::dispatch($asset->id)
-ProcessDiscoveredAsset::handle():
-  → extractImageDimensions() (if missing)
-  → AssetProcessingService::processImageAsset($asset, dispatchAiTagging: false)
-  → RekognitionService::autoTagAsset() directly (if enabled + isImage)
+import(): per key: [mapped? skip] → getObjectMetadata() → [etag dup? skip]
+  → DB::transaction(AssetIngestionService::persist(...)) → ProcessDiscoveredAsset::dispatch($asset->id)
 ```
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: Discovery index and scan are forbidden for non-admins
+Scenario: Discovery is forbidden for non-admins (REQ-1)
   Given an editor or api-role user
-  When they access the discover index or trigger a scan
+  When they access the discover index, trigger a scan, or call import
   Then the response is 403
 # pinned by: tests/Feature/DiscoverTest.php
 
@@ -121,61 +105,26 @@ Scenario: Scan returns unmapped S3 objects enriched with soft-delete status
   Then the results include both, with is_deleted true only for the soft-deleted match
 # pinned by: tests/Feature/DiscoverTest.php
 
-Scenario: Scanned object sizes are integers, as the scan contract declares (regression)
-  Given a ListObjectsV2 response, whose XML the AWS SDK parses into a string Size
-    (it has no "long" mapping, so a 512-byte object arrives as "512")
+Scenario: Scanned object sizes are integers
+  Given a ListObjectsV2 response, which the AWS SDK parses into a string Size
   When the bucket is listed for a scan
   Then each object's size is the integer 512, not the string "512"
-  # Without the cast, an object under 1 KB reached discover.js formatFileSize
-  # undivided and threw "toFixed is not a function", breaking the results table.
 # pinned by: tests/Unit/Services/S3ServiceTest.php
 
-Scenario: Import creates an asset and dispatches ProcessDiscoveredAsset
+Scenario: Import creates rows and skips mapped or duplicate keys (REQ-3, REQ-4)
   Given an unmapped S3 key
   When it is imported
   Then a new Asset row exists and ProcessDiscoveredAsset was dispatched for its id
+  And a key whose asset row is soft-deleted is skipped, not recreated
+  And a key whose etag duplicates an existing asset is skipped
 # pinned by: tests/Feature/DiscoverTest.php
 
-Scenario: Import skips a key matching a soft-deleted asset (prevents re-import)
-  Given an S3 key whose asset row is soft-deleted
-  When it is submitted for import
-  Then it is skipped, not recreated
-# pinned by: tests/Feature/DiscoverTest.php
-
-Scenario: Import skips a key whose etag duplicates an existing asset
-  Given an unmapped key whose content etag matches an existing asset
-  When it is submitted for import
-  Then it is skipped
-# pinned by: tests/Feature/DiscoverTest.php
-
-Scenario: Import requires admin
-  Given a non-admin user
-  When they call the import endpoint
-  Then the response is 403
-# pinned by: tests/Feature/DiscoverTest.php
-
-Scenario: ProcessDiscoveredAsset extracts dimensions and processes the image
-  Given a discovered image asset with no width/height set
+Scenario: ProcessDiscoveredAsset processes the asset in-job (REQ-5)
+  Given a discovered image asset with no width/height set and Rekognition enabled
   When the job runs
-  Then dimensions are backfilled and processImageAsset is called
-# pinned by: tests/Unit/Jobs/ProcessDiscoveredAssetTest.php
-
-Scenario: ProcessDiscoveredAsset runs AI tagging synchronously when Rekognition is enabled
-  Given Rekognition is enabled and the asset is an image
-  When the job runs
-  Then autoTagAsset is called directly within the job (no further dispatch)
-# pinned by: tests/Unit/Jobs/ProcessDiscoveredAssetTest.php
-
-Scenario: ProcessDiscoveredAsset is a silent no-op when the asset is missing from the DB
-  Given a job dispatched for an asset id that doesn't exist
-  When it runs
-  Then it completes without error
-# pinned by: tests/Unit/Jobs/ProcessDiscoveredAssetTest.php
-
-Scenario: ProcessDiscoveredAsset re-throws on failure to trigger a retry
-  Given an internal failure during processing
-  When the job runs
-  Then the exception propagates (so the queue retries per tries=3)
+  Then dimensions are backfilled, processImageAsset is called, and autoTagAsset is called directly
+  And for an asset id missing from the DB it completes without error
+  And an internal failure propagates so the queue retries
 # pinned by: tests/Unit/Jobs/ProcessDiscoveredAssetTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
@@ -185,8 +134,7 @@ Scenario: An object in the bucket with no database row is found and imported
   When the bucket is scanned from the discover page
   Then that object is listed as unmapped
   When it is selected and the import confirmed
-  Then the import is reported, the row leaves the unmapped list, and the object is
-    an asset in the library
+  Then the import is reported, the row leaves the unmapped list, and the object is an asset
 # pinned by: tests/e2e/discover.spec.js
 
 Scenario: Select all and deselect all drive the import button
@@ -199,15 +147,8 @@ Scenario: Select all and deselect all drive the import button
 ## Tests & verification
 
 - Feature: `tests/Feature/DiscoverTest.php`
-- Unit: `tests/Unit/Jobs/ProcessDiscoveredAssetTest.php`
-- Unit: `tests/Unit/Services/S3ServiceTest.php` — the listing (scan) and HeadObject
-  metadata (import) both run through the SDK's real response parsers, so the integer
-  `size` is checked against what S3 actually returns (a `MockHandler` result skips
-  the parsers and would hide the listing's string `Size`)
-- E2E: `tests/e2e/discover.spec.js` — scan → select → import against a real bucket,
-  guarded by `requiresS3()`. The guard is load-bearing, not defensive:
-  `S3Service::listObjects` swallows its exceptions and returns `[]`, so without a
-  bucket a scan reports nothing unmapped and the assertions would pass for the
-  wrong reason. The spec orphans its own object (upload, then drop the row via
-  `tinker()`), because no app route leaves an object without a row.
+- Unit: `tests/Unit/Jobs/ProcessDiscoveredAssetTest.php`, `tests/Unit/Services/S3ServiceTest.php`
+  (runs the SDK's real response parsers — a `MockHandler` result would hide the string `Size`)
+- E2E: `tests/e2e/discover.spec.js` — `requiresS3()` is load-bearing: without a bucket
+  `listObjects` returns `[]` and the assertions would pass for the wrong reason.
 - Run: `php artisan config:clear && php artisan test`; `npm run e2e:up && npm run test:e2e`

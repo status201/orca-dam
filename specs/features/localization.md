@@ -18,22 +18,19 @@ source:
 
 ## Background / Why
 
-ORCA is bilingual (`en`, `nl`). Locale is resolved per-request by `SetLocale`, with
-a three-tier fallback so a per-user preference wins, a global admin default applies
-next, and the app never has no locale at all. Framework strings (validation/auth)
-come from the `laravel-lang/common` dev dependency; ORCA's own UI strings live in
-project-owned `lang/nl.json`, which the stock `lang:update`/`lang:add nl` would
-silently clobber — see [ADR-009](../decisions/adr-009-project-owns-nl-json.md) for
-why that command is wrapped and gated.
+ORCA is bilingual (`en`, `nl`). `SetLocale` resolves the locale per request with a three-tier
+fallback (user preference → global setting → config). Framework strings come from the
+`laravel-lang/common` dev dependency; ORCA's own strings live in project-owned `lang/nl.json`, which
+stock `lang:update`/`lang:add nl` would clobber ([ADR-009](../decisions/adr-009-project-owns-nl-json.md)).
+This spec owns the locale conventions.
 
 ## Requirements
 
 - **REQ-1** — `SetLocale` resolves the active locale in this priority order: (1) the
   authenticated user's `preferences.locale`, if set and in `['en', 'nl']`; (2) the
   global `Setting::get('locale')`, if set and supported; (3) `config('app.locale')`.
-  The middleware never throws — a DB error reading the setting (e.g. during
-  migrations, before the `settings` table exists) is caught and falls through to the
-  config default.
+  The middleware never throws — a DB error reading the setting (e.g. before the `settings` table
+  exists) falls through to the config default.
 - **REQ-2** — Only `en` and `nl` are supported. The list lives once, in
   `config('orca.ui_locales')` (code → display name), and everything that accepts or
   offers a locale reads it: `SetLocale`, the `POST /locale` switcher, the System settings
@@ -74,33 +71,23 @@ value: "en" | "nl"
 
 ### Layer touchpoints & ordering
 
-`SetLocale` runs in the web middleware group (registered in `bootstrap/app.php`,
-first of the three appended web middleware, before `AllowEmbedding`) — see [`architecture.md`](../architecture.md#middleware-stack)
-for the full stack ordering. It calls `App::setLocale()` before the request reaches
-the controller, so every `__()` call and the `<html lang="...">` attribute in
-`resources/views/layouts/app.blade.php` reflect the resolved locale for that request.
+`SetLocale` runs in the web middleware group, first of the three appended web middleware (before
+`AllowEmbedding`; [`architecture.md`](../architecture.md#middleware-stack)). It calls
+`App::setLocale()` before the controller, so every `__()` and `<html lang>` in
+`resources/views/layouts/app.blade.php` reflect the resolved locale.
 
 **JS translation channels** (three, not unified — each scoped to its page family):
 
-- `window.__pageData.translations` — tools views (`resources/views/tools/*.blade.php`),
-  the asset edit/show/create/trash/replace pages, profile passkeys/preferences
-  partials, dashboard, login, tags index, discover, import — injected via
-  `@js(__())` per key in each Blade view.
-- `window.assetTranslations` — the asset grid partial
-  (`resources/views/assets/partials/grid.blade.php`), shared between the index and
-  embed pages.
-- `window.appTranslations` — the base layout (`resources/views/layouts/app.blade.php`),
-  currently `urlCopied` / `copyFailed` for the global toast system, plus
+- `window.__pageData.translations` — tools views, asset edit/show/create/trash/replace, profile
+  partials, dashboard, login, tags index, discover, import — `@js(__())` per key in each view.
+  The layout also adds the namespaced `window.__pageData.guidedDemo` key (merge idiom, only when a
+  demo is armed; [`guided-demos.md`](guided-demos.md)) — not a fourth channel.
+- `window.assetTranslations` — the asset grid partial (`resources/views/assets/partials/grid.blade.php`),
+  shared by index and embed.
+- `window.appTranslations` — the base layout: `urlCopied` / `copyFailed` for toasts, plus
   `sessionExpired` / `payloadTooLarge` / `requestFailed` for `resources/js/http-errors.js`
-  ([`error-handling.md`](error-handling.md) REQ-11), whose fallbacks are the only strings a
-  failed request can show when the server's own body carries none. `layouts/embed.blade.php`
-  defines the three error keys as well, because the embedded view shares that helper; the
-  helper guards for a missing `window.appTranslations` regardless.
-
-The base layout also contributes `window.__pageData.guidedDemo` — a namespaced key on the
-first channel, like `tagConfig`, not a fourth channel — carrying the active walkthrough's
-translated copy ([`guided-demos.md`](guided-demos.md)). It is written with the
-`window.__pageData = window.__pageData || {}` merge idiom and only when a demo is armed.
+  ([`error-handling.md`](error-handling.md) REQ-11). `layouts/embed.blade.php` defines the three
+  error keys too; the helper guards for a missing object.
 
 API responses (`routes/api.php`) are deliberately **not** localized — external
 integrations (RTE, WordPress) expect stable English strings.
@@ -110,49 +97,28 @@ integrations (RTE, WordPress) expect stable English strings.
 - No dedicated table; locale resolution reads `users.preferences` (plain JSON
   column) and the `settings` table (`Setting::get('locale')`, 1h cache — see
   [`features/settings.md`](settings.md)).
-- `lang/nl.json` is a version-controlled file, not DB state; it is alphabetized on
-  every `lang:safe-update` run.
+- `lang/nl.json` is version-controlled and alphabetized by every `lang:safe-update` run.
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: No preference or setting configured defaults to English
-  Given a user with no locale preference and no global locale setting
-  When they load any authenticated page
-  Then app()->getLocale() is "en"
-# pinned by: tests/Feature/LocaleTest.php
-
-Scenario: Global setting applies when the user has no preference
-  Given the global "locale" setting is "nl"
-  And the user has no locale preference
+Scenario Outline: Locale resolution order and fallback
+  Given the user preference.locale is <pref> and the global "locale" setting is <setting>
   When they load an authenticated page
-  Then app()->getLocale() is "nl"
-# pinned by: tests/Feature/LocaleTest.php
-
-Scenario: A user preference overrides the global setting
-  Given the global "locale" setting is "nl"
-  And the user's preference.locale is "en"
-  When they load an authenticated page
-  Then app()->getLocale() is "en"
+  Then app()->getLocale() is <locale>
+  Examples:
+    | pref         | setting      | locale |
+    | unset        | unset        | en     |
+    | unset        | nl           | nl     |
+    | en           | nl           | en     |
+    | xx (invalid) | nl           | nl     |
+    | unset        | xx (invalid) | en     |
 # pinned by: tests/Feature/LocaleTest.php
 
 Scenario: The rendered page reflects the resolved locale
   Given the global "locale" setting is "nl"
   When a user loads the dashboard
   Then the <html lang="nl" attribute is present
-# pinned by: tests/Feature/LocaleTest.php
-
-Scenario: An unsupported user preference is ignored
-  Given the global "locale" setting is "nl"
-  And the user's preference.locale is "xx" (unsupported)
-  When they load an authenticated page
-  Then app()->getLocale() falls through to the global setting, "nl"
-# pinned by: tests/Feature/LocaleTest.php
-
-Scenario: An unsupported global setting falls through to config
-  Given the global "locale" setting is "xx" (unsupported)
-  When a user loads an authenticated page
-  Then app()->getLocale() is config('app.locale'), "en"
 # pinned by: tests/Feature/LocaleTest.php
 
 Scenario: The profile form and the switcher accept exactly the configured locales
@@ -191,16 +157,11 @@ Scenario: The grid keeps working in Dutch and data-testid locators are unaffecte
 
 ## Tests & verification
 
-- Feature: `tests/Feature/LocaleTest.php` (resolution priority, fallback, rendered
-  `<html lang>`), `tests/Feature/TranslationIntegrityTest.php` (sentinel keys +
-  completeness)
+- Feature: `tests/Feature/LocaleTest.php`, `tests/Feature/TranslationIntegrityTest.php`
 - Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/localization.spec.js` — switching the per-user locale and asserting the rendered Dutch chrome + `<html lang>`.
+- E2E: `tests/e2e/localization.spec.js` — `npm run test:e2e`
 
 ## Open questions / future
 
-- No automated test asserts the *shape* of the three JS translation channels
-  (`window.__pageData.translations` / `window.assetTranslations` /
-  `window.appTranslations`) beyond `TranslationIntegrityTest`'s blanket `__()`
-  extraction — a page-specific JS test could assert a given view injects the keys
-  its Alpine module actually reads.
+- No test asserts that a view injects the JS translation keys its Alpine module reads (beyond the
+  blanket `__()` extraction).

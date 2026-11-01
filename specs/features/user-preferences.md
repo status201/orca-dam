@@ -17,20 +17,15 @@ source:
 
 ## Background / Why
 
-Individual users need to override a handful of global defaults — which folder
-their library opens to, how many items per page, dark mode, UI language — without
-those choices leaking to other users or requiring admin action. `users.preferences`
-is a single JSON column rather than one column per preference, so adding
-a new preference key is a code change, not a migration.
+Users override a handful of global defaults (start folder, items per page, dark mode, UI language)
+without affecting others or needing an admin. `users.preferences` is one JSON column, so a new key
+is a code change, not a migration.
 
 ## Requirements
 
 - **REQ-1** — `users.preferences` is a **plain** JSON column, cast `'array'` in
-  `User::casts()` and stored unencrypted. Nothing in it is a secret: it holds display
-  choices, and the column is in `$hidden` so it is not serialised into responses.
-  (`User::casts()` reserves `encrypted` for `jwt_secret` and the two-factor columns —
-  contrast those if a genuinely sensitive key is ever proposed here, since adding one
-  would mean changing the cast *and* migrating existing rows.) Known keys:
+  `User::casts()`, unencrypted (display choices only; in `$hidden`, so never serialised). A secret
+  here would need a cast change *and* a row migration. Known keys:
   `home_folder`, `items_per_page`, `locale`, `dark_mode`, `guided_demos`. It may be
   `null` (no overrides at all).
 - **REQ-2** — `User::getPreference(string $key, mixed $default = null)` /
@@ -87,28 +82,19 @@ users.preferences:                 # plain JSON column (cast array), nullable
 
 ### Layer touchpoints & ordering
 
-`ProfileController::edit()` composes the profile page's defaults (global
-`items_per_page`, available UI languages, root/child folders) so the form can show
-"what happens if you clear this." `updatePreferences()` validates, merges into the
-existing `preferences` array (unsetting cleared keys rather than storing empty
-strings), and persists via a single `update(['preferences' => ...])` call. Reads
-elsewhere in the app (asset index pagination, `SetLocale`, upload folder picker)
-go through `User::getPreference()`/the typed accessors above — never the raw
-column.
+`ProfileController::edit()` supplies the defaults the form shows for a cleared field.
+`updatePreferences()` validates, merges (unsetting cleared keys) and saves once. Reads elsewhere
+(pagination, `SetLocale`, upload folder picker) go through the accessors, never the raw column.
 
-`guided_demos` is the one key `updatePreferences()` does not own: it is written by
-`GuidedDemoController::complete` ([`guided-demos.md`](guided-demos.md)). That separation is
-deliberate. `updatePreferences()` treats an absent field as "cleared" and unsets it, which is
-safe only because the profile form always submits all four of its fields — a partial request
-carrying just one key would drop the rest. Any future writer of a single preference key needs
-its own action for the same reason.
+`guided_demos` is written only by `GuidedDemoController::complete`
+([`guided-demos.md`](guided-demos.md)), not `updatePreferences()`. Why: `updatePreferences()` treats
+an absent field as cleared (safe only because the form always submits all four fields), so any
+single-key writer needs its own action.
 
 ### Persistence
 
 - **DB**: `users.preferences` (plain JSON, cast `array`, nullable — not encrypted; see REQ-1).
-- **Not persisted**: no separate history of past preference values; overwriting is
-  destructive (last write wins), matching the model's "one column, whole-object
-  replace" shape.
+- **Not persisted**: no history; last write wins.
 
 ## Scenarios (BDD)
 
@@ -174,16 +160,10 @@ Scenario: A locale preference saved in the profile takes effect immediately
 
 ## Tests & verification
 
-- Unit: `tests/Unit/UserPreferencesTest.php` (getPreference/setPreference,
-  getHomeFolder/isValidHomeFolder, getItemsPerPage, array cast, null handling)
-- Feature: `tests/Feature/ProfileTest.php` (form rendering, update/clear via web +
-  JSON, validation errors, locale set/clear)
-- Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/localization.spec.js` — the locale preference saved through the profile form.
+- Unit: `tests/Unit/UserPreferencesTest.php`; Feature: `tests/Feature/ProfileTest.php` —
+  `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/localization.spec.js` — `npm run test:e2e`
 
 ## Open questions / future
 
-- `dark_mode` has no dedicated Unit/Feature test beyond what
-  `ProfileTest.php`'s general update/clear coverage implies indirectly — no test
-  asserts the three-value enum (`disabled`/`force_dark`/`force_light`) or that an
-  invalid value is rejected.
+- `dark_mode` has no direct test of its three-value enum or of rejecting an invalid value.

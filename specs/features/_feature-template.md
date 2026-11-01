@@ -6,6 +6,10 @@
   Keep it lean (see ../README.md "Format rules"): Markdown for narrative, flat
   YAML for structured schemas, reference code by symbol name not line number.
   Delete any section that genuinely does not apply — don't leave empty headings.
+  Does NOT belong here (spec-lint rejects most of it): how the behaviour came to be
+  ("used to", bug stories, PR numbers), private methods and verbatim config/rule
+  dumps, copies of another spec's contract (link to the owner), "None" open
+  questions, and `##` sections the template doesn't have.
 -->
 
 # <Feature name>

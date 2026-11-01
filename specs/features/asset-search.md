@@ -55,45 +55,23 @@ Asset::scopeSearch($query, ?string $search)                        # thin delega
 
 ### Layer touchpoints & ordering
 
-`parseSearchTerms()` first extracts `+"phrase"`/`-"phrase"`/`"phrase"` via a
-regex callback (populating `required`/`excluded`/`required`-by-default
-respectively and removing them from the string), then whitespace-splits what
-remains into bare `+term`/`-term`/`term` tokens. `addSearchCondition()` builds
-the per-term OR-across-fields clause (filename, s3_key, alt_text/caption via
-FULLTEXT-or-LIKE, tag name via `whereHas`); `addExcludeCondition()` builds the
-mirrored AND-NOT-across-fields clause.
+Each term matches across filename, `s3_key`, `alt_text`/`caption` (FULLTEXT or LIKE, REQ-5)
+and tag name (`whereHas`); an excluded term is the mirrored AND-NOT across the same fields.
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: Bare terms are OR'd
-  Given search input "cat dog"
-  Then an asset matching either "cat" or "dog" in any searchable field is returned
-# pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Unit/AssetTest.php
-
-Scenario: A +term is required
-  Given search input "+cat"
-  Then only assets matching "cat" are returned
-# pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Unit/AssetTest.php
-
-Scenario: A -term is excluded
-  Given search input "-cat"
-  Then assets matching "cat" are excluded from the results
-# pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Unit/AssetTest.php
-
-Scenario: Mixed +, -, and bare terms combine correctly
-  Given search input "+cat -dog bird"
-  Then results require "cat", exclude "dog", and OR-match "bird"
-# pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Unit/AssetTest.php
-
-Scenario: A quoted phrase with no prefix is required
-  Given search input "\"red car\""
-  Then only assets matching the exact phrase "red car" are returned
-# pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Unit/AssetTest.php
-
-Scenario: A quoted phrase with a - prefix is excluded
-  Given search input "-\"red car\""
-  Then assets matching "red car" are excluded
+Scenario Outline: Search operators combine as specified (REQ-1)
+  Given search input <input>
+  Then <result>
+  Examples:
+    | input              | result                                                    |
+    | cat dog            | assets matching either term in any searchable field       |
+    | +cat               | only assets matching "cat"                               |
+    | -cat               | assets matching "cat" are excluded                       |
+    | +cat -dog bird     | require cat, exclude dog, OR-match bird                   |
+    | "red car"          | only the exact phrase (unprefixed phrases are required)   |
+    | -"red car"         | the phrase is excluded                                    |
 # pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Unit/AssetTest.php
 
 Scenario: Phrases are extracted before bare-token splitting
@@ -106,30 +84,15 @@ Scenario: A bare + or - with no following word is ignored
   Then only "cat" is treated as a term
 # pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Unit/AssetTest.php
 
-Scenario: Search input matching the configured S3 URL is stripped to the bare s3_key
-  Given search input equal to "{s3_bucket_url}/assets/marketing/photo.jpg"
-  Then the search matches by s3_key "assets/marketing/photo.jpg" as a literal term
+Scenario: A configured S3 URL or custom_domain prefix is stripped to the bare s3_key (REQ-4)
+  Given search input "{s3_bucket_url}/assets/marketing/photo.jpg" (or the custom_domain equivalent)
+  Then the search matches s3_key "assets/marketing/photo.jpg" as one literal term
 # pinned by: tests/Unit/Services/AssetSearchParserTest.php, tests/Feature/AssetTest.php
 
-Scenario: Search input matching the configured custom_domain is stripped
-  Given custom_domain is set and search input starts with it
-  Then the domain prefix is stripped before matching
-# pinned by: tests/Unit/Services/AssetSearchParserTest.php
-
-Scenario: Search excludes assets by tag name
-  Given search input "-cat" and an asset tagged "cat"
-  Then that asset is excluded even though its filename doesn't contain "cat"
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: Search requires a match on tag name
-  Given search input "+cat" and only tag-matching assets
-  Then only tag-matching assets are returned
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: Exclude handles null alt_text and caption gracefully
-  Given assets with null alt_text/caption
-  When an exclude term is searched
-  Then those assets are not incorrectly excluded due to the null comparison
+Scenario: Tag names take part in required and excluded matches
+  Given an asset tagged "cat" whose filename does not contain it
+  Then "+cat" returns it and "-cat" excludes it
+  And an exclude term does not wrongly drop assets with null alt_text/caption
 # pinned by: tests/Unit/AssetTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
@@ -165,10 +128,8 @@ Scenario: Clear all filters returns the full library
 
 ## Tests & verification
 
-- Unit: `tests/Unit/Services/AssetSearchParserTest.php`, `tests/Unit/AssetTest.php`
-  (integration of the parser through the Eloquent scope, including
-  FULLTEXT-vs-LIKE driver behavior)
-- Feature: `tests/Feature/AssetTest.php` (search via the index endpoint,
-  including the URL-stripping scenario end-to-end)
+- Unit: `tests/Unit/Services/AssetSearchParserTest.php`, `tests/Unit/AssetTest.php` (through the
+  Eloquent scope, incl. FULLTEXT-vs-LIKE)
+- Feature: `tests/Feature/AssetTest.php`
+- E2E: `tests/e2e/asset-grid.spec.js`
 - Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/asset-grid.spec.js` — search, type filter, sort and pagination as the grid actually drives them.

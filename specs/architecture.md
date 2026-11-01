@@ -101,16 +101,11 @@ HTTP request
 
 Appended to the web group in `bootstrap/app.php`, in request order:
 
-- **`SetLocale`** — resolves locale: user preference → `settings.locale` →
-  `config('app.locale')`. See [`features/localization.md`](features/localization.md).
-- **`AllowEmbedding`** — when `embed_allowed_domains` is non-empty, sets
-  `Content-Security-Policy: frame-ancestors 'self' <domains>` and removes
-  `X-Frame-Options` on web routes. See [`features/iframe-embedding.md`](features/iframe-embedding.md).
-- **`SecurityHeaders`** — `X-Content-Type-Options: nosniff`, `X-Frame-Options:
-  SAMEORIGIN`, `Referrer-Policy`, and HSTS over HTTPS. Appended after `AllowEmbedding`, so it
-  runs first on the response and embedding can then relax `X-Frame-Options` into a `frame-ancestors`
-  CSP. See [`features/security-headers.md`](features/security-headers.md).
-- **Route-level auth** — web routes use `auth` (session); API routes use `auth.multi` (`AuthenticateMultiple`) — see "Authentication" below.
+- **`SetLocale`** — resolves the request locale ([`features/localization.md`](features/localization.md)).
+- **`AllowEmbedding`** — `frame-ancestors` CSP for allowed embed domains ([`features/iframe-embedding.md`](features/iframe-embedding.md)).
+- **`SecurityHeaders`** — nosniff, XFO, Referrer-Policy, HSTS; runs first on the response so
+  embedding can relax XFO ([`features/security-headers.md`](features/security-headers.md)).
+- **Route-level auth** — web routes use `auth` (session); API routes use `auth.multi` — see "Authentication" below.
 
 ### Service-layer map
 
@@ -141,7 +136,8 @@ SystemService:           # System dashboard diagnostics / env / S3 connectivity
 
 ### Queue / job map
 
-Jobs (`app/Jobs/`, 5) run on the queue (sync in tests):
+Jobs (`app/Jobs/`, 5) run on the queue (sync in tests); per-job contracts (tries, timeouts,
+dispatch sites) live in [`features/queue-jobs.md`](features/queue-jobs.md):
 
 ```yaml
 GenerateAiTags:          # Rekognition tagging after upload (if enabled)
@@ -251,8 +247,7 @@ Passkey / GameScore
   `wordpress-plugin/`). See [ADR-013](decisions/adr-013-wordpress-plugin-separate-stream.md).
 - **Free-text tag input** is normalized by `App\Support\TagInputParser::parse()`
   everywhere (comma-splitting, trim, lowercase, dedup). See [`features/tag-input.md`](features/tag-input.md).
-- **One owner per piece of shared logic.** Each of these used to exist in several copies,
-  and the copies drifted into bugs; a change goes through the owner, not around it:
+- **One owner per piece of shared logic** — a change goes through the owner, not around it:
   - asset rows from any ingestion path — duplicate check, create or overwrite —
     `AssetIngestionService` ([`features/duplicate-detection.md`](features/duplicate-detection.md));
   - derived S3 key names — `App\Support\AssetKeyLayout`; a stored key's name never changes

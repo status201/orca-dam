@@ -15,13 +15,10 @@ source:
 
 ## Background / Why
 
-Every web response needs a baseline set of defensive HTTP headers regardless of
-route — clickjacking protection, MIME-sniffing protection, referrer leakage
-control, and transport security once served over HTTPS. `SecurityHeaders` applies
-these unconditionally in the web middleware group, and is ordered so that
-`AllowEmbedding` (see [`features/iframe-embedding.md`](iframe-embedding.md)) can
-selectively relax the clickjacking header for the specific case where embedding is
-explicitly configured.
+Every web response gets a baseline of defensive headers (clickjacking, MIME sniffing, referrer
+leakage, HSTS over HTTPS). `SecurityHeaders` applies them in the web group, ordered so
+`AllowEmbedding` ([`iframe-embedding.md`](iframe-embedding.md)) can relax the clickjacking header
+when embedding is configured.
 
 ## Requirements
 
@@ -29,9 +26,8 @@ explicitly configured.
   nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy:
   strict-origin-when-cross-origin`.
 - **REQ-2** — `Strict-Transport-Security: max-age=31536000; includeSubDomains` is
-  added **only** when the request is already served over HTTPS (`$request->isSecure()`)
-  — never on an http-only dev/test setup, so a local `php artisan serve` session
-  isn't pinned to HTTPS.
+  added **only** when the request is served over HTTPS (`$request->isSecure()`), so a local
+  http session is never pinned to HTTPS.
 - **REQ-3** — `SecurityHeaders` is appended **after** `AllowEmbedding` in the web
   group, so on the response (which middleware unwinds in reverse) `AllowEmbedding`
   runs *after* `SecurityHeaders` and can remove `X-Frame-Options` in favor of a
@@ -58,14 +54,8 @@ Web middleware group (bootstrap/app.php, appended in request order):
   SetLocale → AllowEmbedding → SecurityHeaders
 ```
 
-Response unwinding is the reverse of the request order, so on the way *out*
-`AllowEmbedding` executes after `SecurityHeaders` has already set the baseline
-`X-Frame-Options` — giving `AllowEmbedding` the chance to `remove()` it. See
-[`architecture.md`](../architecture.md#middleware-stack).
-
-### Persistence
-
-None — purely a per-response header transform, no DB/cache state.
+Response unwinding reverses this, so `AllowEmbedding` can `remove()` the baseline
+`X-Frame-Options` ([`architecture.md`](../architecture.md#middleware-stack)).
 
 ## Scenarios (BDD)
 
@@ -88,14 +78,9 @@ Scenario: A downloaded asset still carries nosniff and forces attachment
 
 ## Tests & verification
 
-- Feature: `tests/Feature/SecurityRemediationTest.php` (`web responses carry
-  baseline security headers`, `asset download forces attachment and nosniff`)
-- Run: `php artisan config:clear && php artisan test`
+- Feature: `tests/Feature/SecurityRemediationTest.php` — `php artisan config:clear && php artisan test`
 
 ## Open questions / future
 
-- No test currently exercises the HSTS branch (`$request->isSecure()`) or asserts
-  `SESSION_SECURE_COOKIE`'s production default — both would require simulating an
-  HTTPS request/production environment, which the current Pest suite (plain HTTP,
-  `testing` env) doesn't do. Worth a dedicated test that forces
-  `$request->server->set('HTTPS', 'on')` before asserting the header.
+- The HSTS branch and the `SESSION_SECURE_COOKIE` production default are untested (needs a forced
+  HTTPS request, e.g. `$request->server->set('HTTPS', 'on')`).

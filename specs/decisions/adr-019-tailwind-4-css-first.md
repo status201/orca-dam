@@ -122,18 +122,11 @@ templates depend on them, so the migration changes no pixels it does not have to
   - Font Awesome no longer needs a third-party request: no cdnjs dependency, no SRI hash to
     maintain, and the E2E suite renders real icons instead of a size stub.
 - **Trade-off:**
-  - Browsers older than the supported baseline get broken styling. That includes editors who load
-    the embedded asset picker inside a CMS on an old browser.
-  - The compatibility layer is v3 behaviour that new templates inherit until it is removed. The
-    `space-x/y` port in particular means `space-*` does not behave as v4's documentation says.
-    New code that wants a gap should prefer `flex`/`grid` with `gap-*`.
-  - The CSS bundle grows from about 86 KB to 164 KB (39 KB gzipped), because Font Awesome's
-    stylesheet is now inside it, and its fonts are served by the app.
-  - Touch devices lose `hover:` styles, and colours shift slightly.
-  - `translate-*`, `scale-*` and `rotate-*` set the individual `translate`, `scale` and `rotate`
-    properties, not `transform`. Hand-written CSS that cancels one of them must name that
-    property. The guided demo's nav pin said `transform: none` and stopped pinning. Its E2E test
-    passed locally by timing alone and failed on CI; it now scrolls during the nav step and checks
-    the computed `translate`.
-  - Tailwind v4's engine is a native binary, so the build host needs a supported platform and Node
-    20 or newer. CI runs Node 22.
+  - Browsers older than the supported baseline (including a CMS embedding the asset picker) get
+    broken styling; touch devices lose `hover:` styles, and colours shift slightly.
+  - The compatibility layer is v3 behaviour new templates inherit until it is removed — notably
+    `space-*` does not behave as v4's docs say; new code should prefer `flex`/`grid` + `gap-*`.
+  - `translate-*`, `scale-*` and `rotate-*` set the individual properties, not `transform`, so
+    hand-written CSS that cancels one must name that property.
+  - The CSS bundle grows (Font Awesome now inside it), and v4's native engine needs a supported
+    platform and Node 20+ on the build host.

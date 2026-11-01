@@ -17,12 +17,9 @@ source:
 
 ## Background / Why
 
-A hidden, purely cosmetic easter egg: double-clicking the ORCA logo lazy-loads a
-small game bundle from `public/games/` (not built by Vite — plain static
-JS/CSS shipped alongside the app) and records scores against the authenticated
-user. It exists for morale, not for any product requirement — kept intentionally
-minimal (one model, one controller, two routes) and isolated so it can't affect
-core DAM behaviour.
+A hidden, cosmetic easter egg: double-clicking the ORCA logo lazy-loads a static game bundle
+from `public/games/` (outside the Vite build) and records scores against the authenticated
+user. Kept minimal (one model, one controller, two routes) and isolated from core DAM behaviour.
 
 ## Requirements
 
@@ -63,8 +60,7 @@ game_scores:
   user_id: bigint            # FK -> users.id, cascadeOnDelete
   score: unsigned int
   created_at / updated_at
-  # composite index (user_id, score) for the leaderboard's GROUP BY user_id, MAX(score);
-  # replaces an earlier single-column index on score alone (redundant with the composite)
+  # composite index (user_id, score) for the leaderboard's GROUP BY user_id, MAX(score)
 
 # leaderboard() response shape
 [{name: string, score: int}, ...]   # up to 5 entries, one per distinct user_id, desc by MAX(score)
@@ -72,21 +68,15 @@ game_scores:
 
 ### Layer touchpoints & ordering
 
-`resources/js/app.js`'s `DOMContentLoaded` handler wires a click listener on
-`#orca-logo-container`: two clicks within 1000ms trigger a one-time lazy
-`<link>`/`<script>` injection for `/games/orca-game.css` and
-`/games/orca-game.js`, then calls `window.OrcaGame.init()` once the script
-loads (or immediately on subsequent triggers, via
-`window.__orcaGameScriptLoaded`). The game bundle itself is a static asset in
-`public/games/`, entirely outside the Vite build and outside this spec's
-server-side contract — only the two `game/scores` endpoints and the `GameScore`
-model are part of the backend surface.
+`resources/js/app.js` listens for clicks on `#orca-logo-container`: two within 1000ms inject
+`/games/orca-game.css` and `/games/orca-game.js` once, then call `window.OrcaGame.init()`.
+The bundle itself is outside this spec; the backend surface is the two `game/scores`
+endpoints and `GameScore`.
 
 ### Persistence
 
-`game_scores` table only. `leaderboard()` is a single query
-(`GROUP BY user_id` + `MAX(score)` joined to `users` for the display name) — no
-caching, since it's a low-traffic easter egg.
+`game_scores` only. `leaderboard()` is one uncached query (`GROUP BY user_id`, `MAX(score)`,
+joined to `users` for the name).
 
 ## Scenarios (BDD)
 
@@ -130,8 +120,5 @@ Scenario: The leaderboard shows each user's best score only, ordered desc, cappe
 
 ## Open questions / future
 
-- The client-side game bundle (`public/games/orca-game.js`/`.css`) and the
-  double-click lazy-load wiring in `resources/js/app.js` have no automated test
-  coverage (no Playwright spec drives it) — only the backend
-  `GameScore`/`GameScoreController` surface is Pest-tested. Low risk given the
-  feature is cosmetic and isolated from core DAM flows.
+- The game bundle and the double-click lazy-load wiring have no automated test (no Playwright
+  spec drives them); only the backend surface is Pest-tested.

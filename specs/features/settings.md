@@ -18,13 +18,10 @@ source:
 
 ## Background / Why
 
-ORCA has many knobs an admin needs to change without a redeploy: pagination size,
-locale, S3 folders, Rekognition thresholds, embed domains, feature toggles
-(`maintenance_mode`, `api_upload_enabled`, `cloudflare_cache_purge`), resize
-dimensions. These live in the `settings` table via the `Setting` model rather than
-`.env`, so an admin edit on the System settings page takes effect immediately for
-every request. See [ADR-011](../decisions/adr-011-settings-in-db.md) for the
-rationale and rejected alternatives (`.env`-only, a settings package, no cache).
+Admin-tunable knobs (pagination, locale, S3 folders, Rekognition thresholds, embed domains, feature
+toggles such as `maintenance_mode`, `api_upload_enabled`, `cloudflare_cache_purge`, resize
+dimensions) live in the `settings` table via `Setting`, not `.env`, so an edit on the System
+settings page applies to the next request ([ADR-011](../decisions/adr-011-settings-in-db.md)).
 
 ## Requirements
 
@@ -74,13 +71,10 @@ Setting:                # settings table
 
 ### Layer touchpoints & ordering
 
-Request → `SystemController::updateSetting` (validates known keys through
-`SettingRules::passes()`) → `Setting::set()` (upsert + cache-bust). Special
-case: changing `s3_root_folder` also drops the `s3_folders` setting
-(`FolderRegistry::forget()` → `Setting::forget()`) so the folder list is recomputed. It
-used to delete the row and its per-key cache by hand, which left the `settings:all` /
-`settings:grouped` aggregates holding the old list. Reads go directly through `Setting::get()` from any
-service/middleware/model — there is no repository layer.
+Request → `SystemController::updateSetting` (validates known keys through `SettingRules::passes()`)
+→ `Setting::set()` (upsert + cache-bust). Changing `s3_root_folder` also drops the `s3_folders`
+setting via `FolderRegistry::forget()` → `Setting::forget()` (which clears the aggregates too), so
+the folder list is recomputed. Reads go directly through `Setting::get()`; no repository layer.
 
 ### Persistence
 
@@ -88,9 +82,8 @@ service/middleware/model — there is no repository layer.
 - **Cache**: `setting:{key}` per-key (1h TTL), plus `settings:all` and
   `settings:grouped` aggregates — all three are forgotten on every `Setting::set()`
   call and by `Setting::clearCache()`.
-- **Not persisted**: nothing derived is cached beyond the TTL; a raw DB edit
-  (bypassing `Setting::set()`) will not be visible until the cache entry expires or
-  is manually forgotten.
+- A raw DB edit (bypassing `Setting::set()`) is invisible until the cache entry expires or is
+  forgotten.
 
 ## Scenarios (BDD)
 
@@ -142,16 +135,8 @@ Scenario: A runtime setting changed on /system survives a reload and changes beh
 
 ## Tests & verification
 
-- Unit: `tests/Unit/SettingTest.php` (get/set/cast/cache-busting/allSettings/allGrouped)
-- Feature: `tests/Feature/SystemTest.php` (per-key validation for `items_per_page`,
-  `rekognition_max_labels`/`min_confidence`/`language`, `s3_root_folder`, `timezone`,
-  `locale`, `custom_domain`, `resize_*_width`; role gate: editors cannot update
-  settings), `tests/Feature/Middleware/AllowEmbeddingTest.php` (a setting change
-  flowing through to request behaviour)
+- Unit: `tests/Unit/SettingTest.php`
+- Feature: `tests/Feature/SystemTest.php` (per-key validation, editor gate),
+  `tests/Feature/Middleware/AllowEmbeddingTest.php`
 - Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/system-settings.spec.js` — a setting changed in the UI persisting and changing grid behaviour.
-
-## Open questions / future
-
-- None open — per-key validation, cache invalidation, and the admin-only gate all
-  have direct test coverage.
+- E2E: `tests/e2e/system-settings.spec.js` — `npm run test:e2e`

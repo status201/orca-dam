@@ -27,88 +27,63 @@ source:
 
 ## Background / Why
 
-`withExceptions()` in `bootstrap/app.php` was empty and nothing in the repo handled a
-`QueryException`. ADR-010 is the reason: it makes *services* swallow-and-log so controllers can map
-a failure to a status code, and it explicitly rejected a global handler. That reasoning holds for
-service failures — but a driver rejection is not one. MariaDB refuses the write inside
-`$model->update()`, in the controller's own frame, with no service to swallow anything. So an
-over-length copyright surfaced as `errors/500.blade.php` — "Something went wrong on our end" — with
-nothing for the user to act on and nothing to quote in a bug report. ADR-016 records the amendment.
-
-Two things follow. A DB rejection is usually a *user* error wearing a server error's clothes, so it
-should read exactly like the validation message that should have caught it. And when an error
-genuinely is ours, the user needs a reference to quote. Preventing the bad value from reaching the
-driver at all is [`input-validation.md`](input-validation.md); this spec is the backstop behind it.
+ADR-010 makes *services* swallow-and-log, but a driver rejection happens inside `$model->update()`
+in the controller's own frame, so it surfaced as a bare 500 with nothing to act on. ADR-016 amends
+ADR-010 with a narrow `QueryException` handler: a DB rejection is usually a user error and should
+read exactly like the validation message that should have caught it; when an error genuinely is
+ours, the user gets a reference to quote. This spec is the backstop behind
+[`input-validation.md`](input-validation.md), and the owner of who sees exception detail.
 
 ## Requirements
 
-- **REQ-1** — A `QueryException` is classified from `$e->errorInfo` — `[SQLSTATE, driverCode,
-  driverMessage]` — and **never** from `getMessage()`, whose Laravel tail embeds the query bindings
-  substituted into the SQL. Recognised kinds: `too_long`, `duplicate`, `missing_required`,
-  `stale_reference`, `still_referenced`, `busy`, `unavailable`, `unknown`, across MySQL/MariaDB,
-  SQLite and PostgreSQL phrasings.
-- **REQ-2** — A classified error that names a column becomes a **keyed validation failure** — a 422
-  for a JSON caller and a redirect-back-with-errors for a form post — produced by re-entering
-  Laravel's own `invalid()` / `invalidJson()`. A DB rejection is therefore indistinguishable from the
-  rule that should have caught it: same status, same body shape, same rendered field error, same
-  corrective action. `too_long` / `missing_required` / `duplicate` map to 422;
-  `still_referenced` / `busy` to 409; `unavailable` to 503.
-- **REQ-3** — Messages reuse the framework's already-translated validation strings
-  (`validation.max.string`, `validation.unique`, `validation.required`) with the column's displayable
-  attribute name, so the backstop carries no separate vocabulary and no new translation debt for the
-  common cases.
-- **REQ-4** — The classifier **degrades, never guesses**. Column and limit known → the counted
-  message. Column known, limit unknown → a message naming the field without a number. Neither known
-  → a generic "one of the values you entered is too long". Where the driver reports only an index
-  name, the derived column is verified with `Schema::hasColumn()` before use and dropped to `null`
-  if it does not resolve — the handler never invents a field name.
-- **REQ-4a** — A **derived column is reported against the field it stands for**, via
+- **REQ-1** — A `QueryException` is classified from `$e->errorInfo` (`[SQLSTATE, driverCode,
+  driverMessage]`), **never** from `getMessage()` (which embeds the bindings). Kinds: `too_long`,
+  `duplicate`, `missing_required`, `stale_reference`, `still_referenced`, `busy`, `unavailable`,
+  `unknown`, across MySQL/MariaDB, SQLite and PostgreSQL phrasings.
+- **REQ-2** — A classified error naming a column becomes a **keyed validation failure** (422 JSON,
+  or redirect-back-with-errors for a form post) by re-entering Laravel's `invalid()` /
+  `invalidJson()`, so it is indistinguishable from the rule that should have caught it.
+  `too_long` / `missing_required` / `duplicate` → 422; `still_referenced` / `busy` → 409;
+  `unavailable` → 503.
+- **REQ-3** — Messages reuse the framework's translated strings (`validation.max.string`,
+  `validation.unique`, `validation.required`) with the column's display name — no separate
+  vocabulary.
+- **REQ-4** — The classifier **degrades, never guesses**: column + limit → counted message; column
+  only → names the field without a number; neither → generic "one of the values you entered is too
+  long". A column derived from an index name is verified with `Schema::hasColumn()` and dropped to
+  `null` if it does not resolve.
+- **REQ-4a** — A **derived column is reported against the field it stands for** via
   `DatabaseError::COLUMN_ALIASES`, applied inside `verifyColumn()` *before* the `Schema::hasColumn()`
-  check so the reported name is still schema-verified. The one entry today is
-  `assets.s3_key_hash → s3_key`: that surrogate carries the uniqueness `assets.s3_key` is too wide to
-  index ([`input-validation.md`](input-validation.md) REQ-11), and both drivers name it on a
-  violation — MySQL through the index name, SQLite through the qualified column. Verification alone
-  is not enough here precisely *because* the surrogate is a real column: REQ-4's guard would accept
-  it and key the error bag on a field no form has, so the user would see nothing at all.
+  check. Today: `assets.s3_key_hash → s3_key` ([`input-validation.md`](input-validation.md)
+  REQ-11). Why: the surrogate is a real column, so REQ-4 alone would key the error on a field no
+  form has and the user would see nothing.
 - **REQ-5** — An **unclassified** `QueryException` returns `null` from the renderer when
-  `config('app.debug')` is on, so local debugging keeps the whoops page and stack trace. In
-  production it becomes a friendly failure carrying the error reference. Only this branch is
-  debug-dependent; a classified error behaves identically in every environment so tests are
-  deterministic.
-- **REQ-6** — There is **no catch-all `Throwable` renderer**. Laravel already renders a friendly
-  page for every web 5xx in production; the defect was that the page said nothing and gave no
-  reference, which REQ-7 fixes. A catch-all would run before the `app.debug` check, killing the
-  whoops page in development, and is the widest possible surface for masking a genuine bug.
-- **REQ-7** — Every request carries an `App\Support\ErrorId` reference — six uppercase hex
-  characters, generated with `random_bytes` and memoised for the request. It appears on the log
-  line, as an `X-Orca-Error-Id` response header on error responses, as `error_id` in a 5xx JSON body,
-  and on the 500 page, so a user can quote one string and an operator can find that request.
-- **REQ-8** — A `QueryException` is logged once, with the parameterised SQL, SQLSTATE, driver code,
+  `config('app.debug')` is on (keeps the debug page); in production it becomes a friendly failure
+  with the error reference. Only this branch is debug-dependent.
+- **REQ-6** — There is **no catch-all `Throwable` renderer**. Why: it would run before the
+  `app.debug` check (killing the debug page) and is the widest surface for masking a real bug;
+  Laravel already renders a friendly page for web 5xx, which REQ-7 adds a reference to.
+- **REQ-7** — Every request carries an `App\Support\ErrorId` reference — six uppercase hex chars,
+  `random_bytes`, memoised per request. It appears on the log line, as an `X-Orca-Error-Id` header on
+  error responses, as `error_id` in a 5xx JSON body, and on the 500 page.
+- **REQ-8** — A `QueryException` is logged once, with parameterised SQL, SQLSTATE, driver code,
   table, column, route and the **lengths** of the bindings — never their values. The framework's
-  default report for this exception type is suppressed, because its message embeds those values into
-  a log that `/system`'s viewer renders to any admin.
-- **REQ-9** — `App\Support\ErrorAudience` owns the role rule that decides who sees exception detail:
-  an `api`-role caller gets none. `Controller::clientError()` delegates to it, so the rule lives in
-  one place reachable from `bootstrap/app.php`. For a `QueryException`, even a trusted operator
-  receives the driver's sentence rather than the SQL-with-bindings.
-- **REQ-10** — A 5xx JSON body is scrubbed for an `api`-role caller regardless of `app.debug`, since
-  `APP_DEBUG=true` is this repository's default in `.env`, `.env.example` and `.env.e2e` and Laravel
-  would otherwise ship file, line and stack trace.
+  default report for this type is suppressed (its message embeds values into a log `/system` shows
+  to admins).
+- **REQ-9** — `App\Support\ErrorAudience` owns the rule for who sees exception detail: an
+  `api`-role caller gets none. `Controller::clientError()` delegates to it. For a `QueryException`,
+  even a trusted operator gets the driver's sentence, not SQL-with-bindings.
+- **REQ-10** — A 5xx JSON body is scrubbed for an `api`-role caller regardless of `app.debug`
+  (`APP_DEBUG=true` is the default in `.env`, `.env.example` and `.env.e2e`).
 - **REQ-11** — Client-side, the **server's message is the actionable one**. `errorMessageFrom()` in
-  `resources/js/http-errors.js` resolves a failed `fetch` to the best available text — a 422's first
-  field error, then `message`, then `error` — and a hardcoded string is the fallback of last resort,
-  not the first choice. Handlers that read the server's message and then discard it in favour of a
-  generic toast are the defect this requirement exists to remove.
-- **REQ-request-headers** — Every same-origin `fetch()` takes its headers from
-  `requestHeaders()` in `resources/js/http.js`: the CSRF token, `Accept` (JSON unless the caller
-  names another type) and, for a JSON body, `Content-Type`. The token is read from the page's
-  `<meta name="csrf-token">` **at call time**. Eighty-odd call sites used to build this object by
-  hand in three styles, and the tool pages sent a token copied into page data at load, which
-  does not follow the meta tag that `bootstrap.js` refreshes every 15 minutes.
-- **REQ-12** — A message that reaches a toast is inserted as text, never as HTML. `window.showToast`
-  has exactly one definition (`resources/js/app.js`); the two inline copies in the layouts that
-  interpolated into `innerHTML` are removed, because surfacing server strings would otherwise turn
-  a dead code path into a live injection sink one script-ordering change away.
+  `resources/js/http-errors.js` resolves a failed `fetch` to a 422's first field error, then
+  `message`, then `error`; a hardcoded string is the last-resort fallback.
+- **REQ-request-headers** — Every same-origin `fetch()` takes its headers from `requestHeaders()` in
+  `resources/js/http.js`: the CSRF token, `Accept` (JSON unless the caller names another type) and,
+  for a JSON body, `Content-Type`. The token is read from `<meta name="csrf-token">` **at call time**
+  (`bootstrap.js` refreshes it every 15 minutes).
+- **REQ-12** — A toast message is inserted as text, never HTML. `window.showToast` has exactly one
+  definition (`resources/js/app.js`); no layout may define an `innerHTML`-interpolating copy.
 
 ## Technical design
 
@@ -124,7 +99,7 @@ App\Support\ErrorId::current(): string                            // memoised pe
 App\Http\Controllers\Controller::clientError(Throwable $e, string $generic): string   // delegates to ErrorAudience
 resources/js/http-errors.js  →  errorMessageFrom(response, fallback), throwHttpError(response, fallback)
 resources/js/http.js         →  csrfToken(), requestHeaders({ json = true, accept = 'application/json' })   // REQ-request-headers
-resources/js/format.js       →  formatBytes(bytes, decimals = 2)   // "12.5 KB" — every size the UI formats client-side
+resources/js/format.js       →  formatBytes(bytes, decimals = 2)
 ```
 
 `bootstrap/app.php` registers exactly four things, in this order:
@@ -136,6 +111,8 @@ $exceptions->report(QueryException ...)     // REQ-8; returns false to replace t
 $exceptions->respond(...)                   // REQ-7 header, REQ-10 scrubbing
 ```
 
+`resources/js/http-errors.js` is imported by its consumers, not by `app.js` (not an Alpine module).
+
 ### Data shapes
 
 ```yaml
@@ -146,7 +123,7 @@ limit: int|null          # from ColumnLimits when the column is known
 status: int              # 422 | 409 | 503
 message: string          # translated, user-facing, free of SQL and of binding values
 
-# a keyed rejection, JSON — byte-identical in shape to a FormRequest failure
+# a keyed rejection, JSON — same shape as a FormRequest failure
 message: string
 errors: { <column>: [string] }
 
@@ -163,45 +140,24 @@ binding_lengths: array   # int per string binding, null otherwise — never the 
 ### Layer touchpoints & ordering
 
 ```
-FormRequest 422 ────────────────────────────┐
-                                            ├─ same status, same body, same @error block
-QueryException → DatabaseError::classify()  │
-              → DatabaseErrorResponder      │
-              → ValidationException ────────┘  (re-enters the handler's invalid()/invalidJson())
-              → unclassified → app.debug ? null (whoops) : friendly 5xx + error id
+                         ┌── classified + column ──→ ValidationException ──→ 422 / redirect+errors
+QueryException ──────────┤     (re-enters the handler's invalid()/invalidJson())
+  (errorInfo, not        ├── classified, no column ─→ 422 / 409 / 503 + message + error id
+   getMessage)           └── unclassified ─────────→ app.debug ? null (debug page) : friendly 5xx + error id
 
 every error response → respond() → X-Orca-Error-Id, api-role scrubbing
 every log line       → context() → error id + DB facts
 ```
 
-Re-entering `ExceptionHandler::render()` with a `ValidationException` terminates: `renderViaCallbacks`
-dispatches on the closure's first parameter type, so a callback typed `QueryException` cannot match
-it. That reuse is deliberate — it inherits the `dontFlash` list, the `_error_bag` handling, the
-redirect target and the JSON shape instead of reimplementing four things that must match exactly.
-
-The classic asset edit form needs **no view change**: `edit.blade.php`'s existing `@error('copyright')`
-block renders the keyed message and `old('copyright')` repopulates the field.
-
-`resources/js/http-errors.js` is deliberately **not** imported by `resources/js/app.js` — like
-`tag-input-core.js` it is a shared helper pulled in by its consumers, so the module count
-`app.js` documents is unaffected.
+Re-entering the handler with a `ValidationException` is deliberate: it inherits `dontFlash`,
+`_error_bag`, the redirect target and the JSON shape. It terminates because `renderViaCallbacks`
+dispatches on the closure's parameter type. Existing `@error('…')` / `old('…')` in forms render the
+result with no view change.
 
 ### Persistence
 
-None. `ErrorId` is memoised in the container for the life of one request and is deliberately not
-persisted: it correlates a user report with a log line, it is not an audit record. Under FPM the
-container is rebuilt per request, so ids do not leak between requests; within a single Pest test
-two errors share one id, which is what makes the header assertable.
-
-## Visual aids
-
-```
-                         ┌── classified + column ──→ ValidationException ──→ 422 / redirect+errors
-QueryException ──────────┤
-  (errorInfo, not        ├── classified, no column ─→ 422 / 409 / 503 + message + error id
-   getMessage)           │
-                         └── unclassified ─────────→ app.debug ? whoops : friendly 5xx + error id
-```
+None. `ErrorId` lives in the container for one request; it correlates a report with a log line and
+is deliberately not an audit record.
 
 ## Scenarios (BDD)
 
@@ -225,16 +181,14 @@ Scenario: A DB rejection is indistinguishable from the rule that should have cau
   Then both are 422 with the same body shape and the same error key
 # pinned by: tests/Feature/DatabaseErrorBackstopTest.php
 
-Scenario: A real unique-constraint violation becomes a keyed 422
-  Given an insert that violates a unique index
+Scenario Outline: Real constraint violations become a keyed 422
+  Given an insert that <violates>
   When the handler classifies it
   Then the response is 422 keyed on the offending column
-# pinned by: tests/Feature/DatabaseErrorBackstopTest.php
-
-Scenario: A not-null violation names the missing field
-  Given an insert omitting a NOT NULL column
-  When the handler classifies it
-  Then the response is 422 keyed on that column
+  Examples:
+    | violates                 |
+    | violates a unique index  |
+    | omits a NOT NULL column  |
 # pinned by: tests/Feature/DatabaseErrorBackstopTest.php
 
 Scenario: A classified message never contains SQL, SQLSTATE or a binding value
@@ -261,16 +215,11 @@ Scenario: An api-role caller never sees internals in a 5xx body
   Then the body carries only a generic message and the error reference
 # pinned by: tests/Feature/DatabaseErrorBackstopTest.php
 
-Scenario: An error response carries a reference the user can quote
-  Given any handler-rendered error response
+Scenario: An error carries a reference the user can quote
+  Given any handler-rendered error response, and the 500 page with app.debug disabled
   When it is returned
   Then it carries an X-Orca-Error-Id header matching the id in the log context
-# pinned by: tests/Feature/DatabaseErrorBackstopTest.php
-
-Scenario: The error page shows the reference
-  Given app.debug disabled and a request that fails
-  When the 500 page renders
-  Then it shows the same reference
+  And the 500 page shows the same reference
 # pinned by: tests/Feature/DatabaseErrorBackstopTest.php
 
 Scenario: An api-role caller sees no exception detail through clientError
@@ -282,38 +231,24 @@ Scenario: An api-role caller sees no exception detail through clientError
 
 ## Tests & verification
 
-- Unit: `tests/Unit/DatabaseErrorTest.php` — the classifier over a keyed dataset of driver errors
-  (MySQL/MariaDB/SQLite/PostgreSQL), the degradation ladder, the leak assertions, `ErrorAudience`.
-  A MySQL 22001 is synthesised by setting `PDOException::$errorInfo` (a public property) and
-  wrapping it in a `QueryException` — SQLite cannot produce one.
-- Feature: `tests/Feature/DatabaseErrorBackstopTest.php` — end to end through the handler, including
-  **real** SQLite `23000` errors (unique, not-null, foreign key) so the pipeline is proven against a
-  genuine PDO error and not only a synthetic one.
-- Feature: `tests/Feature/SecurityRemediationTest.php` — the existing role-aware detail assertions,
-  which must stay green through the `ErrorAudience` extraction.
+- Unit: `tests/Unit/DatabaseErrorTest.php` — classifier dataset (MySQL 22001 synthesised via
+  `PDOException::$errorInfo`), degradation, leak assertions, `ErrorAudience`.
+- Feature: `tests/Feature/DatabaseErrorBackstopTest.php` — end to end, including real SQLite `23000`
+  errors; `tests/Feature/SecurityRemediationTest.php` — role-aware detail.
 - `php artisan config:clear && php artisan test tests/Unit/DatabaseErrorTest.php tests/Feature/DatabaseErrorBackstopTest.php`
 - Style: `./vendor/bin/pint --test`; JS: `npm run build`.
 
 ## Open questions / future
 
-- **No E2E coverage of the friendly error page.** `.env.e2e` sets `APP_DEBUG=true`, so the
-  production 500 page never renders in the browser suite; and `database/e2e.sqlite` cannot produce a
-  `22001` at all. Covering it would need a dedicated env with debug off.
-- `$exceptions->respond()` is a **single slot** — a second registration anywhere silently replaces
-  the decorator and the error reference disappears from every response. There is no framework guard
-  for this; the only defence is knowing it.
-- Re-entering `ExceptionHandler::render()` relies on `renderViaCallbacks` dispatching on the
-  closure's parameter type. Stable across the current handler generation but framework-internal. The fallback if it ever
-  changes is a hand-built `back()->withInput()->withErrors()`, which must then re-derive the
-  `dontFlash` list the framework applies for free.
-- The `api`-role scrubbing in `respond()` is a safety net for a misconfigured production
-  `APP_DEBUG`. The real fix is `APP_DEBUG=false` in production; this only bounds the damage.
-- `edit.blade.php` re-seeds the Alpine tag chips from `window.__pageData` rather than `old()`, so any
-  redirect-back — including the one this spec adds for DB errors — loses unsaved tag edits. Tracked
-  in `tag-input.md`.
-- The remaining admin-tooling handlers (`tags.js`, `discover.js`, `export.js`, `system-admin.js`,
-  `api-docs.js`) already read `data.message` on a non-ok response, so what is left is their
-  `catch` blocks — genuine network or parse failures, where there is no server message to surface
-  and a generic string is the honest answer. Two read-path loads (`tags.js` and `export.js`
-  fetching the tag list) still discard the response entirely; a failure there has no field-level
-  cause, so it is low value rather than wrong.
+- **No E2E coverage of the friendly error page** (`.env.e2e` has `APP_DEBUG=true`; e2e SQLite
+  cannot produce a `22001`). Needs a dedicated env with debug off.
+- `$exceptions->respond()` is a **single slot** — a second registration silently replaces it and
+  the error reference disappears. No framework guard.
+- Re-entering the handler relies on framework-internal `renderViaCallbacks` dispatch; the fallback
+  is a hand-built `back()->withInput()->withErrors()` that must re-derive `dontFlash`.
+- The REQ-10 scrubbing only bounds a misconfigured production `APP_DEBUG`; the fix is
+  `APP_DEBUG=false`.
+- `edit.blade.php` re-seeds tag chips from `window.__pageData`, not `old()`, so any redirect-back
+  loses unsaved tag edits (tracked in `tag-input.md`).
+- Two read-path loads (`tags.js`, `export.js` fetching the tag list) still discard the error
+  response; low value, no field-level cause.

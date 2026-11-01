@@ -15,12 +15,11 @@ source:
 
 ## Background / Why
 
-ORCA ships 19 `artisan` commands covering asset hygiene, auth-secret lifecycle
-management, translation safety, reading the user audit trail, and verifying the live
-schema. They are the CLI counterpart to the System
-admin dashboard (`ArtisanCommandRunner::suggestedCommands()` surfaces the asset/queue
-ones there) and the primary tool for emergency recovery (JWT/2FA/passkey/token
-revocation) when the web UI itself is inaccessible.
+ORCA ships 19 `artisan` commands covering asset hygiene, auth-secret lifecycle, translation
+safety, the user audit trail and live-schema verification. They are the CLI counterpart to the
+System dashboard (`ArtisanCommandRunner::suggestedCommands()` surfaces some there) and the
+emergency-recovery tool (JWT/2FA/passkey/token revocation) when the web UI is inaccessible.
+`CLAUDE.md` lists them for day-to-day use; this spec owns their contracts.
 
 ## Requirements
 
@@ -31,159 +30,80 @@ revocation) when the web UI itself is inaccessible.
   `Command::FAILURE` and a clear message when the identifier doesn't resolve,
   rather than silently no-oping.
 - **REQ-3** — `assets:deduplicate` defaults to dry-run; only `--force` soft-deletes,
-  and assets carrying a `reference` tag are always skipped (never auto-deleted)
-  regardless of `--force`.
-- **REQ-4** — `lang:safe-update` is the only sanctioned way to refresh
-  laravel-lang framework translations; it diffs `lang/nl.json` before/after the
-  underlying `lang:update` call and restores any project-owned key the publisher
-  clobbered, then strips the English `lang/en.json`/`lang/en/*.php` files ORCA
-  doesn't ship. See [ADR-009](../decisions/adr-009-project-owns-nl-json.md).
-- **REQ-5** — `reference-tag:create` refuses to silently repurpose an existing
-  non-reference tag: colliding with a `user`-type tag of the same name is skipped
-  with a warning and the exit code reflects the failure only when *every*
-  requested name collided.
-- **REQ-6** — `db:verify-schema` makes the schema assertions the suite structurally
-  cannot, and **never reports success for a check it did not run**: it prints
-  "Schema verified." only when every check ran and passed, says which checks failed,
-  and on a driver it cannot read says that nothing was checked. It exits `0` for all
-  three (REQ-findings-exit-zero). Under `--strict` the exit code is three-valued:
-  `0` verified, `1` a check failed, `2` the driver cannot answer. `2` is distinct
-  from `1` because a pipeline must be able to tell "verified wrong" from "not
-  verified" — SQLite is a supported deployment (`DEPLOYMENT.md`), so refusing to run
-  is not the same as a broken schema, and a strict `0` would turn an unverified run
-  into a passing one. See [`input-validation.md`](input-validation.md) REQ-1 and
-  REQ-10 to REQ-12 for what it checks and why nothing else can.
-- **REQ-findings-exit-zero** — A report command exits `0` when it ran, whatever it
-  found: findings are its output, not a failure. Both places operators run commands
-  — System → Commands and Forge's command runner — label any non-zero exit as
-  "Failed", so a dry run that found work to do read as a broken command. Non-zero is
-  for a run that could not do its job: a lookup that doesn't resolve (REQ-2), bad
-  input, or a repair that failed. A report a script may want to gate on takes
-  `--strict`, which makes findings non-zero. `assets:deduplicate`,
-  `assets:verify-integrity` and `assets:backfill-etags` already exited `0`;
-  `assets:audit-content-types` and `db:verify-schema` exited non-zero on findings
-  until this rule.
-- **REQ-audit-content-types** — `assets:audit-content-types` finds stored objects
-  whose served headers disagree with
-  [`upload-policy.md`](upload-policy.md) REQ-content-type-from-extension — objects
-  uploaded before that fix keep the type the uploader chose. It checks every asset,
-  **soft-deleted ones included** (a trashed asset's object stays public), compares
-  the object's `Content-Type` and `Content-Disposition` with what an upload would
-  set today, and flags as **dangerous** any mismatch served inline under an active
-  type (HTML, XHTML, XML, JavaScript, or SVG behind a non-SVG extension). It is a
-  dry-run report by default and exits `0` whatever it finds (REQ-findings-exit-zero);
-  `--strict` makes it exit `1` while any mismatch remains, so a script can tell clean
-  from not. `--fix` rewrites each mismatched object's headers in
-  place — same key, same bytes (s3-storage REQ-1) — records the copy's new ETag on
-  the asset (a former multipart object's composite ETag becomes a plain MD5), and
-  purges the original's URL from Cloudflare when purging is configured. An object
-  that is missing from the bucket is counted, not repaired: that is
-  `assets:verify-integrity`'s job. It also counts **every** asset whose `mime_type`
-  column differs from the type its extension maps to, whether or not its headers
-  match — the direct upload path recorded the sniffed type (`text/x-tex` for a
-  `.tex` S3 serves as `application/x-tex`) — so the dry run's count is exactly the
-  rows `--fix` will change. `--fix` writes that type to the column, one update per
-  type rather than per row; a row whose headers were already right gets no S3 copy
-  and no purge. Only allowlisted extensions are synced: a discovered off-list file
-  (`.bmp`, `.tiff`) keeps its classification instead of becoming
-  `application/octet-stream`. Both column writes (`etag`, `mime_type`) are plain
-  query updates that leave `updated_at` alone: a repair is not an edit, so it fires
-  no model events, writes no audit trail, and doesn't move the asset to the top of
-  the date sort or the TeX template picker. `--strict` counts both kinds of
-  mismatch. `--fix` exits `1` when it could not rewrite an object, with or without
-  `--strict`: that repair failed.
+  and assets carrying a `reference` tag are always skipped regardless of `--force`.
+- **REQ-4** — `lang:safe-update` is the only sanctioned way to refresh laravel-lang
+  translations: it diffs `lang/nl.json` around the underlying `lang:update`, restores any
+  project-owned key the publisher clobbered, and strips the English `lang/en.json` /
+  `lang/en/*.php` files ORCA doesn't ship. See [ADR-009](../decisions/adr-009-project-owns-nl-json.md).
+- **REQ-5** — `reference-tag:create` refuses to repurpose an existing non-reference tag: a
+  collision with a `user`-type tag is skipped with a warning, and the exit code is a failure
+  only when *every* requested name collided.
+- **REQ-6** — `db:verify-schema` makes the schema assertions the suite cannot, and **never
+  reports success for a check it did not run**: "Schema verified." only when every check ran
+  and passed; otherwise it names the failed checks, or says nothing was checked on a driver it
+  cannot read. Exit `0` for all three (REQ-findings-exit-zero); under `--strict`: `0`
+  verified, `1` a check failed, `2` the driver cannot answer. Why: a pipeline must tell
+  "verified wrong" from "not verified" (SQLite is a supported deployment). What it checks:
+  [`input-validation.md`](input-validation.md) REQ-1, REQ-10 to REQ-12.
+- **REQ-findings-exit-zero** — A report command exits `0` when it ran, whatever it found;
+  findings are output, not failure. Why: System → Commands and Forge label any non-zero exit
+  "Failed". Non-zero is for a run that could not do its job (unresolved lookup, bad input, a
+  failed repair). A report a script may gate on takes `--strict`, which makes findings non-zero.
+- **REQ-audit-content-types** — `assets:audit-content-types` finds stored objects whose served
+  headers disagree with [`upload-policy.md`](upload-policy.md) REQ-content-type-from-extension.
+  It checks every asset **including soft-deleted** ones, compares `Content-Type` and
+  `Content-Disposition` with what an upload would set today, and flags as **dangerous** any
+  mismatch served inline under an active type (HTML, XHTML, XML, JavaScript, or SVG behind a
+  non-SVG extension). It also counts every asset whose `mime_type` differs from its
+  extension's type (allowlisted extensions only — off-list files keep their classification).
+  Dry-run by default, exit `0` (REQ-findings-exit-zero); `--strict` exits `1` while either kind
+  of mismatch remains. `--fix` rewrites headers in place (same key, same bytes — s3-storage
+  REQ-1), records the copy's new ETag, purges the URL from Cloudflare when configured, and
+  syncs `mime_type`; rows whose headers were already right get no copy and no purge. Both
+  column writes leave `updated_at` alone (a repair is not an edit: no model events, no audit,
+  no re-sort). A missing object is counted, not repaired. `--fix` exits `1` when it could not
+  rewrite an object.
 
 ## Technical design
 
-### Contract / public interface — grouped by concern
+### Contract / public interface
 
 ```yaml
-# Uploads / assets maintenance
-uploads:cleanup {--hours=24}:
-  # Aborts stale (pending|uploading, no activity past --hours) UploadSession rows
-  # via ChunkedUploadService::abortUpload(); prints an Aborted/Failed/Total table.
-assets:verify-integrity:
-  # Dispatches VerifyAssetIntegrity job per asset id (queue-only; see system-admin.md).
-assets:backfill-etags:
-  # For assets with a null/empty etag, calls S3Service::getObjectMetadata() and
-  # persists the etag; reports Updated/Failed counts.
-assets:deduplicate {--force}:
-  # Groups assets by etag (excluding null/empty), keeps the oldest per group,
-  # skips duplicates carrying a reference tag, soft-deletes the rest under --force.
-assets:audit-content-types {--fix} {--strict}:
-  # REQ-audit-content-types. Assets withTrashed(), chunked by id; one concurrent HEAD
-  # sweep per chunk (S3Service::getObjectHeaders), judged by UploadPolicy::servedHeaderMismatch(). Lists dangerous mismatches first, then
-  # the rest (capped at 100 rows, with a count of the remainder); prints a
-  # Checked/Mismatched/Dangerous/Missing(/Fixed/Failed) table. --fix: per mismatch,
-  # S3Service::repairUploadHeaders() → toBase() update of etag when it changed → one
-  # CloudflareService::purgeUrls() call per 30 URLs. "Database type out of step": every
-  # asset whose mime_type ≠ UploadPolicy::contentType(s3_key), allowlisted extensions
-  # only — counted, not listed; --fix: one toBase() whereIn update per expected type
-  # (ids chunked by 1000), so updated_at is untouched. Exit 0, unless --fix failed to rewrite an object (1);
-  # --strict: also 1 while any mismatch of either kind remains.
-
-# API token lifecycle (Sanctum)
-token:create {email?} {--name=} {--new} {--user-name=}:
-  # Creates a token for an existing user, or --new provisions a role=api user first.
-  # Plaintext token is shown once.
-token:list {--user=} {--role=}:
-  # Lists PersonalAccessToken rows with owning user name/email/role.
-token:revoke {id?} {--user=} {--force}:
-  # Revokes one token by id, or all tokens for --user=email.
-
-# JWT secret lifecycle
-jwt:generate {email} {--force}:
-  # Generates a 64-char random secret; --force required to regenerate an existing one.
-jwt:list:
-  # Lists users with a non-null jwt_secret + whether JWT_ENABLED is on.
-jwt:revoke {email} {--force}:
-  # Clears jwt_secret + jwt_secret_generated_at.
-
-# Two-factor emergency recovery
-two-factor:status {--email=} {--role=} {--enabled} {--disabled}:
-  # Lists users with 2FA status, recovery-code count, enabled-at.
-two-factor:disable {email} {--force}:
-  # Emergency disable: clears secret/confirmed_at via TwoFactorService::disableTwoFactor().
-
-# Passkey (WebAuthn) lifecycle
-passkeys:list {--user=} {--role=}:
-  # Lists registered passkeys with owner + last_used_at.
-passkeys:revoke {id?} {--user=} {--force}:
-  # Revokes by exact credential_id or unambiguous prefix, or all passkeys for --user.
-
-# Reference tags
-reference-tag:create {names?*}:
-  # Pre-creates reference-type tags (normalized: trim + lowercase + dedup) so
-  # editors can attach them from the asset edit page — reference tags are
-  # otherwise API-created only (ADR-012).
-
-# User audit trail
-users:audit {--user=} {--event=} {--limit=50}:
-  # Read-only report over user_audit_logs, newest first. --user matches the subject by
-  # current email OR by the recorded label, so a deleted account's history stays
-  # reachable. --event rejects anything outside created|updated|deleted. The trail has
-  # no UI, so this is the only way to read it — see user-audit-log.md.
-
-# Schema verification (MySQL/MariaDB only — REQ-6)
-db:verify-schema {--strict}:
-  # Reads information_schema and compares the LIVE schema against what the application
-  # believes: every ColumnLimits::CHARS varchar width, every TEXT_BYTES capacity, the
-  # row format (DYNAMIC, or the index and row-size limits collapse), and the byte size
-  # of every non-PRIMARY B-TREE index against InnoDB's 3072-byte key limit. FULLTEXT and
-  # SPATIAL indexes are exempt from that limit — measuring assets_fulltext summed two TEXT
-  # columns to 131072 bytes and failed a schema MySQL had accepted — so they are listed as
-  # exempt rather than dropped, since an unreported exemption reads like a check that passed.
-  # The index check is deliberately generic rather than a list of the known indexes:
-  # those are already pinned by name in tests/Feature/S3KeyWidthTest.php, which SQLite
-  # can run. What SQLite cannot do is add up the bytes — so this is what tells the next
-  # person to widen an indexed column before they meet errno 1071 in production.
-  # Exit 0 always (REQ-findings-exit-zero); the output says verified / N failed / not
-  # verifiable. --strict: 0 verified / 1 failed / 2 not verifiable on this driver.
-
+# Uploads / assets
+uploads:cleanup {--hours=24}            # abort stale pending|uploading UploadSessions via ChunkedUploadService::abortUpload()
+assets:verify-integrity                 # dispatch VerifyAssetIntegrity per asset (queue-jobs.md)
+assets:backfill-etags                   # null/empty etag → S3Service::getObjectMetadata(); Updated/Failed counts
+assets:deduplicate {--force}            # group by etag, keep oldest, skip reference-tagged, soft-delete rest under --force
+assets:audit-content-types {--fix} {--strict}
+  # withTrashed, chunked by id; S3Service::getObjectHeaders + UploadPolicy::servedHeaderMismatch();
+  # dangerous first, list capped at 100; --fix: S3Service::repairUploadHeaders(), toBase() updates,
+  # CloudflareService::purgeUrls() per 30 URLs; mime_type sync one whereIn update per type
+# Sanctum tokens
+token:create {email?} {--name=} {--new} {--user-name=}   # --new provisions a role=api user; plaintext shown once
+token:list {--user=} {--role=}
+token:revoke {id?} {--user=} {--force}                    # one by id, or all for --user
+# JWT secrets
+jwt:generate {email} {--force}          # 64-char secret; --force required to regenerate
+jwt:list                                # users with a jwt_secret + whether JWT_ENABLED
+jwt:revoke {email} {--force}            # clears jwt_secret + jwt_secret_generated_at
+# Two-factor recovery
+two-factor:status {--email=} {--role=} {--enabled} {--disabled}
+two-factor:disable {email} {--force}    # TwoFactorService::disableTwoFactor()
+# Passkeys
+passkeys:list {--user=} {--role=}
+passkeys:revoke {id?} {--user=} {--force}   # exact credential_id or unambiguous prefix, or all for --user
+# Reference tags (ADR-012)
+reference-tag:create {names?*}          # normalized (trim + lowercase + dedup)
+# User audit trail (user-audit-log.md) — the only reader; no UI
+users:audit {--user=} {--event=} {--limit=50}
+  # newest first; --user matches current email OR recorded label; --event ∈ created|updated|deleted
+# Schema (MySQL/MariaDB only — REQ-6)
+db:verify-schema {--strict}
+  # information_schema vs ColumnLimits::CHARS widths, TEXT_BYTES capacities, row format DYNAMIC,
+  # and every non-PRIMARY B-TREE index's byte size vs InnoDB's 3072-byte limit
+  # (FULLTEXT/SPATIAL listed as exempt, not dropped)
 # Translations
-lang:safe-update:
-  # Wraps laravel-lang's lang:update; protects lang/nl.json project keys; removes
-  # published English lang files.
+lang:safe-update                        # REQ-4
 ```
 
 ### Data shapes
@@ -202,18 +122,15 @@ Asset:
 
 ### Layer touchpoints & ordering
 
-Asset-maintenance commands are thin wrappers over existing services
-(`ChunkedUploadService`, `S3Service`) and jobs (`VerifyAssetIntegrity`) — no new
-business logic lives in the command classes themselves. Auth-secret commands
-write directly to `User` columns (`jwt_secret`, `two_factor_*`) or delegate to
-`TwoFactorService`. `lang:safe-update` is the odd one out: it shells into another
-artisan command (`$this->call('lang:update')`) and post-processes the file it
-just wrote, rather than orchestrating a service.
+Asset commands are thin wrappers over services (`ChunkedUploadService`, `S3Service`) and jobs
+— no business logic in the command classes. Auth-secret commands write `User` columns or
+delegate to `TwoFactorService`. `lang:safe-update` calls `lang:update` and post-processes
+the files it wrote.
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: The content-type audit reports objects whose headers disagree with their extension (REQ-audit-content-types)
+Scenario: The content-type audit reports mismatches without rewriting (REQ-audit-content-types)
   Given an asset photo.jpg stored as text/html with no Content-Disposition
   And a trashed asset notes.txt stored as text/plain without attachment
   And an asset logo.png stored correctly as image/png
@@ -222,13 +139,6 @@ Scenario: The content-type audit reports objects whose headers disagree with the
   And nothing is rewritten, and the command exits 0
   When it runs again with --strict
   Then it exits 1
-# Regression: the dry run exited 1 on findings, which System → Commands and Forge show as "Failed".
-# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
-
-Scenario: --fix exits 1 when it could not rewrite an object (REQ-audit-content-types)
-  Given an asset photo.jpg stored as text/html, whose header rewrite fails
-  When assets:audit-content-types --fix runs
-  Then it reports the failure and exits 1
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
 Scenario: The content-type audit exits 0 when every object matches (REQ-audit-content-types)
@@ -237,29 +147,21 @@ Scenario: The content-type audit exits 0 when every object matches (REQ-audit-co
   Then it reports no mismatches, counts the missing object, and exits 0
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
-Scenario: --fix rewrites the headers in place, records the new etag and purges the URL (REQ-audit-content-types)
+Scenario: --fix rewrites headers in place, records the etag and purges (REQ-audit-content-types)
   Given an asset photo.jpg stored as text/html, with a multipart etag
   When assets:audit-content-types --fix runs
   Then its headers are rewritten in place, the asset's etag becomes the copy's etag
   And its URL is purged from Cloudflare, and the command exits 0
+  But when the rewrite fails, it reports the failure and exits 1
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
-Scenario: --fix also gives a repaired asset its extension's mime_type (REQ-audit-content-types)
-  Given an asset diagram.tex stored as text/x-tex inline, with mime_type text/x-tex
-  When assets:audit-content-types --fix runs
-  Then the dry run counts it as a database type out of step as well as a header mismatch
-  And --fix rewrites its headers and its mime_type becomes application/x-tex
-  And its updated_at is unchanged
-# Regression: the dry run left such rows out of the database count although --fix changed them,
-# and both column writes bumped updated_at, reordering the grid's date sort.
-# pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
-
-Scenario: A database type out of step is counted, and --fix syncs it without touching S3 (REQ-audit-content-types)
-  Given an asset diagram.tex served correctly as application/x-tex, download, but with mime_type text/x-tex
-  When assets:audit-content-types runs
-  Then it reports 1 database type out of step, lists no header mismatch, and exits 0 (1 under --strict)
-  When assets:audit-content-types --fix runs
-  Then no object is copied and nothing is purged, its mime_type becomes application/x-tex, and it exits 0
+Scenario: --fix syncs mime_type without touching updated_at (REQ-audit-content-types)
+  Given diagram.tex stored as text/x-tex inline with mime_type text/x-tex
+  And another .tex served correctly but with mime_type text/x-tex
+  When assets:audit-content-types runs, then --fix
+  Then the dry run counts both as database types out of step, and only the first as a header mismatch
+  And --fix sets both mime_types to application/x-tex, copying and purging only the first
+  And updated_at is unchanged
 # pinned by: tests/Feature/Console/AssetMaintenanceCommandTest.php
 
 Scenario: An off-list extension keeps its mime_type (REQ-audit-content-types)
@@ -286,91 +188,44 @@ Scenario: assets:verify-integrity dispatches one job per asset
   Then 3 VerifyAssetIntegrity jobs are pushed
 # pinned by: tests/Feature/Console/VerifyAssetIntegrityCommandTest.php
 
-Scenario: assets:deduplicate dry-run reports without deleting
-  Given 3 assets share one etag and 1 asset has a unique etag
-  When assets:deduplicate runs without --force
-  Then it reports 2 duplicates and 4 assets still exist afterward
+Scenario: assets:deduplicate reports by default and soft-deletes only under --force
+  Given 3 assets share one etag, 1 has a unique etag, and one duplicate carries a reference tag
+  When assets:deduplicate runs without --force, then with --force
+  Then the dry run reports the duplicates and deletes nothing
+  And --force keeps the oldest, soft-deletes the rest, and skips the reference-tagged one
 # pinned by: tests/Feature/DuplicatePreventionTest.php
 
-Scenario: assets:deduplicate --force soft-deletes duplicates, keeping the oldest
-  Given 3 assets share one etag
-  When assets:deduplicate --force runs
-  Then the oldest survives and the other 2 are soft-deleted
-# pinned by: tests/Feature/DuplicatePreventionTest.php
-
-Scenario: assets:deduplicate never deletes a duplicate carrying a reference tag
-  Given a duplicate asset has a reference tag attached
-  When assets:deduplicate --force runs
-  Then that asset is skipped and reported, not soft-deleted
-# pinned by: tests/Feature/DuplicatePreventionTest.php
-
-Scenario: token:create --new provisions a fresh api-role user and a token
-  Given no user exists with the given email
-  When token:create --new --user-name=... runs and the email is supplied at the prompt
-  Then a user with role api is created along with a token
+Scenario: token commands provision and validate their input
+  When token:create --new --user-name=... runs with the email supplied at the prompt
+  Then a role=api user is created along with a token
+  And token:revoke with neither an id nor --user exits 1
 # pinned by: tests/Feature/Console/TokenCommandTest.php
 
-Scenario: token:revoke requires either an id or --user
-  When token:revoke runs with neither argument
-  Then it exits 1
-# pinned by: tests/Feature/Console/TokenCommandTest.php
-
-Scenario: jwt:generate refuses to overwrite an existing secret without --force
-  Given a user already has a jwt_secret
+Scenario: jwt commands guard and clear the secret
+  Given a user with a jwt_secret
   When jwt:generate runs without --force
-  Then it exits 1 and the secret is unchanged
+  Then it exits 1 and the secret is unchanged; with --force the secret changes
+  And jwt:revoke --force nulls jwt_secret and jwt_secret_generated_at
 # pinned by: tests/Feature/Console/JwtCommandTest.php
 
-Scenario: jwt:generate --force regenerates the secret
-  Given a user has jwt_secret "old"
-  When jwt:generate --force runs
-  Then the secret changes
-# pinned by: tests/Feature/Console/JwtCommandTest.php
-
-Scenario: jwt:revoke clears the secret and its generated-at timestamp
-  Given a user has a jwt_secret
-  When jwt:revoke --force runs
-  Then both jwt_secret and jwt_secret_generated_at are null
-# pinned by: tests/Feature/Console/JwtCommandTest.php
-
-Scenario: two-factor:disable clears 2FA state for a user
-  Given a user has 2FA enabled with recovery codes
+Scenario: two-factor commands disable 2FA and validate filters
+  Given a user with 2FA enabled
   When two-factor:disable --force runs
   Then two_factor_secret and two_factor_confirmed_at are cleared
+  And two-factor:status --role=superadmin exits 1 with "Invalid role"
 # pinned by: tests/Feature/Console/TwoFactorCommandTest.php
 
-Scenario: two-factor:status --role rejects an invalid role
-  When two-factor:status --role=superadmin runs
-  Then it exits 1 with an "Invalid role" message
-# pinned by: tests/Feature/Console/TwoFactorCommandTest.php
-
-Scenario: passkeys:revoke matches by credential_id prefix when no exact hit exists
-  Given a passkey with a long credential_id
-  When passkeys:revoke <short-prefix> --force runs
-  Then that passkey is revoked
+Scenario: passkey commands filter and revoke by prefix
+  Given passkeys belonging to different users/roles, one with a long credential_id
+  When passkeys:list --user= / --role= runs, and passkeys:revoke <short-prefix> --force
+  Then only matching passkeys are listed, and the prefixed passkey is revoked
 # pinned by: tests/Feature/PasskeyTest.php
 
-Scenario: passkeys:list filters by user email and by role
-  Given passkeys belonging to different users/roles
-  When passkeys:list --user= or --role= is passed
-  Then only matching passkeys are listed
-# pinned by: tests/Feature/PasskeyTest.php
-
-Scenario: reference-tag:create normalizes and dedups names
-  When reference-tag:create is run with "  LinkedIn  "
-  Then a reference tag named "linkedin" is created (not "LinkedIn")
-# pinned by: tests/Feature/ReferenceTagCreateCommandTest.php
-
-Scenario: reference-tag:create skips collision with an existing non-reference tag
-  Given a tag "collide" already exists with type=user
-  When reference-tag:create is run with names=[collide]
-  Then it exits 1 and the existing tag's type is unchanged
-# pinned by: tests/Feature/ReferenceTagCreateCommandTest.php
-
-Scenario: reference-tag:create succeeds when at least one of several names is created
-  Given "collide" already exists as a user tag and "fresh" does not exist
-  When reference-tag:create runs with names=[collide, fresh]
-  Then it exits 0, "fresh" is created as reference, and "collide" is untouched
+Scenario: reference-tag:create normalizes names and never repurposes a user tag
+  Given a user-type tag "collide"
+  When reference-tag:create runs with "  LinkedIn  ", then [collide], then [collide, fresh]
+  Then "linkedin" is created; [collide] exits 1 leaving its type unchanged
+  And [collide, fresh] exits 0, creating "fresh" as reference
 # pinned by: tests/Feature/ReferenceTagCreateCommandTest.php
 
 Scenario: db:verify-schema declines rather than passing on a driver it cannot read
@@ -391,29 +246,20 @@ Scenario: project translations survive a laravel-lang refresh
   Given lang/nl.json has project-owned overrides of laravel-lang defaults
   When the underlying lang:update publisher would overwrite them
   Then lang:safe-update restores the pre-existing values afterward
-# pinned by: tests/Feature/TranslationIntegrityTest.php (sentinel-key guard; does not invoke lang:safe-update itself — see Open questions)
+# pinned by: tests/Feature/TranslationIntegrityTest.php (guards the outcome only — see Open questions)
 ```
 
 ## Tests & verification
 
-- Feature: `tests/Feature/Console/AssetMaintenanceCommandTest.php` (uploads:cleanup,
-  assets:backfill-etags), `tests/Feature/Console/VerifyAssetIntegrityCommandTest.php`,
-  `tests/Feature/DuplicatePreventionTest.php` (assets:deduplicate),
-  `tests/Feature/Console/TokenCommandTest.php`, `tests/Feature/Console/JwtCommandTest.php`,
-  `tests/Feature/Console/TwoFactorCommandTest.php`, `tests/Feature/PasskeyTest.php`
-  (passkeys:list/revoke), `tests/Feature/ReferenceTagCreateCommandTest.php` —
-  `php artisan config:clear && php artisan test`
-- Feature: `tests/Feature/Console/VerifySchemaCommandTest.php` — REQ-6's refusal to
-  return success on an unverifiable driver, plus the index byte arithmetic, which is
-  pure and therefore the only part of that command SQLite *can* exercise. The checks
-  themselves need a real MariaDB and are run by the command, not by the suite.
+- Feature: `tests/Feature/Console/AssetMaintenanceCommandTest.php`,
+  `tests/Feature/Console/VerifyAssetIntegrityCommandTest.php`,
+  `tests/Feature/DuplicatePreventionTest.php`, `tests/Feature/Console/TokenCommandTest.php`,
+  `tests/Feature/Console/JwtCommandTest.php`, `tests/Feature/Console/TwoFactorCommandTest.php`,
+  `tests/Feature/PasskeyTest.php`, `tests/Feature/ReferenceTagCreateCommandTest.php`,
+  `tests/Feature/Console/VerifySchemaCommandTest.php` (driver refusal + index byte arithmetic;
+  the live checks need MariaDB) — `php artisan config:clear && php artisan test`
 
 ## Open questions / future
 
-- `lang:safe-update` itself (the diff/restore/English-file-removal logic in
-  `App\Console\Commands\LangSafeUpdate`) has no test that invokes the command —
-  `TranslationIntegrityTest` only guards the *outcome* (sentinel keys in
-  `lang/nl.json` matching expected project values), independent of whether
-  `lang:safe-update` ran. A command test that seeds a stale `nl.json`, fakes/stubs
-  `lang:update` mutating it, and asserts the protect+restore+cleanup behavior would
-  close this gap.
+- `lang:safe-update` has no test that invokes it; `TranslationIntegrityTest` guards only the
+  outcome. A command test stubbing `lang:update` would close the gap.

@@ -40,10 +40,13 @@
 // `- **REQ-<id>** — …` bullet; a numeric ID must be frozen in specs/.legacy-req-ids.json
 // (new ones use a kebab-case slug), slugs are unique repo-wide, and every `REQ-<slug>`
 // reference in specs, docs, code and tests resolves to one.
+// Plus lean specs (see "Lean specs" below): size budgets, REQ length, no history
+// phrasing in the contract, template-only sections, no prose copied between specs.
+// `npm run spec:tighten` (argv `tighten`) lowers the budgets; it never raises one.
 // `version` not being a positive integer is a warning, not a failure.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 function git(args, cwd) {
@@ -1102,6 +1105,276 @@ function checkRequirementIds(errors, allMd) {
   }
 }
 
+// ─── Lean specs ──────────────────────────────────────────────────────────────────
+// specs/README.md → "Format rules": a spec is a compiled instruction set, not a
+// dumping ground. These rules hold the shape mechanically, because every bug fix
+// has to touch a spec and prose is the cheapest thing to add:
+//   • size ratchet — each spec stays within its budget in specs/.size-budget.json,
+//     and the whole folder within `total`; a new spec gets `default`. Raising a
+//     budget is a reviewable diff. `npm run spec:tighten` only ever lowers them.
+//   • requirement length — a REQ bullet over REQ_MAX characters fails, unless the
+//     manifest grandfathers it (`reqs`, keyed `<file>#REQ-<id>`, at most its size).
+//   • history — the contract sections state the rule, not the story of how it came
+//     to be. Git and the CHANGELOG hold the story.
+//   • section shape — feature specs use only the template's `##` headings, in the
+//     template's order, with nothing before the title; "Open questions" holds open
+//     questions, not "None" or struck-through resolved items.
+//   • duplication — a run of DUP_WORDS identical prose words in two feature specs
+//     means a fact was copied instead of linked to the spec that owns it.
+
+const BUDGET_FILE = path.join(SPECS, '.size-budget.json');
+const BUDGET_HEADROOM = 1.05; // what `spec:tighten` leaves above the current size
+const BUDGET_SLACK = 1.2; // a budget this far above the file must be tightened
+const REQ_MAX = 800;
+const DUP_WORDS = 30;
+
+const FEATURE_SECTIONS = [
+  'Background / Why',
+  'Requirements',
+  'Technical design',
+  'Visual aids',
+  'Scenarios (BDD)',
+  'Tests & verification',
+  'Open questions / future',
+];
+const HISTORY_SECTIONS = new Set(['Requirements', 'Technical design', 'Scenarios (BDD)', 'Tests & verification']);
+
+// Each pattern names a way history leaks into a contract. They are narrow on purpose:
+// "no longer exists" or "can be used to strip" are present-tense rules, not history.
+const HISTORY_PATTERNS = [
+  [/\b(?:it|this|that|which|they|code|spec|path|check|test|method|requirement) used to\b/i, '"… used to …"'],
+  [/\bused to (?:be|say|send|put|call|fail|throw|exist|build|apply|leave|read|return|run|ship)\b/i, '"used to …"'],
+  [/\bpreviously\b/i, '"previously"'],
+  [/\bfor a (?:long )?while\b/i, '"for a while"'],
+  [/\buntil (?:this|now) (?:rule|fix|change|requirement)\b/i, '"until this fix"'],
+  [/\bis how .{0,60}\bshipped\b/i, '"is how … shipped"'],
+  [/\b(?:was|were) the bug\b/i, '"was the bug"'],
+  [/\bwent unnoticed\b/i, '"went unnoticed"'],
+  [/\bwidened from\b/i, '"widened from" (state the width, not its history)'],
+  [/^#\s*(?:Regression|Was)\b/i, 'a `# Regression:` / `# Was:` comment (the pin line is enough)'],
+  [/~~[^~\n]+~~/, 'struck-through text'],
+  [/\b(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{7,12}\b/, 'a commit hash'],
+  [/(?:^|[\s(])(?:PR )?#\d{2,4}\b/, 'a PR/issue number'],
+];
+
+function readBudget(errors) {
+  if (!existsSync(BUDGET_FILE)) {
+    errors.push('specs/.size-budget.json: missing (run `npm run spec:tighten` to create it)');
+    return null;
+  }
+  try {
+    return JSON.parse(readFileSync(BUDGET_FILE, 'utf8'));
+  } catch (e) {
+    errors.push(`specs/.size-budget.json: not valid JSON (${e.message})`);
+    return null;
+  }
+}
+
+/** Body of each `## ` section, keyed by heading, with the line its heading sits on. */
+function specSections(text) {
+  const out = [];
+  let cur = { name: null, line: 1, lines: [] };
+  text.replace(/\r/g, '').split('\n').forEach((line, i) => {
+    const m = line.match(/^## +(.+?)\s*$/);
+    if (m) {
+      out.push(cur);
+      cur = { name: m[1], line: i + 1, lines: [] };
+    } else {
+      cur.lines.push(line);
+    }
+  });
+  out.push(cur);
+  return out;
+}
+
+/** `[{ id, line, chars }]` for every REQ bullet, continuation lines included. */
+function requirementSizes(text) {
+  const sizes = [];
+  for (const sec of specSections(text)) {
+    if (!/^Requirements(\s|$)/.test(sec.name ?? '')) continue;
+    let cur = null;
+    sec.lines.forEach((line, i) => {
+      const m = line.match(REQ_DEFINITION);
+      if (m) {
+        cur = { id: m[1], line: sec.line + i + 1, chars: 0 };
+        sizes.push(cur);
+      } else if (line.startsWith('- ') || line.startsWith('#')) {
+        cur = null;
+      }
+      if (cur) cur.chars += line.length + 1;
+    });
+  }
+  return sizes;
+}
+
+function checkBudget(errors, allMd) {
+  const budget = readBudget(errors);
+  if (!budget) return;
+  const files = budget.files ?? {};
+  const reqs = budget.reqs ?? {};
+  let total = 0;
+  const present = new Set();
+
+  for (const f of allMd) {
+    const r = rel(f);
+    const bytes = Buffer.byteLength(readFileSync(f, 'utf8'));
+    total += bytes;
+    present.add(r);
+    const cap = files[r] ?? budget.default;
+    if (bytes > cap) {
+      errors.push(`${r}: ${bytes} bytes is over its ${cap}-byte budget (specs/.size-budget.json). ` +
+        'Cut history, restated code and copies of other specs before raising it.');
+    } else if (files[r] && files[r] > Math.ceil(bytes * BUDGET_SLACK)) {
+      errors.push(`${r}: budget ${files[r]} is far above its ${bytes} bytes; run \`npm run spec:tighten\``);
+    }
+  }
+  for (const r of Object.keys(files)) {
+    if (!present.has(r)) errors.push(`specs/.size-budget.json: budget for ${r}, which no longer exists`);
+  }
+  if (total > budget.total) {
+    errors.push(`specs/: ${total} bytes in all is over the ${budget.total}-byte total budget`);
+  }
+
+  for (const f of allMd) {
+    const r = rel(f);
+    if (!r.startsWith('specs/features/') || path.basename(f).startsWith('_')) continue;
+    for (const { id, line, chars } of requirementSizes(readFileSync(f, 'utf8'))) {
+      const allowed = reqs[`${r}#REQ-${id}`] ?? REQ_MAX;
+      if (chars > allowed) {
+        errors.push(`${r}:${line}: REQ-${id} is ${chars} characters (limit ${allowed}). ` +
+          'State the rule; move the reasoning to one "Why:" sentence or an ADR.');
+      }
+    }
+  }
+  for (const key of Object.keys(reqs)) {
+    const [r, req] = key.split('#REQ-');
+    const f = path.join(ROOT, r);
+    const found = existsSync(f) && requirementSizes(readFileSync(f, 'utf8')).find((d) => d.id === req);
+    if (!found) errors.push(`specs/.size-budget.json: grandfathered ${key} no longer exists`);
+    else if (found.chars <= REQ_MAX) errors.push(`specs/.size-budget.json: ${key} is within ${REQ_MAX} now; drop its entry`);
+  }
+}
+
+function checkLeanShape(errors, allMd) {
+  for (const f of allMd) {
+    const r = rel(f);
+    if (!r.startsWith('specs/features/') || path.basename(f).startsWith('_')) continue;
+    const text = readFileSync(f, 'utf8');
+    const sections = specSections(text);
+
+    // Only the title may precede the metadata block: no HTML comments, no notes.
+    const pre = sections[0].lines.filter((l) => l.trim() !== '');
+    if (!pre.length || !/^# /.test(pre[0])) errors.push(`${r}:1: the file must start with its \`# Title\``);
+
+    let last = -1;
+    for (const sec of sections.slice(1)) {
+      const at = FEATURE_SECTIONS.indexOf(sec.name);
+      if (at === -1) {
+        errors.push(`${r}:${sec.line}: \`## ${sec.name}\` is not a template section (${FEATURE_SECTIONS.join(' · ')}). ` +
+          'Fold it into one of them, or use a `###` subsection.');
+        continue;
+      }
+      if (at < last) errors.push(`${r}:${sec.line}: \`## ${sec.name}\` is out of template order`);
+      last = Math.max(last, at);
+
+      if (sec.name === 'Open questions / future') {
+        const body = sec.lines.join('\n').trim();
+        if (!body || /^(?:-\s*)?(?:none\b|n\/a\b|nothing open)/i.test(body)) {
+          errors.push(`${r}:${sec.line}: an empty or "None" Open questions section; delete the section instead`);
+        }
+      }
+
+      if (HISTORY_SECTIONS.has(sec.name)) {
+        sec.lines.forEach((line, i) => {
+          for (const [re, what] of HISTORY_PATTERNS) {
+            if (re.test(line)) {
+              errors.push(`${r}:${sec.line + i + 1}: ${what} in \`## ${sec.name}\`. ` +
+                'A spec states the contract, not its history; that belongs in the commit message or CHANGELOG.');
+              break;
+            }
+          }
+        });
+      }
+    }
+  }
+}
+
+/** Words of a spec's own prose: no fenced blocks, headings, metadata or link targets. */
+function proseWords(text) {
+  const words = [];
+  let fenced = false;
+  for (const line of text.replace(/\r/g, '').split('\n')) {
+    if (/^\s*```/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced || line.startsWith('#')) continue;
+    words.push(...line.replace(/\]\([^)]*\)/g, ']').toLowerCase().split(/[^a-z0-9_]+/).filter(Boolean));
+  }
+  return words;
+}
+
+function checkDuplicateProse(errors, allMd) {
+  const owners = new Map(); // shingle -> first spec seen with it
+  const reported = new Set();
+  for (const f of allMd) {
+    const r = rel(f);
+    if (!r.startsWith('specs/features/') || path.basename(f).startsWith('_')) continue;
+    const words = proseWords(readFileSync(f, 'utf8'));
+    const seen = new Set();
+    for (let i = 0; i + DUP_WORDS <= words.length; i++) {
+      const key = words.slice(i, i + DUP_WORDS).join(' ');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const other = owners.get(key);
+      if (!other) {
+        owners.set(key, r);
+      } else if (other !== r && !reported.has(`${other}|${r}`)) {
+        reported.add(`${other}|${r}`);
+        errors.push(`${r}: repeats ${DUP_WORDS}+ words of ${other} ("${words.slice(i, i + 8).join(' ')} …"). ` +
+          'Keep the fact in the spec that owns it and link to it.');
+      }
+    }
+  }
+}
+
+/** `npm run spec:tighten` — lower budgets to the current size + headroom; never raise one. */
+function tighten() {
+  const allMd = walk(SPECS).filter((f) => f.endsWith('.md'));
+  let old = {};
+  try {
+    old = JSON.parse(readFileSync(BUDGET_FILE, 'utf8'));
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e; // a missing manifest is created; a broken one is not overwritten
+  }
+  const round = (n) => Math.ceil((n * BUDGET_HEADROOM) / 100) * 100;
+  const files = {};
+  let total = 0;
+  for (const f of allMd.sort()) {
+    const r = rel(f);
+    const bytes = Buffer.byteLength(readFileSync(f, 'utf8'));
+    total += bytes;
+    const want = round(bytes);
+    files[r] = old.files?.[r] ? Math.min(old.files[r], Math.max(want, bytes)) : want;
+  }
+  const reqs = {};
+  for (const [key, allowed] of Object.entries(old.reqs ?? {})) {
+    const [r, req] = key.split('#REQ-');
+    const f = path.join(ROOT, r);
+    const found = existsSync(f) && requirementSizes(readFileSync(f, 'utf8')).find((d) => d.id === req);
+    if (found && found.chars > REQ_MAX) reqs[key] = Math.min(allowed, found.chars);
+  }
+  const next = {
+    $comment: 'Size ratchet for specs/ (scripts/spec-lint.mjs → "Lean specs"). Raise an entry only with a reason in the PR; `npm run spec:tighten` lowers them.',
+    default: old.default ?? 15000,
+    total: old.total ? Math.min(old.total, round(total)) : round(total),
+    files,
+    reqs,
+  };
+  writeFileSync(BUDGET_FILE, JSON.stringify(next, null, 2) + '\n');
+  process.stdout.write(`spec:tighten: ${Object.keys(files).length} budgets written, total ${next.total}.\n`);
+}
+
 function lint(failExit) {
   const errors = [];
   const warnings = [];
@@ -1207,6 +1480,9 @@ function lint(failExit) {
   checkDocTree(errors);
   checkManualParity(errors);
   checkRequirementIds(errors, allMd);
+  checkBudget(errors, allMd);
+  checkLeanShape(errors, allMd);
+  checkDuplicateProse(errors, allMd);
 
   if (warnings.length) {
     process.stdout.write(`spec-lint: ${warnings.length} warning(s):\n` +
@@ -1248,6 +1524,8 @@ async function runHook() {
 
 if ((process.argv[2] || '') === 'hook') {
   runHook();
+} else if (process.argv[2] === 'tighten') {
+  tighten();
 } else {
   lint(1);
 }

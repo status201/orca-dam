@@ -17,15 +17,11 @@ source:
 
 ## Background / Why
 
-ORCA can auto-tag uploaded images using AWS Rekognition's label detection, so
-editors don't have to hand-tag every asset. Because Rekognition is a paid,
-latency-bearing external call, tagging runs in the background (a queued job)
-after upload rather than blocking the response, and every layer is built to
-degrade gracefully: disabled by config, non-image/GIF assets are skipped
-up front, and any AWS failure is caught, logged, and swallowed rather than
-surfacing to the uploader. Labels are optionally translated (AWS Translate) so
-the DAM's tag vocabulary matches the app's configured locale instead of always
-being English.
+ORCA can auto-tag uploaded images with AWS Rekognition label detection so editors don't hand-tag
+every asset. Rekognition is a paid, latency-bearing external call, so tagging runs as a queued
+job after upload, and every layer degrades gracefully: disabled by config, non-image/GIF assets
+skipped up front, AWS failures logged and swallowed. Labels are optionally translated (AWS
+Translate) so tags match the configured language.
 
 ## Requirements
 
@@ -53,7 +49,7 @@ being English.
   attempt because AWS is unreachable.
 - **REQ-8** — Tagging can be triggered two ways: automatically after upload
   (background, `afterResponse()` dispatch) and manually per-asset via
-  `POST /assets/{asset}/ai-tag` (named limiter `ai-tag`, 30/min per user — see
+  `POST /assets/{asset}/ai-tag` (named limiter `ai-tag` — see
   [`upload-policy.md`](upload-policy.md) REQ-7).
 
 ## Technical design
@@ -64,42 +60,32 @@ being English.
 App\Services\RekognitionService:
   isEnabled(): bool
   detectLabels(string $s3Key, ?float $minConfidence = null): array<{name, confidence}>
-    # [] if disabled; catches AWS exceptions -> logs -> []
+    # [] if disabled; AWS exceptions -> log -> []
   detectText(string $s3Key): array<string>       # LINE-type detections with confidence > 80
   autoTagAsset(Asset $asset): array<{name, confidence}>
-    # [] if !$asset->isImage(); else detectLabels() -> Tag::resolveAiTagIds(names) (one lookup)
-    # -> Asset::syncTagsWithAttribution($tagIds, 'ai')
+    # [] if !isImage(); else detectLabels() -> Tag::resolveAiTagIds(names) -> syncTagsWithAttribution($ids, 'ai')
 
 App\Jobs\GenerateAiTags implements ShouldQueue:
   __construct(public Asset $asset)
-  handle(RekognitionService $rekognitionService): void
-    # returns early if !isImage() or mime_type === 'image/gif'
-    # try { autoTagAsset() } catch (\Exception $e) { Log::error(...) }  -- never rethrows
-
-App\Services\AssetProcessingService::processImageAsset(Asset $asset, bool $dispatchAiTagging = true): void
-    # after thumbnail + resize generation: if ($dispatchAiTagging && $rekognitionService->isEnabled())
-    #   GenerateAiTags::dispatch($asset)->afterResponse()
+  handle(RekognitionService): void   # early return if !isImage() or image/gif; catches + logs, never rethrows
 
 App\Http\Controllers\AssetReplaceController::generateAiTags(Asset $asset)
-    # POST /assets/{asset}/ai-tag  (route: assets.ai-tag, throttle:ai-tag — 30/min)
-    # authorize('update', $asset); 302 + flash 'error' if !isImage() or !rekognitionService->isEnabled()
-    # calls autoTagAsset() SYNCHRONOUSLY (not queued) and redirects with a success/warning/error flash
+  # POST /assets/{asset}/ai-tag (assets.ai-tag, throttle:ai-tag); authorize('update', $asset);
+  # 302 + flash 'error' if !isImage() or Rekognition disabled; else autoTagAsset() SYNCHRONOUSLY
+  # and redirect with a success/warning/error flash
 ```
 
-`GenerateAiTags` and the manual `generateAiTags` controller action both end up
-calling `RekognitionService::autoTagAsset()`, but through different paths: the
-job runs on the queue (async, dispatched from `AssetProcessingService` after
-every image upload/replace when Rekognition is enabled), while the controller
-action runs inline within the request (synchronous "regenerate tags now" button
-on the asset edit page) and surfaces a translated flash message instead of
-silently logging.
+The automatic path is dispatched by `AssetProcessingService::processImageAsset()` after every
+image upload/replace ([`asset-upload.md`](asset-upload.md) owns that contract). Tag resolution
+(`Tag::resolveAiTagIds()` — reuses an existing tag of any type, creates only missing ones as
+`ai`) and pivot attribution are owned by [`tags.md`](tags.md).
 
 ### Data shapes
 
 ```yaml
 detectLabels() result item:
   name: string        # lowercased, translated if target language != en
-  confidence: float    # 0-100, AWS-reported confidence
+  confidence: float    # 0-100, AWS-reported
 
 Settings consulted (Setting::get, live per call — see settings.md):
   rekognition_max_labels: integer      # default 3
@@ -110,34 +96,17 @@ Settings consulted (Setting::get, live per call — see settings.md):
 ### Layer touchpoints & ordering
 
 ```
-Upload/replace succeeds
-  -> AssetProcessingService::processImageAsset()
-       -> (thumbnail + resize generation, unrelated to this spec)
-       -> if Rekognition enabled: GenerateAiTags::dispatch($asset)->afterResponse()
-            (queue: sync in tests per ADR-008; real queue worker in prod)
-  -> GenerateAiTags::handle()
-       -> guards: isImage() / not GIF
-       -> RekognitionService::autoTagAsset($asset)
-            -> RekognitionService::detectLabels($asset->s3_key)
-                 -> AWS Rekognition detectLabels()  (S3Object reference, no local file read)
-                 -> per label: if target language != 'en', AWS Translate::translateText()
-            -> Tag::resolveAiTagIds(label names): one lookup, creates only the missing ones as
-               type='ai', reuses an existing tag of any type (tags.md REQ-6)
-            -> Asset::syncTagsWithAttribution($tagIds, 'ai')   (tags.md)
-
-Manual re-tag:
-  POST /assets/{asset}/ai-tag -> AssetReplaceController::generateAiTags()
-    -> authorize('update', $asset) -> same autoTagAsset() call, synchronously, with a flash redirect
+processImageAsset() → [Rekognition enabled] GenerateAiTags::dispatch($asset)->afterResponse()
+  → GenerateAiTags::handle() → guards (isImage, not GIF) → autoTagAsset()
+      → detectLabels($asset->s3_key)  (S3Object reference, no local read; Translate per label if != en)
+      → Tag::resolveAiTagIds() → syncTagsWithAttribution($ids, 'ai')
+Manual: POST /assets/{asset}/ai-tag → same autoTagAsset(), synchronously, flash redirect
 ```
 
 ### Persistence
 
-- No dedicated table — results land as `Tag` rows (`type = 'ai'` for newly
-  created tags only; an existing tag of any other type is reused unchanged,
-  per `Tag::resolveTagIds`'s "don't change existing type" rule) and
-  `asset_tag` pivot rows with `attached_by = 'ai'`.
-- Nothing about the Rekognition/Translate call itself is persisted (no raw AWS
-  response caching) — a re-run always calls AWS fresh.
+Results land only as `Tag` rows and `asset_tag` pivots (`attached_by = 'ai'`). No Rekognition or
+Translate response is cached — a re-run always calls AWS fresh.
 
 ## Visual aids
 
@@ -148,16 +117,9 @@ aws_sdk: aws/aws-sdk-php  # ^3.379 — Rekognition::detectLabels/detectText, Tra
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: Rekognition is disabled by config
+Scenario: Rekognition disabled by config short-circuits every call
   Given services.aws.rekognition_enabled is false
-  When RekognitionService::isEnabled() is checked
-  Then it returns false
-# pinned by: tests/Unit/Services/RekognitionServiceTest.php
-
-Scenario: detectLabels/detectText return empty arrays when disabled, without calling AWS
-  Given Rekognition is disabled
-  When detectLabels() or detectText() is called
-  Then both return []
+  Then isEnabled() is false and detectLabels()/detectText() return [] without calling AWS
 # pinned by: tests/Unit/Services/RekognitionServiceTest.php
 
 Scenario: autoTagAsset skips non-image assets
@@ -166,22 +128,15 @@ Scenario: autoTagAsset skips non-image assets
   Then it returns [] and no tags are attached
 # pinned by: tests/Unit/Services/RekognitionServiceTest.php
 
-Scenario: The queued job calls autoTagAsset for image assets
-  Given an image asset with mime_type image/jpeg
+Scenario Outline: The queued job tags images only
+  Given an asset with mime_type <mime>
   When GenerateAiTags::handle() runs
-  Then RekognitionService::autoTagAsset() is called exactly once with that asset
-# pinned by: tests/Unit/Jobs/GenerateAiTagsTest.php
-
-Scenario: The queued job skips non-image assets
-  Given a PDF asset
-  When GenerateAiTags::handle() runs
-  Then RekognitionService::autoTagAsset() is never called
-# pinned by: tests/Unit/Jobs/GenerateAiTagsTest.php
-
-Scenario: The queued job skips GIF images (Rekognition does not support GIF)
-  Given an asset with mime_type image/gif
-  When GenerateAiTags::handle() runs
-  Then RekognitionService::autoTagAsset() is never called
+  Then RekognitionService::autoTagAsset() is called <calls>
+  Examples:
+    | mime            | calls          |
+    | image/jpeg      | exactly once   |
+    | application/pdf | never          |
+    | image/gif       | never          |
 # pinned by: tests/Unit/Jobs/GenerateAiTagsTest.php
 
 Scenario: The queued job swallows a Rekognition exception instead of failing the job
@@ -198,29 +153,13 @@ Scenario: Manual AI tagging is rate-limited
 
 ## Tests & verification
 
-- Unit: `tests/Unit/Services/RekognitionServiceTest.php` — `isEnabled`,
-  `detectLabels`/`detectText` disabled-path short-circuits, `autoTagAsset`
-  non-image guard.
-- Unit: `tests/Unit/Jobs/GenerateAiTagsTest.php` — job guards (image/GIF),
-  exception swallowing, delegation to `RekognitionService::autoTagAsset`
-  (mocked).
-- Feature: `tests/Feature/SecurityRemediationTest.php` — confirms
-  `assets.ai-tag` is throttled.
-- Run: `php artisan config:clear && php artisan test tests/Unit/Services/RekognitionServiceTest.php tests/Unit/Jobs/GenerateAiTagsTest.php`
+- Unit: `tests/Unit/Services/RekognitionServiceTest.php`, `tests/Unit/Jobs/GenerateAiTagsTest.php`
+- Feature: `tests/Feature/SecurityRemediationTest.php`
+- Run: `php artisan config:clear && php artisan test`
 
 ## Open questions / future
 
-- No test in the suite exercises `RekognitionService::detectLabels()`'s
-  *enabled* path against a mocked `RekognitionClient` (label translation,
-  confidence filtering, the `strtolower()` normalization, or the
-  `Log::info` call per detected label) — coverage stops at the disabled
-  short-circuit and the job-level integration via a mocked
-  `RekognitionService`. Same gap for `detectText()`'s enabled path and for
-  `translateText()`/`getTranslateClient()`'s language-switch behaviour. This is
-  a coverage gap, not a documented behaviour — flagged here rather than
-  pinned to a nonexistent test.
-- `AssetReplaceController::generateAiTags` (the manual re-tag button) has no
-  dedicated Feature test found in `tests/Feature/` beyond the throttle
-  assertion in `SecurityRemediationTest.php` — its authorization check, the
-  "not an image" / "Rekognition not enabled" flash-redirect branches, and the
-  success/warning/error message selection are otherwise unpinned.
+- Coverage gap: no test exercises the *enabled* paths of `detectLabels()`/`detectText()` against
+  a mocked client (translation, confidence filtering, lowercasing).
+- Coverage gap: `AssetReplaceController::generateAiTags` has no Feature test beyond the throttle
+  assertion — authorization and the flash branches are unpinned.

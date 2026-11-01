@@ -41,20 +41,13 @@ Every feature spec aims to cover, in roughly this order:
 > use their own Context → Decision → Alternatives → Consequences shape
 > (`decisions/_adr-template.md`).
 
-## ORCA is the shape SDD assumes — concept mapping
+## ORCA is the shape SDD assumes
 
-The general SDD literature assumes a backend with a database and a REST API. ORCA
-DAM **is exactly that shape**, so the usual spec ingredients map 1:1 onto what the
-repo actually has — no translation needed:
-
-| General SDD concept   | ORCA DAM equivalent                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| Database schema       | `database/migrations/` + the Eloquent models (`Asset`, `Tag`, `User`, …) + the `settings` table |
-| API contract          | `routes/api.php` + `routes/web.php` + Policy abilities + the controllers' request/response shapes |
-| Persistence / model   | MariaDB tables, the S3 key layout (`assets/{folder}/{uuid}.{ext}`), `users.preferences` |
-| System diagram        | request → middleware → controller → service → S3 / queue                                 |
-
-See [`architecture.md`](architecture.md) for the system-wide version of all four.
+The usual SDD ingredients map 1:1 onto the repo: database schema → `database/migrations/` +
+models + the `settings` table; API contract → `routes/*.php` + policy abilities + controller
+request/response shapes; persistence → MariaDB, the S3 key layout, `users.preferences`; system
+diagram → request → middleware → controller → service → S3 / queue. See
+[`architecture.md`](architecture.md) for the system-wide version.
 
 ## Specs vs. the existing docs
 
@@ -92,6 +85,24 @@ and indent costs tokens and latency.
 - Don't restate things that belong in `CLAUDE.md` or code comments verbatim; link
   to them. Specs are standalone enough to read on their own, but they should not
   duplicate the entire conventions list — point at it.
+
+What stays in a feature spec, and what goes (`spec-lint` enforces the bold parts):
+
+- **Requirements** — the rule, in a few lines, plus at most one "Why:" sentence when it
+  stops someone from "fixing" a deliberate choice. **No history**: how it used to work,
+  how a bug was found, PR numbers. That is what the commit message and CHANGELOG are for.
+- **Technical design** — the public surface (routes, public methods, JSON shapes, columns,
+  cache keys). Not private methods, step-by-step walkthroughs of the code, or verbatim
+  validation rules and config files; link to the symbol.
+- **Scenarios** — one per distinct behaviour; fold per-role or per-field variants into a
+  `Scenario Outline`. A regression scenario is Given/When/Then plus its pin line, **no
+  `# Regression:` story**.
+- **One owner per fact** — when two features share a contract, one spec states it and the
+  other links. **Copied prose fails the lint.**
+- **Open questions** hold open questions. **No "None" section**; delete it. No struck-through
+  "Resolved" items.
+- **Template sections only**, in template order. **Each spec stays within its size budget**
+  (`specs/.size-budget.json`), and a REQ within 800 characters.
 
 ## BDD — scenarios in Gherkin
 
@@ -194,17 +205,12 @@ test/style/doc edits need no spec (see exemptions below).
 
 **Bump the spec's `version:` when its contract changes** — that is, when
 `## Requirements` or `## Technical design` changes. It is a plain integer counting
-contract revisions, and it is enforced (see "Enforcement & exemptions"), because for a
-long time it was a comment in the template that nothing checked: 45 of 47 specs sat at
-`1` while their requirements were rewritten underneath them.
+contract revisions, and it is enforced (see "Enforcement & exemptions").
 
 Editing anything **else** must *not* bump it — `## Background / Why`,
 `## Scenarios (BDD)`, `## Tests & verification`, `## Open questions / future`, or a
-`status:` transition. This is deliberate and load-bearing for the bug-fix flow above:
-that flow prescribes adding a **regression scenario**, so counting scenarios as contract
-changes would force a bump on nearly every fix and the number would stop meaning
-anything. The corollary is that fixing a *wrong requirement* does bump, because the
-documented contract really did change even when behaviour did not.
+`status:` transition. This keeps the bug-fix flow's regression scenario free; conversely,
+fixing a *wrong requirement* does bump, because the documented contract changed.
 
 The `/feature`, `/fix`, and `/spec` slash commands run these flows.
 
@@ -216,33 +222,25 @@ SDD is enforced by `scripts/sdd-guard.mjs`, wired as Claude Code hooks
 - **PreToolUse** blocks an `Edit`/`Write` to production code when no spec changed.
 - **Stop** blocks finishing a turn whose diff changed production code without specs,
   **or** changed a feature spec's contract without incrementing its `version:`.
-- **CI** fails a PR with the same two rules (also catches non-Claude agents + direct
+- **Stop** and **CI** also fail when an `accepted` ADR's body was rewritten: ADRs are
+  append-only, so only `status:` / `amended_by:` lines and an added `> Amended by ADR-NNN`
+  note may change.
+- **CI** fails a PR with the same rules (also catches non-Claude agents + direct
   commits to `main`).
 - **`npm run spec:version`** runs the version rule on its own against the base ref.
 
 The version rule diffs the `## Requirements` and `## Technical design` sections of each
-changed `specs/features/*.md` against the base ref, so it is blind to line-number shifts
-and to edits anywhere else in the file. A **new** spec is skipped (there is no previous
-contract to have changed), and so is a rename. Both rules share the bypass below — a typo
-inside a `REQ-` line is the known false positive and that is its answer. Two scope limits
-worth knowing: `recipes/` carry a `version:` but follow the leaner playbook shape with no
-contract section for the rule to read, and ADRs carry no `version:` at all (they are
-superseded, not revised). `spec-lint` requires the key on every feature spec, so the gate
-cannot be disabled by deleting it.
+changed `specs/features/*.md` against the base ref. New and renamed specs are skipped; a typo
+inside a `REQ-` line is the known false positive (use the bypass below). Recipes carry a
+`version:` but no contract section to read; ADRs carry none (they are superseded, not revised).
+`spec-lint` requires the key on every feature spec, so the gate cannot be disabled by deleting it.
 
-**Requirement IDs.** A new requirement gets a kebab-case slug that summarises it:
-`- **REQ-<kebab-slug>** — …`. The slug is lowercase, at least two words, starts
-with a letter, is at most 60 characters, and is unique across all specs, so a bare
-citation in a code comment names exactly one requirement. The numeric IDs that existed
-when slugs were introduced stay as they are, frozen in `.legacy-req-ids.json`; no new
-number may be added, and `REQ-3a`-style inserts are no longer needed. The manifest is
-never regenerated, only shrunk (a stale entry fails), so a deleted number can't come
-back meaning something else. `spec-lint` enforces all of this and also resolves every
-`REQ-<slug>` citation in specs, root docs, `app/`, `routes/`, `config/`,
-`database/`, `resources/`, `tests/` and `scripts/`. Legacy numeric citations are
-not resolved. For an illustration in docs, use the reserved `example-` prefix,
-which is never resolved and can't be defined. Renaming a slug is a contract change,
-so it bumps `version:`. See [ADR-018](decisions/adr-018-slug-requirement-ids.md).
+**Requirement IDs.** A new requirement gets a kebab-case slug: `- **REQ-<kebab-slug>** — …`
+(lowercase, ≥2 words, starts with a letter, ≤60 chars, unique across all specs). Numeric IDs are
+frozen in `.legacy-req-ids.json`, which only ever shrinks; no new number may be added.
+`spec-lint` resolves every `REQ-<slug>` citation in specs, root docs and code; the `example-`
+prefix is reserved for illustrations. Renaming a slug is a contract change (bumps `version:`).
+See [ADR-018](decisions/adr-018-slug-requirement-ids.md).
 
 **Gated (needs a spec):** `app/**`, `routes/**`, `database/migrations/**`,
 `config/**` (except Laravel-published framework configs), `resources/js/**`
@@ -258,43 +256,30 @@ config files Laravel publishes (`config/app.php`, `auth`, `cache`, `database`,
 (a gitignored sentinel) locally, or put `[skip-sdd]` in a commit message / add the
 `skip-sdd` PR label for CI.
 
-> The guard checks that a spec *changed*, not that it is *good* — spec quality is
-> the human review gate. A companion check, `scripts/spec-lint.mjs`
-> (`npm run spec:lint`), validates spec *structure*: a metadata block, `id`
-> matching the filename, a valid `status`, a `## Tests & verification` section on
-> every feature/recipe, and that every spec/ADR is listed in this folder map **and**
-> the `decisions/` index.
->
-> **Test paths.** Every `tests/…` path a spec names must resolve — both on a
-> `# pinned by:` line and in a backticked `## Tests & verification` bullet. The
-> bullets went unchecked for a while, which let a spec keep advertising coverage
-> after the test file was gone. Paths under `## Open questions / future` are
-> exempt: that section is where the method says to record coverage that does *not*
-> exist yet.
->
-> It also checks documented *facts* don't rot, over `specs/**` **and** the root docs
-> (`README.md`, `CLAUDE.md`, `QUICK_REFERENCE.md`, `SETUP_GUIDE.md`,
-> `DEPLOYMENT.md`, `CHANGELOG.md`, `.claude/agents/*.md`) — the same wrong number
-> used to sit in three files at once:
-> - **Dependency versions** must match the **constraints** in `composer.json` /
->   `package.json` (never `composer.lock` — a routine `composer update` inside a
->   range must not fail the build, only a real constraint change). A version may be
->   coarser than the constraint (`^13` for `^13.0`) but never contradict it.
-> - **Hand-counted totals**: feature specs, ADRs, Alpine modules, services, console
->   commands, `*Test.php` files, and the Playwright test + spec-file counts. The E2E
->   total counts loop-generated cases, not just literal `test(` calls.
-> - **The file tree** in `QUICK_REFERENCE.md` — the repo's only one — must name every
->   `app/Services/` and `app/Console/Commands/` entry and every tracked top-level
->   directory, and nothing that has been deleted.
-> - **Manual parity**: `GEBRUIKERSHANDLEIDING.md` must mirror `USER_MANUAL.md`'s
->   heading-level sequence, so the Dutch manual cannot silently fall behind.
->
-> `CHANGELOG.md` is checked only inside `[Unreleased]`; released entries are a
-> historical record of what shipped then and must not be rewritten.
->
-> It runs in CI (PRs **and** pushes to `main`) **and** unconditionally as a local
-> `Stop` hook. Hooks can be disabled by editing `.claude/settings.json`, so CI is
-> the real cross-tool backstop.
+The guard checks that a spec *changed*, not that it is *good* — quality is the human review
+gate. `scripts/spec-lint.mjs` (`npm run spec:lint`) checks, over `specs/**` and the root docs
+(`README.md`, `CLAUDE.md`, `QUICK_REFERENCE.md`, `SETUP_GUIDE.md`, `DEPLOYMENT.md`,
+`CHANGELOG.md` `[Unreleased]` only, `.claude/agents/*.md`):
+
+- **Structure** — metadata block, `id` matching the filename, valid `status`, an integer
+  `version` on feature specs, a `## Tests & verification` section on every feature/recipe, and
+  every spec/ADR listed in the folder map below and the `decisions/` index.
+- **Test paths** — every `tests/…` path on a `# pinned by:` line or in a backticked
+  `## Tests & verification` bullet resolves (`## Open questions / future` is exempt).
+- **Dependency versions** match the *constraints* in `composer.json` / `package.json` (never the
+  lockfiles); coarser is fine, contradicting is not.
+- **Hand-counted totals** — feature specs, ADRs, Alpine modules, services, console commands,
+  `*Test.php` files, Pest tests, and Playwright tests + spec files (loop-generated cases counted).
+- **The `QUICK_REFERENCE.md` file tree** names every `app/Services/` and `app/Console/Commands/`
+  entry and every tracked top-level directory, and nothing deleted.
+- **Manual parity** — `GEBRUIKERSHANDLEIDING.md` mirrors `USER_MANUAL.md`'s heading sequence.
+- **Lean specs** — the bold rules in "Format rules" above: size budgets per spec and in total
+  (`specs/.size-budget.json`, a ratchet: raising an entry is a reviewable diff, and
+  `npm run spec:tighten` only lowers them), REQ length, history phrasing in the contract and
+  scenario sections, template-only `##` sections, no empty Open questions, and no 30-word run of
+  prose shared by two feature specs.
+
+It runs in CI (PRs and pushes to `main`) and as a local `Stop` hook; CI is the backstop.
 
 ## Folder map
 
@@ -397,6 +382,7 @@ specs/
     adr-018-slug-requirement-ids.md             ·  new REQs get slug IDs; numeric ones frozen
     adr-019-tailwind-4-css-first.md             ·  Tailwind v4, CSS-first config; v3 defaults kept
   .legacy-req-ids.json ← the frozen numeric REQ IDs (lint-checked; only ever shrinks)
+  .size-budget.json    ← per-spec + total size budgets (lint-checked ratchet; `npm run spec:tighten`)
 ```
 
 > New features get their own spec (copy `features/_feature-template.md`) as they're

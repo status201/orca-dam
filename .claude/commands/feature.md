@@ -21,4 +21,8 @@ expected).
 4. **Test** — add tests mapping to each Gherkin scenario (`tests/Feature/` and/or
    `tests/Unit/`). Run `./vendor/bin/pint && php artisan config:clear && php artisan test`.
 5. **Reconcile** — set `status: implemented`; make the spec match what shipped, and
-   add the new spec to `specs/README.md`'s folder map.
+   add the new spec to `specs/README.md`'s folder map. Reconciling means *replacing*
+   superseded text, not appending to it: delete what no longer holds, link to the spec
+   that owns a fact instead of restating it, and keep the build story out (it goes in the
+   commit message). Run `npm run spec:lint` — it enforces the size budget and lean rules
+   (specs/README.md → "Format rules").

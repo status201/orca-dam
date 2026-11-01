@@ -42,28 +42,24 @@ four narrow services (`SystemService`, `ArtisanCommandRunner`, `QueueService`,
 - **REQ-suggested-commands-runnable** — Every suggested command card passes the
   same allowlist check `executeCommand` applies (`ArtisanCommandRunner::isAllowed()`, with
   any `<placeholder>` argument removed), so a card can never lead to a rejection.
-  The cards fill a three-column grid; three were added together — the
-  content-type audit (dry run), `db:verify-schema` and `token:list` — to keep the
-  last row full.
+  The cards include the content-type audit (dry run), `db:verify-schema` and `token:list`.
 - **REQ-3** — Setting updates (`updateSetting`) validate known keys against
   per-key closures (ranges, regex, enum membership) in `App\Support\SettingRules`
   before writing through `Setting::set()`; unknown keys skip validation and are written
   as-is. A new setting adds its rule there, not to the controller.
 - **REQ-diagnostics-without-s3** — The System page and its endpoints work when the S3
   configuration is missing or broken: `SystemService` resolves `S3Service` only when an S3
-  check runs, and reports a failure to construct it as that check's error. Building the
-  client eagerly (`AWS_BUCKET` unset makes its typed properties throw) took every System
-  route down with it — the log tail, settings and command runner an admin needs to fix the
-  configuration.
+  check runs, and reports a failure to construct it as that check's error. Why: these are
+  the tools an admin needs to fix a broken S3 configuration.
 - **REQ-s3-test-reports-failure** — The "Test S3 connection" check (`testS3`) reports
-  `success: false` with the error when the bucket cannot be listed. It used to call
-  `S3Service::listObjects()`, which logs and swallows every failure (ADR-010), so it
-  reported success for a wrong bucket, bad credentials or an unreachable endpoint — the
-  three things it exists to catch. It now asks `S3Service::connectionError()`.
+  `success: false` with the error when the bucket cannot be listed, via
+  `S3Service::connectionError()` — not `listObjects()`, which swallows failures (ADR-010).
 - **REQ-4** — The web test runner never blocks the HTTP request: `runTests` seeds a
   `queued` cache entry and dispatches `RunTestSuiteJob` on the queue; the browser
   polls `runTestsStatus` and can call `runTestsAbort` to SIGTERM/`taskkill` the
-  underlying PHP CLI subprocess.
+  underlying PHP CLI subprocess. `RunTestSuiteJob` is `tries=1` (a flaky run must not
+  silently retry), `timeout=900`, and marks the run failed via `markFailed()` both in its
+  `catch` (then re-throws) and in `failed()`, so the poll always sees a terminal state.
 - **REQ-5** — Test-run progress/results live only in cache
   (`TestRunnerService::CACHE_PREFIX`, 1h TTL) — nothing is persisted to the DB.
 - **REQ-6** — **The PHP CLI binary is resolved through config, never `env()`.**
@@ -71,17 +67,8 @@ four narrow services (`SystemService`, `ArtisanCommandRunner`, `QueueService`,
   must be able to override it — `PHP_CLI_PATH` in `.env`, surfaced as
   `config('orca.php_cli_path')`. `findPhpCliBinary()` reads **only** that config key and casts
   the result to `string`; failing that it uses `PHP_BINARY` unless the path contains `fpm` or
-  `cgi`, and finally bare `php` on `getExtendedPath()`.
-
-  Reading it with `env()` is the bug this requirement exists to prevent. `DEPLOYMENT.md` runs
-  `php artisan config:cache`, after which `env()` returns `null` — and the
-  `Artisan::call('config:clear')` at the top of `runStreaming()` does not save it, because
-  clearing the compiled file does not repopulate `$_ENV` in an already-booted process. The
-  override was therefore inert in exactly the environment that needs it (Plesk), while the
-  companion `config('app.php_cli_path')` read a key that was never defined in `config/app.php`
-  and so was always null. Same failure mode as
-  [security-invariants.md](security-invariants.md) REQ-9's seeder credentials, and the reason
-  `config/orca.php` exists.
+  `cgi`, and finally bare `php` on `getExtendedPath()`. Why: after `config:cache`, `env()`
+  returns `null` (same failure mode as [security-invariants.md](security-invariants.md) REQ-9).
 
 ## Technical design
 
@@ -128,8 +115,7 @@ SettingRules::passes(string $key, mixed $value): bool   # REQ-3; true for a key 
 config/orca.php:
   php_cli_path:           env(PHP_CLI_PATH)                           # REQ-6; the only source findPhpCliBinary() reads
   admin_bootstrap:        { name, email, password } from ORCA_ADMIN_*  # see security-invariants.md
-  ui_locales:             { en: English, nl: Nederlands (Dutch) }     # localization.md REQ-2
-  rekognition_languages:  { en: English, nl: Dutch (Nederlands), … }  # the AI-tag language picker
+  # ui_locales → localization.md; rekognition_languages → ai-tagging.md
 
 QueueService:
   getQueueStats(): array                          # {pending, failed, batches}
@@ -190,21 +176,15 @@ schema: [db:verify-schema]               # read-only; exits 0 whatever it finds,
 action additionally calls `$this->authorize()` itself. `runTests` writes the
 `queued` cache entry synchronously (so an immediate poll never 404s) *before*
 dispatching `RunTestSuiteJob`; the job's `handle()` then calls
-`TestRunnerService::runStreaming()`, which re-clears `config:clear` (so the
-subprocess doesn't inherit a stale compiled config) and drives a `proc_open()`
-subprocess, ticking the cache every 250ms by re-reading a temp file (chosen over
-non-blocking pipes because `stream_set_blocking()` doesn't work as expected for
-`proc_open` pipes on Windows, and Pest/PHPUnit buffer stdout fully until exit
-regardless of OS).
+`TestRunnerService::runStreaming()`, which runs `config:clear` (so the subprocess
+doesn't inherit a stale compiled config) and drives a `proc_open()` subprocess,
+ticking the cache every 250ms from a temp file (not pipes — unreliable on Windows).
 
 ### Persistence
 
-Nothing System-admin-specific is persisted to the DB beyond `Setting` rows
-(`updateSetting`) and whatever the executed command itself does. Test-run state
-lives only in the cache store (`test_run:{runId}`, 1h TTL) and a long-lived
-duration estimate (`test_run_estimate:{suite}:{md5(filter)}`, 30 days) used to
-drive the progress bar's wall-clock estimate on Windows where per-test streaming
-isn't possible.
+Nothing beyond `Setting` rows (`updateSetting`) and whatever an executed command does.
+Test-run state lives only in cache (`test_run:{runId}`, 1h TTL) plus a duration estimate
+(`test_run_estimate:{suite}:{md5(filter)}`, 30 days) for the progress bar.
 
 ## Scenarios (BDD)
 
@@ -215,20 +195,19 @@ Scenario: Every suggested command card is runnable (REQ-suggested-commands-runna
   And the list includes assets:audit-content-types, db:verify-schema and token:list
 # pinned by: tests/Feature/SystemTest.php
 
-Scenario: The S3 connection test reports a failing bucket as a failure (regression)
+Scenario: The S3 connection test reports a failing bucket as a failure
   Given an S3 endpoint that rejects every request
   When an admin GETs system/test-s3
   Then the response carries success false and the error
-  # It used to report success: listObjects() swallows the failure.
 # pinned by: tests/Feature/SystemTest.php
 
-Scenario: The System page stays up when S3 is not configured (regression)
+Scenario: The System page stays up when S3 is not configured
   Given filesystems.disks.s3.bucket is null
   When an admin opens the log tail and runs the S3 connection test
   Then the log tail answers 200 and the S3 test reports success false with the error
 # pinned by: tests/Feature/SystemTest.php
 
-Scenario: Command arguments are mapped the same way the three hand-written loops did
+Scenario: Command arguments are mapped to options and declared positionals
   Given "queue:retry all --queue=default", "reference-tag:create a b" and "migrate --force -v"
   Then they map to {id: [all], --queue: default}, {names: [a, b]} and {--force: true, -v: true}
   And a positional word for a command without a declared argument is dropped
@@ -240,23 +219,11 @@ Scenario: Only admins can reach the system dashboard
   Then the guest is redirected to login, the editor gets 403, the admin gets 200
 # pinned by: tests/Feature/SystemTest.php
 
-Scenario: Admin updates a range-validated setting
+Scenario: Range-validated settings accept in-range values and reject the rest
   Given an admin
-  When they POST system/settings with key=rekognition_min_confidence, value=85
-  Then the response is 200 with success true
-  And Setting::get('rekognition_min_confidence') is 85
-# pinned by: tests/Feature/SystemTest.php
-
-Scenario: Range-validated setting rejects an out-of-bounds value
-  Given an admin
-  When they POST system/settings with key=rekognition_min_confidence, value=50
-  Then the response is 422 with success false
-# pinned by: tests/Feature/SystemTest.php
-
-Scenario: Editors cannot update settings
-  Given an editor
-  When they POST system/settings
-  Then the response is 403
+  When they POST system/settings with key=rekognition_min_confidence, value=85, then 50
+  Then the first is 200 and Setting::get returns 85; the second is 422 with success false
+  And an editor posting to system/settings gets 403
 # pinned by: tests/Feature/SystemTest.php
 
 Scenario: Admin dispatches a test run and gets a run id back immediately
@@ -264,12 +231,7 @@ Scenario: Admin dispatches a test run and gets a run id back immediately
   When they POST system/run-tests with suite=unit, filter=SettingTest
   Then the response is 200 with status "queued" and a non-empty run_id
   And RunTestSuiteJob is dispatched with that run_id, suite, and filter
-# pinned by: tests/Feature/SystemTest.php
-
-Scenario: Editors cannot dispatch a test run
-  Given an editor and a faked Bus
-  When they POST system/run-tests
-  Then the response is 403 and nothing is dispatched
+  And an editor doing the same gets 403 and nothing is dispatched
 # pinned by: tests/Feature/SystemTest.php
 
 Scenario: Polling an unknown test run returns 404
@@ -330,16 +292,10 @@ Scenario: Only admins can access SystemController per SystemPolicy
 
 # — browser-level (see e2e-testing.md for the harness) —
 
-Scenario: The system page renders for an admin
+Scenario: The system page and its queue/log endpoints answer for an admin
   Given a session for admin@e2e.test
-  When /system is opened
-  Then the dashboard renders
-# pinned by: tests/e2e/system-settings.spec.js
-
-Scenario: The queue-status and log-viewer endpoints answer
-  Given the system page as an admin
-  When the queue status and log tail endpoints are called
-  Then each responds with a payload
+  When /system is opened and the queue status and log tail endpoints are called
+  Then the dashboard renders and each endpoint responds with a payload
 # pinned by: tests/e2e/system-settings.spec.js
 ```
 
@@ -354,9 +310,5 @@ Scenario: The queue-status and log-viewer endpoints answer
 
 ## Open questions / future
 
-- `SystemService::getSupervisorStatus()`, `getLogTail()`,
-  `getSystemInfo()`/`getDiskUsage()`/`getDatabaseStats()`, and the
-  `documentation()` markdown-rendering endpoint have no direct test coverage
-  (SystemTest.php exercises settings/regenerate/test-run flows but not these
-  read-only diagnostics endpoints). Low risk (read-only, no state mutation) but
-  worth a light smoke test if this controller is touched again.
+- No direct coverage for the read-only diagnostics: `SystemService::getSupervisorStatus()`,
+  `getLogTail()`, `getSystemInfo()`/`getDiskUsage()`/`getDatabaseStats()`, and `documentation()`.

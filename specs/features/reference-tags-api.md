@@ -18,15 +18,12 @@ source:
 
 ## Background / Why
 
-Reference tags record that an external system is *using* an asset (e.g. the
-WordPress plugin writing `wp:<site>/post/<id>` when an editor embeds an image
-in a post). They are a third `Tag::type` alongside `user` and `ai`, and by
-design can only be **created** through this API — never through the web
-tag-input flow — so a reference tag is always evidence of real external usage,
-not something a human typed in. See
-[ADR-012](../decisions/adr-012-reference-tags-api-only.md) for the full
-rationale. They remain editable/deletable from the web UI so admins can clean
-up stale marks.
+Reference tags record that an external system is *using* an asset (e.g. the WordPress plugin
+writing `wp:<site>/post/<id>` when an editor embeds an image). They are a third `Tag::type` beside
+`user` and `ai`, and can only be **created** through this API — never the web tag input — so a
+reference tag is always evidence of real external usage
+([ADR-012](../decisions/adr-012-reference-tags-api-only.md)). Admins can still edit/delete them in
+the web UI to clean up stale marks.
 
 ## Requirements
 
@@ -77,8 +74,7 @@ php artisan reference-tag:create {names?*}          # pre-create without attachi
 request:
   asset_id: int?            # exists:assets,id
   asset_ids: int[]?         # max 500, each exists:assets,id
-  s3_key: string?           # max 1024 — the assets.s3_key column width (ColumnLimits), which is
-                            # also S3's own key limit. Was 255 while the column was too narrow.
+  s3_key: string?           # max 1024 — assets.s3_key width (ColumnLimits)
   s3_keys: string[]?        # max 500, each max 1024
   tags: string[]            # required, min 1, max 100, each max 100 chars
 response_200:
@@ -106,17 +102,15 @@ response_422: { message: 'Validation failed', errors: { tags: [...] } | { identi
 
 ### Layer touchpoints & ordering
 
-`throttle` → `auth.multi` → inline `validator()` (identifier-presence checked
-in a `$validator->after()` closure, not a FormRequest) →
-`AssetApiController::collectAssetsFromRequest()` (merges/dedupes assets found
-across the four identifier fields, tracking unresolved `s3_key`/`s3_keys`) →
+`throttle` → `auth.multi` → inline `validator()` (identifier presence checked in `after()`) →
+merge/dedupe assets across the four identifier fields, tracking unresolved `s3_key`/`s3_keys` →
 `Tag::resolveReferenceTagIds()` / `Tag::referenceTags()` scope →
 `Asset::syncTagsWithAttribution()` or `$asset->tags()->detach()`.
 
 Tag *names* passed to `removeReferenceTagsByName` go through `Tag::normalizeName()`
 before lookup — the normalization `TagInputParser` applies on create
 ([`tags.md`](tags.md) REQ-tag-name-normalization) — so `POST` and both `DELETE` shapes
-agree on casing, non-ASCII letters included. (They used `strtolower`, which did not.)
+agree on casing, non-ASCII letters included.
 
 ### Persistence
 
@@ -202,16 +196,11 @@ Scenario: Console command refuses to retype an existing non-reference tag
 
 ## Tests & verification
 
-- Feature: `tests/Feature/ApiTest.php` ("Reference Tags API tests" and "Batch
-  Reference Tags API tests" and "Remove Reference Tags by Name API tests"
-  sections), `tests/Feature/ReferenceTagCreateCommandTest.php`.
+- Feature: `tests/Feature/ApiTest.php` (reference-tag sections), `tests/Feature/ReferenceTagCreateCommandTest.php`.
 - Run: `php artisan config:clear && php artisan test tests/Feature/ApiTest.php tests/Feature/ReferenceTagCreateCommandTest.php`.
 - Style: `./vendor/bin/pint --test`.
 
 ## Open questions / future
 
-- No test asserts the web UI can *edit or delete* an existing reference tag
-  (ADR-012's "still editable/deletable in the web UI" claim) — `TagController`
-  appears to allow it (`update`/`destroy` don't special-case `type`), but the
-  behaviour isn't pinned under this spec; likely belongs to
-  [`tags.md`](tags.md) instead.
+- Web-UI edit/delete of an existing reference tag (ADR-012) is not pinned; likely belongs in
+  [`tags.md`](tags.md).
