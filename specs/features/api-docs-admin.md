@@ -204,19 +204,8 @@ Scenario: The public health endpoint needs no authentication
 
 ## Open questions / future
 
-- No HTTP-level test exercises `ApiDocsController::index`/`dashboard`/
-  `updateSettings` (`/api-docs`, `/api-docs/dashboard`, `/api-docs/settings`)
-  under either an admin or non-admin actor — grepping `tests/` for
-  `ApiDocsController`, `api.dashboard`, `api.settings.update`, and `api.index`
-  found nothing. The admin gate is almost certainly enforced the same way as
-  the JWT-secrets routes (same `can:access` middleware group), but that's
-  inferred from the route file, not verified by a green test.
-- No HTTP-level test exercises `TokenController` (`/api-docs/tokens*`) —
-  `tests/Feature/Console/TokenCommandTest.php` only covers the `token:*`
-  **console** commands (a separate code path, out of scope for this spec —
-  see the future `api-tokens-sanctum.md`), not the web dashboard's
-  index/store/destroy/destroyUserTokens actions.
-- Both gaps above are worth closing with a small `ApiDocsControllerTest` /
-  `TokenControllerTest` (admin can list/create/revoke a token and a JWT
-  secret; a non-admin gets 403 on each) before this spec's scenarios can cite
-  real pins for the token-management half of the dashboard.
+- The non-admin 403s are pinned (`tests/Security/PrivilegeEscalationTest.php`,
+  `tests/Security/RuntimeExposureTogglesTest.php`) and the admin token flow is
+  browser-tested (`tests/e2e/api-docs.spec.js`), but no Feature test asserts the
+  admin-side JSON of `ApiDocsController::dashboard` or `TokenController`'s
+  `destroyUserTokens`.

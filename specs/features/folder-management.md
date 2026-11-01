@@ -226,12 +226,5 @@ Scenario: A non-admin cannot create a folder (REQ-6)
   individually; the only way to drop one is a `scan` after the prefix disappears from
   S3. Removing a non-empty folder would need an asset-move story first — see
   `bulkMove` in [bulk-operations.md](bulk-operations.md).
-- ~~REQ-2's back-fill is unpinned.~~ **Resolved** — `FolderRegistryTest` derives the list
-  from asset keys and asserts it is persisted. It streams key rows rather than hydrating
-  models, so a large library does not exhaust memory on the first request after a
-  root-folder change.
 - The `500` branch of REQ-5 (S3 refuses the write) is also unpinned.
-- Only `POST /folders` is wired into the UI (`assets/create.blade.php`);
-  `/folders/scan` and `GET /api/folders` are called by API clients and admin tooling. A
-  scan control in the system UI would make REQ-3 discoverable.
 - No E2E coverage — see [e2e-testing.md](e2e-testing.md).

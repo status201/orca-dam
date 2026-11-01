@@ -3,7 +3,7 @@
 ```yaml
 id: bulk-operations
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -96,8 +96,8 @@ moved: int
 failed: int
 moves: [{old: s3_key, new: s3_key}, ...]
 
-# bulkForceDelete / bulkDownload responses follow the same
-# {message, deleted|moved, failed, deleted_keys|moves} shape used across bulk endpoints
+# bulkForceDelete follows the same {message, deleted, failed, deleted_keys} shape;
+# bulkDownload streams a ZIP instead of returning JSON
 ```
 
 ### Layer touchpoints & ordering

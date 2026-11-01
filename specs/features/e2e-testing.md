@@ -3,7 +3,7 @@
 ```yaml
 id: e2e-testing
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -212,7 +212,7 @@ expectToast(page, /re/)           # assert a `.toast` message
 acceptConfirm(page)               # accept the next window.confirm()
 requiresS3(test?)                 # skip the enclosing file/describe without a bucket
 # fixtures the extended `test` provides
-page                              # network-isolated + icon-CSS stub (REQ-11)
+page                              # network-isolated (REQ-11)
 api(role): APIRequestContext      # Bearer-authenticated request context per role
 
 # tests/e2e/support/db.js
@@ -375,7 +375,7 @@ scenarios: [authentication](authentication.md), [asset-search](asset-search.md),
 [client-side-tools](client-side-tools.md), [iframe-embedding](iframe-embedding.md).
 
 ```gherkin
-Scenario: The suite reseeds before it saves any session (REQ-13)
+Scenario: The suite reseeds before it saves any session (REQ-4)
   Given a possibly stale database/e2e.sqlite
   When the setup project runs
   Then migrate:fresh --seeder=E2eSeeder rebuilds it
@@ -503,7 +503,7 @@ discover(S3)
   `playwright.config.js`.
 - Which behaviour each spec file pins is recorded by the owning feature spec, not
   here — grep for the spec file name: `git grep -n "pinned by:.*asset-grid.spec.js"`.
-  Every one of the 20 files is pinned by at least one feature spec, and
+  Every one of the 21 files is pinned by at least one feature spec, and
   `npm run spec:lint` fails if a pinned path stops existing.
 
 ## Open questions / future

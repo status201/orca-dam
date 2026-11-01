@@ -87,8 +87,8 @@ commands:
 
 ```
 HTTP request
-  └─ web middleware group:  SecurityHeaders → AllowEmbedding → SetLocale → auth.multi
-       (or) api middleware:  throttle → auth.multi:sanctum,jwt
+  └─ web middleware group:  SetLocale → AllowEmbedding → SecurityHeaders  (+ route-level auth / auth.multi)
+       (or) api routes:       auth.multi (sanctum, jwt) + throttle
      └─ Controller           validate (FormRequest / inline) + authorize (Policy)
         └─ Service            S3Service / AssetProcessingService / … (the real work)
            ├─ S3              stream up/down, thumbnails, resizes
@@ -99,18 +99,18 @@ HTTP request
 
 ### Middleware stack
 
-Registered in `bootstrap/app.php`; the web group in order:
+Appended to the web group in `bootstrap/app.php`, in request order:
 
-- **`SecurityHeaders`** — `X-Content-Type-Options: nosniff`, `X-Frame-Options:
-  SAMEORIGIN`, `Referrer-Policy`, and HSTS over HTTPS. Runs before `AllowEmbedding`
-  on the response so embedding can relax `X-Frame-Options` into a `frame-ancestors`
-  CSP. See [`features/security-headers.md`](features/security-headers.md).
+- **`SetLocale`** — resolves locale: user preference → `settings.locale` →
+  `config('app.locale')`. See [`features/localization.md`](features/localization.md).
 - **`AllowEmbedding`** — when `embed_allowed_domains` is non-empty, sets
   `Content-Security-Policy: frame-ancestors 'self' <domains>` and removes
   `X-Frame-Options` on web routes. See [`features/iframe-embedding.md`](features/iframe-embedding.md).
-- **`SetLocale`** — resolves locale: user preference → `settings.locale` →
-  `config('app.locale')`. See [`features/localization.md`](features/localization.md).
-- **`auth.multi`** (`AuthenticateMultiple`) — see "Authentication" below.
+- **`SecurityHeaders`** — `X-Content-Type-Options: nosniff`, `X-Frame-Options:
+  SAMEORIGIN`, `Referrer-Policy`, and HSTS over HTTPS. Appended after `AllowEmbedding`, so it
+  runs first on the response and embedding can then relax `X-Frame-Options` into a `frame-ancestors`
+  CSP. See [`features/security-headers.md`](features/security-headers.md).
+- **Route-level auth** — web routes use `auth` (session); API routes use `auth.multi` (`AuthenticateMultiple`) — see "Authentication" below.
 
 ### Service-layer map
 
@@ -285,15 +285,16 @@ The *why* behind the choices above — and the alternatives each rejected — li
 - [ADR-011](decisions/adr-011-settings-in-db.md) — runtime settings in the DB (REQ-5).
 - [ADR-012](decisions/adr-012-reference-tags-api-only.md) — reference tags are API-created only.
 - [ADR-013](decisions/adr-013-wordpress-plugin-separate-stream.md) — WordPress plugin is a separate release stream.
-- [ADR-014](decisions/adr-014-playwright-e2e-real-stack.md) — browser E2E against a real stack (MinIO for S3).
-- [ADR-017](decisions/adr-017-rustfs-replaces-minio.md) — RustFS replaces the archived MinIO as that stand-in.
+- [ADR-014](decisions/adr-014-playwright-e2e-real-stack.md) — browser E2E against a real stack (an S3 stand-in; amended by ADR-017).
 - [ADR-015](decisions/adr-015-guided-demos-server-declared.md) — guided demos declared in PHP; spotlight hand-rolled.
 - [ADR-016](decisions/adr-016-database-errors-are-user-errors.md) — a driver rejection is a user error: one global backstop behind the controllers (amends ADR-010).
+- [ADR-017](decisions/adr-017-rustfs-replaces-minio.md) — RustFS replaces the archived MinIO as that stand-in.
 - [ADR-018](decisions/adr-018-slug-requirement-ids.md) — new requirements get a kebab-case slug ID; numeric IDs are frozen.
+- [ADR-019](decisions/adr-019-tailwind-4-css-first.md) — Tailwind v4 with CSS-first configuration; v3 visual defaults kept.
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1332 tests,
+- `php artisan config:clear && php artisan test` — the full Pest suite (1334 tests,
   101 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`,`Support/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security

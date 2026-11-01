@@ -47,9 +47,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/locale', function (Request $request) {
         $locale = $request->input('locale');
         if (in_array($locale, SetLocale::getSupportedLocales(), true)) {
-            $preferences = $request->user()->preferences ?? [];
-            $preferences['locale'] = $locale;
-            $request->user()->update(['preferences' => $preferences]);
+            $request->user()->setPreference('locale', $locale);
         }
 
         return redirect()->back();

@@ -3,7 +3,7 @@
 ```yaml
 id: static-analysis
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -223,7 +223,7 @@ structural rules would turn this into a rename sweep.
 
 ### The exemptions, and why each is accepted
 
-Five functions across eight files. Everything else in the ban list has no exemption.
+Five functions across seven files. Everything else in the ban list has no exemption.
 
 | Function | Exempted in | Reviewed reason |
 |---|---|---|
@@ -328,8 +328,7 @@ fabrication this method warns against.
   real-code proof that `orca-policy-blanket-grant`'s class-name scoping binds. `.semgrep/tests/`
   asserts the same thing with a dedicated non-policy class, so the guard does not depend on those
   three files continuing to exist.
-- Layer C: `.github/workflows/codeql.yml`, on push/PR and weekly. Cannot pass while GitHub's
-  default setup is enabled (REQ-2). Findings land in the repository's code-scanning dashboard, not
+- Layer C: `.github/workflows/codeql.yml`, on push/PR and weekly. Findings land in the repository's code-scanning dashboard, not
   in the job log — a green job means the *analysis* succeeded, not that it found nothing.
 - Layer C's first run produced a real finding, from the `actions` language rather than the
   JavaScript: `actions/unpinned-tag` on `shivammathur/setup-php`, the only third-party action in the
@@ -450,10 +449,6 @@ fabrication this method warns against.
   because introducing one would change how attribution rows are hydrated at runtime — a type fix
   should not alter behaviour [tags.md](tags.md) pins. If a pivot model is ever added for other
   reasons, that annotation should go.
-
-- **CodeQL cannot pass until default setup is switched off** (REQ-2). Until then the job is red for
-  a configuration reason rather than a code one, which is exactly the kind of ambiguity REQ-3 exists
-  to avoid — if it is not switched, the workflow should be deleted rather than left failing.
 
 - **`arch()->preset()->laravel()` is unused**, so structural Laravel conventions beyond the two
   naming rules are unchecked.

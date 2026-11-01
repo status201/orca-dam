@@ -3,7 +3,7 @@
 ```yaml
 id: authentication
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -145,7 +145,7 @@ middleware:
   AuthenticateMultiple::handle(Request, Closure, ...$guards)   # app/Http/Middleware/AuthenticateMultiple.php
     - defaults to ['sanctum', 'jwt'] when no guards are named
     - web routes use the plain 'auth' middleware (session guard only)
-    - api routes use 'auth.multi:sanctum,jwt'
+    - api routes use bare 'auth.multi' (the sanctum, jwt default)
     - the chunked-upload routes use 'auth.multi:web,sanctum,jwt' (session OR token)
 ```
 
@@ -222,7 +222,7 @@ Scenario: A malformed bearer token is rejected
 Scenario: A valid Sanctum token still authenticates when JWT is disabled
   Given a user with a valid Sanctum personal access token
   And JWT_ENABLED is false
-  When they call a route behind auth.multi:sanctum,jwt
+  When they call a route behind auth.multi
   Then the request authenticates as that user
 # pinned by: tests/Feature/Middleware/AuthenticateMultipleTest.php
 
@@ -366,10 +366,8 @@ Scenario: Logging out really ends the session
 - Feature (Breeze scaffold, REQ-6): `tests/Feature/Auth/PasswordResetTest.php`,
   `tests/Feature/Auth/EmailVerificationTest.php`,
   `tests/Feature/Auth/PasswordUpdateTest.php`,
-  `tests/Feature/Auth/PasswordConfirmationTest.php` — these came with the scaffold and
-  are PHPUnit-style (`test_*` methods) rather than Pest, as are
-  `AuthenticationTest.php` and `RegistrationTest.php` above; together with
-  `tests/Feature/ProfileTest.php` they are the only seven such files in the suite.
+  `tests/Feature/Auth/PasswordConfirmationTest.php` — scaffold tests, PHPUnit-style
+  (`test_*` methods) rather than Pest.
 - Feature (REQ-7): `tests/Feature/UserManagementTest.php` — that an unverified user, and
   specifically a freshly provisioned one, still reaches the `verified`-gated
   `/dashboard`. Lives with the provisioning tests it guards
@@ -385,7 +383,7 @@ Scenario: Logging out really ends the session
   cost: someone who typos their address now waits for mail that will never arrive,
   because the app can no longer tell them the address is unknown. That is the standard
   trade for not having a login-name oracle, but it makes the server-side log the only
-  place the truth exists — so the `Password reset requested for an unknown address` log
+  place the truth exists — so the `Password reset link not sent` log
   line is load-bearing for support, not just for security.
 - The `throttle:6,1` on the reset routes is keyed per-IP by Laravel's default resolver,
   so a NAT'd office shares one bucket while a distributed caller gets one bucket each.

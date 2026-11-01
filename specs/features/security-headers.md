@@ -3,7 +3,7 @@
 ```yaml
 id: security-headers
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -32,7 +32,7 @@ explicitly configured.
   added **only** when the request is already served over HTTPS (`$request->isSecure()`)
   — never on an http-only dev/test setup, so a local `php artisan serve` session
   isn't pinned to HTTPS.
-- **REQ-3** — `SecurityHeaders` is registered **before** `AllowEmbedding` in the web
+- **REQ-3** — `SecurityHeaders` is appended **after** `AllowEmbedding` in the web
   group, so on the response (which middleware unwinds in reverse) `AllowEmbedding`
   runs *after* `SecurityHeaders` and can remove `X-Frame-Options` in favor of a
   `frame-ancestors` CSP when embedding is configured.
@@ -54,8 +54,8 @@ No routes, no config keys of its own — this is a response-shaping middleware o
 ### Layer touchpoints & ordering
 
 ```
-Web middleware group (bootstrap/app.php):
-  SecurityHeaders → AllowEmbedding → SetLocale → auth.multi
+Web middleware group (bootstrap/app.php, appended in request order):
+  SetLocale → AllowEmbedding → SecurityHeaders
 ```
 
 Response unwinding is the reverse of the request order, so on the way *out*

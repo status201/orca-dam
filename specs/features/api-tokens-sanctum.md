@@ -26,7 +26,7 @@ tokens fit this: `laravel/sanctum`'s `HasApiTokens` trait on `User` provides
 `createToken()`/`tokens()`, and ORCA layers a `TokenController` (web admin UI, under
 `/api-docs/tokens`) and three `token:*` Artisan commands on top for token lifecycle
 management. Sanctum is one of the two default guards `auth.multi` tries on API
-routes (`auth.multi:sanctum,jwt`) — see [ADR-004](../decisions/adr-004-auth-multi.md).
+routes (`auth.multi`, sanctum then jwt) — see [ADR-004](../decisions/adr-004-auth-multi.md).
 
 ## Requirements
 
@@ -156,11 +156,7 @@ Scenario: token:revoke requires an id or --user
 
 ## Open questions / future
 
-- `TokenController`'s HTTP routes (`/api-docs/tokens` index/store/destroy/
-  destroyUserTokens) have no dedicated Feature test in the current suite — only the
-  equivalent `token:*` console commands are covered. The controller and the console
-  commands share the same underlying Sanctum calls (`createToken`, `tokens()->
-  delete()`), so behaviour is exercised, but the HTTP layer itself (JSON shapes,
-  `SystemPolicy::access` gating on these specific routes, the `AuthorizationException`
-  catch block's debug payload) is an untested surface — worth a
-  `tests/Feature/TokenControllerTest.php` in a follow-up.
+- `TokenController` has no Feature test of its admin-side JSON shapes or the
+  `AuthorizationException` debug payload; non-admin 403s are pinned in
+  `tests/Security/PrivilegeEscalationTest.php` and the admin create/revoke flow in
+  `tests/e2e/api-docs.spec.js`.

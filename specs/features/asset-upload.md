@@ -3,7 +3,7 @@
 ```yaml
 id: asset-upload
 status: implemented
-version: 7
+version: 8
 owner: core
 related:
   - architecture
@@ -65,8 +65,8 @@ supplied alongside the files.
 
 `AssetController::store(StoreAssetRequest $request)` — `POST /assets`
 (`assets.store`, web-authenticated). Validation
-(`StoreAssetRequest::rules()`): `files.*` (required, file, max 500000KB,
-`AllowedUploadExtension`, `BoundedFilename` — `max:512000` is *kilobytes* and
+(`StoreAssetRequest::rules()`): `files.*` (required, file, `max:512000`,
+`AllowedUploadExtension`, `BoundedFilename` — the size cap is *kilobytes* and
 bounds the bytes, so the name needs its own cap; see
 [`input-validation.md`](input-validation.md) REQ-13), `folder` (nullable string, max 100 — matching
 `FolderController`'s creation cap; folder + filename both feed `s3_key`, now

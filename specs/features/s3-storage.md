@@ -3,7 +3,7 @@
 ```yaml
 id: s3-storage
 status: implemented
-version: 7
+version: 8
 owner: core
 related:
   - architecture
@@ -183,8 +183,10 @@ App\Support\AssetKeyLayout:
   uploadedThumbnailKey(s3Key): string           # thumbnails/{rel}{name}_thumb.jpg    (browser-generated)
   resizeKey(s3Key, size, extension): string     # thumbnails/{SIZE}/{rel}{filename}.{extension}
   resizeOutputExtension(sourceExtension): string # static — png/webp/jpg/jpeg keep theirs; everything else 'jpg'
-  relocate(derivedKey, column, oldS3Key, newS3Key): ?string  # null when the key is not in the layout
-``` Resize dimensions come
+  relocate(derivedKey, ?size, oldS3Key, newS3Key): ?string  # size null = thumbnail; null when the key is not in the layout
+```
+
+Resize dimensions come
 from `Setting::get('resize_{s,m,l}_width|height', ...)`, read live (not cached
 beyond the `Setting` model's own 1h cache).
 

@@ -3,6 +3,7 @@
 use App\Models\Asset;
 use App\Models\Tag;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 
 test('guests cannot access tags index', function () {
     $response = $this->get(route('tags.index'));
@@ -485,6 +486,23 @@ test('bulk add tags does not duplicate existing tags', function () {
     $response->assertOk();
     $asset->refresh();
     expect($asset->tags)->toHaveCount(2);
+});
+
+test('a refused bulk add creates no tags', function () {
+    // Every role may update today (a CHECK constraint bars unknown roles), so deny
+    // through the gate to stand in for any future per-asset restriction.
+    Gate::before(fn ($user, string $ability) => $ability === 'update' ? false : null);
+    $user = User::factory()->create();
+    $asset = Asset::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('assets.bulk.tags.add'), [
+            'asset_ids' => [$asset->id],
+            'tags' => ['never-created'],
+        ])
+        ->assertForbidden();
+
+    expect(Tag::where('name', 'never-created')->exists())->toBeFalse();
 });
 
 test('can bulk remove tags from multiple assets', function () {

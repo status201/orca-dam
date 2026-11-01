@@ -44,12 +44,14 @@ class AssetBulkController extends Controller
         $tagNames = TagInputParser::parse($request->input('tags', []));
         $referenceIds = array_map('intval', (array) $request->input('reference_tag_ids', []));
 
-        $tagIds = Tag::resolveUserTagIds($tagNames);
         $assets = Asset::whereIn('id', $request->asset_ids)->get();
 
         foreach ($assets as $asset) {
             $this->authorize('update', $asset);
         }
+
+        // Only after authorization: resolving names creates the missing tags.
+        $tagIds = Tag::resolveUserTagIds($tagNames);
 
         DB::transaction(function () use ($assets, $tagIds, $referenceIds, $request) {
             foreach ($assets as $asset) {

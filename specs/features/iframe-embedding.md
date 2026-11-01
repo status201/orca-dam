@@ -3,7 +3,7 @@
 ```yaml
 id: iframe-embedding
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -72,7 +72,7 @@ value: ["https://rte.example.com", "https://cms.example.com"]   # array of origi
 
 ### Layer touchpoints & ordering
 
-Runs in the web group after `SecurityHeaders`, before `SetLocale` — see
+Runs in the web group after `SetLocale`, before `SecurityHeaders` — see
 [`architecture.md`](../architecture.md#middleware-stack). It only acts on the
 *response* (reads the setting after `$next($request)`), so it can override a header
 `SecurityHeaders` already set on the way out. `GET /assets/embed` shares

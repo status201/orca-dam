@@ -3,11 +3,12 @@
 ```yaml
 id: tags
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
   - tag-input
+  - reference-tags-api
 source:
   - app/Models/Tag.php
   - app/Models/Asset.php
@@ -102,7 +103,7 @@ TagController:
   index(Request)          # GET /tags — paginated JSON (expectsJson; ?type=user|ai|reference, 'all'/absent = unfiltered)
                           #   or view with typeCounts + activeType (user|ai|reference|all, default user)
   search(Request)          # GET /tags/search — autocomplete, ?type= or ?types=a,b
-  show(string $ids)        # GET /tags/{ids} — single object (1 id) or array (2-200 ids)
+  show(string $ids)        # GET /api/tags/{ids} (API only) — single object (1 id) or array (2-200 ids)
   byIds(Request)           # POST /tags/by-ids — resolve ids[] to Tag rows
   update(Request, Tag)     # PATCH /tags/{tag} — rename; 403 if type=ai
   destroy(Tag)             # DELETE /tags/{tag} — cascades detach
@@ -134,9 +135,8 @@ POST   /assets/bulk/tags/remove    assets.bulk.tags.remove
 POST   /assets/bulk/tags/list      assets.bulk.tags.list
 ```
 
-`TagController`'s constructor has a commented-out `$this->middleware('auth')` —
-authentication is actually enforced by the enclosing route-group middleware
-(`auth.multi`), not the controller; the comment is vestigial.
+Authentication comes from the enclosing route group: `auth` (session) for the web
+routes above, `auth.multi` for `GET /api/tags`, `/api/tags/search` and `/api/tags/{ids}`.
 
 Authorization: `addTags`/`removeTag`/`bulkAddTags`/`bulkRemoveTags` all check
 `AssetPolicy::update` per asset (in a `foreach` for the bulk endpoints, so one
@@ -266,6 +266,13 @@ Scenario: Bulk add/remove/list operate across multiple assets and require authen
   And each endpoint returns 401 for an unauthenticated request
 # pinned by: tests/Feature/TagTest.php
 
+Scenario: A refused bulk add creates no tags
+  Given AssetPolicy::update denies the user an asset in the batch
+  When they POST /assets/bulk/tags with a tag name that does not exist yet
+  Then the response is 403
+  And no tag with that name exists
+# pinned by: tests/Feature/TagTest.php
+
 Scenario: The tags page opens on user tags; type=all selects every type (REQ-tag-pickers-lead-with-user-tags)
   When GET /tags is rendered with no type, with type=all, and with type=bogus
   Then the view's activeType is "user", "all" and "user" respectively
@@ -326,10 +333,3 @@ Scenario: A tag added on the edit page appears on the asset and is removable inl
 - Run: `php artisan config:clear && php artisan test tests/Feature/TagTest.php tests/Feature/TagAttributionTest.php tests/Unit/TagTest.php`
 - E2E: `tests/e2e/tags.spec.js` (rename/delete/type badges, tab order + User default), `tests/e2e/asset-grid.spec.js` (tag-filter type dropdown default) and `tests/e2e/asset-detail.spec.js` (edit-page + inline row tag input).
 
-## Open questions / future
-
-- The reference-tags REST API contract itself (`POST /api/reference-tags`,
-  `DELETE /api/reference-tags[/{tag}]`, batch `asset_ids`/`s3_keys` resolution)
-  is documented by the not-yet-written `reference-tags-api.md` spec (Wave D of
-  the backfill) — this spec deliberately only covers the web-side tag CRUD and
-  the attribution rule that reference tags participate in.

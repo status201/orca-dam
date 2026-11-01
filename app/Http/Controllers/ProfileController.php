@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\SetLocale;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Setting;
 use App\Services\FolderRegistry;
@@ -11,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -96,7 +98,7 @@ class ProfileController extends Controller
             }],
             'items_per_page' => 'nullable|integer|in:0,12,24,36,48,60,72,96',
             'dark_mode' => 'nullable|string|in:disabled,force_dark,force_light',
-            'locale' => 'nullable|string|in:,en,nl',
+            'locale' => ['nullable', 'string', Rule::in(SetLocale::getSupportedLocales())],
         ]);
 
         $preferences = $request->user()->preferences ?? [];
