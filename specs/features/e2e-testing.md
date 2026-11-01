@@ -244,7 +244,7 @@ probe before test *collection* (`requiresS3()` is evaluated as files load — he
 ### Persistence
 
 Everything the suite writes is disposable and gitignored: `database/e2e.sqlite`,
-`storage/e2e/tokens.json`, `tests/e2e/.auth/*.json`, `test-results/`, `playwright-report/`.
+`storage/e2e/tokens.json`, the per-role sessions in `tests/e2e/.auth/`, `test-results/`, `playwright-report/`.
 The `orca-e2e` bucket is *not* cleaned between runs — uploads use `uniqueName()`;
 `npm run e2e:down` drops the backing store.
 

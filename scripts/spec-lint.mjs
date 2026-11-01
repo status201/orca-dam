@@ -1341,7 +1341,12 @@ function checkDuplicateProse(errors, allMd) {
 /** `npm run spec:tighten` — lower budgets to the current size + headroom; never raise one. */
 function tighten() {
   const allMd = walk(SPECS).filter((f) => f.endsWith('.md'));
-  const old = existsSync(BUDGET_FILE) ? JSON.parse(readFileSync(BUDGET_FILE, 'utf8')) : {};
+  let old = {};
+  try {
+    old = JSON.parse(readFileSync(BUDGET_FILE, 'utf8'));
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e; // a missing manifest is created; a broken one is not overwritten
+  }
   const round = (n) => Math.ceil((n * BUDGET_HEADROOM) / 100) * 100;
   const files = {};
   let total = 0;
