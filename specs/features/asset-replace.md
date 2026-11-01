@@ -3,7 +3,7 @@
 ```yaml
 id: asset-replace
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -60,7 +60,7 @@ POST assets/{asset}/thumbnail:         AssetReplaceController::storeThumbnail  #
 POST assets/{asset}/ai-tag:            AssetReplaceController::generateAiTags   # rate-limited (see CLAUDE.md)
 ```
 
-`replace(Request, Asset)` validation: `file` (required, max 500000KB,
+`replace(Request, Asset)` validation: `file` (required, `max:512000` KB,
 `AllowedUploadExtension`, plus an inline closure rejecting a different
 extension than the current `s3_key`'s). On success: deletes old thumbnail +
 resizes, updates `filename`/`mime_type`/`size`/`etag`/`width`/`height` and

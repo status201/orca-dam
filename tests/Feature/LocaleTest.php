@@ -65,3 +65,20 @@ test('unsupported global locale falls back to config', function () {
     $response->assertStatus(200);
     expect(app()->getLocale())->toBe('en');
 });
+
+test('the profile and switcher accept exactly the configured locales', function () {
+    config(['orca.ui_locales' => ['en' => 'English', 'nl' => 'Nederlands', 'de' => 'Deutsch']]);
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('profile.preferences.update'), ['locale' => 'de'])
+        ->assertSessionHasNoErrors();
+    expect($user->fresh()->getPreference('locale'))->toBe('de');
+
+    $this->actingAs($user)
+        ->patch(route('profile.preferences.update'), ['locale' => 'fr'])
+        ->assertSessionHasErrors('locale');
+
+    $this->actingAs($user)->post(route('locale.set'), ['locale' => 'nl']);
+    expect($user->fresh()->getPreference('locale'))->toBe('nl');
+});

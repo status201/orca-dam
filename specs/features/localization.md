@@ -3,7 +3,7 @@
 ```yaml
 id: localization
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -75,7 +75,7 @@ value: "en" | "nl"
 ### Layer touchpoints & ordering
 
 `SetLocale` runs in the web middleware group (registered in `bootstrap/app.php`,
-after `AllowEmbedding`) — see [`architecture.md`](../architecture.md#middleware-stack)
+first of the three appended web middleware, before `AllowEmbedding`) — see [`architecture.md`](../architecture.md#middleware-stack)
 for the full stack ordering. It calls `App::setLocale()` before the request reaches
 the controller, so every `__()` call and the `<html lang="...">` attribute in
 `resources/views/layouts/app.blade.php` reflect the resolved locale for that request.
@@ -153,6 +153,12 @@ Scenario: An unsupported global setting falls through to config
   Given the global "locale" setting is "xx" (unsupported)
   When a user loads an authenticated page
   Then app()->getLocale() is config('app.locale'), "en"
+# pinned by: tests/Feature/LocaleTest.php
+
+Scenario: The profile form and the switcher accept exactly the configured locales
+  Given config('orca.ui_locales') lists en, nl and de
+  When a user saves locale "de" on the profile page
+  Then the preference is stored, and an unlisted locale is rejected with a validation error
 # pinned by: tests/Feature/LocaleTest.php
 
 Scenario: A raw lang:update run is caught before it ships

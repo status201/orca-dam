@@ -390,16 +390,15 @@ specs/
     adr-011-settings-in-db.md                   ·  runtime settings in the DB
     adr-012-reference-tags-api-only.md          ·  reference tags API-created only
     adr-013-wordpress-plugin-separate-stream.md ·  WP plugin is a separate release stream
-    adr-014-playwright-e2e-real-stack.md        ·  Playwright E2E on a real stack (MinIO)
-    adr-017-rustfs-replaces-minio.md            ·  RustFS replaces the archived MinIO
+    adr-014-playwright-e2e-real-stack.md        ·  Playwright E2E on a real stack (S3 stand-in)
     adr-015-guided-demos-server-declared.md     ·  demos declared in PHP; spotlight hand-rolled
     adr-016-database-errors-are-user-errors.md  ·  driver rejections → keyed 422 (amends adr-010)
+    adr-017-rustfs-replaces-minio.md            ·  RustFS replaces the archived MinIO
     adr-018-slug-requirement-ids.md             ·  new REQs get slug IDs; numeric ones frozen
     adr-019-tailwind-4-css-first.md             ·  Tailwind v4, CSS-first config; v3 defaults kept
   .legacy-req-ids.json ← the frozen numeric REQ IDs (lint-checked; only ever shrinks)
 ```
 
-> This map grows as the backfill lands (see `_backfill-status.md` while it exists).
 > New features get their own spec (copy `features/_feature-template.md`) as they're
 > built — keep the folder lean, not exhaustive-for-its-own-sake. Every `.md` under
 > `specs/` must be listed here, and every ADR in `decisions/README.md` — the

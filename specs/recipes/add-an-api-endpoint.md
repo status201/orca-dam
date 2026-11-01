@@ -31,7 +31,7 @@ three different roles. The concrete worked instance is
 
 ## Background / Why
 
-`routes/api.php` sits behind `auth.multi:sanctum,jwt` + `throttle`, so every
+`routes/api.php` sits behind `auth.multi` (sanctum, then jwt) + `throttle`, so every
 route on it is reachable by all three roles by default. Most abilities
 (`view`, `create`, `update`) are intentionally open to `admin`/`editor`/`api`
 alike — the exception is the minority that must be **role-gated** (like

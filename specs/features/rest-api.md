@@ -3,7 +3,7 @@
 ```yaml
 id: rest-api
 status: implemented
-version: 7
+version: 8
 owner: core
 related:
   - architecture
@@ -41,10 +41,12 @@ responses, and a role split on error verbosity.
 ## Requirements
 
 - **REQ-1** — All `/api/assets*` and `/api/tags*` routes (except the two public
-  ones) require `auth.multi:sanctum,jwt` (`routes/api.php`); unauthenticated calls
+  ones) require `auth.multi` (sanctum, then jwt) (`routes/api.php`); unauthenticated calls
   get `401`.
-- **REQ-2** — Every list/search endpoint accepts the same filter vocabulary:
-  `search`/`q`, `tags`, `type`, `folder`, `sort`, `per_page` (capped at 100).
+- **REQ-2** — `GET /api/assets` and `GET /api/assets/search` share the filter vocabulary
+  `tags`, `type`, `folder`, `sort`, `per_page` (capped at 100); the search term is
+  `search` on the index and `q` on search. The index also takes an admin-only `user`
+  filter (ignored for other roles).
 - **REQ-3** — `DELETE /api/assets/{asset}` is policy-gated
   (`AssetPolicy::delete`) so an `api`-role token gets `403` and cannot delete.
   `PATCH /api/assets/{asset}` is gated by `AssetPolicy::updateViaApi`: an admin may

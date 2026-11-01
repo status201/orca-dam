@@ -3,7 +3,7 @@
 ```yaml
 id: security-invariants
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -207,7 +207,7 @@ tests/Security/ControllerAuthorizationTest.php:
   controllersOpenToAllRoles: 13 entries    # self-scoped or all-roles-by-matrix
   closureRoutesOpenToAllRoles: 1 entry     # POST /locale
 tests/Security/PolicyMatrixTest.php:
-  policyMatrix: 21 abilities × 3 roles
+  policyMatrix: 22 abilities × 3 roles
   policyTargets: 3 policies
 tests/Security/RuntimeExposureTogglesTest.php:
   runtimeExposureToggleCoverage: 3 toggles
@@ -410,7 +410,7 @@ Scenario: Seeding twice leaves one admin
 - REQ-1: `tests/Security/RouteExposureTest.php` — route-table enumeration, the live guest sweep,
   throttle coverage, the registration-shape ban, and the guard allowlist. Includes the canary that
   mounts an unguarded route and requires the audit to name it.
-- REQ-2: `tests/Security/PolicyMatrixTest.php` — reflection-driven ability discovery, the 21 × 3
+- REQ-2: `tests/Security/PolicyMatrixTest.php` — reflection-driven ability discovery, the 22 × 3
   matrix against real `Gate` verdicts, the `return true` and `before()` bans, and the role-set
   cross-check against the `users.role` constraint. The blanket-grant detector is proved against an
   inline stub.

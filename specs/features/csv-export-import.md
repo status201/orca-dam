@@ -3,7 +3,7 @@
 ```yaml
 id: csv-export-import
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -70,7 +70,7 @@ Routes (`routes/web.php`, admin-gated): `GET export` / `POST export`
 (`ExportController::index`/`export`); `GET import`, `POST import/preview`,
 `POST import/import` (`ImportController`).
 
-`CsvExportService::generateHeaders(): array` — 33 fixed columns (see Data
+`CsvExportService::generateHeaders(): array` — 34 fixed columns (see Data
 shapes). `CsvExportService::formatRow(Asset $asset): array` — one row per
 asset, tag columns joined with `, `. `CsvExportService::sanitizeCell($value)`
 — formula-injection guard (REQ-2), applied to every cell.

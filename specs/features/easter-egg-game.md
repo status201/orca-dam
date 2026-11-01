@@ -132,6 +132,6 @@ Scenario: The leaderboard shows each user's best score only, ordered desc, cappe
 
 - The client-side game bundle (`public/games/orca-game.js`/`.css`) and the
   double-click lazy-load wiring in `resources/js/app.js` have no automated test
-  coverage (no Dusk/browser-level suite in this project) — only the backend
+  coverage (no Playwright spec drives it) — only the backend
   `GameScore`/`GameScoreController` surface is Pest-tested. Low risk given the
   feature is cosmetic and isolated from core DAM flows.

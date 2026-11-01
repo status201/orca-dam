@@ -3,7 +3,7 @@
 ```yaml
 id: asset-trash
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -59,13 +59,14 @@ Routes (`routes/web.php`, web-authenticated):
 DELETE assets/{asset}:                        AssetTrashController::destroy            # assets.destroy
 GET    assets/trash/index:                    AssetTrashController::index              # assets.trash
 POST   assets/{asset}/restore:                AssetTrashController::restore            # assets.restore (withTrashed)
-POST   assets/trash/bulk-restore:              AssetTrashController::bulkRestore
-DELETE assets/{asset}/force-delete:            AssetTrashController::forceDelete        # assets.force-delete (withTrashed)
-DELETE assets/trash/bulk-force-delete:          AssetTrashController::bulkForceDeleteTrashed
+POST   assets/bulk/trash:                     AssetTrashController::bulkTrash          # assets.bulk.trash
+POST   assets/trash/bulk-restore:             AssetTrashController::bulkRestore        # assets.trash.bulk-restore
+DELETE assets/{asset}/force-delete:           AssetTrashController::forceDelete        # assets.force-delete (withTrashed)
+DELETE assets/trash/bulk-force-delete:        AssetTrashController::bulkForceDeleteTrashed  # assets.trash.bulk-force-delete
 ```
 
-Policy abilities used: `delete` (soft, admin+editor), `restore` (admin+editor),
-`forceDelete` (admin only) — see `AssetPolicy`.
+Policy abilities used: `delete`, `bulkTrash`, `restore`, `bulkRestore` (admin+editor),
+`forceDelete` (admin only) — see [`authorization-policies.md`](authorization-policies.md).
 
 ### Layer touchpoints & ordering
 

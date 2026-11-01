@@ -3,7 +3,7 @@
 ```yaml
 id: system-admin
 status: implemented
-version: 6
+version: 7
 owner: core
 related:
   - architecture
@@ -25,7 +25,8 @@ source:
 Admins need a single operational surface — settings, queue health, logs, ad-hoc
 artisan commands, S3 connectivity, integrity checks, and a full Pest run — without
 shelling into the server. `/system/*` is that surface: one controller delegating to
-three narrow services, gated entirely by `SystemPolicy::access` (admin only, see
+four narrow services (`SystemService`, `ArtisanCommandRunner`, `QueueService`,
+`TestRunnerService`), gated entirely by `SystemPolicy::access` (admin only, see
 [authorization-policies.md](authorization-policies.md)).
 
 ## Requirements
@@ -125,6 +126,8 @@ SystemService:                                    # read-only diagnostics; S3Ser
 SettingRules::passes(string $key, mixed $value): bool   # REQ-3; true for a key it has no rule for
 
 config/orca.php:
+  php_cli_path:           env(PHP_CLI_PATH)                           # REQ-6; the only source findPhpCliBinary() reads
+  admin_bootstrap:        { name, email, password } from ORCA_ADMIN_*  # see security-invariants.md
   ui_locales:             { en: English, nl: Nederlands (Dutch) }     # localization.md REQ-2
   rekognition_languages:  { en: English, nl: Dutch (Nederlands), … }  # the AI-tag language picker
 

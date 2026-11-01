@@ -3,7 +3,7 @@
 ```yaml
 id: cloudflare-purge
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -19,13 +19,13 @@ source:
 replacing a file's bytes or regenerating its thumbnail keeps the same URL, which
 means a CDN sitting in front of S3 will happily keep serving the stale copy unless
 explicitly told otherwise. `CloudflareService` purges the affected URLs
-non-blockingly after a replace or thumbnail/resize regen, so the fix is "purge the
+non-blockingly after a replace, a custom-thumbnail upload, or a content-type repair, so the fix is "purge the
 edge cache," never "mint a new key" (query-string cache-busting was explicitly
 rejected too — see the ADR's alternatives).
 
 ## Requirements
 
-- **REQ-1** — Purging requires **all four** of: `CLOUDFLARE_ENABLED=true` (env),
+- **REQ-1** — Purging requires **all five** of: `CLOUDFLARE_ENABLED=true` (env),
   a non-empty `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID` (env), a non-empty
   `custom_domain` setting, and the `cloudflare_cache_purge` setting toggled on.
   Missing any one means `isEnabled()` is false and no HTTP call is ever attempted.
@@ -69,8 +69,10 @@ cloudflare_cache_purge: boolean  # group aws
 
 ### Layer touchpoints & ordering
 
-Called from `AssetReplaceController` only — both `replace()` (file replacement)
-and `storeThumbnail()` (custom thumbnail upload):
+Called from `AssetReplaceController` — both `replace()` (file replacement) and
+`storeThumbnail()` (custom thumbnail upload) — and from
+`AuditContentTypesCommand`'s `--fix` repair, which purges each re-headed original
+(see [`maintenance-commands.md`](maintenance-commands.md)):
 
 ```
 1. collectAssetUrls($asset)   # BEFORE S3 keys are nulled/replaced on the model
@@ -80,7 +82,7 @@ and `storeThumbnail()` (custom thumbnail upload):
 
 Note: `RegenerateResizedImage` (the bulk resize-regeneration job, see
 [`features/queue-jobs.md`](queue-jobs.md)) does **not** call `CloudflareService` —
-purge is wired only into the interactive replace/thumbnail paths.
+purge is wired only into the paths above.
 
 `S3Service::getPublicBaseUrl()` supplies the base URL (honors `custom_domain`) that
 `collectAssetUrls()` prefixes onto each S3 key.
@@ -160,7 +162,7 @@ Scenario: purgeUrls filters empty/null entries and short-circuits an empty list
 ## Open questions / future
 
 - No Feature-level test exercises the actual call sites (asset replace /
-  `RegenerateResizedImage`) invoking `collectAssetUrls()` + `purgeUrls()` together
+  custom thumbnail) invoking `collectAssetUrls()` + `purgeUrls()` together
   end-to-end — coverage today is at the `CloudflareService` unit level plus the
   ordering contract documented in code comments (call `collectAssetUrls()` before
   nulling S3 keys). A Feature test asserting the purge is attempted (via

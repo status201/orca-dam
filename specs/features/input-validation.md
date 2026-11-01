@@ -3,7 +3,7 @@
 ```yaml
 id: input-validation
 status: implemented
-version: 5
+version: 6
 owner: core
 related:
   - architecture
@@ -233,7 +233,11 @@ the table rebuild once it has seen its drop command. And the backfill uses `DB::
 `s3_key` is still occupied and still matched by the `withTrashed()` dedup check), and offset paging
 would skip rows because the loop writes the column the `WHERE` filters on.
 
-Splitting into two files is not cosmetic: MySQL DDL is not transactional, so a failure in the second
+The filename columns (REQ-13) widen in
+`database/migrations/2026_08_06_110000_widen_filename_columns.php`; `assets.filename` stays fully
+indexed at 2000 bytes, so no index restructuring is needed.
+
+Splitting the S3-key work into two files is not cosmetic: MySQL DDL is not transactional, so a failure in the second
 migration must not cost a second full pass over the table.
 
 Nothing else here persists state: `ColumnLimits` is a constant array, and the audit is a test.
@@ -392,11 +396,6 @@ Scenario: The upload page's copyright fields show their limit as it is approache
 - Until then, a migration that declares a width with a literal instead of `ColumnLimits::for()`
   drifts undetected. `recipes/add-a-migration.md` names the step; a source scan over
   `database/migrations/**` for `->string('x', <literal>)` would enforce it.
-- ~~**The derived-key budget is unbounded.**~~ **Resolved** by REQ-10: every key column is now 1024,
-  the width S3 itself allows, so `folder` (≤100) plus `filename` (≤255) plus the longest derived
-  prefix (`thumbnails/L/`) cannot reach the ceiling. The `folder` cap stays, but its justification
-  has changed — it is now what keeps `scopeInFolder`'s `LIKE 'folder/%'` range inside REQ-12's
-  255-character index prefix, not an overflow guard.
 - **The API advertises characters where S3 counts bytes.** `max:1024` counts characters, so a
   multibyte key passing validation could still exceed S3's 1024-*byte* limit. Harmless in practice —
   `S3Service::sanitizeFilename()` strips to `[a-zA-Z0-9\-.]` and `FolderController` to
@@ -405,8 +404,8 @@ Scenario: The upload page's copyright fields show their limit as it is approache
   would close it; the failure today is an S3 error with a message, not a silent truncation.
 - **`ORDER BY s3_key` is a filesort now.** REQ-12's prefix index cannot satisfy an ordering over a
   value it does not fully store, so the `s3key_asc`/`s3key_desc` sorts in `Asset::scopeApplySort`
-  lost their index. Acceptable on a paginated listing; if it ever hurts, sort by `filename` (still
-  `varchar(255)`, fully indexable) rather than re-widening the index.
+  lost their index. Acceptable on a paginated listing; if it ever hurts, sort by `filename`
+  (`varchar(500)`, still fully indexable) rather than re-widening the index.
 - **Two capped inputs still have no counter**, so REQ-7's second half is not yet true everywhere:
   the passkey `name` field (`resources/views/profile/partials/passkeys-form.blade.php`, two
   occurrences at `maxlength="100"`) and the batch tag input on the upload page, which has a server

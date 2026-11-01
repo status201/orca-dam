@@ -3,7 +3,7 @@
 ```yaml
 id: settings
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -55,7 +55,7 @@ Setting::allSettings(): array                  # cached flat key => value map
 Setting::allGrouped(): array                   # cached group => [key => {value,type,description}]
 Setting::clearCache(): void                     # forgets every per-key cache + the two aggregates
 Setting::forget(key): void                      # deletes the row, its cache and the two aggregates
-POST /system/settings/update  (SystemController::updateSetting, admin-only, AJAX)
+POST /system/settings  (system.update-setting → SystemController::updateSetting, admin-only, AJAX)
   body: { key: string, value: string }
   -> 422 { success: false, error } on failed validation for a known key
   -> 200 { success: bool, message }

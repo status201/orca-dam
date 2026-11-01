@@ -3,7 +3,7 @@
 ```yaml
 id: client-side-tools
 status: implemented
-version: 7
+version: 8
 owner: core
 related:
   - architecture
@@ -48,7 +48,7 @@ backend render step, only a backend *persist* step.
   (`metadata_tags`, `metadata_reference_tag_ids`, `metadata_license_type`,
   `metadata_copyright`, `metadata_copyright_source`, `metadata_date_obtained`) via
   `HasUploadMetadataRules`, applied identically to the main upload flow (see
-  `CLAUDE.md` → Key Workflows → Upload). The list is the trait's, never a copy of it —
+  [`asset-upload.md`](asset-upload.md)). The list is the trait's, never a copy of it —
   the tool views include the same `partials/upload-metadata.blade.php` as the upload
   page, so a field added there reaches these endpoints without a change here. The MathML
   and `.tex` template uploads do not accept batch metadata.
@@ -174,9 +174,9 @@ root folder, translations) and an Alpine module registered in
 `resources/js/app.js` (`tools-gif-maker.js`, `tools-latex-mathml.js`,
 `tools-tikz-svg.js`, `tools-tikz-svg-fonts.js`, `tools-tikz-png.js`; TikZ Server
 itself is `tools-tikz-server.js`, covered in
-[tikz-render.md](tikz-render.md)). All five upload flows converge on
+[tikz-render.md](tikz-render.md)). All six upload flows converge on
 `ToolUploadService::store()` — the controller methods
-(`uploadGif`/`uploadMathml`/`uploadTikzSvg`/`uploadTikzSvgFonts`/`uploadTikzPng`)
+(`uploadGif`/`uploadMathml`/`uploadTikzSvg`/`uploadTikzSvgFonts`/`uploadTikzPng`/`uploadTexTemplate`)
 differ only in mime type, content decoding (base64 vs raw string), and which
 `attributes`/`metadata` they forward.
 

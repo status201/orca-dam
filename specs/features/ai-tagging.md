@@ -3,7 +3,7 @@
 ```yaml
 id: ai-tagging
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -101,7 +101,7 @@ detectLabels() result item:
   name: string        # lowercased, translated if target language != en
   confidence: float    # 0-100, AWS-reported confidence
 
-Settings consulted (Setting::get, live per call — see settings.md-to-be):
+Settings consulted (Setting::get, live per call — see settings.md):
   rekognition_max_labels: integer      # default 3
   rekognition_min_confidence: integer  # default 80 (valid range 65-99)
   rekognition_language: string         # default 'nl'

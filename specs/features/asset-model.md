@@ -3,7 +3,7 @@
 ```yaml
 id: asset-model
 status: implemented
-version: 7
+version: 8
 owner: core
 related:
   - architecture
@@ -131,7 +131,7 @@ Asset:
   s3_key: string(1024)    # IMMUTABLE (REQ-1); widened from 255 — input-validation.md REQ-10
   s3_key_hash: char(64)   # sha256 of s3_key — carries the UNIQUE, which the wide column cannot;
                           # NOT fillable, $hidden, set by a saving hook. input-validation.md REQ-11
-  etag: string            # S3 etag — dedup key, see duplicate-detection.md
+  etag: ?string           # S3 etag — dedup key, see duplicate-detection.md
   filename: string(500)   # editable display name; the browser's original name, stored verbatim.
                           # Widened from 255 — input-validation.md REQ-13
   mime_type: string
@@ -158,9 +158,10 @@ Asset:
 model's scope is a thin delegator so search-parsing logic stays independently
 testable (see [`asset-search.md`](asset-search.md)). `syncTagsWithAttribution()`
 does a `syncWithoutDetaching` followed by a single bulk `UPDATE` over
-`asset_tag` (not N per-tag updates) to set `attached_by` — callers in
-`AssetController`, `AssetBulkController`, and `CsvImportService` all funnel
-through this one method rather than touching the pivot directly.
+`asset_tag` (not N per-tag updates) to set `attached_by` — callers
+(`AssetController`, `AssetBulkController`, `ImportController`, `Api\AssetApiController`,
+`AssetProcessingService`, `RekognitionService`) all funnel through this one method
+rather than touching the pivot directly.
 `syncTagsPreservingAi()` is the *replacing* counterpart used by the two metadata-update
 endpoints (`AssetController::update`, `Api\AssetApiController::update`, both via
 `UpdateAssetRequest::userTagIds()` / `referenceTagIds()`). It was a 35-line block copied

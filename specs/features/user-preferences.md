@@ -3,7 +3,7 @@
 ```yaml
 id: user-preferences
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -34,8 +34,9 @@ a new preference key is a code change, not a migration.
   `home_folder`, `items_per_page`, `locale`, `dark_mode`, `guided_demos`. It may be
   `null` (no overrides at all).
 - **REQ-2** — `User::getPreference(string $key, mixed $default = null)` /
-  `setPreference(string $key, mixed $value)` are the only accessors; callers never
-  read/write the `preferences` array directly.
+  `setPreference(string $key, mixed $value)` are the accessors for a single key.
+  The one batch writer is `ProfileController::updatePreferences`, which rewrites the
+  profile form's keys (and unsets the cleared ones) in one save.
 - **REQ-3** — A preference always overrides the equivalent global `Setting` when
   present and valid; an absent or invalid preference falls through to the global
   default. This mirrors the `Setting` cascade for `locale`

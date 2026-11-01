@@ -3,7 +3,7 @@
 ```yaml
 id: queue-jobs
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -39,7 +39,7 @@ Supervisor-managed `queue:work` process in production
   failure once retries are exhausted.
 - **REQ-3** — `RunTestSuiteJob` is `$tries = 1` (a flaky Pest run should not silently
   retry) with a long `$timeout = 900` (15 min, the full suite can be slow); it marks
-  the run row failed via `TestRunnerService::markFailed()` both inline (`catch`) and
+  the run's cache entry failed via `TestRunnerService::markFailed()` both inline (`catch`) and
   in `failed()` so the web UI's poll always sees a terminal state.
 - **REQ-4** — `GenerateAiTags` skips non-images and animated GIFs (Rekognition
   doesn't support GIF) rather than erroring, and swallows

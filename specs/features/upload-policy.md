@@ -3,7 +3,7 @@
 ```yaml
 id: upload-policy
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -117,12 +117,14 @@ inline_extensions:  [jpg, jpeg, png, gif, webp, svg, pdf,
 
 ### Layer touchpoints & ordering
 
-FormRequest validation (`AllowedUploadExtension` rule) runs **before** any
-controller/service work on all three paths:
+Request validation with the `AllowedUploadExtension` rule runs **before** any
+controller/service work on all three paths (`StoreAssetRequest` on upload; inline
+`$request->validate()` in `ChunkedUploadController::initiate` and
+`AssetReplaceController::replace`):
 
 ```
 POST /assets            -> validates $file  (UploadedFile instance)
-POST /chunked-upload/init -> validates $filename (string; bytes not yet present)
+POST /api/chunked-upload/init -> validates $filename (string; bytes not yet present)
 POST /assets/{id}/replace -> validates $file  (UploadedFile instance)
 ```
 

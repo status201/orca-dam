@@ -3,7 +3,7 @@
 ```yaml
 id: discovery-import
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -99,7 +99,7 @@ deleted_at: datetime-string|null
 scan(): S3Service::findUnmappedObjects() → batch pre-fetch trashed s3_keys → per-object getObjectMetadata()
 import(): batch pre-fetch existing s3_keys (withTrashed)
   → per key: [already mapped? skip] → getObjectMetadata() → [etag dup? skip]
-    → DB::transaction(Asset::create(...)) → ProcessDiscoveredAsset::dispatch($asset->id)
+    → DB::transaction(AssetIngestionService::persist(...)) → ProcessDiscoveredAsset::dispatch($asset->id)
 ProcessDiscoveredAsset::handle():
   → extractImageDimensions() (if missing)
   → AssetProcessingService::processImageAsset($asset, dispatchAiTagging: false)
