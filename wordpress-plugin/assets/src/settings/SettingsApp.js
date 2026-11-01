@@ -46,14 +46,14 @@ export function SettingsApp() {
 					? {
 							type: 'success',
 							text: __( 'Connected to ORCA.', 'orca-dam-picker' ),
-					  }
+						}
 					: {
 							type: 'error',
 							text:
 								__( 'ORCA returned', 'orca-dam-picker' ) +
 								' ' +
 								body.orca_status,
-					  }
+						}
 			);
 		} catch ( e ) {
 			setHealthStatus( { type: 'error', text: e.message } );
@@ -126,11 +126,11 @@ export function SettingsApp() {
 										? __(
 												'A token is configured. Leave empty to keep it.',
 												'orca-dam-picker'
-										  )
+											)
 										: __(
 												'Paste a token created in ORCA → API Tokens.',
 												'orca-dam-picker'
-										  )
+											)
 								}
 								value={ token }
 								onChange={ setToken }
@@ -164,7 +164,7 @@ export function SettingsApp() {
 										: __(
 												'Test connection',
 												'orca-dam-picker'
-										  ) }
+											) }
 								</Button>
 							</div>
 						</VStack>
