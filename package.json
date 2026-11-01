@@ -6,6 +6,7 @@
         "dev": "vite",
         "build": "vite build",
         "spec:lint": "node scripts/spec-lint.mjs",
+        "spec:tighten": "node scripts/spec-lint.mjs tighten",
         "spec:version": "node scripts/sdd-guard.mjs version",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
