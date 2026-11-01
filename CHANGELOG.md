@@ -7,11 +7,18 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+---
+
+## [v1.9.0] — 2026-11 — Eye Patch
+
 ### Notes for upgrading from v1.8.0 Saddle Patch
 - **After deploying, run `php artisan assets:audit-content-types`** (or the card on **System → Commands**). Objects uploaded before the Content-Type fix below keep the type the uploader chose; the audit lists them, marks the dangerous ones, and `--fix` rewrites their headers in place. It also counts assets whose recorded type differs from their extension's (a directly uploaded `.tex` was recorded as `text/x-tex` but served as `application/x-tex`), and `--fix` corrects those too. See Security.
 - **One migration, additive, so a maintenance window is optional.** `add_staging_s3_key_to_upload_sessions_table` adds a nullable `upload_sessions.staging_s3_key`. Chunked uploads already in flight during the deploy keep working: a session without a staging key assembles on its own key, as before. Run `php artisan migrate`, and on MySQL/MariaDB follow it with `php artisan db:verify-schema`.
 - **Rebuild the front-end assets (`npm ci && npm run build`).** Tailwind moved to v4 (see Changed). The build host needs **Node 20 or newer** and a platform Tailwind v4's native engine supports (Linux/macOS/Windows on x64 or arm64). CI builds on Node 22.
 - **Supported browsers are now Safari 16.4+, Chrome/Edge 111+ and Firefox 128+.** Older browsers get broken styling. That includes editors who open the embedded asset picker inside a CMS on an old browser.
+- **If a deploy script calls `db:verify-schema`, add `--strict`.** Report commands now exit 0 when they find something; `--strict` restores the failing exit code. The script in `DEPLOYMENT.md` already has it. See Changed.
+- **Rebase any branch with a spec edit in flight.** 38 feature specs moved version in this release: `ai-tagging` (→4), `asset-cycle-navigation` (→3), `asset-model` (→8), `asset-replace` (→2), `asset-trash` (→2), `asset-upload` (→8), `authentication` (→3), `authorization-policies` (→2), `bulk-operations` (→5), `chunked-upload` (→4), `client-side-tools` (→8), `cloudflare-purge` (→2), `csv-export-import` (→4), `discovery-import` (→2), `duplicate-detection` (→4), `e2e-testing` (→6), `error-handling` (→3), `folder-management` (→2), `iframe-embedding` (→2), `image-processing` (→4), `input-validation` (→6), `localization` (→5), `maintenance-commands` (→5), `passkeys` (→2), `queue-jobs` (→2), `reference-tags-api` (→4), `rest-api` (→8), `s3-storage` (→8), `security-headers` (→2), `security-invariants` (→4), `settings` (→4), `static-analysis` (→5), `system-admin` (→7), `tag-input` (→3), `tags` (→6), `tikz-render` (→6), `upload-policy` (→5), `user-preferences` (→3).
+- **The WordPress plugin is released separately and stays at `wp-v0.4.9`.** The updater hardening under Fixed ships with the next plugin release.
 
 ### Added
 - **`assets:audit-content-types` finds stored objects served with headers their extension doesn't call for, and can repair them.** It checks every asset, trashed ones included since a soft-deleted asset's object stays public, against the Content-Type and download behaviour an upload would set today. It flags as **dangerous** anything served inline as an active type (HTML, XML, JavaScript, or SVG behind a non-SVG name). It's a dry run by default. It exits 0 whatever it finds, and `--strict` makes it exit 1 while anything is wrong, for scripts. `--fix` copies each object onto itself with corrected headers: the key and the bytes stay the same. It also stores the copy's new ETag on the asset and purges the URL from Cloudflare when purging is on. The headers are read with concurrent requests, so a large library still fits in one run from the web UI.

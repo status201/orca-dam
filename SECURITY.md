@@ -9,8 +9,8 @@ released and what is pending.
 | Version           | Supported          |
 |-------------------| ------------------ |
 | `main` (unreleased) | :white_check_mark: |
-| 1.8.0 (latest release) | :white_check_mark: |
-| < 1.8.0           | :x:                |
+| 1.9.0 (latest release) | :white_check_mark: |
+| < 1.9.0           | :x:                |
 
 ## Reporting a Vulnerability
 
