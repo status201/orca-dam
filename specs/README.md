@@ -86,6 +86,24 @@ and indent costs tokens and latency.
   to them. Specs are standalone enough to read on their own, but they should not
   duplicate the entire conventions list — point at it.
 
+What stays in a feature spec, and what goes (`spec-lint` enforces the bold parts):
+
+- **Requirements** — the rule, in a few lines, plus at most one "Why:" sentence when it
+  stops someone from "fixing" a deliberate choice. **No history**: how it used to work,
+  how a bug was found, PR numbers. That is what the commit message and CHANGELOG are for.
+- **Technical design** — the public surface (routes, public methods, JSON shapes, columns,
+  cache keys). Not private methods, step-by-step walkthroughs of the code, or verbatim
+  validation rules and config files; link to the symbol.
+- **Scenarios** — one per distinct behaviour; fold per-role or per-field variants into a
+  `Scenario Outline`. A regression scenario is Given/When/Then plus its pin line, **no
+  `# Regression:` story**.
+- **One owner per fact** — when two features share a contract, one spec states it and the
+  other links. **Copied prose fails the lint.**
+- **Open questions** hold open questions. **No "None" section**; delete it. No struck-through
+  "Resolved" items.
+- **Template sections only**, in template order. **Each spec stays within its size budget**
+  (`specs/.size-budget.json`), and a REQ within 800 characters.
+
 ## BDD — scenarios in Gherkin
 
 Behaviour is specified as `Scenario / Given / When / Then`. This forces
@@ -204,7 +222,10 @@ SDD is enforced by `scripts/sdd-guard.mjs`, wired as Claude Code hooks
 - **PreToolUse** blocks an `Edit`/`Write` to production code when no spec changed.
 - **Stop** blocks finishing a turn whose diff changed production code without specs,
   **or** changed a feature spec's contract without incrementing its `version:`.
-- **CI** fails a PR with the same two rules (also catches non-Claude agents + direct
+- **Stop** and **CI** also fail when an `accepted` ADR's body was rewritten: ADRs are
+  append-only, so only `status:` / `amended_by:` lines and an added `> Amended by ADR-NNN`
+  note may change.
+- **CI** fails a PR with the same rules (also catches non-Claude agents + direct
   commits to `main`).
 - **`npm run spec:version`** runs the version rule on its own against the base ref.
 
@@ -252,6 +273,11 @@ gate. `scripts/spec-lint.mjs` (`npm run spec:lint`) checks, over `specs/**` and 
 - **The `QUICK_REFERENCE.md` file tree** names every `app/Services/` and `app/Console/Commands/`
   entry and every tracked top-level directory, and nothing deleted.
 - **Manual parity** — `GEBRUIKERSHANDLEIDING.md` mirrors `USER_MANUAL.md`'s heading sequence.
+- **Lean specs** — the bold rules in "Format rules" above: size budgets per spec and in total
+  (`specs/.size-budget.json`, a ratchet: raising an entry is a reviewable diff, and
+  `npm run spec:tighten` only lowers them), REQ length, history phrasing in the contract and
+  scenario sections, template-only `##` sections, no empty Open questions, and no 30-word run of
+  prose shared by two feature specs.
 
 It runs in CI (PRs and pushes to `main`) and as a local `Stop` hook; CI is the backstop.
 
@@ -356,6 +382,7 @@ specs/
     adr-018-slug-requirement-ids.md             ·  new REQs get slug IDs; numeric ones frozen
     adr-019-tailwind-4-css-first.md             ·  Tailwind v4, CSS-first config; v3 defaults kept
   .legacy-req-ids.json ← the frozen numeric REQ IDs (lint-checked; only ever shrinks)
+  .size-budget.json    ← per-spec + total size budgets (lint-checked ratchet; `npm run spec:tighten`)
 ```
 
 > New features get their own spec (copy `features/_feature-template.md`) as they're

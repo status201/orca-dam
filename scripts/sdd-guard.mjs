@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // SDD guard — enforces spec-driven development (see specs/README.md).
 //
-// One zero-dep script backing several Claude Code hooks + CI. Two rules:
+// One zero-dep script backing several Claude Code hooks + CI. Three rules:
 //
 //   1. Spec-before-code — a change that touches *production code* must also touch a
 //      spec under specs/, unless it is exempt. Exempt = an allowlisted path, or an
 //      explicit marker (a gitignored `.sdd-skip` sentinel locally, or `[skip-sdd]` /
 //      a `skip-sdd` label in CI).
 //   2. Contract-changes-bump-the-version — a feature spec whose `## Requirements` or
-//      `## Technical design` changed must also increment its `version:`. Both rules
-//      share the same marker as their escape hatch.
+//      `## Technical design` changed must also increment its `version:`.
+//   3. Accepted ADRs are append-only — only status/amended_by lines and added `>`
+//      amendment notes may change (stop + ci).
+//   All three share the same marker as their escape hatch.
 //
 // Modes (argv[2]):
 //   pretool  PreToolUse hook  — deny an Edit/Write to gated code with no spec change
@@ -269,6 +271,54 @@ function unbumpedSpecs() {
   return offenders.sort((a, b) => a.rel.localeCompare(b.rel));
 }
 
+// Rule 3 — an accepted ADR is a record, not a document to keep editing. A change of
+// mind is a new ADR that supersedes or amends it. What may still change: the
+// `status:` / `amended_by:` / `superseded_by:` lines, and added `>` blockquote lines
+// (the "Amended by ADR-NNN" banner). Anything else rewritten in the body fails.
+const ADR_DIR = 'specs/decisions/';
+const ADR_MUTABLE_LINE = /^(?:status|amended_by|superseded_by):/;
+
+function adrBody(text, { dropNewQuotes = null } = {}) {
+  return text
+    .split('\n')
+    .map((l) => l.replace(/\s+$/, ''))
+    .filter((l) => !ADR_MUTABLE_LINE.test(l))
+    .filter((l) => !(dropNewQuotes && l.startsWith('>') && !dropNewQuotes.has(l)))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function editedAdrs() {
+  const base = baseRef();
+  if (!base) return [];
+
+  const candidates = new Set(porcelainPaths([ADR_DIR]));
+  for (const p of git(['diff', '--name-only', `${base}...HEAD`, '--', ADR_DIR], ROOT).split('\n')) {
+    if (p.trim()) candidates.add(p.trim());
+  }
+
+  const offenders = [];
+  for (const rel of candidates) {
+    if (!/^specs\/decisions\/adr-\d{3,}-.+\.md$/.test(rel)) continue;
+    const before = git(['show', `${base}:${rel}`], ROOT);
+    if (!before || !/^status: *accepted\b/m.test(before)) continue; // new, or not yet accepted
+    const after = readWorkingTree(rel);
+    if (after === null) {
+      offenders.push(rel); // an accepted ADR is superseded, never deleted
+      continue;
+    }
+    const oldQuotes = new Set(before.split('\n').map((l) => l.replace(/\s+$/, '')));
+    if (adrBody(before) !== adrBody(after, { dropNewQuotes: oldQuotes })) offenders.push(rel);
+  }
+  return offenders.sort();
+}
+
+const ADR_ADVICE =
+  `An accepted ADR is append-only: write a new ADR that supersedes or amends it, and only\n` +
+  `touch the old one's \`status:\` / \`amended_by:\` lines or add a "> Amended by ADR-NNN" note.\n` +
+  `See specs/README.md → "Decisions (ADRs)".`;
+
 function describeUnbumped(offenders) {
   return offenders
     .map(({ rel, from, to }) => {
@@ -309,7 +359,9 @@ under specs/ in the same change.
   • Trivial (typo/comment/dep-bump/test/style/docs) → exempt; for a rare trivial
     production tweak run:  touch .sdd-skip
 Version: a feature spec whose ## Requirements or ## Technical design changes must also
-increment its \`version:\`. Scenarios, tests, background and open questions do not.`;
+increment its \`version:\`. Scenarios, tests, background and open questions do not.
+Lean: a spec states the contract, not its story — no "used to", no bug narrative, link to
+the spec that owns a fact instead of copying it. spec-lint enforces a size budget.`;
 
 function denyPretool(rel) {
   process.stderr.write(
@@ -357,6 +409,16 @@ async function runStop() {
         describeUnbumped(unbumped) +
         `\n${VERSION_ADVICE}\n` +
         `If the edit was cosmetic (a typo inside a REQ line), run  touch .sdd-skip`,
+    );
+  }
+
+  // Rule 3 — accepted ADRs are append-only.
+  const adrs = editedAdrs();
+  if (adrs.length > 0) {
+    problems.push(
+      `SDD backstop: an accepted ADR was rewritten:\n` +
+        adrs.map((f) => `  - ${f}`).join('\n') +
+        `\n${ADR_ADVICE}`,
     );
   }
 
@@ -419,6 +481,18 @@ function runCi() {
         describeUnbumped(unbumped) +
         `\n${VERSION_ADVICE}\n` +
         `If the edit was cosmetic, add [skip-sdd] to a commit message / the 'skip-sdd' PR label.`,
+    );
+  }
+
+  const adrs = editedAdrs();
+  if (adrs.length === 0) {
+    process.stdout.write('SDD check: no accepted ADR rewritten — OK.\n');
+  } else {
+    failures.push(
+      `SDD check FAILED: an accepted ADR was rewritten:\n` +
+        adrs.map((f) => `  - ${f}`).join('\n') +
+        `\n${ADR_ADVICE}\n` +
+        `If the edit is a correction the team agrees on, add [skip-sdd] / the 'skip-sdd' PR label.`,
     );
   }
 
