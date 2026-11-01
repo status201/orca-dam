@@ -20,18 +20,12 @@ source:
 
 ## Background / Why
 
-Every place a human or API client supplies free-text tag names — the asset
-edit form, the upload batch-metadata form, the grid's bulk tag bar, a single
-grid row, CSV import, and the reference-tags API — needs to accept a single
-name, a comma-separated list ("a,b,c"), or an array mixing both, and turn it
-into a clean, de-duplicated, correctly-cased list. Before this was
-centralised, each call site re-implemented the splitting/trimming/lowercasing,
-so behaviour drifted (e.g. one call site might not dedupe case-insensitively).
-`App\Support\TagInputParser` is now the single PHP-side source of truth for
-this shaping (name resolution/id lookup stays a separate concern — see
-[`tags.md`](tags.md)'s `Tag::resolveUserTagIds`/`resolveReferenceTagIds`); the
-JS module `tag-input-core.js` is the equivalent single source of truth for the
-four Alpine tag-input widgets in the browser.
+Every place a human or API client supplies free-text tag names — asset edit, upload batch
+metadata, the grid bulk bar and row input, CSV import, the reference-tags API — must accept a
+single name, a comma-separated list, or an array mixing both, and produce one clean, deduped,
+lowercased list. `App\Support\TagInputParser` is the single PHP-side shaper (name → id resolution
+is [`tags.md`](tags.md)'s concern); `tag-input-core.js` is the equivalent for the four Alpine
+tag-input widgets.
 
 ## Requirements
 
@@ -57,9 +51,8 @@ four Alpine tag-input widgets in the browser.
 ```yaml
 App\Support\TagInputParser:
   parse(string|array|null $input, int $maxLength = Tag::MAX_NAME_LENGTH): array<string>
-    # split each piece on ',' -> Tag::normalizeName() (mb_strtolower(trim()), tags.md
-    # REQ-tag-name-normalization) -> drop '' and len > maxLength
-    # -> dedupe via keyed array (preserves first-seen order) -> array_keys()
+    # split on ',' -> Tag::normalizeName() (tags.md REQ-tag-name-normalization)
+    # -> drop '' and len > maxLength -> dedupe, first-seen order. Pure: no DB access.
 
 resources/js/alpine/tag-input-core.js:
   parseTagNames(raw: string): string[]
@@ -69,118 +62,55 @@ resources/js/alpine/tag-input-core.js:
     # exposes commitInput() and handleTagPaste(event) for x-data spread
 ```
 
-Callers (backend), all passing raw request/CSV input straight through:
+Backend callers, all passing raw input straight through:
 
 ```yaml
-AssetController::addTags:             TagInputParser::parse($request->input('tags', []))
-AssetBulkController::bulkAddTags:     TagInputParser::parse($request->input('tags', []))
-AssetProcessingService::applyUploadMetadata: TagInputParser::parse($metadata->tags)  # metadata_tags[] from upload
-AssetController::update,
-Api\AssetApiController::update:       UpdateAssetRequest::userTagIds()
-                                       -> TagInputParser::parse($this->input('tags', []))
-Api\AssetApiController::addReferenceTags: TagInputParser::parse($request->input('tags'))
-ImportController (CSV import):        TagInputParser::parse($row['user_tags'] ?? null)
-                                       TagInputParser::parse($row['reference_tags'] ?? null)
+AssetController::addTags:             parse($request->input('tags', []))
+AssetBulkController::bulkAddTags:     parse($request->input('tags', []))
+AssetProcessingService::applyUploadMetadata: parse($metadata->tags)
+AssetController::update, Api\AssetApiController::update:
+                                       UpdateAssetRequest::userTagIds() -> parse($this->input('tags', []))
+Api\AssetApiController::addReferenceTags: parse($request->input('tags'))
+ImportController (CSV import):        parse($row['user_tags'] ?? null), parse($row['reference_tags'] ?? null)
 ```
 
-Callers (frontend, `tagInputCore()` spread into Alpine `x-data`) — the four tag
-inputs named in `CLAUDE.md`'s conventions section: asset edit (`asset-editor.js`),
-upload batch-metadata form (`upload-metadata.js`), grid bulk bar and grid row
-(`asset-grid.js`).
-
-### Data shapes
-
-Input: `string | array<int, string|null> | null` — e.g. `"cat, dog, animal"`,
-`["cat,dog", "animal"]`, or a mix.
-
-Output: `array<int, string>` — lowercase, trimmed, deduped, length-bounded tag
-names, ready for `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` (name
--> id resolution is intentionally a separate step, documented in
-[`tags.md`](tags.md)).
+Frontend callers (`tagInputCore()` spread into `x-data`): asset edit (`asset-editor.js`), upload
+batch metadata (`upload-metadata.js`), grid bulk bar and grid row (`asset-grid.js`).
 
 ### Layer touchpoints & ordering
 
 ```
-Raw input (string | array, possibly comma-joined)
-  -> TagInputParser::parse()           (this spec — pure, no DB access)
-  -> Tag::resolveUserTagIds() / resolveReferenceTagIds()   (tags.md — name -> id, creates missing tags)
-  -> Asset::syncTagsWithAttribution()  (tags.md — attach + attribution)
+Raw input → TagInputParser::parse() → Tag::resolve*TagIds() → Asset::syncTagsWithAttribution()  (tags.md)
 ```
-
-`TagInputParser` has no dependency on the DB. From the `Tag` model it reads only the
-`Tag::MAX_NAME_LENGTH` constant for its default and the pure `Tag::normalizeName()`, so the
-parser and every name lookup share one normalization rule. It is a pure string transform,
-safely unit-testable without a database.
-
-### Persistence
-
-None — this is a stateless parsing utility; nothing is persisted at this
-layer. (Persistence of the resulting tag names is `tags.md`'s concern.)
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: A comma-separated string is split into trimmed, lowercased names
-  When TagInputParser::parse("Cat, DOG, animal") is called
-  Then the result is ["cat", "dog", "animal"]
+Scenario Outline: parse() shapes raw input into clean names
+  When TagInputParser::parse(<input>) is called
+  Then the result is <result>
+  Examples:
+    | input                              | result                     |
+    | "Cat, DOG, animal"                 | ["cat", "dog", "animal"]   |
+    | ["cat,dog", "animal"]              | ["cat", "dog", "animal"]   |
+    | "a,,b,"                            | ["a", "b"]                 |
+    | "red, blue, red"                   | ["red", "blue"]            |
+    | "ok, <101 chars>, fine"            | ["ok", "fine"]             |
+    | "abc, abcd" with maxLength 3       | ["abc"]                    |
+    | null, '', [] or '   '              | []                         |
 # pinned by: tests/Unit/TagInputParserTest.php
 
-Scenario: An array with comma-joined elements is flattened
-  When TagInputParser::parse(["cat,dog", "animal"]) is called
-  Then the result is ["cat", "dog", "animal"]
-# pinned by: tests/Unit/TagInputParserTest.php
-
-Scenario: Empty segments are dropped
-  When TagInputParser::parse("a,,b,") is called
-  Then the result is ["a", "b"]
-# pinned by: tests/Unit/TagInputParserTest.php
-
-Scenario: Names are de-duplicated case-insensitively, preserving first-seen order
-  When TagInputParser::parse("red, blue, red") is called
-  Then the result is ["red", "blue"]
-# pinned by: tests/Unit/TagInputParserTest.php
-
-Scenario: Names longer than the max length are dropped
-  Given a 101-character name and the default max length of 100
-  When TagInputParser::parse("ok, <101 chars>, fine") is called
-  Then the result is ["ok", "fine"]
-# pinned by: tests/Unit/TagInputParserTest.php
-
-Scenario: A custom max length overrides the Tag default
-  When TagInputParser::parse("abc, abcd", 3) is called
-  Then the result is ["abc"]
-# pinned by: tests/Unit/TagInputParserTest.php
-
-Scenario: null, empty string, empty array, and whitespace-only input all yield []
-  When TagInputParser::parse(null | '' | [] | '   ') is called
-  Then the result is [] in every case
-# pinned by: tests/Unit/TagInputParserTest.php
-
-Scenario: Adding tags via the single-asset endpoint splits a comma-joined value
-  Given an authenticated user and an asset
+Scenario: The tag endpoints split and dedupe comma-joined values
   When POST /assets/{asset}/tags is sent with tags=["landscape, mountain, sunset"]
-  Then the asset ends up with 3 separate tags: landscape, mountain, sunset
+  Then the asset ends up with 3 separate tags
+  And tags=["red", "red, blue", "RED"] yields exactly red, blue
+  And POST /assets/bulk/tags with tags=["alpha, beta", "gamma"] gives every targeted asset all three
 # pinned by: tests/Feature/TagTest.php
 
-Scenario: Adding tags dedups within a single request across mixed values
-  Given an authenticated user and an asset
-  When POST /assets/{asset}/tags is sent with tags=["red", "red, blue", "RED"]
-  Then the asset ends up with exactly 2 tags: red, blue
-# pinned by: tests/Feature/TagTest.php
-
-Scenario: Saving the edit form splits a comma-joined tag value (regression)
-  Given an authenticated user and an asset
+Scenario: Saving the edit form splits a comma-joined tag value
   When PATCH /assets/{asset} is sent with tags=["landscape, mountain"]
   Then the asset ends up with 2 separate user tags: landscape, mountain
-  And sending tags=null clears the user tags instead of failing with a TypeError
-  # The web update was the one call site REQ-4 names that resolved raw input directly;
-  # it now shares UpdateAssetRequest::userTagIds() with the REST update.
-# pinned by: tests/Feature/TagTest.php
-
-Scenario: Bulk add tags splits comma-joined values across every targeted asset
-  Given an authenticated user and two assets
-  When POST /assets/bulk/tags is sent with tags=["alpha, beta", "gamma"]
-  Then both assets end up with tags alpha, beta, gamma
+  And sending tags=null clears the user tags instead of failing
 # pinned by: tests/Feature/TagTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
@@ -197,46 +127,23 @@ Scenario: The grid's inline row input and the bulk bar share the same splitting
   Then both produce the same separate tags
 # pinned by: tests/e2e/asset-detail.spec.js, tests/e2e/bulk-operations.spec.js
 
-Scenario: The batch metadata form splits and dedupes like every other tag input
+Scenario: The batch metadata form splits, dedupes, removes and keeps reference tags
   Given the collapsed batch metadata form on the upload page
   When it is opened and a comma-separated list is entered
   Then one badge per tag is created and the input is consumed
-  And adding a tag that is already staged does not add it twice
-# pinned by: tests/e2e/upload-metadata.spec.js
-
-Scenario: A staged batch tag can be removed again
-  Given two staged batch tags
-  When one is removed
-  Then only the other remains
-# pinned by: tests/e2e/upload-metadata.spec.js
-
-Scenario: A reference tag picked from the batch suggestions stays a reference tag
-  Given the batch metadata tag input
-  When a reference tag is chosen from the suggestion dropdown
-  Then it is staged as a reference tag rather than a user tag, so it can be
-    attributed separately on upload
+  And adding an already staged tag does not add it twice, and a staged tag can be removed
+  And a reference tag chosen from the suggestions stays staged as a reference tag
 # pinned by: tests/e2e/upload-metadata.spec.js
 ```
 
 ## Tests & verification
 
-- Unit: `tests/Unit/TagInputParserTest.php` — exhaustive coverage of `parse()`'s
-  splitting/trim/case/dedupe/length rules in isolation.
-- Feature (integration through real endpoints): `tests/Feature/TagTest.php`
-  ("add tags splits a comma-joined value...", "add tags dedups within a single
-  request", "bulk add tags splits comma-joined values").
-- Run: `php artisan config:clear && php artisan test tests/Unit/TagInputParserTest.php tests/Feature/TagTest.php`
-- E2E: the JS side (`tag-input-core.js`) has no *unit* test (no JS unit-test runner is
-  configured), but all four consumers are exercised in a real browser:
-  `tests/e2e/asset-detail.spec.js` (comma splitting on the edit page and the inline row
-  input), `tests/e2e/bulk-operations.spec.js` (the bulk bar's input) and
-  `tests/e2e/upload-metadata.spec.js` (the batch metadata form, including the
-  reference-tag branch) — harness in [`e2e-testing.md`](e2e-testing.md).
+- Unit: `tests/Unit/TagInputParserTest.php`
+- Feature: `tests/Feature/TagTest.php` — `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/asset-detail.spec.js`, `tests/e2e/bulk-operations.spec.js`,
+  `tests/e2e/upload-metadata.spec.js` ([`e2e-testing.md`](e2e-testing.md))
 
 ## Open questions / future
 
-- `tag-input-core.js` (`parseTagNames`, `tagInputCore`) has no *unit* coverage —
-  the repo has no JS unit-test runner wired up. All four Alpine widgets that
-  consume it are now driven in a browser by the E2E suite, so the behaviour is
-  pinned, but a `parseTagNames` unit test would still be far cheaper than the
-  browser path for the pure-parsing rules.
+- `tag-input-core.js` has no JS unit test (no runner configured); its behaviour is pinned only
+  through the browser suite.

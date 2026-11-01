@@ -25,27 +25,22 @@ source:
 
 ## Background / Why
 
-Passkeys give admins and editors passwordless, phishing-resistant login (WebAuthn /
-FIDO2) via `laravel/passkeys` ~0.2.1. ORCA keeps the package's model and event
-plumbing but takes over the URLs and storage: `Passkeys::ignoreRoutes()` disables
-the package's own `/passkeys/*` routes so ORCA's own `/passkey/*` and
-`/profile/passkeys/*` stay authoritative, and a custom `App\Models\Passkey` adds an
-`encrypted:json` cast on the credential blob. API users are excluded — passkeys (like
-2FA) are a browser-session concept.
+Passkeys give admins and editors passwordless, phishing-resistant login (WebAuthn / FIDO2) via
+`laravel/passkeys` ~0.2.1. ORCA keeps the package's model and event plumbing but owns the URLs
+(`/passkey/*`, `/profile/passkeys/*`) and storage (a custom `App\Models\Passkey`). API users are
+excluded — passkeys, like 2FA, are a browser-session concept.
 
 ## Requirements
 
 - **REQ-1** — Only `admin` and `editor` roles can register passkeys
   (`User::canEnablePasskeys()`); `api` users get a `403` from the options endpoint.
 - **REQ-2** — A user may hold at most `PasskeyService::MAX_CREDENTIALS_PER_USER`
-  (10) passkeys. The registration-options endpoint pre-flight-checks this and
-  returns `422` when already at the cap; `EnforcePasskeyLimit` is a belt-and-braces
-  listener that deletes the newest passkey again if a concurrent registration
-  squeaks past the pre-flight check and puts the user over the cap.
-- **REQ-3** — A successful passkey login (`PasskeyLoginController::login`) logs the
-  user in directly and routes to `/dashboard`, **bypassing** the TOTP 2FA challenge
-  that a password login would otherwise trigger — the passkey assertion is itself
-  treated as sufficient possession+verification.
+  (10) passkeys. The registration-options endpoint returns `422` at the cap; the
+  `EnforcePasskeyLimit` listener deletes the newest passkey if a concurrent registration slips
+  past and exceeds it.
+- **REQ-3** — A successful passkey login (`PasskeyLoginController::login`) logs the user in
+  directly and routes to `/dashboard`, **bypassing** the TOTP 2FA challenge. Why: the assertion
+  is itself possession + verification.
 - **REQ-4** — Passkey login attempts are rate-limited at 10/minute per IP
   (`PasskeyLoginController::RATE_LIMIT`), independent of any route throttle
   middleware.
@@ -60,14 +55,13 @@ the package's own `/passkeys/*` routes so ORCA's own `/passkey/*` and
   An admin can recovery-clear **another** user's passkeys
   (`UserController::clearPasskeys`, gated by `UserPolicy::clearPasskeys`) but not
   their own (self-action forbidden, same rule as `UserPolicy::delete`).
-- **REQ-passkey-login-remember** — The login page has a single "Remember me" checkbox
-  (`#remember_me`, in the password form), and it applies to passkey sign-in too. Both the
-  button ceremony and the conditional-UI autofill pass `@laravel/passkeys` a `remember`
-  *getter*, not a value. The library calls the getter when it submits the assertion, so a box
-  ticked after the ceremony started still counts. Autofill starts on page load, so this
-  matters. `PasskeyLoginController::login` validates `remember` as boolean and passes it to
-  `Auth::guard('web')->login()`. The recaller (`remember_web_*`) cookie is therefore issued only
-  when it is `true`. When it is absent or `false`, the result is a session-only login.
+- **REQ-passkey-login-remember** — The login page's single "Remember me" checkbox
+  (`#remember_me`, in the password form) applies to passkey sign-in too. Both the button ceremony
+  and the conditional-UI autofill pass `@laravel/passkeys` a `remember` *getter*, not a value, so
+  a box ticked after the ceremony started (autofill starts on page load) still counts.
+  `PasskeyLoginController::login` validates `remember` as boolean and passes it to
+  `Auth::guard('web')->login()`: the `remember_web_*` cookie is issued only when `true`;
+  otherwise the login is session-only.
 
 ## Technical design
 
@@ -155,22 +149,11 @@ Login:
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: Admins and editors can enable passkeys, API users cannot
-  Given users with role admin, editor, and api
-  When canEnablePasskeys() is checked
-  Then admin and editor are true, api is false
-# pinned by: tests/Feature/PasskeyTest.php
-
-Scenario: A user reaching the cap is denied at the options step
-  Given a user with 10 registered passkeys
-  When they GET /profile/passkeys/options
-  Then the response status is 422
-# pinned by: tests/Feature/PasskeyTest.php
-
-Scenario: An API user cannot request passkey registration options
-  Given an api-role user
-  When they GET /profile/passkeys/options
-  Then the response status is 403
+Scenario: Registration options are refused to api users and to users at the cap
+  Given an api-role user (canEnablePasskeys() is false; admin and editor are true)
+  And an editor with 10 registered passkeys
+  When each GETs /profile/passkeys/options
+  Then the api user gets 403 and the editor gets 422
 # pinned by: tests/Feature/PasskeyTest.php
 
 Scenario: A user can rename and delete their own passkey
@@ -287,23 +270,13 @@ Scenario: Removing a passkey requires confirming
 
 ## Tests & verification
 
-- Feature: `tests/Feature/PasskeyTest.php` — the full surface: role gating, cap
-  enforcement (options + listener safety net), rename/delete ownership, admin
-  recovery clear (+ self-action forbidden), login route wiring + rate limiting, the
-  remember-me recaller cookie (with `VerifyPasskey` swapped for a double, since no test can sign
-  an assertion),
-  encrypted-at-rest credential, package-route disablement, listener wiring,
-  `passkeys:list`/`passkeys:revoke` console commands.
-- Unit: `tests/Unit/PasskeyServiceTest.php` — `PasskeyService` methods in isolation
-  (list ordering, limit check, rename/delete ownership scoping, clear-all).
-- E2E: `tests/e2e/passkeys.spec.js` — the management UI (empty state, listing,
-  inline rename, remove-with-confirm). It never clicks "Add Passkey": the
-  registration ceremony needs a CDP virtual authenticator the harness does not set
-  up, so registration and passkey sign-in remain browser-untested.
+- Feature: `tests/Feature/PasskeyTest.php` (`VerifyPasskey` is swapped for a double — no test can
+  sign an assertion).
+- Unit: `tests/Unit/PasskeyServiceTest.php`.
+- E2E: `tests/e2e/passkeys.spec.js` — management UI only.
 - Run: `php artisan config:clear && php artisan test`; `npm run test:e2e`
 
 ## Open questions / future
 
-- None found — this is one of the most thoroughly pinned specs in the backfill;
-  every requirement above traces to a scenario in `PasskeyTest.php` or
-  `PasskeyServiceTest.php`.
+- Registration and passkey sign-in are browser-untested: the ceremony needs a CDP virtual
+  authenticator the E2E harness does not set up.

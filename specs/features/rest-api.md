@@ -29,63 +29,41 @@ source:
 
 ## Background / Why
 
-ORCA exposes a REST API so external systems (a Rich Text Editor, the WordPress
-plugin, other backend integrations) can list, upload, update, and delete assets
-without going through the Blade UI. It sits behind the same multi-auth stack as
-the rest of the app (see [ADR-004](../decisions/adr-004-auth-multi.md)) so a
-Sanctum token, a JWT, or an authenticated session can all call it, but it is a
-**distinct controller** (`Api\AssetApiController`) from the web
-`App\Http\Controllers\AssetController` — different validation shape, JSON-only
-responses, and a role split on error verbosity.
+External systems (a Rich Text Editor, the WordPress plugin, backend integrations) list, upload,
+update and delete assets through a REST API. It sits behind the multi-auth stack
+([ADR-004](../decisions/adr-004-auth-multi.md)) — Sanctum, JWT or session — but is a **distinct
+controller** (`Api\AssetApiController`) from the web `AssetController`: different validation shape,
+JSON-only responses, role-aware error verbosity.
 
 ## Requirements
 
-- **REQ-1** — All `/api/assets*` and `/api/tags*` routes (except the two public
-  ones) require `auth.multi` (sanctum, then jwt) (`routes/api.php`); unauthenticated calls
-  get `401`.
-- **REQ-2** — `GET /api/assets` and `GET /api/assets/search` share the filter vocabulary
-  `tags`, `type`, `folder`, `sort`, `per_page` (capped at 100); the search term is
-  `search` on the index and `q` on search. The index also takes an admin-only `user`
-  filter (ignored for other roles).
-- **REQ-3** — `DELETE /api/assets/{asset}` is policy-gated
-  (`AssetPolicy::delete`) so an `api`-role token gets `403` and cannot delete.
-  `PATCH /api/assets/{asset}` is gated by `AssetPolicy::updateViaApi`: an admin may
-  update any asset, an editor or api token only one it uploaded (`403
-  {"message": "Unauthorized"}` otherwise). Viewing and creating are open to all three
-  roles, matching the ability matrix in
-  [`authorization-policies.md`](authorization-policies.md). The update rule used to be
-  hand-written in the controller, and this requirement wrongly described it as open.
-- **REQ-4** — API uploads are gated by the `api_upload_enabled` setting
-  (default on); when off, `POST /api/assets` returns `403` before touching S3.
-- **REQ-5** — `GET /api/assets/meta` and `GET /api/health` are public (no auth),
-  rate-limited at `throttle:60,1` to curb enumeration/probing; `assets/meta` is
-  additionally gated by `api_meta_endpoint_enabled`.
-- **REQ-6** — Error responses are role-aware: `Controller::clientError()` gives
-  `api`-role users a generic message and admins/editors the exception detail
-  (see [ADR-010](../decisions/adr-010-services-swallow-controllers-map.md)). The
-  role rule itself lives in `App\Support\ErrorAudience`, which `clientError()`
-  delegates to, so the global handler can apply the same rule; for a
-  `QueryException` even a trusted caller gets the driver's sentence and never the
-  SQL-with-bindings. A write the driver rejects returns a **keyed 422** with the
-  same body shape as a `FormRequest` failure — never a bare 500 — and a 5xx body
-  carries an `error_id` reference and is scrubbed for `api`-role callers
-  regardless of `app.debug` ([`error-handling.md`](error-handling.md),
+- **REQ-1** — All `/api/assets*` and `/api/tags*` routes (except the two public ones) require
+  `auth.multi` (sanctum, then jwt) (`routes/api.php`); unauthenticated calls get `401`.
+- **REQ-2** — `GET /api/assets` and `GET /api/assets/search` share the filters `tags`, `type`,
+  `folder`, `sort`, `per_page` (capped at 100); the search term is `search` on the index and `q` on
+  search. The index also takes an admin-only `user` filter (ignored for other roles).
+- **REQ-3** — `DELETE /api/assets/{asset}` is gated by `AssetPolicy::delete` (an `api`-role token
+  gets `403`). `PATCH /api/assets/{asset}` is gated by `AssetPolicy::updateViaApi`: admins update any
+  asset, editors and api tokens only ones they uploaded (`403 {"message": "Unauthorized"}`
+  otherwise). Viewing and creating are open to all three roles
+  ([`authorization-policies.md`](authorization-policies.md)).
+- **REQ-4** — API uploads are gated by `api_upload_enabled` (default on); when off,
+  `POST /api/assets` returns `403` before touching S3.
+- **REQ-5** — `GET /api/assets/meta` and `GET /api/health` are public, rate-limited at
+  `throttle:60,1`; `assets/meta` is additionally gated by `api_meta_endpoint_enabled`.
+- **REQ-6** — Error responses follow [`error-handling.md`](error-handling.md): role-aware detail via
+  `Controller::clientError()` / `ErrorAudience`, driver rejections as a keyed 422, and 5xx bodies
+  carrying `error_id` ([ADR-010](../decisions/adr-010-services-swallow-controllers-map.md),
   [ADR-016](../decisions/adr-016-database-errors-are-user-errors.md)).
-- **REQ-7** — Chunked upload endpoints (`/api/chunked-upload/*`) are declared in
-  `routes/web.php`, **not** `routes/api.php` — they run under
-  `auth.multi:web,sanctum,jwt` (session auth is the primary caller, the web
-  uploader) rather than the `sanctum,jwt`-only guard list used by the rest of
-  this file. See [`chunked-upload.md`](chunked-upload.md) for the endpoint
-  contract itself; this spec only documents the routing-location quirk.
-- **REQ-8** — `PATCH /api/assets/{asset}` persists **every** metadata field it
-  validates and mirrors the web `AssetController::update`: the scalar columns
-  `filename`, `alt_text`, `caption`, `license_type`, `license_expiry_date`,
-  `date_obtained`, `copyright`, `copyright_source`, plus `tags` (user tags) and
-  `reference_tag_ids`
-  when present. Tag syncing preserves AI pivots verbatim and preserves the
-  untouched category (user or reference) when only the other is submitted. The API
-  never rewrites `s3_key` (see [ADR-006](../decisions/adr-006-immutable-s3-key.md));
-  `filename` is the editable display name.
+- **REQ-7** — Chunked upload endpoints (`/api/chunked-upload/*`) are declared in `routes/web.php`,
+  **not** `routes/api.php`, under `auth.multi:web,sanctum,jwt` (the web uploader's session is the
+  primary caller). Endpoint contract: [`chunked-upload.md`](chunked-upload.md).
+- **REQ-8** — `PATCH /api/assets/{asset}` persists **every** field it validates, mirroring the web
+  `AssetController::update`: `filename`, `alt_text`, `caption`, `license_type`,
+  `license_expiry_date`, `date_obtained`, `copyright`, `copyright_source`, plus `tags` (user tags)
+  and `reference_tag_ids` when present. Tag syncing preserves AI pivots and the untouched category.
+  The API never rewrites `s3_key` ([ADR-006](../decisions/adr-006-immutable-s3-key.md)); `filename`
+  is the editable display name.
 
 ## Technical design
 
@@ -112,48 +90,42 @@ GET    /api/folders:         FolderController::index           # see folder-mana
 POST /api/chunked-upload/init | chunk | complete | abort
 ```
 
-Sort values (`Asset::scopeApplySort`, shared by `index` and `search`):
-`date_desc` (default) · `date_asc` · `upload_asc` · `upload_desc` · `size_asc` ·
-`size_desc` · `name_asc` · `name_desc` · `s3key_asc` · `s3key_desc`.
-
-`type` accepts MIME prefixes or the plural aliases (`images`, `videos`,
-`documents`) via `Asset::scopeOfType`.
+Sort values (`Asset::scopeApplySort`): `date_desc` (default) · `date_asc` · `upload_asc` ·
+`upload_desc` · `size_asc` · `size_desc` · `name_asc` · `name_desc` · `s3key_asc` · `s3key_desc`.
+`type` accepts MIME prefixes or `images`, `videos`, `documents` (`Asset::scopeOfType`).
 
 ### Data shapes
 
 ```yaml
-# GET/POST list response envelope — Laravel paginator + Asset::APPEND_FIELDS per item
+# list response envelope — Laravel paginator + Asset::APPEND_FIELDS per item
 paginated_assets:
   data: [Asset & { url, thumbnail_url, resize_s_url, resize_m_url, resize_l_url, formatted_size, folder }]
   total: int
   per_page: int
-  # user relation is loaded but only id/name/role are visible — no email/password/
-  # jwt_secret/preferences (Asset -> User relation uses a restricted resource shape)
+  # embedded user exposes only id/name/role — no email/password/jwt_secret/preferences
 
 # POST /api/assets (StoreAssetRequest)
 request:
   files.*: file            # required, max 500MB, must pass AllowedUploadExtension
   folder: string?
   keep_original_filename: bool?
-  metadata_*: # HasUploadMetadataRules — tags, reference_tag_ids, license_type,
-  #             copyright, copyright_source, date_obtained (asset-upload.md REQ-5)
+  metadata_*: # HasUploadMetadataRules (asset-upload.md REQ-5)
 
 # 201 response
 { message: string, data: [Asset], duplicates: [DuplicatePayload & { existing_asset_url }]|null }
-# DuplicatePayload = the 12 fields of DuplicateAssetException::formatDuplicate()
-# (duplicate-detection.md). existing_asset_url is API-only: it pre-dates the shared
-# payload, and public_url is NOT a substitute — that stays non-null for a trashed
-# asset, where existing_asset_url is null.
+# DuplicatePayload = DuplicateAssetException::formatDuplicate() (duplicate-detection.md REQ-4).
+# existing_asset_url is API-only and kept for existing consumers; public_url is NOT a substitute
+# (it stays non-null for a trashed asset, where existing_asset_url is null).
 # 409 when EVERY file in the batch is a duplicate
 { message: 'All files are duplicates of existing assets.', duplicates: [...] }
 
-# PATCH /api/assets/{asset} (UpdateAssetRequest) — mirrors web AssetController::update
+# PATCH /api/assets/{asset} (UpdateAssetRequest)
 request:
-  filename / alt_text / caption / license_type / copyright / copyright_source: string?  # all persisted
+  filename / alt_text / caption / license_type / copyright / copyright_source: string?
   license_expiry_date / date_obtained: date?   # YYYY-MM-DD; license_expiry_date is retired from
                                                # the web edit form but still accepted here
   tags: string[]?              # user tags — full sync, preserving AI + reference pivots
-  reference_tag_ids: int[]?    # existing reference-tag ids — synced when present, else preserved
+  reference_tag_ids: int[]?    # synced when present, else preserved
 response: { message: string, data: Asset }
 
 # GET /api/assets/meta (public)
@@ -165,31 +137,14 @@ response: { status: 'ok'|'error', database: 'ok'|'error' }   # 200 or 503
 
 ### Layer touchpoints & ordering
 
-`throttle` → `auth.multi` → `StoreAssetRequest`/`UpdateAssetRequest` (validate)
-→ `AssetApiController` (authorize where applicable) → `S3Service` /
-`AssetProcessingService` → `Asset` (Eloquent). `destroy` calls
-`$this->authorize('delete')` and `update` checks `updateViaApi` through the Gate;
-`index`/`show`/`store` rely on the route being open to all three known roles (no
-policy check beyond `isKnownRole`-equivalent access via the guard).
-
-**Duplicate payload**: `AssetApiController::store` uses
-`DuplicateAssetException::formatDuplicate()` like the web and chunked paths
-(`duplicate-detection.md` REQ-4), so an API caller gets the full 12-field payload
-and can render the same duplicates panel. It used to build a 3-field array inline,
-which is why that requirement previously named only the web paths.
-
-It additionally returns **`existing_asset_url`**, which is API-only: it pre-dates
-the shared payload and is not part of it. This is deliberate rather than tidied
-away — dropping it would break existing consumers, and `public_url` does not
-replace it, since `public_url` stays non-null for a trashed asset where
-`existing_asset_url` is null.
+`throttle` → `auth.multi` → `StoreAssetRequest`/`UpdateAssetRequest` → `AssetApiController`
+(authorize where applicable) → `S3Service` / `AssetProcessingService` → `Asset`.
+`index`/`show`/`store` rely on the route being open to all three roles.
 
 ### Persistence
 
-No new tables — reads/writes the existing `assets`/`tags`/`asset_tag` schema
-documented in [`asset-model.md`](asset-model.md). Settings consulted at request
-time (1h cache, [ADR-011](../decisions/adr-011-settings-in-db.md)):
-`api_upload_enabled`, `api_meta_endpoint_enabled`.
+No new tables ([`asset-model.md`](asset-model.md)). Settings read at request time (1h cache,
+[ADR-011](../decisions/adr-011-settings-in-db.md)): `api_upload_enabled`, `api_meta_endpoint_enabled`.
 
 ## Scenarios (BDD)
 
@@ -225,17 +180,11 @@ Scenario: API upload deduplicates by etag and cleans up the new S3 object
   And the newly uploaded S3 object is deleted
 # pinned by: tests/Feature/DuplicatePreventionTest.php
 
-Scenario: An api-role token cannot delete an asset
-  Given an authenticated user with role "api" who owns an asset
+Scenario: An api-role token cannot delete an asset; other roles can soft-delete their own
+  Given an authenticated user who owns an asset
   When they send DELETE /api/assets/{id}
-  Then the response status is 403
-  And the asset is not soft-deleted
-# pinned by: tests/Feature/ApiTest.php
-
-Scenario: Any authenticated role can soft-delete their own asset
-  Given an authenticated user with an owned asset
-  When they send DELETE /api/assets/{id}
-  Then the response status is 200 and the asset is soft-deleted
+  Then the response is 403 and nothing is deleted if their role is "api"
+  And otherwise the response is 200 and the asset is soft-deleted
 # pinned by: tests/Feature/ApiTest.php
 
 Scenario: Updating an asset persists all documented metadata fields
@@ -254,11 +203,7 @@ Scenario: The public meta endpoint resolves an asset by its public URL
   Given an asset with a known s3_key
   When a client (no auth) sends GET /api/assets/meta?url=<the asset's public URL>
   Then the response is 200 with alt_text/caption/license_type/copyright/filename/url
-# pinned by: tests/Feature/ApiTest.php
-
-Scenario: The meta endpoint rejects a URL that doesn't match the configured domain
-  When a client sends GET /api/assets/meta?url=<an unrelated external URL>
-  Then the response status is 400
+  But a URL outside the configured domain returns 400
 # pinned by: tests/Feature/ApiTest.php
 
 Scenario: The health endpoint is public and reports database connectivity
@@ -267,44 +212,22 @@ Scenario: The health endpoint is public and reports database connectivity
   Then the response is 200 with { status: "ok", database: "ok" }
 # pinned by: tests/Feature/ApiTest.php
 
-Scenario: Disabling the meta endpoint closes it and withholds the metadata (REQ-5)
-  Given api_meta_endpoint_enabled is false
-  When a client (no auth) sends GET /api/assets/meta for a known asset
-  Then the response status is 403
-  And the body contains none of the asset's metadata
-# pinned by: tests/Security/RuntimeExposureTogglesTest.php
-
-Scenario: The meta kill switch applies to authenticated callers too (REQ-5)
-  Given api_meta_endpoint_enabled is false
-  When an admin, editor or api caller sends GET /api/assets/meta
-  Then the response status is 403
-# pinned by: tests/Security/RuntimeExposureTogglesTest.php
-
-Scenario: Disabling API uploads refuses the upload and stores nothing (REQ-4)
-  Given api_upload_enabled is false
-  And an authenticated api-role caller
-  When they send POST /api/assets with a file
-  Then the response status is 403
-  And no asset row is created
+Scenario: The runtime toggles close their endpoints (REQ-4, REQ-5)
+  Given api_meta_endpoint_enabled or api_upload_enabled is false
+  When GET /api/assets/meta or POST /api/assets is called
+  Then the response is 403 and no metadata is returned / no asset is created
+  # full scenarios: security-invariants.md REQ-7
 # pinned by: tests/Security/RuntimeExposureTogglesTest.php
 ```
 
 ## Tests & verification
 
-- Feature: `tests/Feature/ApiTest.php` (index/show/update/destroy/search/meta/
-  health/folders/sort/type/search/pagination/user-field redaction),
-  `tests/Feature/DuplicatePreventionTest.php` (API upload dedup + etag persistence).
-- Security (REQ-4/REQ-5): `tests/Security/RuntimeExposureTogglesTest.php` — both states of
-  `api_meta_endpoint_enabled` and `api_upload_enabled`, that the meta kill switch withholds the
-  data rather than only changing the status, that it applies to authenticated callers too (the
-  check precedes any auth consideration), and that only an admin can flip either setting. These
-  settings are operator state rather than code, so the exposure of a public endpoint is invisible
-  in a diff — see [security-invariants.md](security-invariants.md) REQ-7.
-- Run: `php artisan config:clear && php artisan test tests/Feature/ApiTest.php`.
-- Style: `./vendor/bin/pint --test`.
+- Feature: `tests/Feature/ApiTest.php`, `tests/Feature/DuplicatePreventionTest.php`.
+- Security: `tests/Security/RuntimeExposureTogglesTest.php` — runtime toggles
+  ([security-invariants.md](security-invariants.md) REQ-7).
+- Run: `php artisan config:clear && php artisan test tests/Feature/ApiTest.php`; style
+  `./vendor/bin/pint --test`.
 
 ## Open questions / future
 
-- `GET /api/assets/search` has no dedicated "requires authentication" test
-  (unlike `index`/`tags`/`folders`); likely covered implicitly by shared
-  middleware but not asserted directly.
+- `GET /api/assets/search` has no dedicated "requires authentication" test.

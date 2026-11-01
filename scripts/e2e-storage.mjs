@@ -123,7 +123,7 @@ function extract(archive, into) {
  * above it is the mitigation, the write cannot be avoided (tar needs a real file
  * and Node cannot unpack a zip in memory unaided), and moving the download out
  * to curl would only hide the flow while letting unverified bytes reach disk
- * first. Full reasoning in ADR-017 → Consequences.
+ * first. This is why the CodeQL alert on this download is dismissed (ADR-017).
  */
 async function ensureBinary() {
     const binary = path.join(BIN_DIR, process.platform === 'win32' ? 'rustfs.exe' : 'rustfs');

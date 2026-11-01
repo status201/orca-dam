@@ -28,90 +28,58 @@ source:
 
 ## Background / Why
 
-ORCA serves human browser sessions and machine callers (WordPress, RTE integrations,
-scripts) through the same asset routes. Rather than a single unified guard, ORCA
-keeps each auth mechanism in its idiomatic Laravel form (session/Breeze, Sanctum,
-JWT, passkeys) and resolves between them per-request with one middleware,
-`auth.multi` (`AuthenticateMultiple`) — see
-[ADR-004](../decisions/adr-004-auth-multi.md) for the full rationale and rejected
-alternatives. This spec covers the web session login flow and the guard-resolution
-contract; the other three mechanisms and 2FA each have their own spec.
+ORCA serves browser sessions and machine callers (WordPress, RTE integrations, scripts) through
+the same asset routes. Each auth mechanism stays in its idiomatic Laravel form (session/Breeze,
+Sanctum, JWT, passkeys) and one middleware, `auth.multi` (`AuthenticateMultiple`), resolves between
+them per request ([ADR-004](../decisions/adr-004-auth-multi.md)). This spec covers the web session
+login flow and the guard-resolution contract; the other mechanisms and 2FA have their own specs.
 
 ## Requirements
 
-- **REQ-1** — Web routes authenticate via Laravel's session (`web`) guard, built on
-  the Breeze scaffold (`AuthenticatedSessionController`, `LoginRequest`).
-- **REQ-2** — `auth.multi:<guards>` tries each named guard **in order** and
-  authenticates on the first success; if none succeed it returns a `401` JSON
-  response rather than redirecting to a login page (API-shaped, not browser-shaped).
-- **REQ-3** — The `jwt` guard is skipped by `AuthenticateMultiple` entirely (not just
-  denied) unless **both** `config('jwt.enabled')` (env `JWT_ENABLED`) and the
-  `jwt_enabled_override` DB setting are true — see [jwt-auth.md](jwt-auth.md).
-- **REQ-4** — A successful password login that has 2FA enabled is diverted to the
-  2FA challenge instead of completing the session — see
-  [two-factor-auth.md](two-factor-auth.md).
+- **REQ-1** — Web routes authenticate via the session (`web`) guard, built on the Breeze scaffold
+  (`AuthenticatedSessionController`, `LoginRequest`).
+- **REQ-2** — `auth.multi:<guards>` tries each named guard **in order** and authenticates on the
+  first success; if none succeed it returns a `401` JSON response rather than redirecting.
+- **REQ-3** — The `jwt` guard is skipped entirely unless **both** `config('jwt.enabled')`
+  (`JWT_ENABLED`) and the `jwt_enabled_override` setting are true — see [jwt-auth.md](jwt-auth.md).
+- **REQ-4** — A password login with 2FA enabled is diverted to the 2FA challenge instead of
+  completing the session — see [two-factor-auth.md](two-factor-auth.md).
 - **REQ-5** — Login is rate-limited per `email|ip` (5 attempts) via
-  `LoginRequest::ensureIsNotRateLimited()`, independent of any route-level throttle
-  middleware.
-- **REQ-6** — The remaining Breeze scaffold flows (password reset, email verification,
-  password update, password confirmation) ship unmodified and stay behaviourally
-  intact. ORCA provisions users via `/users`
-  ([user-management.md](user-management.md)) rather than through these flows, but the
-  routes remain mounted, so the contract is pinned rather than left to rot.
-- **REQ-7** — Email verification is **not enforced**. `User` deliberately does not
-  implement `MustVerifyEmail`, so the `verified` middleware on `GET /dashboard` passes
-  every authenticated user through and `users.email_verified_at` carries no
-  authorization weight. Any authenticated user reaches every route their role allows,
-  verified or not. Enabling the contract is a behaviour change that must be paired with
-  a way for admin-provisioned users to become verified — see "Open questions".
-- **REQ-8** — **There is no self-service registration.** Accounts exist only because an
-  admin created them through `/users` ([user-management.md](user-management.md)) or
-  through a console command (`token:create`, which may provision an `api`-role user).
-  The Breeze `register` route, controller and Blade view are **deleted, not merely
-  unlinked** — `GET /register` and `POST /register` resolve to `404`.
+  `LoginRequest::ensureIsNotRateLimited()`, independent of route throttle middleware.
+- **REQ-6** — The remaining Breeze flows (password reset, email verification, password update,
+  password confirmation) ship unmodified and stay behaviourally intact. Users are provisioned via
+  `/users` ([user-management.md](user-management.md)), but these routes remain mounted, so their
+  contract is pinned.
+- **REQ-7** — Email verification is **not enforced**. `User` deliberately does not implement
+  `MustVerifyEmail`, so the `verified` middleware on `GET /dashboard` (the only route carrying it)
+  passes every authenticated user and `users.email_verified_at` carries no authorization weight.
+  **Trap:** `UserController::store` never sets `email_verified_at` and provisioning sends no
+  verification mail, so adding `implements MustVerifyEmail` would lock every admin-provisioned user
+  out (`UserFactory` and `E2eSeeder` stamp the column, so only the pinned REQ-7 scenario would
+  catch it). Enabling the contract must come with a way for provisioned users to become verified.
+- **REQ-8** — **There is no self-service registration.** Accounts exist only via `/users`
+  ([user-management.md](user-management.md)) or a console command (`token:create` may provision an
+  `api` user). The Breeze `register` route, controller and view are **deleted, not unlinked** —
+  `GET`/`POST /register` return `404`. Why: an unlinked-but-mounted register route once let an
+  unknown party self-register on production as the default `editor` role ([authorization-policies.md](authorization-policies.md)), live immediately
+  (REQ-7).
 
-  This is a security requirement, not a tidiness one. While the routes were mounted but
-  unlinked, `RegisteredUserController::store` passed no `role` to `User::create`, so a
-  self-registered account took the `users.role` column default of `editor`
-  (`database/migrations/2025_01_01_000001_add_role_to_users_table.php`) — which
-  [authorization-policies.md](authorization-policies.md) grants view, create, update,
-  replace, soft-delete, restore and bulk-download over **every asset in the library**.
-  Because email verification is inert (REQ-7), that access was live from the moment of
-  signup, with no confirmation step. Unlinked is not unreachable: the URL is guessable,
-  and at least one unknown party did register on production this way.
+  `users.role` is `NOT NULL` with **no database default**
+  (`database/migrations/2026_07_30_120000_drop_role_default_from_users_table.php`), so any creation
+  path that omits `role` fails with a driver error instead of minting an editor. This constraint is
+  the load-bearing half: it covers every path (`firstOrCreate`, raw inserts, future SSO/invite),
+  while the source scan only sees `User::create(`. Any future signup must assign the least
+  privilege explicitly. The migration refuses to run while any row holds a `NULL` role — the
+  operator assigns it; the app never promotes silently.
+- **REQ-9** — The password-reset pair (the only unauthenticated write surface) is hardened:
+  - **Rate-limited at the route:** all four reset routes carry `throttle:6,1` (the broker's 60s
+    throttle only debounces repeats to one address).
+  - **Uniform answers:** `POST /forgot-password` returns the same generic confirmation for every
+    syntactically valid address — sent, broker-throttled, or unknown — never `passwords.user`
+    (a login-name oracle). Non-sent outcomes are logged server-side (`Password reset link not
+    sent`; support relies on it).
 
-  **The column default is gone too.** `users.role` is `NOT NULL` with **no database
-  default** (`database/migrations/2026_07_30_120000_drop_role_default_from_users_table.php`),
-  so a creation path that omits `role` now fails with a driver error — `NOT NULL
-  constraint failed` on SQLite, `Field 'role' doesn't have a default value` on
-  MySQL/MariaDB under `strict` mode (`config/database.php`) — instead of quietly minting
-  an editor. This is the load-bearing half of the guarantee: the source scan below only
-  sees call sites spelled `User::create(`, while the constraint covers every path,
-  including `firstOrCreate`, raw inserts and any future SSO or invite flow. No caller
-  changes — `UserController::store` validates `role`, `TokenController::store` and
-  `TokenCreateCommand` hardcode `api`, and `UserFactory` sets `editor`. Any future
-  reintroduction of open signup must therefore assign a role explicitly, and pick the
-  least privilege available: there is no longer a default to inherit.
-
-  The migration refuses to run while any row holds a `NULL` role, rather than picking a
-  value for it. Such a row can only have been hand-written (no code path produces one),
-  and every role grants strictly more than `NULL` does — silently promoting an account is
-  the failure mode this requirement exists to prevent, so the operator assigns the role.
-- **REQ-9** — The password-reset pair is the only unauthenticated write surface left, and
-  it is hardened two ways:
-  - **Rate-limited at the route.** All four routes carry `throttle:6,1`. The broker's
-    `config('auth.passwords.users.throttle')` (60s) only debounces *repeat* links to the
-    same address, so it does nothing against a caller walking a list of addresses; the
-    route limit bounds per-IP volume regardless of which address is submitted.
-  - **Uniform answers.** `POST /forgot-password` returns the same generic confirmation
-    for every syntactically valid address — sent, broker-throttled, or no such user. It
-    no longer surfaces `passwords.user` ("We can't find a user with that email address"),
-    which was a login-name oracle: an unauthenticated caller could confirm whether any
-    given address held an ORCA account. Non-sent outcomes are logged server-side, so
-    operators keep the signal the user no longer gets.
-
-  `POST /reset-password` still reports failures verbatim; it requires a valid signed
-  token, so it discloses nothing to a caller who does not already hold one.
+  `POST /reset-password` still reports failures verbatim; it requires a valid signed token.
 
 ## Technical design
 
@@ -137,7 +105,7 @@ routes (auth-only):
   POST /email/verification-notification
                                     EmailVerificationNotificationController::store
 
-deliberately absent (REQ-8) — asserted by tests/Feature/Auth/RegistrationTest.php:
+deliberately absent (REQ-8):
   GET  /register                    → 404
   POST /register                    → 404
 
@@ -147,6 +115,8 @@ middleware:
     - web routes use the plain 'auth' middleware (session guard only)
     - api routes use bare 'auth.multi' (the sanctum, jwt default)
     - the chunked-upload routes use 'auth.multi:web,sanctum,jwt' (session OR token)
+    - first guard that authenticates becomes the default (Auth::shouldUse); none → 401
+      {"message": "Unauthenticated."}
 ```
 
 ### Layer touchpoints & ordering
@@ -159,22 +129,13 @@ POST /login
        else: session()->regenerate(), stamp last_login_at, redirect()->intended(dashboard)
 ```
 
-`AuthenticateMultiple::handle()` iterates `$guards` (or the default
-`['sanctum', 'jwt']`), calling `Auth::guard($guard)->check()`; the first guard that
-authenticates is set as the request's default guard via `Auth::shouldUse($guard)`
-and the request proceeds. If every guard fails, the middleware returns
-`response()->json(['message' => 'Unauthenticated.'], 401)` directly — it does not
-redirect to `/login`, since API callers expect a JSON 401.
-
 ### Persistence
 
-- `users.last_login_at` — stamped on every completed session login (password path
-  and the post-2FA `completeLogin()` path). Passkey login stamps it too (see
-  [passkeys.md](passkeys.md)); JWT/Sanctum requests do not touch it (stateless).
-- No separate "auth" table — mechanisms layer directly onto `users` (session guard),
-  `personal_access_tokens` (Sanctum), and `users.jwt_secret` (JWT).
+- `users.last_login_at` — stamped on every completed session login (password, post-2FA, passkey — [passkeys.md](passkeys.md));
+  JWT/Sanctum requests do not touch it.
+- No separate auth table — mechanisms layer onto `users` (session), `personal_access_tokens`
+  (Sanctum) and `users.jwt_secret` (JWT).
 - `users.role` — `enum('editor','admin','api')`, `NOT NULL`, **no default** (REQ-8).
-  Every insert names the role; omitting it is a database error, not an implicit `editor`.
 
 ## Scenarios (BDD)
 
@@ -207,14 +168,8 @@ Scenario: Logout ends the session
   And the response redirects to /
 # pinned by: tests/Feature/Auth/AuthenticationTest.php
 
-Scenario: No credentials on a multi-guard route returns 401 JSON
-  Given a request with no Sanctum token and no JWT
-  When it hits a route behind auth.multi
-  Then the response status is 401
-# pinned by: tests/Feature/Middleware/AuthenticateMultipleTest.php
-
-Scenario: A malformed bearer token is rejected
-  Given a request with an unparseable Authorization header
+Scenario: Missing or malformed credentials on a multi-guard route return 401 JSON
+  Given a request with no token, or an unparseable Authorization header
   When it hits a route behind auth.multi
   Then the response status is 401
 # pinned by: tests/Feature/Middleware/AuthenticateMultipleTest.php
@@ -228,30 +183,17 @@ Scenario: A valid Sanctum token still authenticates when JWT is disabled
 
 Scenario: Self-service registration is not reachable (REQ-8)
   Given a guest visitor
-  When they GET /register
+  When they GET /register, or POST /register with a valid name, email and password
   Then the response status is 404
   And no route named "register" is registered
-# pinned by: tests/Feature/Auth/RegistrationTest.php
-
-Scenario: Posting a registration payload creates no account (REQ-8)
-  Given a guest visitor
-  When they POST /register with a valid name, email and password
-  Then the response status is 404
-  And they remain a guest
-  And no user with that email exists
+  And they remain a guest and no user with that email exists
 # pinned by: tests/Feature/Auth/RegistrationTest.php
 
 Scenario: No user-creation path leaves the role implicit (REQ-8)
   Given the users.role column has no database default
   When every User::create call site under app/ is inspected
   Then each one passes an explicit role
-# pinned by: tests/Feature/Auth/RegistrationTest.php
-
-Scenario: Creating a user without a role is a database error (REQ-8)
-  Given the users table
-  When a row is inserted with no role column
-  Then the insert is rejected by the database
-  And no such user exists
+  And inserting a row with no role column is rejected by the database
 # pinned by: tests/Feature/Auth/RegistrationTest.php
 
 Scenario: A password reset completes with a valid token (REQ-6)
@@ -262,31 +204,18 @@ Scenario: A password reset completes with a valid token (REQ-6)
   And the password is changed with no validation errors
 # pinned by: tests/Feature/Auth/PasswordResetTest.php
 
-Scenario: An unknown address gets the same answer as a known one (REQ-9)
-  Given no user with the address nobody@example.com
-  When a guest POSTs /forgot-password for a registered address
-  And a guest POSTs /forgot-password for nobody@example.com
-  Then both responses carry the same generic status and no validation errors
-  And no notification was sent for the unknown address
-# pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
-
-Scenario: A broker-throttled repeat is indistinguishable from the first request (REQ-9)
-  Given a user who just requested a reset link
-  When they immediately POST /forgot-password again
-  Then the response carries the same generic status and no validation errors
-  And the broker sent no second notification
+Scenario: Unknown and broker-throttled addresses get the same answer as a sent one (REQ-9)
+  Given a registered address, an unknown address, and an address that just requested a link
+  When a guest POSTs /forgot-password for each
+  Then all responses carry the same generic status and no validation errors
+  And no notification is sent for the unknown or the repeat request
 # pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
 
 Scenario: The password-reset routes are rate-limited per IP (REQ-9)
   Given a guest who has POSTed /forgot-password 6 times in a minute
   When they POST it a 7th time
   Then the response status is 429
-# pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
-
-Scenario: Every password-reset route carries the throttle (REQ-9)
-  Given the four /forgot-password and /reset-password routes
-  When their gathered middleware is inspected
-  Then each one includes throttle:6,1
+  And each of the four reset routes carries throttle:6,1
 # pinned by: tests/Feature/Auth/PasswordResetThrottleTest.php
 
 Scenario: Email verification accepts a signed link and rejects a tampered hash (REQ-6)
@@ -347,62 +276,22 @@ Scenario: Logging out really ends the session
 
 ## Tests & verification
 
-- Feature: `tests/Feature/Auth/AuthenticationTest.php` — login render, authenticate,
-  reject bad password, logout.
-- Feature: `tests/Feature/Middleware/AuthenticateMultipleTest.php` — guard-order
-  resolution, the JWT env/setting double-gate (REQ-3), 401 fallback.
-- Feature (REQ-9): `tests/Feature/Auth/PasswordResetThrottleTest.php` — the uniform
-  answer for unknown/throttled addresses, the 429 after 6 attempts, and that all four
-  reset routes actually carry the middleware. Kept separate from
-  `PasswordResetTest.php`, which is scaffold-shaped and exercises the happy path; a
-  throttle test has to clear the rate limiter between cases and would otherwise make
-  those four tests order-dependent.
-- Feature (REQ-8): `tests/Feature/Auth/RegistrationTest.php` — that `/register` is gone
-  (both verbs 404, no named route, no account created), that a role-less insert is
-  rejected by the database, and that no `User::create` call site under `app/` leaves the
-  role implicit. It inverts what this file asserted before the routes were removed. The
-  role-less-insert case is the one that holds across creation paths the source scan
-  cannot see; if it ever passes, the column default is back.
-- Feature (Breeze scaffold, REQ-6): `tests/Feature/Auth/PasswordResetTest.php`,
-  `tests/Feature/Auth/EmailVerificationTest.php`,
-  `tests/Feature/Auth/PasswordUpdateTest.php`,
-  `tests/Feature/Auth/PasswordConfirmationTest.php` — scaffold tests, PHPUnit-style
-  (`test_*` methods) rather than Pest.
-- Feature (REQ-7): `tests/Feature/UserManagementTest.php` — that an unverified user, and
-  specifically a freshly provisioned one, still reaches the `verified`-gated
-  `/dashboard`. Lives with the provisioning tests it guards
-  ([user-management.md](user-management.md)).
+- Feature: `tests/Feature/Auth/AuthenticationTest.php`,
+  `tests/Feature/Middleware/AuthenticateMultipleTest.php` (guard order, REQ-3 double gate, 401),
+  `tests/Feature/Auth/RegistrationTest.php` (REQ-8),
+  `tests/Feature/Auth/PasswordResetThrottleTest.php` (REQ-9; separate from the scaffold test
+  because it must clear the rate limiter between cases),
+  `tests/Feature/UserManagementTest.php` (REQ-7).
+- Breeze scaffold (REQ-6, PHPUnit-style): `tests/Feature/Auth/PasswordResetTest.php`,
+  `tests/Feature/Auth/EmailVerificationTest.php`, `tests/Feature/Auth/PasswordUpdateTest.php`,
+  `tests/Feature/Auth/PasswordConfirmationTest.php`.
 - Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/auth.spec.js` — real-browser login, bad-password error, logout, guest redirect.
+- E2E: `tests/e2e/auth.spec.js` — `npm run test:e2e -- tests/e2e/auth.spec.js`.
 
 ## Open questions / future
 
-- The Breeze flows in REQ-6 are pinned but not exercised end-to-end; `auth.spec.js`
-  drives only login/logout.
-- REQ-9 closed the enumeration oracle on `POST /forgot-password`, at a real usability
-  cost: someone who typos their address now waits for mail that will never arrive,
-  because the app can no longer tell them the address is unknown. That is the standard
-  trade for not having a login-name oracle, but it makes the server-side log the only
-  place the truth exists — so the `Password reset link not sent` log
-  line is load-bearing for support, not just for security.
-- The `throttle:6,1` on the reset routes is keyed per-IP by Laravel's default resolver,
-  so a NAT'd office shares one bucket while a distributed caller gets one bucket each.
-  6/min is generous enough that the former is unlikely to bite; if it ever does, the fix
-  is a named limiter keyed on `ip + email`, not a higher ceiling.
-- The audit trail ([user-audit-log.md](user-audit-log.md)) records role changes but
-  nothing *pushes* — an operator still has to run `users:audit` or read the log. A mail
-  or Slack notification on admin-role assignment is the obvious next step; it was left
-  out because ORCA has no configured notification channel beyond password-reset mail.
-- **Email verification is wired but inert, and that is a trap** (REQ-7). `GET /dashboard`
-  is the only route carrying `verified` (`routes/web.php`), and `User` does **not**
-  implement `Illuminate\Contracts\Auth\MustVerifyEmail`, so `EnsureEmailIsVerified`
-  short-circuits and lets every authenticated user through regardless of
-  `email_verified_at`. The column, the `/verify-email` routes and
-  `EmailVerificationTest.php` all work in isolation; nothing enforces them.
-  The trap: `UserController::store` never sets `email_verified_at`
-  ([user-management.md](user-management.md)), so adding `implements MustVerifyEmail` to
-  `User` — a small, plausible change — would instantly lock every admin-provisioned user
-  out of the dashboard, with no way back because provisioning sends no verification
-  mail. `UserFactory` and `E2eSeeder` both stamp the column, so no existing test would
-  catch it. The scenario pinned above exists to fail loudly if that happens; whoever
-  enables the contract must also decide how provisioned users get verified.
+- The REQ-6 Breeze flows are not exercised end-to-end; `auth.spec.js` drives only login/logout.
+- `throttle:6,1` on reset routes is keyed per IP, so a NAT'd office shares a bucket; if it bites,
+  use a named limiter keyed on `ip + email`, not a higher ceiling.
+- Role changes are audited ([user-audit-log.md](user-audit-log.md)) but nothing pushes a
+  notification on admin-role assignment; ORCA has no notification channel beyond reset mail.

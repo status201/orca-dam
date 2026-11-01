@@ -44,14 +44,11 @@ backend render step, only a backend *persist* step.
   (required, max:255), `folder` (nullable, max:255), and `caption` (nullable,
   max:1000) rules; each subclass adds only its `content` size cap and any
   tool-specific fields via `extraRules()`.
-- **REQ-3** — SVG/GIF/PNG uploads accept the shared batch-metadata fields
-  (`metadata_tags`, `metadata_reference_tag_ids`, `metadata_license_type`,
-  `metadata_copyright`, `metadata_copyright_source`, `metadata_date_obtained`) via
-  `HasUploadMetadataRules`, applied identically to the main upload flow (see
-  [`asset-upload.md`](asset-upload.md)). The list is the trait's, never a copy of it —
-  the tool views include the same `partials/upload-metadata.blade.php` as the upload
-  page, so a field added there reaches these endpoints without a change here. The MathML
-  and `.tex` template uploads do not accept batch metadata.
+- **REQ-3** — SVG/GIF/PNG uploads accept the shared batch-metadata fields via
+  `HasUploadMetadataRules`, applied identically to the main upload flow
+  ([`asset-upload.md`](asset-upload.md)). The field list is the trait's, never a copy (the tool
+  views include the same `partials/upload-metadata.blade.php`). MathML and `.tex` template
+  uploads do not accept batch metadata.
 - **REQ-4** — SVG/PNG/GIF uploads accept an optional `parent_asset_id` (must
   `exists:assets,id`) so a tool-generated asset can link back to a source `.tex`
   template — the same `Asset.parent_id` self-FK used by the TikZ server tool.
@@ -63,41 +60,20 @@ backend render step, only a backend *persist* step.
   tagging for a plain-text source file.
 
 - **REQ-7** — **The three TikZJax `message` handlers accept messages only from their own
-  render iframe.** Each of `tools-tikz-svg`, `tools-tikz-svg-fonts` and `tools-tikz-png`
-  registers a `window` `message` listener to collect render output from a hidden iframe. That
-  output is *injected into the page*: `tikz-svg` and `tikz-svg-fonts` render
-  `event.data.svgs[i]` through `x-html` (`innerHTML`), and `tikz-png` puts
-  `event.data.pngs[i].dataUrl` into an `<img>`. `postMessage` is deliverable by **any** window
-  holding a reference to this one — an opener created with `window.open`, or a page framing
-  ORCA (which [iframe-embedding.md](iframe-embedding.md) permits for configured domains) — so
-  a handler that trusts `event.data` without checking the sender is a DOM-XSS sink: `<img
-  src=x onerror=…>` executes through `innerHTML` even though `<script>` does not.
-
-  Each handler therefore rejects the event unless **both** hold:
-
-  1. `event.source === document.getElementById(<its iframe id>).contentWindow` — the
-     load-bearing check. It pins the sender to that one iframe, so an opener, a framing page,
-     another tab or this window itself are all refused.
-  2. `event.origin` is either `window.location.origin` or the literal string `"null"`.
-
-  Both origin values are legitimate because the three iframes are sandboxed differently: an
-  `about:srcdoc` document inherits the parent's origin, so `tikz-png` (no `sandbox`) and
-  `tikz-svg-fonts` (`allow-scripts allow-same-origin`) report the app's own origin, while
-  `tikz-svg` (`allow-scripts`, no same-origin) has an opaque origin and reports `"null"`.
-  An origin check alone would be insufficient in the first two cases — it would also admit
-  any other same-origin window, including the top-level page — which is why (1) carries the
-  guarantee and (2) is defence in depth.
-
-  The guard is written inline in each handler rather than extracted to a shared helper: a
-  security check should be readable without following a call, and a check inside a helper is
-  not reliably recognised by the scanner that found this.
+  render iframe.** `tools-tikz-svg`, `tools-tikz-svg-fonts` and `tools-tikz-png` inject render
+  output into the page (`x-html` / `<img src>`), so each handler rejects the event unless
+  **both** hold: (1) `event.source === document.getElementById(<its iframe id>).contentWindow`
+  — the load-bearing check; (2) `event.origin` is `window.location.origin` or `"null"` (the
+  `tikz-svg` iframe is sandboxed without same-origin, the other two inherit the app's origin).
+  The guard is inline in each handler, not a helper. Why: any window holding a reference (an
+  opener, a framing page per [iframe-embedding.md](iframe-embedding.md)) can `postMessage`, and
+  unchecked `event.data` is a DOM-XSS sink.
 
 - **REQ-tool-upload-error-audience** — A failed tool upload answers
   `500 {"error": "Upload failed. <detail>"}`, built by `Controller::clientError()` like every
   other role-aware error ([error-handling.md](error-handling.md) REQ-9): an api-role caller
   gets `"Upload failed."` with no exception text, and a database error shows the driver's
-  sentence, never the SQL with its bindings. The six upload actions used to put
-  `$e->getMessage()` in the body for every role.
+  sentence, never the SQL with its bindings.
 
 ## Technical design
 
@@ -129,26 +105,20 @@ GET  tools/tikz-png               -> tools.tikz-png           (client rasterizes
 POST tools/tikz-png/upload        -> ToolsController::uploadTikzPng  (StoreTikzPngRequest)
 GET  tools/bakoma-font/{name}     -> ToolsController::bakomaFont     (proxies+caches BaKoMa TTFs used by the svg-fonts variant)
 
-ToolUploadService::store(content, filename, folder, attributes, process, metadata): Asset
-  # shared by every tool above — see tikz-render.md for the full contract.
+ToolUploadService::store(content, filename, folder, attributes=[], process=true, metadata=null): Asset
+  # shared by every tool upload, incl. tikz-render.md's. tempnam() -> UploadedFile ->
+  # S3Service::uploadFile() -> Asset::create() with the extension's type
+  # (upload-policy REQ-content-type-from-extension)
+  # -> (if $process) AssetProcessingService::processImageAsset(dispatchAiTagging: true)
+  # -> (if $metadata) AssetProcessingService::applyUploadMetadata(...)
+  # temp file always unlinked, even on exception
 
 resources/js/alpine/tikz-results.js:   # shared by tikz-svg, tikz-svg-fonts and tikz-png
   TIKZ_EXAMPLES                          # the example snippets
   tikzResults({ uploadPayload }): object # spread into the tool's x-data: init, parseSnippets,
                                          # loadExample, clearCode, selectAll, deselectAll,
-                                         # uploadSelected. uploadPayload(result) returns the
-                                         # tool-specific body fields (content, width/height).
-  # The tools keep `anyUploading` and `selectedCount` as their own getters: spreading an
-  # object copies a getter's value, not the getter. The success toast is translated
-  # (diagramUploaded / diagramsUploaded in __pageData.translations).
-
-ToolsController (private):
-  storeToolAsset(ToolUploadRequest, label, content, extension, fallbackName,
-                 attributes=[], process=true): JsonResponse
-    # the body of all six upload actions: ensureExtension() → store() with user_id, caption and
-    # $request->uploadMetadata() (null for a request without HasUploadMetadataRules) → assetJson();
-    # a failure → uploadFailed() (REQ-tool-upload-error-audience)
-  folderPickerView(view, data=[]): View   # folders (FolderRegistry::forPicker()) + rootFolder
+                                         # uploadSelected; uploadPayload(result) returns the
+                                         # tool-specific body fields (content, width/height)
 ```
 
 ### Data shapes
@@ -169,22 +139,15 @@ Asset:
 
 ### Layer touchpoints & ordering
 
-Every tool page hydrates page-scoped state from `window.__pageData` (folders,
-root folder, translations) and an Alpine module registered in
-`resources/js/app.js` (`tools-gif-maker.js`, `tools-latex-mathml.js`,
-`tools-tikz-svg.js`, `tools-tikz-svg-fonts.js`, `tools-tikz-png.js`; TikZ Server
-itself is `tools-tikz-server.js`, covered in
-[tikz-render.md](tikz-render.md)). All six upload flows converge on
-`ToolUploadService::store()` — the controller methods
-(`uploadGif`/`uploadMathml`/`uploadTikzSvg`/`uploadTikzSvgFonts`/`uploadTikzPng`/`uploadTexTemplate`)
-differ only in mime type, content decoding (base64 vs raw string), and which
-`attributes`/`metadata` they forward.
+Every tool page hydrates from `window.__pageData` (folders, root folder, translations) and an
+Alpine module registered in `resources/js/app.js` (TikZ Server's `tools-tikz-server.js` is in
+[tikz-render.md](tikz-render.md)). All six upload actions (`uploadGif`, `uploadMathml`,
+`uploadTikzSvg`, `uploadTikzSvgFonts`, `uploadTikzPng`, `uploadTexTemplate`) converge on
+`ToolUploadService::store()` and differ only in mime type, decoding (base64 vs raw) and which
+`attributes`/`metadata` they forward; a failure maps through `Controller::clientError()`.
 
-The GIF maker additionally supports a **handoff**: another tool (TikZ Server) can
-stash a batch of rendered frames + metadata into
-`sessionStorage['orca:gif-handoff']` before navigating to the GIF maker page;
-`gifMaker.init()` reads and clears that key on load so a refresh doesn't
-re-hydrate stale data.
+GIF maker **handoff**: another tool (TikZ Server) stashes rendered frames + metadata in
+`sessionStorage['orca:gif-handoff']` before navigating; `gifMaker.init()` reads and clears it.
 
 ### Persistence
 
@@ -211,7 +174,7 @@ Scenario: Uploading selected diagrams posts each one with a live CSRF token
   And one translated success toast reports the count
 # pinned by: tests/e2e/tools.spec.js
 
-Scenario: A failed tool upload hides the exception from an api-role caller (regression)
+Scenario: A failed tool upload hides the exception from an api-role caller
   Given ToolUploadService throws "secret bucket detail"
   When an api-role user uploads through a tool endpoint
   Then the response is 500 with error "Upload failed." and no exception text
@@ -233,19 +196,10 @@ Scenario: Uploading a tex template creates an asset without image processing
   Then an asset row is created with mime_type application/x-tex
 # pinned by: tests/Feature/ToolsTest.php
 
-Scenario: Uploading an SVG creates an asset with the svg mime type
-  When an editor POSTs tools/tikz-svg/upload with SVG content
-  Then an asset is created with mime_type image/svg+xml
-# pinned by: tests/Feature/ToolsTest.php
-
-Scenario: SVG upload applies batch metadata (tags/license/copyright)
-  When an editor POSTs tools/tikz-svg/upload with metadata_tags and metadata_license_type
-  Then the created asset carries those tags (lowercased, user-attributed) and license fields
-# pinned by: tests/Feature/ToolsTest.php
-
-Scenario: SVG-with-embedded-fonts upload applies the same batch metadata rules
-  When an editor POSTs tools/tikz-svg-fonts/upload with metadata fields
-  Then the created asset reflects them identically to the plain SVG upload
+Scenario: SVG uploads create svg assets and apply batch metadata
+  When an editor POSTs tools/tikz-svg/upload, and tools/tikz-svg-fonts/upload, with metadata fields
+  Then each asset has mime_type image/svg+xml
+  And carries those tags (lowercased, user-attributed) and license fields
 # pinned by: tests/Feature/ToolsTest.php
 
 Scenario: PNG upload rejects invalid base64 before any S3 call
@@ -268,9 +222,10 @@ Scenario: ToolUploadService always removes its temp file
   Then the temporary file created for the upload no longer exists
 # pinned by: tests/Unit/Services/ToolUploadServiceTest.php
 
-Scenario: ToolUploadService forwards the metadata payload verbatim to applyUploadMetadata
-  When store() is called with a metadata array (tags/license/copyright/reference_tag_ids)
+Scenario: ToolUploadService forwards metadata verbatim, and skips both steps when process is false
+  When store() is called with a metadata array
   Then AssetProcessingService::applyUploadMetadata is called with exactly those values
+  And with process: false and no metadata, neither processImageAsset nor applyUploadMetadata is called
 # pinned by: tests/Unit/Services/ToolUploadServiceTest.php
 
 Scenario: An API-role user can still reach the tools pages (auth-only, no role gate)
@@ -281,20 +236,11 @@ Scenario: An API-role user can still reach the tools pages (auth-only, no role g
 
 # — browser-level (see e2e-testing.md for the harness) —
 
-Scenario: The tools overview lists every tool card
-  Given the tools page
-  Then a card is present for each tool, including the deprecated tikz-svg/tikz-png entries
-# pinned by: tests/e2e/tools.spec.js
-
-Scenario: Every tools page boots its Alpine component
+Scenario: The tools overview lists every tool and every tool page boots
   Given the tools overview
-  When each tool card is followed — including the three deprecated tikz pages
-  Then the tool's own root element renders and no page error is raised
-  # (Alpine's benign "Transition was skipped" rejection is filtered)
-  # The deprecated pages are booted in the browser rather than merely fetched for a
-  # 200: they still register Alpine modules, and a bundle error shows up here first.
-  # Rendering is not driven — with external hosts blocked, TikZJax never loads and
-  # render() would wait out its own 90s deadline.
+  Then a card is present for each tool, including the deprecated tikz-svg/tikz-png entries
+  And following each card renders the tool's root element with no page error
+    (Alpine's benign "Transition was skipped" rejection is filtered; rendering is not driven)
 # pinned by: tests/e2e/tools.spec.js
 
 Scenario: A forged render message from outside the iframe is ignored (REQ-7)
@@ -303,8 +249,6 @@ Scenario: A forged render message from outside the iframe is ignored (REQ-7)
     onerror handler
   Then no result is rendered
   And the injected handler never executes
-  # The page's own window is not the render iframe, so event.source does not match —
-  # which is the same reason an opener or a framing page is refused.
 # pinned by: tests/e2e/tools.spec.js
 ```
 
@@ -318,14 +262,7 @@ Scenario: A forged render message from outside the iframe is ignored (REQ-7)
 
 ## Open questions / future
 
-- The GIF maker (`uploadGif`) and LaTeX→MathML (`uploadMathml`) controller
-  actions have no Feature-test coverage — `ToolsTest.php` exercises the tex
-  template, SVG, SVG-fonts, and PNG upload endpoints but not
-  `tools/gif-maker/upload` or `tools/latex-mathml/upload`. Both share the same
-  `ToolUploadService::store()` path already covered at the unit level, so risk is
-  low, but a request-level test (base64 decode failure, `alt_text` = latex source
-  for MathML, `parent_asset_id` linkage for GIF) would close the gap.
-- The client-side rendering itself (TikZJax compilation, Temml LaTeX→MathML
-  conversion, gif.js frame encoding, canvas-based SVG→PNG rasterization in
-  `tools-tikz-png.js`) runs entirely in the browser and has no Pest coverage by
-  construction — only the resulting upload payload is server-tested.
+- `tools/gif-maker/upload` and `tools/latex-mathml/upload` have no Feature test (base64
+  failure, MathML `alt_text`, GIF `parent_asset_id`).
+- Client-side rendering itself (TikZJax, Temml, gif.js, canvas rasterization) has no Pest
+  coverage by construction.

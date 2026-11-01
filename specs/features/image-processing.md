@@ -36,19 +36,13 @@ S3/AWS SDK involvement.
   block structure (looking for a second Image Descriptor block, `0x2C`) rather
   than relying on file size or frame-count metadata heuristics, so it's
   correct even for GIFs with unusual block ordering.
-- **REQ-4** — Dimension extraction has one implementation,
-  `getImageDimensionsFromPath()`, used by every path that stores an image —
-  direct upload (`getImageDimensions()` on the upload's temp file), chunked
-  upload and discovery (`S3Service::extractImageDimensions()`, which streams the
-  object to a temp file first). It skips EPS and SVG (no meaningful raster
-  dimensions) and reads the header with `getimagesize()`, never decoding the
-  pixels, so a 500MB upload costs no more memory than a small one. EXIF
-  orientations 5–8 (rotated 90°/270°) swap width and height, so the stored
-  dimensions are the image *as displayed* — matching the auto-oriented
-  thumbnails and resizes. The three paths used to disagree: the direct path
-  decoded the whole image (EXIF-aware, memory-hungry), the chunked path read
-  raw `getimagesize()` (cheap, but a rotated phone photo ≥ 10MB came out
-  sideways), and discovery decoded from a string in memory.
+- **REQ-4** — Dimension extraction has one implementation, `getImageDimensionsFromPath()`, used
+  by every path that stores an image — direct upload (`getImageDimensions()` on the temp file),
+  chunked upload and discovery (`S3Service::extractImageDimensions()`, which streams the object
+  to a temp file first). It skips EPS and SVG and reads the header with `getimagesize()`, never
+  decoding pixels, so memory doesn't scale with file size. EXIF orientations 5–8 swap width and
+  height, so stored dimensions are the image *as displayed*, matching the auto-oriented
+  thumbnails.
 
 ## Technical design
 
@@ -58,83 +52,50 @@ S3/AWS SDK involvement.
 createThumbnailContent(imageContent: string, filename: string): ?string   # JPEG bytes, or null for animated GIF
 createResizedContent(imageContent: string, extension: string, ?width: int, ?height: int): array
   # => {content: string, mime_type: string, extension: string}
-  # extension = AssetKeyLayout::resizeOutputExtension($extension) — the same rule the resize
-  # key uses, so the stored key and the encoded bytes cannot disagree (s3-storage.md REQ-6)
-getImageDimensions(UploadedFile): array          # => {width, height} or [] when not applicable (non-image mime)
-getImageDimensionsFromPath(path: string, filename: string): array  # => {width, height} or [] — REQ-4
-hasRasterDimensions(filename: string): bool      # false for EPS/SVG — also lets S3Service skip the download
+  # extension = AssetKeyLayout::resizeOutputExtension($extension) — same rule as the resize key (s3-storage.md REQ-6)
+getImageDimensions(UploadedFile): array          # => {width, height} or [] (non-image mime)
+getImageDimensionsFromPath(path: string, filename: string): array  # => {width, height} or [] (also when unreadable) — REQ-4
+hasRasterDimensions(filename: string): bool      # false for EPS/SVG — lets S3Service skip the download
 isAnimatedGif(imageData: string): bool
 ```
 
 ### Layer touchpoints & ordering
 
-Called exclusively from `S3Service` (`generateThumbnail`,
-`generateResizedImages`, `getImageDimensions` inside `uploadFile`,
-`extractImageDimensions`) — this service never touches S3; it transforms
-in-memory byte strings, and reads a local path only to size an image
-(`getImageDimensionsFromPath()`). `ImageManager` (Intervention
-Image 4.x, GD driver) is built once per `ImageProcessingService` instance via
-`ImageManager::usingDriver(Driver::class)`.
+Called only from `S3Service` (`generateThumbnail`, `generateResizedImages`, `uploadFile`,
+`extractImageDimensions`). This service never touches S3: it transforms in-memory byte strings,
+and reads a local path only to size an image.
 
-Decoding is explicit about its input kind: raw byte strings go through
-`decodeBinary()` — Intervention 4 dropped the auto-detecting `read()`.
-Dimension extraction doesn't decode at all (REQ-4).
-Encoding likewise goes through explicit encoder objects
-(`Encoders\{JpegEncoder, PngEncoder, WebpEncoder}`) rather than the `toJpeg()` /
-`toPng()` / `toWebp()` shortcuts removed in 4.x; each returns an `EncodedImage`
-that is cast to a byte string. Intervention's own exceptions all extend
-`\Exception`. An unreadable file makes `getimagesize()` return `false`, which
-`getImageDimensionsFromPath()` turns into `[]`.
+## Visual aids
+
+```yaml
+intervention/image: ^4.2   # GD driver
+```
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: Thumbnail generation is skipped for an animated GIF
-  Given animated GIF image content
-  When createThumbnailContent() is called
-  Then it returns null
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: Thumbnail generation succeeds for a static GIF
-  Given single-frame GIF image content
+Scenario: Thumbnails are JPEG, except for animated GIFs (REQ-1)
+  Given JPEG, PNG or single-frame GIF content
   Then createThumbnailContent() returns a non-null JPEG string
+  And for animated GIF content it returns null
 # pinned by: tests/Unit/ImageProcessingServiceTest.php
 
-Scenario: Thumbnail generation works for JPEG and PNG input
-  Given JPEG or PNG image content
-  Then createThumbnailContent() returns a non-null JPEG string
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: Resize converts GIF source to JPEG
-  Given GIF image content and extension "gif"
+Scenario Outline: Resize output format (REQ-2)
+  Given <source> content
   When createResizedContent() runs
-  Then the result's mime_type is image/jpeg and extension is "jpg"
+  Then the result is <output>
+  Examples:
+    | source                                    | output                          |
+    | GIF                                       | image/jpeg, extension "jpg"     |
+    | PNG or WebP                               | the same format                 |
+    | an extension outside jpg/jpeg/png/webp/gif | JPEG                           |
 # pinned by: tests/Unit/ImageProcessingServiceTest.php
 
-Scenario: Resize preserves PNG and WebP formats
-  Given PNG (or WebP) content and matching extension
-  Then the result keeps that format
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: Resize falls back to JPEG for an unrecognized extension
-  Given an extension outside {jpg, jpeg, png, webp, gif}
-  Then the result is JPEG
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: getImageDimensions returns empty for non-image, EPS, and SVG files
-  Given a non-image mime type, an .eps file, or an .svg file
+Scenario: Dimensions for raster images only, as displayed (REQ-4)
+  Given a non-image mime type, an .eps or an .svg
   Then getImageDimensions() returns []
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: getImageDimensions returns width/height for a valid JPEG
-  Given a valid JPEG upload
-  Then getImageDimensions() returns the correct width and height
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: A JPEG whose EXIF orientation rotates it reports its displayed dimensions (REQ-4)
-  Given a 20x10 JPEG carrying EXIF Orientation 6 (rotate 90° clockwise)
-  Then getImageDimensionsFromPath() returns width 10 and height 20
-  And the same JPEG with Orientation 1 returns width 20 and height 10
+  And a valid JPEG upload returns its width and height
+  And a 20x10 JPEG with EXIF Orientation 6 returns 10x20 from getImageDimensionsFromPath(), with Orientation 1 20x10
 # pinned by: tests/Unit/ImageProcessingServiceTest.php
 
 Scenario: S3 dimension extraction streams the object and shares the local implementation (REQ-4)
@@ -143,19 +104,10 @@ Scenario: S3 dimension extraction streams the object and shares the local implem
   Then it returns the JPEG's width and height, and null for a non-image mime type or an SVG
 # pinned by: tests/Unit/Services/S3ServiceTest.php
 
-Scenario: isAnimatedGif detects a two-frame GIF as animated
-  Given GIF bytes with two Image Descriptor blocks
-  Then isAnimatedGif() returns true
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: isAnimatedGif returns false for data too short to be a GIF
-  Given a byte string shorter than 13 bytes
-  Then isAnimatedGif() returns false
-# pinned by: tests/Unit/ImageProcessingServiceTest.php
-
-Scenario: isAnimatedGif correctly walks a GIF with a Global Color Table and looping extension
-  Given a realistic animated GIF with a GCT and NETSCAPE looping extension block
-  Then isAnimatedGif() still correctly returns true
+Scenario: isAnimatedGif walks the block structure (REQ-3)
+  Then GIF bytes with two Image Descriptor blocks are animated
+  And a realistic animated GIF with a GCT and NETSCAPE looping extension is still animated
+  And a byte string shorter than 13 bytes is not
 # pinned by: tests/Unit/ImageProcessingServiceTest.php
 ```
 

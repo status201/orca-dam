@@ -17,10 +17,10 @@ source:
 
 ## Background / Why
 
-ORCA has three roles (`admin`, `editor`, `api`) with a deliberately uneven ability
-matrix: API tokens may read and upload but must never delete, and the two most
-destructive bulk operations require admin **and** an explicit maintenance-mode
-toggle. See [ADR-002](../decisions/adr-002-explicit-policy-roles.md) for why every
+ORCA has three roles (`admin`, `editor`, `api`) with a deliberately uneven ability matrix: API
+tokens may read and upload but never delete, and the two most destructive bulk operations require
+admin **and** maintenance mode. This file owns the role × ability matrix (the `AssetPolicy` /
+`UserPolicy` / `SystemPolicy` listing below). See [ADR-002](../decisions/adr-002-explicit-policy-roles.md) for why every
 ability names its allowed roles explicitly instead of a permissive default or a
 roles/permissions package.
 
@@ -75,18 +75,6 @@ UserPolicy:
   clearPasskeys(User, User $model): bool     # admin only, and $user->id !== $model->id
 ```
 
-### Data shapes
-
-The role × ability matrix (also mirrored in `architecture.md` and `CLAUDE.md`):
-
-```yaml
-Action:
-  view/viewAny/create/update/bulkDownload:            {admin: true,  editor: true,  api: true}
-  replace/delete/restore/bulkTrash/bulkRestore:        {admin: true,  editor: true,  api: false}
-  forceDelete/discover/export:                         {admin: true,  editor: false, api: false}
-  move/bulkForceDelete (+ requires maintenance_mode):  {admin: true,  editor: false, api: false}
-```
-
 ### Layer touchpoints & ordering
 
 Controllers call `$this->authorize('<ability>', <model-or-class>)` (Laravel's
@@ -105,21 +93,12 @@ Scenario: The full asset ability matrix is enforced per role
   Then the result matches the documented matrix exactly
 # pinned by: tests/Unit/Policies/AssetPolicyTest.php
 
-Scenario: Move requires both admin and maintenance mode
+Scenario: Move and bulkForceDelete require both admin and maintenance mode
   Given maintenance_mode is false
-  When AssetPolicy::move is checked for admin, editor, and api
+  When AssetPolicy::move or bulkForceDelete is checked for admin, editor, and api
   Then all three are denied
   Given maintenance_mode is then set to true
-  When AssetPolicy::move is checked again
-  Then only admin is allowed
-# pinned by: tests/Unit/Policies/AssetPolicyTest.php
-
-Scenario: BulkForceDelete requires both admin and maintenance mode
-  Given maintenance_mode is false
-  When AssetPolicy::bulkForceDelete is checked for admin, editor, and api
-  Then all three are denied
-  Given maintenance_mode is then set to true
-  When AssetPolicy::bulkForceDelete is checked again
+  When they are checked again
   Then only admin is allowed
 # pinned by: tests/Unit/Policies/AssetPolicyTest.php
 
@@ -135,18 +114,11 @@ Scenario: Only admins may view, create, or update users
   Then only the admin is allowed
 # pinned by: tests/Unit/Policies/UserPolicyTest.php
 
-Scenario: An admin can delete another user but not themselves
-  Given an admin user and a different target user
-  When UserPolicy::delete is checked for the target
-  Then it is allowed
-  When UserPolicy::delete is checked for the admin against themselves
-  Then it is denied
-# pinned by: tests/Unit/Policies/UserPolicyTest.php
-
-Scenario: Non-admins cannot delete any user
-  Given an editor or api user
-  When UserPolicy::delete is checked against any target
-  Then it is denied
+Scenario: Only an admin can delete a user, and never themselves
+  Given an admin, a different target user, and an editor or api user
+  When UserPolicy::delete is checked
+  Then the admin may delete the target but not themselves
+  And the editor or api user may delete no one
 # pinned by: tests/Unit/Policies/UserPolicyTest.php
 
 # — browser-level: the same matrix as the UI presents it (see e2e-testing.md) —
@@ -188,9 +160,4 @@ Scenario: Every role lands on a dashboard that names them
 
 - Unit: `tests/Unit/Policies/AssetPolicyTest.php`, `SystemPolicyTest.php`,
   `UserPolicyTest.php` — `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/role-matrix.spec.js` — the same matrix as the UI presents it (hidden nav + absent controls per role) plus the 403s.
-
-## Open questions / future
-
-- None — the matrix, the `maintenance_mode` double-gate, and the self-action guards
-  all have direct unit coverage.
+- E2E: `tests/e2e/role-matrix.spec.js` — `npm run test:e2e -- tests/e2e/role-matrix.spec.js`.

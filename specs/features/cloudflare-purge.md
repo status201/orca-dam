@@ -15,13 +15,11 @@ source:
 
 ## Background / Why
 
-`assets.s3_key` is immutable ([ADR-006](../decisions/adr-006-immutable-s3-key.md)) —
-replacing a file's bytes or regenerating its thumbnail keeps the same URL, which
-means a CDN sitting in front of S3 will happily keep serving the stale copy unless
-explicitly told otherwise. `CloudflareService` purges the affected URLs
-non-blockingly after a replace, a custom-thumbnail upload, or a content-type repair, so the fix is "purge the
-edge cache," never "mint a new key" (query-string cache-busting was explicitly
-rejected too — see the ADR's alternatives).
+`assets.s3_key` is immutable ([ADR-006](../decisions/adr-006-immutable-s3-key.md)), so replacing
+a file's bytes or thumbnail keeps the same URL and a CDN in front of S3 keeps serving the stale
+copy. `CloudflareService` purges the affected URLs, best-effort, after a replace, a
+custom-thumbnail upload, or a content-type repair — the fix is "purge the edge cache", never
+"mint a new key" (query-string cache-busting was rejected too — see the ADR).
 
 ## Requirements
 
@@ -50,102 +48,56 @@ rejected too — see the ADR's alternatives).
 
 ```yaml
 CloudflareService::isEnabled(): bool
-CloudflareService::collectAssetUrls(Asset $asset): array<string>
+CloudflareService::collectAssetUrls(Asset $asset): array<string>   # base URL via S3Service::getPublicBaseUrl()
 CloudflareService::purgeUrls(array $urls): bool
 ```
 
-### Data shapes
-
-```yaml
-# config/cloudflare.php
-enabled: env('CLOUDFLARE_ENABLED', false)
-api_token: env('CLOUDFLARE_API_TOKEN', '')
-zone_id: env('CLOUDFLARE_ZONE_ID', '')
-
-# settings rows read live (no local caching beyond Setting::get's 1h TTL)
-custom_domain: string            # group aws
-cloudflare_cache_purge: boolean  # group aws
-```
+Env keys are read through `config/cloudflare.php`; `custom_domain` and `cloudflare_cache_purge`
+(group `aws`) are read live via `Setting::get()` ([`settings.md`](settings.md)), so a toggle takes
+effect on the next replace without a deploy.
 
 ### Layer touchpoints & ordering
 
-Called from `AssetReplaceController` — both `replace()` (file replacement) and
-`storeThumbnail()` (custom thumbnail upload) — and from
-`AuditContentTypesCommand`'s `--fix` repair, which purges each re-headed original
-(see [`maintenance-commands.md`](maintenance-commands.md)):
+Callers: `AssetReplaceController::replace()` and `storeThumbnail()`, and
+`AuditContentTypesCommand --fix` ([`maintenance-commands.md`](maintenance-commands.md)):
 
 ```
 1. collectAssetUrls($asset)   # BEFORE S3 keys are nulled/replaced on the model
 2. ... replace bytes / regenerate thumbnail on S3 ...
-3. purgeUrls($urls)            # best-effort, non-blocking, never throws
+3. purgeUrls($urls)            # best-effort, never throws
 ```
 
-Note: `RegenerateResizedImage` (the bulk resize-regeneration job, see
-[`features/queue-jobs.md`](queue-jobs.md)) does **not** call `CloudflareService` —
-purge is wired only into the paths above.
-
-`S3Service::getPublicBaseUrl()` supplies the base URL (honors `custom_domain`) that
-`collectAssetUrls()` prefixes onto each S3 key.
-
-### Persistence
-
-No dedicated table or cache of its own; reads `custom_domain` /
-`cloudflare_cache_purge` live from `Setting::get()` (see
-[`features/settings.md`](settings.md)) so an admin toggle takes effect on the next
-replace without a deploy.
+`RegenerateResizedImage` ([`queue-jobs.md`](queue-jobs.md)) deliberately does **not** purge.
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: Purging is disabled unless every gate is satisfied
+Scenario: Purging is enabled only when every gate is satisfied (REQ-1)
   Given any one of: CLOUDFLARE_ENABLED false, empty api_token, empty zone_id, empty custom_domain, or cloudflare_cache_purge off
-  When CloudflareService::isEnabled() is checked
-  Then it returns false
+  Then CloudflareService::isEnabled() returns false
+  And with all five satisfied it returns true
 # pinned by: tests/Unit/CloudflareServiceTest.php
 
-Scenario: Fully configured, purging is enabled
-  Given CLOUDFLARE_ENABLED is true, api_token and zone_id are set, custom_domain is set, and cloudflare_cache_purge is on
-  When CloudflareService::isEnabled() is checked
-  Then it returns true
+Scenario: collectAssetUrls returns the variants that exist (REQ-2)
+  Given purging is disabled
+  Then collectAssetUrls() returns [] without touching S3Service
+  And when enabled, an asset without derived keys yields only the original URL
+  And an asset with thumbnail and all three resizes yields five URLs in order
 # pinned by: tests/Unit/CloudflareServiceTest.php
 
-Scenario: collectAssetUrls returns nothing when disabled
-  Given Cloudflare purging is disabled
-  When collectAssetUrls() is called for an asset
-  Then it returns an empty array without touching S3Service
-# pinned by: tests/Unit/CloudflareServiceTest.php
-
-Scenario: collectAssetUrls includes only the variants that exist
-  Given an asset with no thumbnail or resize keys
-  When collectAssetUrls() is called
-  Then only the original asset URL is returned
-# pinned by: tests/Unit/CloudflareServiceTest.php
-
-Scenario: collectAssetUrls includes every variant when all exist
-  Given an asset with thumbnail_s3_key and all three resize_*_s3_key set
-  When collectAssetUrls() is called
-  Then all five URLs (original + thumbnail + S/M/L) are returned in order
-# pinned by: tests/Unit/CloudflareServiceTest.php
-
-Scenario: purgeUrls sends the expected request
+Scenario: purgeUrls sends the expected request (REQ-5)
   Given Cloudflare purging is enabled
   When purgeUrls() is called with a list of URLs
   Then a POST to the zone's purge_cache endpoint is sent with a Bearer token and the URL list as "files"
 # pinned by: tests/Unit/CloudflareServiceTest.php
 
-Scenario: purgeUrls never throws on API failure
-  Given the Cloudflare API responds with success:false / a non-2xx status
+Scenario: purgeUrls never throws (REQ-3)
+  Given the API responds success:false or non-2xx, or the HTTP client throws
   When purgeUrls() is called
   Then it returns false and logs an error, without throwing
 # pinned by: tests/Unit/CloudflareServiceTest.php
 
-Scenario: purgeUrls never throws on a network exception
-  Given the HTTP client throws during the request
-  When purgeUrls() is called
-  Then it returns false and logs the exception message, without throwing
-# pinned by: tests/Unit/CloudflareServiceTest.php
-
-Scenario: purgeUrls filters empty/null entries and short-circuits an empty list
+Scenario: purgeUrls filters empty/null entries and short-circuits an empty list (REQ-4)
   Given a URL list containing nulls and empty strings, or an entirely empty list
   When purgeUrls() is called
   Then null/empty entries are dropped before sending, and an all-empty list returns true without an HTTP call
@@ -154,16 +106,9 @@ Scenario: purgeUrls filters empty/null entries and short-circuits an empty list
 
 ## Tests & verification
 
-- Unit: `tests/Unit/CloudflareServiceTest.php` (gate combinations, URL collection,
-  purge request shape, failure/exception handling, filtering) — uses `Http::fake()`,
-  no real Cloudflare calls
+- Unit: `tests/Unit/CloudflareServiceTest.php` (`Http::fake()`, no real calls)
 - Run: `php artisan config:clear && php artisan test`
 
 ## Open questions / future
 
-- No Feature-level test exercises the actual call sites (asset replace /
-  custom thumbnail) invoking `collectAssetUrls()` + `purgeUrls()` together
-  end-to-end — coverage today is at the `CloudflareService` unit level plus the
-  ordering contract documented in code comments (call `collectAssetUrls()` before
-  nulling S3 keys). A Feature test asserting the purge is attempted (via
-  `Http::fake()`) during a real replace request would close this gap.
+- Coverage gap: no Feature test asserts a real replace request collects and purges URLs in order.

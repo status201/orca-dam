@@ -35,97 +35,63 @@ source:
 
 ## Background / Why
 
-A user typed a 300-character copyright into the asset edit form and got a bare HTTP 500. The
-column `assets.copyright` was `varchar(255)`, but every rule that guards it allowed 500 and the
-form's `maxlength=` promised 500 — so validation passed and MariaDB rejected the write with
-SQLSTATE 22001 (`strict => true`, `config/database.php`). Four independent rule sites carried the
-same wrong number, one of them a hand-copied duplicate of the shared trait.
-
-Nothing could have caught it: the suite runs in-memory SQLite (ADR-008) and SQLite does not enforce
-`varchar` length, so the offending write succeeds in every test and in CI. The guard therefore
-cannot be a database assertion — it has to compare the **rules** against the **declared** column
-widths. This spec owns that comparison, the single place the widths are declared, and the
-client-side half that makes a limit visible instead of silent.
-
-The complementary half — what happens when a value nonetheless reaches the driver and is rejected —
-is [`error-handling.md`](error-handling.md).
+A validation rule looser than its column passes validation and then fails in MariaDB
+(`strict => true`) with SQLSTATE 22001 — a bare 500. The suite runs in-memory SQLite (ADR-008),
+which does not enforce `varchar` length, so the guard cannot be a database assertion: it compares
+the **rules** against the **declared** widths. This spec owns that comparison, the single place
+widths are declared, and the client-side half that makes a limit visible. What happens when a value
+nonetheless reaches the driver is [`error-handling.md`](error-handling.md).
 
 ## Requirements
 
-- **REQ-1** — `App\Support\ColumnLimits` is the single source of truth for the declared character
-  width of every `varchar` column the application validates into. `ColumnLimits::CHARS[$table][$column]`
-  is read by the migration that declares the column, by every validation rule that writes into it,
-  and by the view that renders its input. `ColumnLimits::for()` throws on an unknown column rather
-  than returning a default — an unnamed column is a bug, not a 255.
-- **REQ-2** — **A validation rule may never permit more characters than its column accepts.** A rule
-  may be deliberately *tighter* than its column (a 50-character cap on a `varchar(255)` is a product
-  decision); it may never be looser. The audit asserts `rule max <= column limit`, and for `TEXT`
-  columns compares worst-case utf8mb4 bytes (`ColumnLimits::fitsText()`, 4 bytes per character)
-  rather than characters.
+- **REQ-1** — `App\Support\ColumnLimits` is the single source of truth for the declared width of
+  every `varchar` column the app validates into. `ColumnLimits::CHARS[$table][$column]` is read by
+  the declaring migration, every rule writing into it, and the view rendering its input.
+  `ColumnLimits::for()` throws on an unknown column rather than defaulting.
+- **REQ-2** — **A validation rule may never permit more characters than its column accepts.** It
+  may be deliberately tighter, never looser. The audit asserts `rule max <= column limit`; for
+  `TEXT` columns it compares worst-case utf8mb4 bytes (`ColumnLimits::fitsText()`, 4 bytes/char).
 - **REQ-3** — The audit is **complete by construction**: every character-capped rule in every
-  concrete `FormRequest` is either mapped to a column or listed in the audit's `unboundStringFields()`
-  allowlist *with a stated reason*. A new capped string field that is neither fails the suite. The
-  allowlist is itself checked for staleness — an entry that no longer matches a live field fails,
-  because otherwise it silently pre-approves whatever takes that name next.
+  concrete `FormRequest` is mapped to a column or listed in `unboundStringFields()` *with a reason*.
+  A new capped field that is neither fails. A stale allowlist entry fails too.
 - **REQ-4** — An inline `$request->validate()` array in a controller may not cap a column-backed
-  field with a hand-written number; it must read `ColumnLimits` (or live in a `FormRequest` /
-  the shared rules trait). Inline arrays are invisible to REQ-3's reflection, so they are covered
-  by a source scan instead. The scan targets the *literal*, not the inline array as such — a
-  derived cap cannot drift, and `ChunkedUploadController::initiate` legitimately validates
-  `filename` this way.
-- **REQ-5** — `assets.copyright` and `assets.copyright_source` are `varchar(500)`. 500 is the width
-  the UI, the API contract and four tests already promised; `copyright_source` holds a URL or
-  reference, where 255 is genuinely too tight.
+  field with a hand-written number; it reads `ColumnLimits` (or moves to a `FormRequest` / the shared
+  trait). Covered by a source scan targeting the *literal* — a derived cap (e.g.
+  `ChunkedUploadController::initiate`'s `filename`) is fine.
+- **REQ-5** — `assets.copyright` and `assets.copyright_source` are `varchar(500)` (the width the UI
+  and API contract promise; `copyright_source` holds a URL/reference).
 - **REQ-6** — `CsvImportService::validateRow()` rejects a cell longer than its target column for
-  every bounded field in `UPDATABLE_FIELDS`, comparing `mb_strlen` (MySQL counts characters; `©`
-  costs two bytes). The row is reported and skipped by the existing preview/import error path —
-  it never reaches the driver. `alt_text` / `caption` are `TEXT` and are not bounded here.
+  every bounded field in `UPDATABLE_FIELDS`, comparing `mb_strlen` (MySQL counts characters). The
+  row is reported and skipped via the existing preview/import error path. `alt_text` / `caption`
+  (`TEXT`) are not bounded here.
 - **REQ-7** — A `maxlength=` that **is a column width** is rendered from `ColumnLimits`, never a
-  literal, so the browser, the rule and the column cannot disagree. A `maxlength` that is a
-  deliberately *tighter* product cap stays a literal and must match its validation rule instead —
-  `alt_text` (500) and `caption` (1000) are `TEXT` columns whose caps are product decisions, and a
-  passkey `name` is capped at 100 against a `varchar(255)` column. Both are legal under REQ-2; what
-  is forbidden is a literal that is *claiming* to be the column width. A `maxlength` alone is not
-  feedback — it silently stops accepting keystrokes — so a field carrying one also carries a live
-  character counter (`<x-char-counter>`) showing the count against the limit and warning as it
-  approaches.
-- **REQ-8** — Client-side limits are a **usability** guarantee, not a security or integrity one.
-  Any HTTP client bypasses the browser, so the server-side rule remains the authority and no
-  server-side check may be relaxed on the grounds that the browser also enforces it.
-- **REQ-9** — Where a shared cap already exists as a constant it is used everywhere: tag names are
-  capped at `Tag::MAX_NAME_LENGTH` on creation *and* rename. A tag creatable at 100 characters that
-  a 50-character rename rule then refuses to rename is a trap, not a tighter cap.
-- **REQ-10** — Every column holding an S3 object key is **1024 characters** — `assets.s3_key`, the
-  four derived keys (`thumbnail_s3_key`, `resize_{s,m,l}_s3_key`) and `upload_sessions.s3_key`. S3's
-  own limit is 1024 *bytes*, and a UTF-8 key of 1024 bytes is at most 1024 characters, so the column
-  can hold every key S3 will accept. The derived keys are **longer** than the key they come from
-  (`thumbnails/L/{folder}/{basename}.{ext}`), so they carry the same width — narrowing them would
-  only move the ceiling one step downstream.
-- **REQ-11** — Because a 1024-character `varchar` is 4096 bytes at utf8mb4 and InnoDB caps an index
-  key at 3072, `assets.s3_key` **cannot carry its own `UNIQUE` constraint**. The invariant lives on
-  `assets.s3_key_hash` (`char(64)`, sha256 of the key via `App\Support\S3KeyHash`, `NOT NULL`,
-  `assets_s3_key_hash_unique`), maintained by a `saving` hook on `Asset` — never a MySQL generated
-  column, because SQLite has no `SHA2()` and the suite would then test a schema production does not
-  have. A duplicate is reported against **`s3_key`**, not the surrogate: `s3_key_hash` is a real
-  column, so an unaliased error would key the bag on a field no form has and the user would see
-  nothing. Any write bypassing Eloquent events must set the hash itself.
-- **REQ-12** — The two indexes containing `s3_key` are declared at a **255-character prefix** on
-  MySQL/MariaDB (`assets_s3_key_index`, and `assets_folder_filter_index` as
-  `(deleted_at, s3_key(255), updated_at)`); SQLite indexes the whole column, which is semantically
-  identical because a prefix index is a superset scan plus a recheck. `assets_s3_key_index` is not
-  optional — the dropped `UNIQUE` was also the only index serving exact-match lookups on `s3_key`,
-  and the composite cannot serve them because it starts with `deleted_at`.
+  literal. A deliberately tighter product cap stays a literal and must match its rule (`alt_text`
+  500, `caption` 1000, passkey `name` 100). A field with a `maxlength` also carries a live
+  `<x-char-counter>` showing the count against the limit. Why: `maxlength` alone silently stops
+  accepting keystrokes.
+- **REQ-8** — Client-side limits are a **usability** guarantee only. The server-side rule remains
+  the authority; no server check may be relaxed because the browser also enforces it.
+- **REQ-9** — Where a shared cap constant exists it is used everywhere: tag names are capped at
+  `Tag::MAX_NAME_LENGTH` on creation *and* rename.
+- **REQ-10** — Every column holding an S3 object key is **1024 characters**: `assets.s3_key`,
+  `thumbnail_s3_key`, `resize_{s,m,l}_s3_key` and `upload_sessions.s3_key` (S3's limit is 1024
+  bytes ≤ 1024 chars). Derived keys are longer than their source, so they carry the same width.
+- **REQ-11** — A 1024-char utf8mb4 `varchar` exceeds InnoDB's 3072-byte index key, so
+  `assets.s3_key` has **no `UNIQUE` of its own**. Uniqueness lives on `assets.s3_key_hash`
+  (`char(64)`, sha256 via `App\Support\S3KeyHash`, `NOT NULL`, `assets_s3_key_hash_unique`),
+  maintained by a `saving` hook on `Asset` — never a MySQL generated column (SQLite has no `SHA2()`).
+  A duplicate is reported against **`s3_key`**, not the surrogate. Any write bypassing Eloquent
+  events must set the hash itself.
+- **REQ-12** — The two indexes containing `s3_key` use a **255-character prefix** on MySQL/MariaDB
+  (`assets_s3_key_index`; `assets_folder_filter_index` as `(deleted_at, s3_key(255), updated_at)`);
+  SQLite indexes the whole column. `assets_s3_key_index` is required: it is the only index serving
+  exact-match `s3_key` lookups.
 - **REQ-13** — `assets.filename` and `upload_sessions.filename` are **500 characters**, and every
-  upload path validates the incoming name against that width (`App\Rules\BoundedFilename` on the
-  direct and replace paths, a `max:` from `ColumnLimits` on the chunked and tools paths). The column
-  stores `getClientOriginalName()` **verbatim** — sanitising applies to the S3 key, not to this
-  column — and the cap is independent of `keep_original_filename`, which only decides whether the
-  *key* reuses the name. 500 is chosen to be far past any real filename **and** to bound the derived
-  keys: with `folder` at its deepest legal nesting (255 + 1 + 100 = 356), the longest key the app
-  constructs is `thumbnails/L/{folder}/{basename}.{ext}` at roughly 871 characters, inside
-  `s3_key`'s 1024. Raising either cap without redoing that arithmetic reopens the overflow.
-  `assets.filename` is indexed (`assets_filename_index`), but 500 utf8mb4 characters is 2000 bytes,
-  inside the 3072 of REQ-12 — so unlike `s3_key` this widening needs no index restructuring.
+  upload path validates the incoming name against that width (`App\Rules\BoundedFilename` on direct
+  and replace; a `ColumnLimits` `max:` on chunked and tools). The column stores
+  `getClientOriginalName()` verbatim, independent of `keep_original_filename`. 500 also bounds the
+  derived keys: deepest legal `folder` (356) + filename gives `thumbnails/L/{folder}/{basename}.{ext}`
+  ≈ 871 chars, inside 1024 — raising either cap requires redoing that arithmetic.
 
 ## Technical design
 
@@ -142,105 +108,64 @@ resources/views/components/char-counter.blade.php                       // <x-ch
 resources/js/char-counter.js                                            // wires [data-char-counter]; side-effect import in app.js
 ```
 
-The audit's own helpers live in the test, not in `app/` — they are a check on production code, not
-part of it: `ruleFacts()` (type-aware rule classifier), `formRequestClasses()` (reflection over
-`app/Http/Requests/**`), `schemaBackedFields()` (field → `[table, column]`), `unboundStringFields()`
-(the reasoned allowlist).
+The audit's helpers live in the test, not `app/`: `ruleFacts()`, `formRequestClasses()`,
+`schemaBackedFields()`, `unboundStringFields()`. `charCapped` is true only for a `string` rule with
+a `max:` and no `array`/`file`/`integer`/`numeric` rule (`max:` is unit-dependent in Laravel).
 
 ### Data shapes
 
 ```yaml
 # ColumnLimits::CHARS — declared varchar widths (see the class for the live values)
-assets.filename: 500           # widened from 255 — REQ-13; indexed, 2000 bytes, no restructuring
+assets.filename: 500           # REQ-13
 assets.license_type: 255
-assets.copyright: 500          # widened from 255 — REQ-5
-assets.copyright_source: 500   # widened from 255 — REQ-5
-assets.s3_key: 1024            # widened from 255 — REQ-10; uniqueness on s3_key_hash — REQ-11
-assets.thumbnail_s3_key: 1024  # widened from 255 — REQ-10
-assets.resize_s_s3_key: 1024   # newly declared — ColumnLimits::for() used to throw for these three
+assets.copyright: 500          # REQ-5
+assets.copyright_source: 500   # REQ-5
+assets.s3_key: 1024            # REQ-10; uniqueness on s3_key_hash — REQ-11
+assets.thumbnail_s3_key: 1024
+assets.resize_s_s3_key: 1024
 assets.resize_m_s3_key: 1024
 assets.resize_l_s3_key: 1024
-upload_sessions.s3_key: 1024   # widened from 255 — REQ-10; unindexed, so no restructuring
-upload_sessions.staging_s3_key: 1024  # chunked-upload REQ-4; sized with s3_key, not to its short generated value
-upload_sessions.filename: 500  # widened from 255 — REQ-13, so initiate() survives to complete()
-tags.name: 255                 # rules cap tighter, at Tag::MAX_NAME_LENGTH — legal under REQ-2
+upload_sessions.s3_key: 1024
+upload_sessions.staging_s3_key: 1024  # chunked-upload REQ-4
+upload_sessions.filename: 500  # REQ-13
+tags.name: 255                 # rules cap tighter, at Tag::MAX_NAME_LENGTH
 users.name: 255
 users.email: 255
 
-# ColumnLimits::TEXT_BYTES — byte capacity, compared via fitsText()
+# ColumnLimits::TEXT_BYTES — compared via fitsText()
 assets.alt_text: 65535
 assets.caption: 65535
-
-# ruleFacts() — what the audit extracts from one rule set
-charCapped: bool   # a `string` rule with a `max:` and no array/file/integer/numeric rule
-max: int|null      # the `max:` argument, whatever its unit
 ```
-
-`max:` is unit-dependent in Laravel — characters with `string`, element count with `array`,
-kilobytes with `file`, a numeric ceiling with `integer`. A blanket `max:\d+` scan is therefore
-meaningless; `charCapped` is only true for a genuine character cap.
 
 ### Layer touchpoints & ordering
 
 ```
-migration (reads ColumnLimits)  ─┐
-FormRequest / rules trait       ─┼─ all three read the same number
-Blade maxlength= + char-counter ─┘
+migration / FormRequest or rules trait / Blade maxlength + char-counter — all read ColumnLimits
 
 request → FormRequest::rules() → 422 with a keyed message   ← the authority (REQ-8)
-       ↳ browser maxlength + counter                        ← earlier, advisory only
-       ↳ driver rejection                                   ← error-handling.md, should now be unreachable
+       ↳ browser maxlength + counter                        ← advisory only
+       ↳ driver rejection                                   ← error-handling.md
 ```
 
-CSV import is the one path with no `FormRequest`: `ImportController::preview` and
-`ImportController::import` both call `CsvImportService::validateRow()`, which is why REQ-6 lives
-there and not in the controller — `csv-export-import.md` REQ-6 requires both to validate identically.
-
+CSV import has no `FormRequest`: `ImportController::preview` and `::import` both call
+`CsvImportService::validateRow()` (csv-export-import.md REQ-6 requires identical validation).
 `ChunkedUploadController::complete` uses the `HasUploadMetadataRules` trait rather than a
-`FormRequest`, deliberately: a `FormRequest` validates *before* the controller body, which would
-move its `authorize('create', Asset::class)` after validation and change which failure a caller
-sees first.
+`FormRequest` so its `authorize('create', Asset::class)` still runs before validation.
 
 ### Persistence
 
-The two copyright columns (REQ-5), by
-`database/migrations/2026_08_05_*_widen_copyright_columns_on_assets_table.php`. `->change()` is
-native in Laravel 13; both statements sit in one `Schema::table()` closure so SQLite rebuilds the
-table once. `->change()` re-emits the whole column definition on MySQL, so `->nullable()` must be
-restated or the columns silently become `NOT NULL`. Neither column is indexed
-(`assets_fulltext` covers `alt_text`/`caption` only, and is itself driver-guarded), so MySQL applies
-this without a table copy.
-
-The S3-key columns (REQ-10 to REQ-12) need **two** migrations, and that "neither column is indexed"
-reasoning is exactly what does not carry over:
-
-```
-2026_08_06_100000_add_s3_key_hash_to_assets_table.php
-    add s3_key_hash nullable  ->  backfill (chunkById, DB::table)  ->  add the unique index
-2026_08_06_100001_widen_s3_key_columns_on_assets_table.php
-    top-up  ->  drop both s3_key indexes + ->change() all five columns + s3_key_hash NOT NULL
-             ->  recreate the two indexes at prefix width  ->  widen upload_sessions.s3_key
-```
-
-Four orderings are load-bearing. The hash's unique index is created **before** the old
-`assets_s3_key_unique` is dropped, so there is never an instant without an enforced invariant. The
-column is added nullable and only made `NOT NULL` after the backfill, because neither a defaultless
-`NOT NULL` column nor a `UNIQUE` over a half-filled one is possible on a populated table. The index
-drops sit in the **same closure** as the `->change()` calls and are declared **first** — on MySQL
-the widen fails with errno 1071 otherwise, and on SQLite `BlueprintState` only omits an index from
-the table rebuild once it has seen its drop command. And the backfill uses `DB::table` with
-`chunkById`, not `Asset` with `chunk`: the `SoftDeletes` scope would skip trashed rows (whose
-`s3_key` is still occupied and still matched by the `withTrashed()` dedup check), and offset paging
-would skip rows because the loop writes the column the `WHERE` filters on.
-
-The filename columns (REQ-13) widen in
-`database/migrations/2026_08_06_110000_widen_filename_columns.php`; `assets.filename` stays fully
-indexed at 2000 bytes, so no index restructuring is needed.
-
-Splitting the S3-key work into two files is not cosmetic: MySQL DDL is not transactional, so a failure in the second
-migration must not cost a second full pass over the table.
-
-Nothing else here persists state: `ColumnLimits` is a constant array, and the audit is a test.
+- Copyright widening: `database/migrations/2026_08_05_*_widen_copyright_columns_on_assets_table.php`.
+  `->change()` must restate `->nullable()` on MySQL.
+- S3-key widening, two migrations (MySQL DDL is not transactional):
+  `2026_08_06_100000_add_s3_key_hash_to_assets_table.php` (add nullable → backfill → unique index)
+  and `2026_08_06_100001_widen_s3_key_columns_on_assets_table.php` (top-up → drop both `s3_key`
+  indexes + `->change()` five columns + hash `NOT NULL` → recreate indexes at prefix width → widen
+  `upload_sessions.s3_key`). Load-bearing orderings: the hash unique exists **before** the old
+  `assets_s3_key_unique` is dropped; the hash is nullable until backfilled; index drops are declared
+  **first in the same closure** as `->change()` (MySQL errno 1071; SQLite rebuild); the backfill
+  uses `DB::table` + `chunkById` (covers trashed rows; no offset skipping).
+- Filename widening: `database/migrations/2026_08_06_110000_widen_filename_columns.php`
+  (`assets_filename_index` at 2000 bytes needs no restructuring).
 
 ## Scenarios (BDD)
 
@@ -263,16 +188,11 @@ Scenario: No validation rule permits more characters than its column accepts
   Then no rule's max exceeds that width
 # pinned by: tests/Feature/ValidationLimitsTest.php
 
-Scenario: A new capped string field must be mapped or explained
-  Given a character-capped rule that is in neither the column map nor the allowlist
+Scenario: An unmapped capped field, or a stale allowlist entry, fails the audit
+  Given a character-capped rule in neither the column map nor the allowlist,
+    or an unboundStringFields() entry naming a field that no longer exists
   When the audit runs
   Then it fails naming that field
-# pinned by: tests/Feature/ValidationLimitsTest.php
-
-Scenario: An allowlist entry that no longer matches a field fails
-  Given an unboundStringFields() entry naming a field that no longer exists
-  When the audit runs
-  Then it fails, because a stale entry pre-approves whatever takes that name next
 # pinned by: tests/Feature/ValidationLimitsTest.php
 
 Scenario: A controller may not inline-validate a column-backed field
@@ -293,16 +213,10 @@ Scenario: A CSV cell longer than its column is reported and the row is skipped
   Then that row carries a length error, no update is applied, and no driver error occurs
 # pinned by: tests/Unit/CsvImportServiceTest.php, tests/Feature/ImportTest.php
 
-Scenario: An upload whose filename exceeds the column is a 422, never a driver error
-  Given a file whose name is one character longer than assets.filename accepts
-  When it is posted to POST /assets
-  Then the response is 422 with a validation error on that file
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: A filename at exactly the column limit is stored in full
-  Given a file whose name is exactly assets.filename characters long
-  When it is uploaded
-  Then the response is successful and the stored filename is that many characters
+Scenario: An upload filename is bounded by its column
+  Given a file whose name is exactly assets.filename characters long, and one a character longer
+  When each is posted to POST /assets
+  Then the first is stored in full and the second is a 422 on that file
 # pinned by: tests/Feature/AssetTest.php
 
 Scenario: The filename cap keeps every derived key inside the s3_key column
@@ -333,7 +247,7 @@ Scenario: The restructured indexes survive the table rebuild
 Scenario: A tag created at the full name length can still be renamed
   Given a tag whose name is Tag::MAX_NAME_LENGTH characters long
   When it is renamed via PATCH /tags/{tag}
-  Then the response is successful, because the rename cap equals the creation cap
+  Then the response is successful
 # pinned by: tests/Feature/TagTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
@@ -353,74 +267,31 @@ Scenario: The upload page's copyright fields show their limit as it is approache
 
 ## Tests & verification
 
-- Feature: `tests/Feature/ValidationLimitsTest.php` — the four audit legs and the canary.
-  `php artisan config:clear && php artisan test tests/Feature/ValidationLimitsTest.php`
-- Feature: `tests/Feature/AssetTest.php`, `tests/Feature/ApiTest.php` — the boundary pairs
-  (limit persists in full; limit+1 is a 422) on the web and API update paths.
-- Feature: `tests/Feature/ImportTest.php`, Unit: `tests/Unit/CsvImportServiceTest.php` — REQ-6.
-- Feature: `tests/Feature/TagTest.php` — REQ-9's rename regression.
-- Feature: `tests/Feature/S3KeyWidthTest.php` — REQ-10 to REQ-12: the surrogate on every write path,
-  uniqueness still biting, the aliased error column, and the index set after a rebuild.
-  `php artisan config:clear && php artisan test tests/Feature/S3KeyWidthTest.php`
-- E2E: `tests/e2e/asset-detail.spec.js` — `npm run test:e2e -- tests/e2e/asset-detail.spec.js`.
-  Note `database/e2e.sqlite` is **as blind to `varchar` length as the unit DB**: this scenario
-  proves the promise end-to-end, it cannot prove the column is wide enough.
-- E2E: `tests/e2e/upload-metadata.spec.js` — REQ-7 on the upload page's batch metadata panel,
-  the other half of the two views that render a `ColumnLimits`-backed `maxlength`.
+- Feature: `tests/Feature/ValidationLimitsTest.php` (audit + canary), `tests/Feature/AssetTest.php`,
+  `tests/Feature/ApiTest.php` (limit / limit+1 on web and API), `tests/Feature/ImportTest.php` +
+  `tests/Unit/CsvImportServiceTest.php` (REQ-6), `tests/Feature/TagTest.php` (REQ-9),
+  `tests/Feature/S3KeyWidthTest.php` (REQ-10–12) — `php artisan config:clear && php artisan test`.
+- E2E: `tests/e2e/asset-detail.spec.js`, `tests/e2e/upload-metadata.spec.js` — `npm run test:e2e`.
+  `database/e2e.sqlite` is equally blind to `varchar` length.
+- Against a real MariaDB/MySQL: `php artisan db:verify-schema --strict` — the only check of declared
+  widths, row format and index-key limits ([`maintenance-commands.md`](maintenance-commands.md) REQ-6).
+- Manual: the widening migration is not transactional on MySQL; if it dies between index drop and
+  recreate, re-run the two `DB::statement()` index creations. Run it in a window.
 - Style: `./vendor/bin/pint --test`
-- **Against a real MariaDB: `php artisan db:verify-schema`.** CI provisions no MariaDB service and
-  SQLite reports a bare `varchar` with no length *and* enforces no index key limit, so neither the
-  declared widths nor the prefix-index arithmetic in REQ-12 is verifiable from the suite. These were
-  a hand-run checklist in this section; they are now that checklist as code
-  ([`maintenance-commands.md`](maintenance-commands.md) REQ-6), so run it after migrating a real
-  instance. It compares every `ColumnLimits` width and TEXT capacity against `information_schema`,
-  asserts the row format is `DYNAMIC` — nothing pins it, `config/database.php` has
-  `'engine' => null`, and five `varchar(1024)` columns under `COMPACT` fail with errno 1118 — and
-  measures **every** index against the 3072-byte limit rather than only the ones this spec knows
-  about. It exits `0` and says what it found; with `--strict` it exits `0` verified, `1` failed,
-  `2` the driver could not answer — `2` is not `0`, so a strict run that checked nothing can never
-  read as a pass.
-- **Still genuinely manual**, because it is a property of the deploy rather than of the schema: the
-  widening migration is **not transactional on MySQL**. If it dies between the index drops and the
-  recreations, the table is left wide and unindexed — `db:verify-schema` will say so on the next run
-  — and recovery is re-running the two `DB::statement()` index creations. Run it in a window.
 
 ## Open questions / future
 
-- **`ColumnLimits` is not derived from the schema.** It cannot be under SQLite —
-  `SQLiteGrammar::typeString()` emits a bare `varchar` with no length, so an introspection-based
-  audit would go *vacuously green*, the exact failure mode `security-invariants.md` exists to
-  catch. Closing this for real means a MariaDB service in CI and one test comparing
-  `Schema::getColumns('assets')` against `ColumnLimits::CHARS`. Deliberately deferred; do **not**
-  land a driver-skipping version, because a permanently-skipped test reads as coverage.
-- Until then, a migration that declares a width with a literal instead of `ColumnLimits::for()`
-  drifts undetected. `recipes/add-a-migration.md` names the step; a source scan over
-  `database/migrations/**` for `->string('x', <literal>)` would enforce it.
-- **The API advertises characters where S3 counts bytes.** `max:1024` counts characters, so a
-  multibyte key passing validation could still exceed S3's 1024-*byte* limit. Harmless in practice —
-  `S3Service::sanitizeFilename()` strips to `[a-zA-Z0-9\-.]` and `FolderController` to
-  `[a-zA-Z0-9_\-]`, so every key the app generates is ASCII — but `DiscoverController` imports keys
-  straight from a bucket listing, where another tool's UTF-8 key could arrive. A byte-counting rule
-  would close it; the failure today is an S3 error with a message, not a silent truncation.
-- **`ORDER BY s3_key` is a filesort now.** REQ-12's prefix index cannot satisfy an ordering over a
-  value it does not fully store, so the `s3key_asc`/`s3key_desc` sorts in `Asset::scopeApplySort`
-  lost their index. Acceptable on a paginated listing; if it ever hurts, sort by `filename`
-  (`varchar(500)`, still fully indexable) rather than re-widening the index.
-- **Two capped inputs still have no counter**, so REQ-7's second half is not yet true everywhere:
-  the passkey `name` field (`resources/views/profile/partials/passkeys-form.blade.php`, two
-  occurrences at `maxlength="100"`) and the batch tag input on the upload page, which has a server
-  cap of `Tag::MAX_NAME_LENGTH` and no `maxlength` at all. Both truncate or reject in silence, which
-  is the failure REQ-7 exists to remove. Recorded rather than fixed because neither is column-backed
-  and neither was in the reported bug's path — but the requirement is written as universal, and it
-  is not.
-- **Nothing enforces REQ-7 mechanically.** `ValidationLimitsTest` reflects over rules and scans
-  controller source; it reads no Blade. A view that renders a `maxlength` with no counter, or a
-  literal claiming to be a column width, is caught only by review. A source scan over
-  `resources/views/**` pairing every `maxlength=` with a sibling `<x-char-counter>` would close it —
-  and would have caught the upload page's missing counters at the time they were missed.
-- **Uniqueness now depends on Eloquent events.** REQ-11's hash is set by a `saving` hook, so a raw
-  `DB::table('assets')->insert()`, a `saveQuietly()` or a `withoutEvents()` block could write a
-  duplicate `s3_key`. There are no such call sites in `app/` today, but nothing enforces that — a
-  source scan in `ValidationLimitsTest`'s style would.
-- `TagInputParser` and `tag-input-core.js` still *drop* an over-length tag name rather than
-  refusing it; the client now toasts the rejection, but the server-side parser remains silent.
+- **`ColumnLimits` is not derived from the schema** (SQLite emits bare `varchar`). Closing it needs
+  a MariaDB service in CI comparing `Schema::getColumns()` to `ColumnLimits::CHARS`; do not land a
+  driver-skipping version. Until then a migration width literal drifts undetected.
+- **Characters vs bytes for S3 keys:** `max:1024` counts characters; keys imported by
+  `DiscoverController` could be multibyte and exceed S3's byte limit (fails with an S3 error).
+- **`ORDER BY s3_key` is a filesort** under the REQ-12 prefix index; if it hurts, sort by `filename`.
+- **Two capped inputs lack a counter** (REQ-7 gap): passkey `name`
+  (`resources/views/profile/partials/passkeys-form.blade.php`) and the upload page's batch tag input.
+- **Nothing enforces REQ-7 mechanically** — no scan of `resources/views/**` pairs `maxlength=` with
+  `<x-char-counter>`.
+- **Uniqueness depends on Eloquent events** (REQ-11): raw inserts, `saveQuietly()` or
+  `withoutEvents()` could write a duplicate `s3_key`; none exist in `app/`, nothing enforces it.
+- `TagInputParser` / `tag-input-core.js` drop an over-length tag name rather than refusing it; the
+  server-side parser stays silent.
