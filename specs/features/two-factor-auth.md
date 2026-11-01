@@ -21,13 +21,10 @@ source:
 
 ## Background / Why
 
-Password-only login is a single factor; ORCA adds TOTP-based 2FA
-(`pragmarx/google2fa-laravel`) for admins and editors as a second factor, with
-one-time recovery codes for device loss. It's deliberately **not offered to API
-users** — API auth goes through Sanctum/JWT, not the session+password path 2FA
-protects. Passkey login is treated as already phishing-resistant and explicitly
-bypasses this challenge (see [passkeys.md](passkeys.md) REQ-3) rather than stacking
-2FA on top of it.
+ORCA adds TOTP 2FA (`pragmarx/google2fa-laravel`) for admins and editors, with one-time recovery
+codes for device loss. It is **not offered to API users** (they authenticate via Sanctum/JWT, not
+the session+password path). Passkey login bypasses this challenge
+([passkeys.md](passkeys.md) REQ-3).
 
 ## Requirements
 
@@ -141,41 +138,26 @@ Login-time challenge (see also authentication.md):
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: An eligible user can view the setup page
-  Given an admin or editor
-  When they GET /two-factor/setup
-  Then the response is successful and shows a QR code
+Scenario: Only admins and editors can open 2FA setup
+  Given an admin or editor, and an api-role user
+  When each GETs /two-factor/setup
+  Then the admin/editor sees a QR code
+  And the api user is redirected away with an error
 # pinned by: tests/Feature/TwoFactorAuthTest.php
 
-Scenario: An API user cannot access 2FA setup
-  Given an api-role user
-  When they GET /two-factor/setup
-  Then they are redirected away with an error
-# pinned by: tests/Feature/TwoFactorAuthTest.php
-
-Scenario: Confirming setup with a valid code enables 2FA and issues recovery codes
+Scenario: Confirming setup enables 2FA only with a valid code
   Given a user mid-setup with a session-stashed secret
   When they POST /two-factor/confirm with the correct TOTP code
   Then two_factor_secret and two_factor_confirmed_at are persisted
   And recovery codes are shown once
+  But an incorrect code leaves 2FA disabled
 # pinned by: tests/Feature/TwoFactorAuthTest.php
 
-Scenario: Confirming setup with an invalid code does not enable 2FA
-  Given a user mid-setup
-  When they POST /two-factor/confirm with an incorrect code
-  Then 2FA remains disabled
-# pinned by: tests/Feature/TwoFactorAuthTest.php
-
-Scenario: A 2FA-enabled user is redirected to the challenge on login
-  Given a user with 2FA enabled
-  When they log in with correct credentials
-  Then they are redirected to the two-factor challenge instead of the dashboard
-# pinned by: tests/Feature/TwoFactorAuthTest.php
-
-Scenario: A user without 2FA logs in directly
-  Given a user without 2FA enabled
-  When they log in with correct credentials
-  Then they land on the dashboard without a challenge
+Scenario: A 2FA-enabled user is diverted to the challenge on login
+  Given a user with 2FA enabled, and one without
+  When each logs in with correct credentials
+  Then the first is redirected to the two-factor challenge
+  And the second lands on the dashboard
 # pinned by: tests/Feature/TwoFactorAuthTest.php
 
 Scenario: The challenge accepts a valid TOTP code
@@ -222,18 +204,7 @@ Scenario: two-factor:status and two-factor:disable manage 2FA from the CLI
 
 ## Tests & verification
 
-- Feature: `tests/Feature/TwoFactorAuthTest.php` — setup gating, confirm
-  valid/invalid, login diversion, challenge accept/reject/expire, disable,
-  recovery-code regeneration, profile visibility per role.
-- Feature (console): `tests/Feature/Console/TwoFactorCommandTest.php` —
-  `two-factor:status` (list/filter/invalid role), `two-factor:disable`
-  (clears/no-op/missing user).
-- Unit: `tests/Unit/TwoFactorServiceTest.php` — every `TwoFactorService` method
-  (secret generation, code verify, recovery code generate/hash/verify/consume, QR
-  code/URL generation).
+- Feature: `tests/Feature/TwoFactorAuthTest.php`,
+  `tests/Feature/Console/TwoFactorCommandTest.php`.
+- Unit: `tests/Unit/TwoFactorServiceTest.php`.
 - Run: `php artisan config:clear && php artisan test`
-
-## Open questions / future
-
-- None — setup, the login-time challenge, disable/regenerate, and the console
-  recovery commands are all directly pinned.

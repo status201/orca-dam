@@ -24,14 +24,13 @@ source:
 
 ## Background / Why
 
-Assets are categorised by free-form tags rather than a fixed taxonomy. Three
-independent producers attach tags to the same asset — a human editor, AWS
-Rekognition (see [`ai-tagging.md`](ai-tagging.md)), and external systems via the
-reference-tags API (see [ADR-012](../decisions/adr-012-reference-tags-api-only.md))
-— so the `asset_tag` pivot tracks *who last attached* each tag rather than only
-*whether* it's attached. This "last attacher wins" rule lets a user manually
-re-affirm an AI-suggested tag (promoting it to a user tag) without a separate
-data model per tag origin.
+Assets are categorised by free-form tags rather than a fixed taxonomy. Three producers attach
+tags to the same asset — a human editor, AWS Rekognition ([`ai-tagging.md`](ai-tagging.md)), and
+external systems via the reference-tags API
+([ADR-012](../decisions/adr-012-reference-tags-api-only.md)) — so the `asset_tag` pivot tracks
+*who last attached* each tag. "Last attacher wins" lets a user re-affirm an AI-suggested tag
+without a separate data model per origin. This spec owns the pivot-write mechanics every other
+spec links to.
 
 ## Requirements
 
@@ -52,32 +51,23 @@ data model per tag origin.
   `AssetPolicy::update` (all three roles — admin/editor/api).
 - **REQ-5** — Deleting a `Tag` (single or bulk) detaches it from every asset
   via the pivot relationship; no orphaned `asset_tag` rows remain.
-- **REQ-6** — Resolving a tag name to an ID never changes an existing tag's
-  `type`. `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` / `resolveAiTagIds()`
-  reuse an existing tag of any type if the name already exists — **as the database
-  compares names**, not as PHP does. Production's `utf8mb4_unicode_ci` treats `café` and
-  `cafe` (and `Äpfel` and `äpfel`) as the same name, and the unique index on `tags.name`
-  agrees, so a name the batch lookup did not return exactly is resolved with
-  `firstOrCreate()`, letting the collation find the existing row. Deciding "missing" with an
-  exact PHP comparison created a second row there and failed on the unique index — which
-  broke AI tagging for any label whose existing tag differed only by accent or case.
-- **REQ-tag-name-normalization** — Every path that turns a name into a tag, or looks
-  a tag up by name, normalizes it with `Tag::normalizeName()` — trimmed and lowercased
-  with `mb_strtolower`, the same rule `TagInputParser` applies. That covers resolving
-  names to ids (user, reference and AI tags), renaming a tag, `reference-tag:create`, and
-  removing reference tags by name. The other paths used to lowercase byte-wise
-  (`strtolower`), which leaves non-ASCII capitals alone, so "ÉTÉ" was created as "été"
-  through the tag input but renamed or looked up as "ÉtÉ".
-- **REQ-tag-pickers-lead-with-user-tags** — Tag-type pickers lead with **User** tags. Reference tags are
-  machine-named (`00213478-7efb-…`) and numerous, so an "all types" list sorted by
-  name opens on a wall of them. The Tags page tabs and the asset grid's
-  *Filter Tags* type dropdown are ordered **User → AI → Reference → All**, and
-  both default to **User**. On the Tags page, `/tags` means User and `?type=all`
-  means All (an unrecognised `type` falls back to User); switching tabs rewrites
-  the URL the same way, omitting `type` for the default. `GET /tags` as JSON treats
-  `type=all` exactly like an absent `type` (unfiltered), so existing JSON callers
-  are unaffected. The CSV Export page's tag-type selector is deliberately left
-  as-is (all types first, the default).
+- **REQ-6** — Resolving a tag name to an ID never changes an existing tag's `type`.
+  `Tag::resolveUserTagIds()` / `resolveReferenceTagIds()` / `resolveAiTagIds()` reuse an existing
+  tag of any type — **as the database compares names**, not as PHP does: under
+  `utf8mb4_unicode_ci` `café`/`cafe` are one name, so a name the batch lookup did not return
+  exactly is resolved with `firstOrCreate()` and the collation finds the existing row (an exact
+  PHP comparison would hit the unique index).
+- **REQ-tag-name-normalization** — Every path that turns a name into a tag, or looks a tag up by
+  name, normalizes it with `Tag::normalizeName()` — trimmed and `mb_strtolower`ed, the same rule
+  `TagInputParser` applies: resolving names to ids (user, reference, AI), renaming a tag,
+  `reference-tag:create`, and removing reference tags by name. Never byte-wise `strtolower`.
+- **REQ-tag-pickers-lead-with-user-tags** — Tag-type pickers lead with **User** tags (reference
+  tags are machine-named and numerous). The Tags page tabs and the asset grid's *Filter Tags* type
+  dropdown are ordered **User → AI → Reference → All** and both default to **User**. On the Tags
+  page `/tags` means User and `?type=all` means All (an unrecognised `type` falls back to User);
+  switching tabs rewrites the URL the same way, omitting `type` for the default. `GET /tags` as
+  JSON treats `type=all` like an absent `type` (unfiltered). The CSV Export page's tag-type
+  selector deliberately keeps all types first as its default.
 
 ## Technical design
 
@@ -98,6 +88,9 @@ Asset (app/Models/Asset.php):
   tags(): BelongsToMany       # ordered: user(0) < reference(1) < ai/other(2)
   userTags() / aiTags() / referenceTags(): BelongsToMany   # type-filtered
   syncTagsWithAttribution(array $tagIds, string $attachedBy): void
+  syncTagsPreservingAi(?array $userTagIds, ?array $referenceTagIds): void
+    # replacing counterpart for the two metadata-update endpoints (via UpdateAssetRequest);
+    # null leaves that type untouched, an array (even empty) becomes its complete set; AI pivots kept
 
 TagController:
   index(Request)          # GET /tags — paginated JSON (expectsJson; ?type=user|ai|reference, 'all'/absent = unfiltered)
@@ -119,7 +112,8 @@ AssetBulkController:
   bulkGetTags(Request)         # POST /assets/bulk/tags/list — asset_ids[] -> per-tag counts
 ```
 
-Routes (`routes/web.php`, session-authenticated group):
+Routes (`routes/web.php`, session `auth` group; `GET /api/tags`, `/api/tags/search` and
+`/api/tags/{ids}` are under `auth.multi`):
 
 ```yaml
 GET    /tags                       tags.index
@@ -135,16 +129,10 @@ POST   /assets/bulk/tags/remove    assets.bulk.tags.remove
 POST   /assets/bulk/tags/list      assets.bulk.tags.list
 ```
 
-Authentication comes from the enclosing route group: `auth` (session) for the web
-routes above, `auth.multi` for `GET /api/tags`, `/api/tags/search` and `/api/tags/{ids}`.
-
-Authorization: `addTags`/`removeTag`/`bulkAddTags`/`bulkRemoveTags` all check
-`AssetPolicy::update` per asset (in a `foreach` for the bulk endpoints, so one
-unauthorized asset in a batch 403s the whole request before any writes).
-`bulkGetTags` is read-only and checks `AssetPolicy::view` instead — the
-stricter update check would be a false restriction, but the per-asset loop is
-kept "for consistency ... and to guard against information disclosure if
-per-asset ownership is ever added" (see the comment in `AssetBulkController::bulkGetTags`).
+Authorization: `addTags`/`removeTag`/`bulkAddTags`/`bulkRemoveTags` check `AssetPolicy::update`
+per asset; the bulk endpoints check every asset before any write, so one unauthorized asset 403s
+the whole request (and creates no tags). `bulkGetTags` is read-only and checks
+`AssetPolicy::view` per asset.
 
 ### Data shapes
 
@@ -164,113 +152,71 @@ asset_tag (pivot):
 ### Layer touchpoints & ordering
 
 ```
-Request (tag names as raw strings)
-  -> TagInputParser::parse()            (see tag-input.md — comma-split/trim/lowercase/dedup)
-  -> Tag::resolveUserTagIds() / resolveReferenceTagIds()   (name -> id, reusing existing rows)
-  -> Asset::syncTagsWithAttribution(ids, attachedBy)
-       -> tags()->syncWithoutDetaching()          (attach missing links)
-       -> DB::table('asset_tag')->update(...)     (bulk-set attached_by on ALL passed ids
-                                                    in one query — this is the "last attacher
-                                                    wins" step, applied even to links that
-                                                    already existed before this call)
+Raw tag names → TagInputParser::parse() (tag-input.md)
+  → Tag::resolveUserTagIds() / resolveReferenceTagIds() / resolveAiTagIds()   (name → id, reusing rows)
+  → Asset::syncTagsWithAttribution(ids, attachedBy)
+       → tags()->syncWithoutDetaching()        (attach missing links; never detaches)
+       → one bulk UPDATE on asset_tag setting attached_by for ALL passed ids (last attacher wins)
 ```
 
-`reference_tag_ids` (as opposed to free-text `tags`) is validated against
-`Rule::exists('tags','id')->where('type','reference')` — a non-reference tag ID
-submitted this way is rejected with 422 rather than silently reattached.
+Every pivot writer — `AssetController`, `AssetBulkController`, `ImportController`,
+`Api\AssetApiController`, `AssetProcessingService`, `RekognitionService` — goes through
+`syncTagsWithAttribution()` / `syncTagsPreservingAi()`, never the pivot directly.
+`reference_tag_ids` is validated with `Rule::exists('tags','id')->where('type','reference')` —
+a non-reference id is a 422, not a silent reattach.
 
 ### Persistence
 
-- `tags` table — `name` unique index, `type` column.
-- `asset_tag` pivot table — composite key `(asset_id, tag_id)`, `attached_by`
-  column, timestamps.
-- Deleting a `Tag` model cascades removal of its `asset_tag` rows (DB FK
-  cascade / Eloquent relationship — no explicit detach loop needed in
-  `TagController::destroy` or `bulkDestroy`).
+`tags` (`name` unique, `type`); `asset_tag` pivot (composite key `(asset_id, tag_id)`,
+`attached_by`, timestamps). Deleting a `Tag` cascades its `asset_tag` rows (FK cascade).
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: A name the collation already holds reuses that tag instead of failing (regression)
+Scenario: A name the collation already holds reuses that tag instead of failing (REQ-6)
   Given MySQL/MariaDB with utf8mb4_unicode_ci and an existing tag "cafe"
   When resolveAiTagIds(['café']) runs
   Then it returns the id of "cafe" and creates nothing
-  # Driver-specific: SQLite compares names byte-wise, so it cannot express the collision;
-  # the test skips there and runs against MySQL/MariaDB.
+  # Driver-specific: skips on SQLite, which compares byte-wise.
 # pinned by: tests/Unit/TagTest.php
 
-Scenario: A non-ASCII tag name is normalized the same way on every path (regression)
+Scenario: A non-ASCII tag name is normalized the same way on every path
   Given a tag created as "été" through the tag input
   When an editor renames another tag to " ÉTÉ " it collides with "été" (422)
   And reference tags named "ÉTÉ" are removed by name, the reference tag "été" is found
 # pinned by: tests/Feature/TagTest.php, tests/Feature/ApiTest.php
 
-Scenario: A tag can belong to many assets
-  Given a tag and three assets
-  When the tag is attached to all three
+Scenario: Tag model relations and resolution
+  Given a tag attached to three assets
   Then the tag has 3 assets
+  And resolveUserTagIds(['portrait', 'new-tag']) reuses an existing "portrait" (any type, unchanged)
+  And creates no duplicate row
 # pinned by: tests/Unit/TagTest.php
 
-Scenario: Resolving tag names reuses an existing tag without changing its type
-  Given a tag "portrait" already exists with type "user"
-  When resolveUserTagIds(['portrait', 'new-tag']) is called
-  Then the existing tag's id is returned and no duplicate "portrait" row is created
-# pinned by: tests/Unit/TagTest.php
-
-Scenario: Adding a tag through the single-asset endpoint attributes it to the user
+Scenario: Attribution — a user add is 'user', and the last attacher wins
   Given an editor and an image asset
   When POST /assets/{asset}/tags is sent with tags=["landscape"]
-  Then the tag is attached with asset_tag.attached_by = "user"
+  Then the tag is attached with attached_by = "user"
+  And syncTagsWithAttribution(["tree"], "user") on an AI-attached "tree" flips the same row to "user"
 # pinned by: tests/Feature/TagAttributionTest.php
-
-Scenario: Last attacher wins — re-attaching an AI tag as a user updates attribution
-  Given an asset with an AI-attached tag "tree" (attached_by = "ai")
-  When syncTagsWithAttribution(["tree"], "user") is called
-  Then the same pivot row now has attached_by = "user" (no duplicate row)
-# pinned by: tests/Feature/TagAttributionTest.php
-
-Scenario: Reference tags are renamable in the web UI
-  Given a reference-typed tag created via the API
-  When PATCH /tags/{tag} renames it
-  Then the rename succeeds (200) and the tag's name is updated
-# pinned by: tests/Feature/TagTest.php
-
-Scenario: A tag at the full name length can still be renamed
-  Given a user tag whose name is Tag::MAX_NAME_LENGTH characters long
-  When PATCH /tags/{tag} renames it to another name of that length
-  Then the rename succeeds — the rename cap is Tag::MAX_NAME_LENGTH, not a tighter literal
-# pinned by: tests/Feature/TagTest.php
-
-Scenario: AI tags cannot be renamed
-  Given an AI-typed tag
-  When PATCH /tags/{tag} attempts to rename it
-  Then the response status is 403
-# pinned by: tests/Feature/TagTest.php
-
-Scenario: Deleting a tag detaches it from every asset
-  Given a tag attached to an asset
-  When DELETE /tags/{tag} is sent
-  Then the tag row is gone and the asset no longer has that tag
-# pinned by: tests/Feature/TagTest.php
 
 Scenario: reference_tag_ids rejects a non-reference tag id
-  Given a user-typed tag
-  When POST /assets/{asset}/tags is sent with reference_tag_ids=[<that tag's id>]
+  When POST /assets/{asset}/tags is sent with reference_tag_ids=[<a user tag's id>]
   Then the response status is 422
 # pinned by: tests/Feature/TagAttributionTest.php
+
+Scenario: Renaming and deleting tags
+  Then a reference tag can be renamed (200), including to a name of Tag::MAX_NAME_LENGTH
+  And renaming an AI tag is 403
+  And DELETE /tags/{tag} removes the row and detaches it from every asset
+# pinned by: tests/Feature/TagTest.php
 
 Scenario: Bulk add/remove/list operate across multiple assets and require authentication
   Given three assets
   When POST /assets/bulk/tags (add), /assets/bulk/tags/remove, and /assets/bulk/tags/list are called
   Then tags are added/removed/counted correctly across all three assets
   And each endpoint returns 401 for an unauthenticated request
-# pinned by: tests/Feature/TagTest.php
-
-Scenario: A refused bulk add creates no tags
-  Given AssetPolicy::update denies the user an asset in the batch
-  When they POST /assets/bulk/tags with a tag name that does not exist yet
-  Then the response is 403
-  And no tag with that name exists
+  And a bulk add refused (403) for one asset creates no tag
 # pinned by: tests/Feature/TagTest.php
 
 Scenario: The tags page opens on user tags; type=all selects every type (REQ-tag-pickers-lead-with-user-tags)
@@ -281,23 +227,16 @@ Scenario: The tags page opens on user tags; type=all selects every type (REQ-tag
 
 # — browser-level (see e2e-testing.md for the harness) —
 
-Scenario: Tags can be renamed and deleted from the tags page
-  Given a seeded tag
-  When it is renamed and then deleted
-  Then the tags table reflects both changes
-# pinned by: tests/e2e/tags.spec.js
-
-Scenario: The tags page shows type badges and protects ai tags from rename
+Scenario: The tags page manages tags by type
   Given seeded user, ai and reference tags
-  Then each is listed with its type badge
-  And the ai tag offers no rename control
+  Then each is listed with its type badge, and the ai tag offers no rename control
+  And a seeded tag can be renamed and deleted
+  And a tag card links into the asset grid filtered to that tag
 # pinned by: tests/e2e/tags.spec.js
 
 Scenario: The tags page tabs lead with User and end with All (REQ-tag-pickers-lead-with-user-tags)
-  Given seeded user, ai and reference tags
   When the tags page opens
-  Then the tabs read User, AI, Reference, All
-  And only user tags are listed
+  Then the tabs read User, AI, Reference, All and only user tags are listed
   When the All tab is clicked
   Then the ai and reference tags are listed too and the URL carries type=all
 # pinned by: tests/e2e/tags.spec.js
@@ -309,12 +248,6 @@ Scenario: The grid's tag filter lists user tags until All is chosen (REQ-tag-pic
   Then the ai tag is listed
 # pinned by: tests/e2e/asset-grid.spec.js
 
-Scenario: A tag card links into the filtered asset library
-  Given a tag with attached assets
-  When its card is followed
-  Then the asset grid opens filtered to that tag
-# pinned by: tests/e2e/tags.spec.js
-
 Scenario: A tag added on the edit page appears on the asset and is removable inline
   Given the edit page for a seeded asset
   When a tag is typed and added, then saved
@@ -325,11 +258,7 @@ Scenario: A tag added on the edit page appears on the asset and is removable inl
 
 ## Tests & verification
 
-- Unit: `tests/Unit/TagTest.php` — model relationships, `resolveUserTagIds`,
-  `resolveReferenceTagIds`, scopes.
-- Feature: `tests/Feature/TagTest.php` — `TagController` + single/bulk asset
-  tag-attach endpoints, `tests/Feature/TagAttributionTest.php` — `attached_by`
-  semantics end-to-end (web, API, CSV import, `applyUploadMetadata`).
-- Run: `php artisan config:clear && php artisan test tests/Feature/TagTest.php tests/Feature/TagAttributionTest.php tests/Unit/TagTest.php`
-- E2E: `tests/e2e/tags.spec.js` (rename/delete/type badges, tab order + User default), `tests/e2e/asset-grid.spec.js` (tag-filter type dropdown default) and `tests/e2e/asset-detail.spec.js` (edit-page + inline row tag input).
-
+- Unit: `tests/Unit/TagTest.php`
+- Feature: `tests/Feature/TagTest.php`, `tests/Feature/TagAttributionTest.php` (web, API, CSV
+  import, `applyUploadMetadata`) — `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/tags.spec.js`, `tests/e2e/asset-grid.spec.js`, `tests/e2e/asset-detail.spec.js`

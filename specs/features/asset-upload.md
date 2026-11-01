@@ -27,13 +27,12 @@ source:
 
 ## Background / Why
 
-`POST /assets` is the direct-upload path used for files under the ~10MB threshold
-(see [ADR-005](../decisions/adr-005-chunked-above-10mb.md); files at/above it use
-[`chunked-upload.md`](chunked-upload.md) instead). It accepts multiple files per
-request, uploads each to S3, creates (or updates, for the keep-original-filename
-overwrite case) an `Asset` row, generates a thumbnail + S/M/L resizes, optionally
-dispatches AI tagging, and applies any batch metadata (tags/license/copyright)
-supplied alongside the files.
+`POST /assets` is the direct-upload path for files under the ~10MB threshold
+([ADR-005](../decisions/adr-005-chunked-above-10mb.md); larger files use
+[`chunked-upload.md`](chunked-upload.md)). It accepts multiple files per request, uploads each
+to S3, creates (or, on a key collision, overwrites) an `Asset` row, generates a thumbnail +
+S/M/L resizes, optionally dispatches AI tagging, and applies any batch metadata supplied with
+the files.
 
 ## Requirements
 
@@ -43,10 +42,9 @@ supplied alongside the files.
   (`App\Rules\AllowedUploadExtension`, `config/uploads.php`) — see
   [`upload-policy.md`](upload-policy.md).
 - **REQ-3** — A per-file etag dedup check runs before the `Asset` row is created,
-  skipped only when the upload collides with an existing `s3_key` (an overwrite is
-  not a duplicate — [`duplicate-detection.md`](duplicate-detection.md) REQ-2, and
-  **not** the `keep_original_filename` flag, which is what this used to say).
-  Duplicates are skipped and reported rather than failing the whole batch.
+  skipped only when the upload collides with an existing `s3_key`
+  ([`duplicate-detection.md`](duplicate-detection.md) REQ-2). Duplicates are skipped and
+  reported rather than failing the whole batch.
 - **REQ-4** — Thumbnail + resize generation and AI-tag dispatch are delegated to
   `AssetProcessingService::processImageAsset()`, never done inline in the
   controller (REQ-1 of `architecture.md`).
@@ -63,113 +61,77 @@ supplied alongside the files.
 
 ### Contract / public interface
 
-`AssetController::store(StoreAssetRequest $request)` — `POST /assets`
-(`assets.store`, web-authenticated). Validation
-(`StoreAssetRequest::rules()`): `files.*` (required, file, `max:512000`,
-`AllowedUploadExtension`, `BoundedFilename` — the size cap is *kilobytes* and
-bounds the bytes, so the name needs its own cap; see
-[`input-validation.md`](input-validation.md) REQ-13), `folder` (nullable string, max 100 — matching
-`FolderController`'s creation cap; folder + filename both feed `s3_key`, now
-`varchar(1024)`, so this is no longer an overflow guard but what keeps the folder
-`LIKE` range inside the 255-character index prefix of
-[`input-validation.md`](input-validation.md) REQ-12), `keep_original_filename`
-(nullable bool), plus the
-shared upload-metadata rules (`UploadMetadataRules::rules()`, reached through the
-`HasUploadMetadataRules` trait — `metadata_tags.*` max `Tag::MAX_NAME_LENGTH`,
-`metadata_license_type` in `Asset::licenseTypes()` keys,
-`metadata_copyright`/`metadata_copyright_source` capped at
-`ColumnLimits::for('assets', 'copyright')` / `…'copyright_source'` rather than a
-literal — see [`input-validation.md`](input-validation.md) REQ-1,
-`metadata_date_obtained` `nullable|date` — a DATE column has no character width, so
-it carries no `ColumnLimits` cap and no `<x-char-counter>`).
+`AssetController::store(StoreAssetRequest $request)` — `POST /assets` (`assets.store`,
+web-authenticated). Validation lives in `StoreAssetRequest::rules()`: `files.*` (size cap,
+`AllowedUploadExtension`, `BoundedFilename` — [`input-validation.md`](input-validation.md)
+REQ-13), `folder` (max 100 — keeps the folder `LIKE` range inside the index prefix,
+[`input-validation.md`](input-validation.md) REQ-12), `keep_original_filename`, plus the shared
+`UploadMetadataRules::rules()` (via the `HasUploadMetadataRules` trait), whose caps come from
+`ColumnLimits` ([`input-validation.md`](input-validation.md) REQ-1). Chunked completion and the
+tool endpoints use the same rules.
 
 `AssetProcessingService::processImageAsset(Asset $asset, bool $dispatchAiTagging = true): void`
-— no-ops for non-images; generates thumbnail via
-`S3Service::generateThumbnail()`, resizes via
-`S3Service::generateResizedImages()`, dispatches `GenerateAiTags::dispatch($asset)->afterResponse()`
-when `$dispatchAiTagging` and `RekognitionService::isEnabled()`. Each step is
-independently try/caught and logged — a thumbnail failure doesn't block resize
-generation or AI dispatch.
+— no-ops for non-images; generates the thumbnail (`S3Service::generateThumbnail()`) and resizes
+(`S3Service::generateResizedImages()`), and dispatches `GenerateAiTags::dispatch($asset)->afterResponse()`
+when `$dispatchAiTagging` and `RekognitionService::isEnabled()`. Each step is independently
+try/caught and logged — a thumbnail failure doesn't block resizes or AI dispatch.
 
-`AssetProcessingService::applyUploadMetadata(Asset $asset, UploadMetadata $metadata): void`
-— `App\Support\UploadMetadata` is a small readonly value object (`tags`,
-`referenceTagIds`, `licenseType`, `copyright`, `copyrightSource`, `dateObtained`, all
-nullable) built by `UploadMetadata::fromRequest($request)` from the `metadata_*` fields
-(the web upload, chunked completion, and — via `HasUploadMetadataRules::uploadMetadata()` —
-the tool endpoints all share it). It replaced seven positional parameters, which is what had
-forced `dateObtained` to be appended at the end rather than kept beside its neighbours.
-The method applies non-null/non-empty license fields via one `update()`, parses
-`tags` through `TagInputParser::parse()` (comma-splitting — see
-[`tag-input.md`](tag-input.md)) then `Tag::resolveUserTagIds()` +
-`syncTagsWithAttribution(..., 'user')`; reference tag ids are synced with
-`attached_by = 'reference'`.
+`AssetProcessingService::applyUploadMetadata(Asset $asset, UploadMetadata $metadata): void` —
+`App\Support\UploadMetadata` is a readonly value object (`tags`, `referenceTagIds`,
+`licenseType`, `copyright`, `copyrightSource`, `dateObtained`, all nullable) built by
+`UploadMetadata::fromRequest($request)` (shared by web upload, chunked completion and — via
+`HasUploadMetadataRules::uploadMetadata()` — the tool endpoints). Non-empty license fields are
+applied in one `update()`; `tags` go through `TagInputParser::parse()` ([`tag-input.md`](tag-input.md))
+then `Tag::resolveUserTagIds()` + `syncTagsWithAttribution(..., 'user')`; reference tag ids are
+synced with `attached_by = 'reference'` ([`tags.md`](tags.md)).
 
 ### Layer touchpoints & ordering
 
 ```
-StoreAssetRequest validation
-  → AssetPolicy::create authorization
+StoreAssetRequest validation → AssetPolicy::create
   → per file: S3Service::uploadFile() (folder + keepOriginalFilename)
-      → AssetIngestionService::existingAtKey() FIRST — it gates the next step [duplicate-detection.md]
-      → AssetIngestionService::findDuplicate() (skipped only when that key collided)
-      → s3_key collision handling (keepOriginalFilename overwrite branch:
-        deletes old derived files via S3Service::deleteAssetFiles(keepOriginal: true),
-        updates the existing Asset row in place instead of creating a new one)
-      → AssetIngestionService::persist() (create, or overwrite the collided row in place)
-      → AssetProcessingService::processImageAsset($asset)
-      → AssetProcessingService::applyUploadMetadata($asset, UploadMetadata::fromRequest($request))
+      → AssetIngestionService::existingAtKey() → findDuplicate() unless the key collided
+      → [collision] S3Service::deleteAssetFiles(keepOriginal: true), overwrite the row in place
+      → AssetIngestionService::persist()
+      → processImageAsset($asset) → applyUploadMetadata($asset, UploadMetadata::fromRequest($request))
   → aggregate response: uploaded assets + duplicates[] (409 payloads)
 ```
 
 ### Persistence
 
-Writes: `assets` row (with `user_id = Auth::id()`), `asset_tag` pivot rows,
-S3 objects at `assets/{folder}/{uuid}.{ext}` (or the sanitized original filename
-when `keep_original_filename` is set) plus derived thumbnail/resize keys.
-Nothing is written for a skipped duplicate other than a log line — the
-just-uploaded S3 object is deleted by `S3Service::deleteFile()` before the
-request returns.
+Writes: `assets` row (`user_id = Auth::id()`), `asset_tag` pivot rows, the original at
+`assets/{folder}/{uuid}.{ext}` (or the sanitized original filename) plus derived keys. A skipped
+duplicate writes nothing but a log line; its S3 object is deleted before the request returns.
 
 ## Scenarios (BDD)
 
 ```gherkin
 Scenario: Batch metadata is applied to every uploaded file
-  Given a POST /assets request with two files and metadata_tags/license/copyright
+  Given a POST /assets request with two files and metadata_tags/license/copyright/date_obtained
   When the upload completes
-  Then both created assets carry the same tags, license_type, copyright, and copyright_source
+  Then both assets carry the same tags, license_type, copyright, copyright_source and date_obtained
 # pinned by: tests/Feature/AssetTest.php
 
-Scenario: A batch Date Obtained is applied to every uploaded file
-  Given a POST /assets request with two files and metadata_date_obtained 2026-05-01
-  When the upload completes
-  Then both created assets carry date_obtained 2026-05-01
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: Upload rejects a metadata_date_obtained that is not a date
-  Given a POST /assets request with metadata_date_obtained "not-a-date"
+Scenario Outline: Upload rejects invalid metadata
+  Given a POST /assets request with <field> set to <value>
   Then the request is rejected with a validation error
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: A blank Date Obtained does not overwrite a stored one
-  Given an asset already carrying a date_obtained
-  When applyUploadMetadata runs with an empty-string dateObtained
-  Then the stored date_obtained is unchanged
-# pinned by: tests/Unit/AssetProcessingServiceTest.php
-
-Scenario: Upload rejects an invalid metadata_license_type
-  Given a POST /assets request with metadata_license_type not in Asset::licenseTypes()
-  Then the request is rejected with a validation error
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: Upload rejects an over-length metadata_copyright
-  Given metadata_copyright longer than 500 characters
-  Then the request is rejected with a validation error
+  Examples:
+    | field                  | value                           |
+    | metadata_license_type  | a key not in Asset::licenseTypes() |
+    | metadata_copyright     | more than 500 characters        |
+    | metadata_date_obtained | "not-a-date"                    |
 # pinned by: tests/Feature/AssetTest.php
 
 Scenario: Upload succeeds with no metadata fields at all
   Given a POST /assets request with only files, no metadata_* fields
   Then the asset is created without license/copyright/tags set
 # pinned by: tests/Feature/AssetTest.php
+
+Scenario: Blank metadata never overwrites stored values
+  Given an asset already carrying a date_obtained
+  When applyUploadMetadata runs with an empty-string dateObtained, or with every field null/empty
+  Then the asset is left unchanged
+# pinned by: tests/Unit/AssetProcessingServiceTest.php
 
 Scenario: processImageAsset skips non-image assets
   Given a non-image asset (e.g. a PDF)
@@ -187,12 +149,6 @@ Scenario: A thumbnail failure does not block resize generation
   Given generateThumbnail() throws
   When processImageAsset runs
   Then resize generation still proceeds and the asset's resize keys are set
-# pinned by: tests/Unit/AssetProcessingServiceTest.php
-
-Scenario: applyUploadMetadata is a no-op when everything is null/empty
-  Given null tags, license, copyright, and copyright_source
-  When applyUploadMetadata runs
-  Then the asset is left unchanged
 # pinned by: tests/Unit/AssetProcessingServiceTest.php
 
 # — browser-level (see e2e-testing.md for the harness; these skip without a bucket) —
@@ -219,20 +175,8 @@ Scenario: A disallowed file type is rejected in the browser
 
 ## Tests & verification
 
-- Feature: `tests/Feature/AssetTest.php` (upload/store scenarios), run via
-  `php artisan config:clear && php artisan test`
+- Feature: `tests/Feature/AssetTest.php` — `php artisan config:clear && php artisan test`
 - Unit: `tests/Unit/AssetProcessingServiceTest.php`, `tests/Unit/Jobs/GenerateAiTagsTest.php`
-- Duplicate handling is pinned separately — see [`duplicate-detection.md`](duplicate-detection.md).
-- E2E: `tests/e2e/asset-upload.spec.js` — a real browser upload that round-trips bytes to the RustFS bucket and back as a thumbnail.
-
-## Open questions / future
-
-- ~~`applyUploadMetadata()` takes seven positional parameters.~~ **Resolved** — it takes an
-  `UploadMetadata` value object, so a new field is one property, not a re-ordered signature.
-
-- ~~The `keep_original_filename` overwrite branch has no dedicated test.~~ **Resolved** — all four
-  combinations of the flag are now pinned in `tests/Feature/DuplicatePreventionTest.php`
-  ([`duplicate-detection.md`](duplicate-detection.md) REQ-2). Worth recording *why* this mattered:
-  the note said the overwrite branch was untested, and the branch that decided whether to *reach*
-  it was untested too — `keep_original_filename` appeared nowhere under `tests/` at all. That is
-  how a dedup check gated on the wrong condition shipped.
+- Duplicate handling and the `keep_original_filename` matrix: `tests/Feature/DuplicatePreventionTest.php`
+  ([`duplicate-detection.md`](duplicate-detection.md)).
+- E2E: `tests/e2e/asset-upload.spec.js` (needs `npm run e2e:up`).

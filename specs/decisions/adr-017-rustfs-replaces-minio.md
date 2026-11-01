@@ -46,9 +46,6 @@ when Docker is available and otherwise downloads the RustFS release binary into
 runs it detached — so the storage specs can run on a machine with no container
 runtime, which was never possible with MinIO.
 
-> **2026-09-24:** the pin moved to the first stable release, `1.0.0`. The current
-> version is owned by [e2e-testing](../features/e2e-testing.md) → Tools and versions.
-
 The bucket is created and opened to anonymous `s3:GetObject` by
 `tests/e2e/support/bucket.js`, which signs the two S3 requests (`PUT /{bucket}`,
 `PUT /{bucket}?policy`) with AWS SigV4 over `node:crypto`. That replaces both the
@@ -94,47 +91,20 @@ was bad — see the trade-off below.
 - **Good:** one provisioning path for local and CI. The MinIO setup used `mc`
   locally and the runner's `aws` CLI in the workflow, so the local path was the
   only one anyone exercised and the CI path was the only one that mattered.
-- **Trade-off:** RustFS was pre-1.0 (`1.0.0-rc.*`) when this was decided; it
-  shipped stable `1.0.0` on 2026-09-16 and the pin followed. It is pinned exactly, so it
-  cannot move under a PR, but nothing bumps it automatically either — Dependabot
-  has no manifest to watch for a docker tag in a compose file or a version
-  constant in a script, so it moves when someone edits
-  `scripts/e2e-storage.mjs` and `docker-compose.e2e.yml` together and re-records
-  the digests from the release's `SHA256SUMS`.
+- **Trade-off:** RustFS was pre-1.0 when this was decided. It is pinned exactly and nothing
+  bumps it automatically (Dependabot has no manifest to watch), so it moves only when someone
+  edits `scripts/e2e-storage.mjs` and `docker-compose.e2e.yml` together and re-records the
+  digests. The current version is owned by [e2e-testing](../features/e2e-testing.md).
 - **Trade-off:** the harness now downloads and executes a binary from a GitHub
   release. The SHA-256 of each platform's archive is pinned next to the version
   and verified before anything is unpacked, because a pinned version with an
   unpinned payload is only pretending to be pinned.
 
-  CodeQL reports this as
-  [`js/http-to-file-access`](https://github.com/status201/orca-dam/security/code-scanning/18)
-  ("network data written to file") against the `writeFileSync` in `ensureBinary()`,
-  and it is right about the dataflow: bytes arrive over HTTP and land on disk.
-  The alert is **dismissed as `used_in_tests`** rather than fixed, which is the
-  opposite of how the mirror-image finding (`js/file-access-to-http`, on the S3
-  probe) was handled, so the reasoning belongs here rather than in a dashboard:
-
-  - The digest check is the mitigation and it runs *before* the write, so nothing
-    unverified is ever unpacked or executed. CodeQL has no sanitizer concept for
-    a checksum comparison, so no arrangement of this code clears the rule.
-  - The write itself is unavoidable: `tar` needs a real file, and the archives
-    are zips, which Node cannot unpack in-memory without a dependency.
-  - `scripts/e2e-storage.mjs` is E2E tooling. It is never shipped, never loaded
-    by the app, and runs only when a developer or CI asks for a bucket — which is
-    what `used_in_tests` means, exactly.
-
-  What would *not* be an improvement: shelling the download out to `curl` so the
-  network-to-file flow leaves JavaScript. That hides the finding from the
-  analyzer while making the situation genuinely worse, because the file would
-  then reach disk before anything verified it.
+  The CodeQL alert on the binary download is dismissed; the reason is recorded on the alert and
+  in `scripts/e2e-storage.mjs`.
 - **Trade-off:** we own a SigV4 implementation. It signs two requests against a
   local server and is exercised on every `e2e:up`, so it cannot rot unnoticed —
   but it is ours to fix.
-- **Trade-off:** the endpoint port is no longer the conventional 9000. That is a
-  one-line surprise for anyone who knows the convention, bought in exchange for
-  not colliding with PhpStorm — a collision that was not merely inconvenient: the
-  IDE accepted the TCP connection and never answered, which hung the
-  single-process `artisan serve` for PHP's whole `max_execution_time` and failed
-  four unrelated specs with timeouts that named nothing relevant. The S3 client
-  now bounds its own waits regardless ([`s3-storage.md`](../features/s3-storage.md)
-  REQ-8), so the same collision would be loud rather than baffling.
+- **Trade-off:** the endpoint port is no longer the conventional 9000, to avoid colliding with
+  PhpStorm, whose listener accepted connections and never answered. The S3 client now bounds its
+  own waits regardless ([`s3-storage.md`](../features/s3-storage.md) REQ-8).

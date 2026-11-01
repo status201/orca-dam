@@ -19,43 +19,35 @@ source:
 
 ## Background / Why
 
-Long-lived backend integrations (WordPress plugin, RTE integrations, scripts) need
-a stable credential that doesn't expire like a session and doesn't require
-per-request secret rotation like the JWT path. Laravel Sanctum's personal access
-tokens fit this: `laravel/sanctum`'s `HasApiTokens` trait on `User` provides
-`createToken()`/`tokens()`, and ORCA layers a `TokenController` (web admin UI, under
-`/api-docs/tokens`) and three `token:*` Artisan commands on top for token lifecycle
-management. Sanctum is one of the two default guards `auth.multi` tries on API
-routes (`auth.multi`, sanctum then jwt) — see [ADR-004](../decisions/adr-004-auth-multi.md).
+Long-lived backend integrations (WordPress plugin, RTE integrations, scripts) need a stable
+credential that neither expires like a session nor needs per-user secret handling like JWT. Sanctum
+personal access tokens (`HasApiTokens` on `User`) fit; ORCA adds `TokenController` (admin UI under
+`/api-docs/tokens`) and three `token:*` commands. Sanctum is the first default guard of
+`auth.multi` ([ADR-004](../decisions/adr-004-auth-multi.md)).
 
 ## Requirements
 
-- **REQ-1** — A token belongs to exactly one `User`; creating a token for a
-  not-yet-existing integration can create a fresh `role => 'api'` user in the same
-  step (`create_new` / `--new`).
-- **REQ-2** — The plaintext token is shown **exactly once**, at creation time
-  (`$token->plainTextToken`); it is never retrievable again — only the hashed row
-  persists.
+- **REQ-1** — A token belongs to exactly one `User`; issuing a token can create a fresh
+  `role => 'api'` user in the same step (`create_new` / `--new`).
+- **REQ-2** — The plaintext token is shown **exactly once**, at creation
+  (`$token->plainTextToken`); only the hashed row persists.
 - **REQ-3** — Token management (web routes) lives under `/api-docs/tokens`, gated by
-  `SystemPolicy::access` (admin only) via the `can:access,...SystemController` route
-  group in `routes/web.php`.
-- **REQ-4** — `token:revoke` can target a single token by ID or every token owned by
-  a user (`--user=email`); both paths support `--force` to skip the confirmation
-  prompt.
-- **REQ-5** — API-role users created via the "create new" path get a random,
-  never-used password (`Hash::make(Str::random(32))`) — they authenticate via token
-  only, never via the login form.
+  `SystemPolicy::access` (admin only) via the `can:access,...SystemController` route group.
+- **REQ-4** — `token:revoke` targets a single token by ID or every token of a user
+  (`--user=email`); both support `--force` to skip confirmation.
+- **REQ-5** — API users created via "create new" get a random, never-used password
+  (`Hash::make(Str::random(32))`) — they authenticate by token only.
 
 ## Technical design
 
 ### Contract / public interface
 
 ```yaml
-routes (web.php, admin-only via can:access,SystemController):
-  GET    /api-docs/tokens                    TokenController::index
-  POST   /api-docs/tokens                    TokenController::store
-  DELETE /api-docs/tokens/{id}                TokenController::destroy
-  DELETE /api-docs/tokens/user/{userId}       TokenController::destroyUserTokens
+routes (web.php, admin-only via can:access,SystemController — api-docs-admin.md):
+  GET    /api-docs/tokens                    TokenController::index              # name: api.tokens
+  POST   /api-docs/tokens                    TokenController::store              # name: api.tokens.store
+  DELETE /api-docs/tokens/{id}               TokenController::destroy            # name: api.tokens.destroy
+  DELETE /api-docs/tokens/user/{userId}      TokenController::destroyUserTokens  # name: api.tokens.destroy-user
 
 console:
   token:list [--user=email] [--role=admin|editor|api]
@@ -66,15 +58,16 @@ console:
 ### Data shapes
 
 ```yaml
-# TokenController::store JSON response
-token:
-  id: int
-  name: string
-  plain_text: string        # shown once — the actual bearer token
-  user_name: string
-  user_email: string
-  user_role: string
-  created_new_user: bool
+# GET /api-docs/tokens
+{ tokens: [{ id, name, user_name, user_email, user_role, user_id, created_at, last_used_at }],
+  users: [{ id, name, email, role }] }   # plain arrays — bypasses User::$hidden so email is visible
+
+# POST /api-docs/tokens
+request: { token_name: string, create_new: bool, user_id?: int, new_user_name?: string, new_user_email?: string }
+response_200: { success: true, message: string,
+                token: { id, name, plain_text, user_name, user_email, user_role, created_new_user } }  # plain_text shown once
+response_403: { success: false, message: string, debug: { user, role } }   # AuthorizationException
+response_500: { success: false, message: string, type: string }
 ```
 
 ### Layer touchpoints & ordering
@@ -83,21 +76,17 @@ token:
 POST /api-docs/tokens
   → validate (create_new ? new_user_name/new_user_email : user_id)
   → User::create(role: 'api') if create_new, else User::findOrFail
-  → $user->createToken($name)              # laravel/sanctum HasApiTokens
+  → $user->createToken($name)
   → respond with plain_text token (once)
 ```
 
-Downstream, any route behind `auth.multi:sanctum,...` resolves the bearer token via
-`Auth::guard('sanctum')->check()`; a successful match sets `Auth::shouldUse('sanctum')`
-and the request proceeds as that token's owning `User` (see
-[authentication.md](authentication.md)).
+Downstream, `auth.multi` resolves the bearer token via `Auth::guard('sanctum')` and the request
+proceeds as the token's owner ([authentication.md](authentication.md)).
 
 ### Persistence
 
-- `personal_access_tokens` (package table) — `tokenable_type`/`tokenable_id` →
-  `User`, hashed token, `name`, `last_used_at`.
-- No ORCA-specific token metadata table; `TokenController::index` joins token rows
-  to `tokenable` to surface user name/email/role in the admin UI.
+- `personal_access_tokens` (package table) — `tokenable_type`/`tokenable_id` → `User`, hashed token,
+  `name`, `last_used_at`. No ORCA-specific token table.
 
 ## Scenarios (BDD)
 
@@ -128,16 +117,10 @@ Scenario: Listing tokens filtered by user or role
   Then only the matching tokens are listed
 # pinned by: tests/Feature/Console/TokenCommandTest.php
 
-Scenario: Revoking a single token by ID
-  Given an existing token
-  When `token:revoke <id> --force` is run
-  Then the token row is deleted
-# pinned by: tests/Feature/Console/TokenCommandTest.php
-
-Scenario: Revoking all tokens for a user
+Scenario: Revoking by token ID or by user
   Given a user with multiple tokens
-  When `token:revoke --user=<email> --force` is run
-  Then every token for that user is deleted
+  When `token:revoke <id> --force` or `token:revoke --user=<email> --force` is run
+  Then that token, or every token of that user, is deleted
 # pinned by: tests/Feature/Console/TokenCommandTest.php
 
 Scenario: token:revoke requires an id or --user
@@ -149,14 +132,11 @@ Scenario: token:revoke requires an id or --user
 
 ## Tests & verification
 
-- Feature (console): `tests/Feature/Console/TokenCommandTest.php` — create
-  (existing/new/declined), list (by user/role/empty), revoke (by id/by
-  user/missing args/missing user).
+- Feature (console): `tests/Feature/Console/TokenCommandTest.php`.
 - Run: `php artisan config:clear && php artisan test`
 
 ## Open questions / future
 
-- `TokenController` has no Feature test of its admin-side JSON shapes or the
-  `AuthorizationException` debug payload; non-admin 403s are pinned in
-  `tests/Security/PrivilegeEscalationTest.php` and the admin create/revoke flow in
-  `tests/e2e/api-docs.spec.js`.
+- `TokenController` has no Feature test of its JSON shapes or the `AuthorizationException` debug
+  payload; non-admin 403s are pinned in `tests/Security/PrivilegeEscalationTest.php` and the admin
+  create/revoke flow in `tests/e2e/api-docs.spec.js` ([api-docs-admin.md](api-docs-admin.md)).

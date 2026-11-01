@@ -57,63 +57,43 @@ GET  assets/{asset}/download:          AssetReplaceController::download
 GET  assets/{asset}/replace:           AssetReplaceController::showReplace  # assets.replace
 POST assets/{asset}/replace:           AssetReplaceController::replace      # assets.replace.store
 POST assets/{asset}/thumbnail:         AssetReplaceController::storeThumbnail  # assets.thumbnail.store
-POST assets/{asset}/ai-tag:            AssetReplaceController::generateAiTags   # rate-limited (see CLAUDE.md)
+POST assets/{asset}/ai-tag:            AssetReplaceController::generateAiTags   # ai-tagging.md
 ```
 
-`replace(Request, Asset)` validation: `file` (required, `max:512000` KB,
-`AllowedUploadExtension`, plus an inline closure rejecting a different
-extension than the current `s3_key`'s). On success: deletes old thumbnail +
-resizes, updates `filename`/`mime_type`/`size`/`etag`/`width`/`height` and
-nulls all four derived-key columns, then runs
-`AssetProcessingService::processImageAsset()` to regenerate them — tags and
-other metadata are untouched.
+`replace(Request, Asset)` validates `file` with `AllowedUploadExtension` plus a closure rejecting
+an extension different from the current `s3_key`'s. On success it updates
+`filename`/`mime_type`/`size`/`etag`/`width`/`height`, nulls the four derived-key columns and runs
+`AssetProcessingService::processImageAsset()` to regenerate them; tags and other metadata are
+untouched.
 
-`download(Asset)` — streams the raw S3 object content with an RFC 5987-encoded
-`Content-Disposition: attachment` (ASCII fallback derived via `Str::ascii()`),
-guarding against header injection from a crafted filename.
-
-`generateAiTags(Asset)` — manual re-run of Rekognition tagging for a single
-image asset; requires `RekognitionService::isEnabled()` and `asset->isImage()`,
-otherwise redirects back with an error flash.
+`download(Asset)` — streams the raw S3 object with an RFC 5987-encoded
+`Content-Disposition: attachment` (ASCII fallback via `Str::ascii()`), guarding against header
+injection from a crafted filename.
 
 ### Layer touchpoints & ordering
 
 ```
-replace(): authorize(replace)                       [admin/editor only]
-  → validate (same extension as current s3_key)
+replace(): authorize(replace) → validate (same extension as s3_key)
   → CloudflareService::collectAssetUrls($asset)      [before the swap]
   → S3Service::replaceFile()                          [overwrites s3_key in place]
-  → delete old thumbnail_s3_key + resize keys
-  → Asset::update() (clears thumbnail/resize columns)
-  → AssetProcessingService::processImageAsset($asset) [regenerates thumbnail + resizes]
+  → delete old derived keys → Asset::update() (derived columns null)
+  → processImageAsset($asset)                         [regenerates thumbnail + resizes]
   → CloudflareService::purgeUrls($urlsToPurge)         [after the swap]
 ```
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: Replace rejects a file with a different extension
+Scenario Outline: Replace enforces the s3_key's extension, case-insensitively (REQ-1)
   Given an asset with s3_key ending in .jpg
-  When replace is submitted with a .png file
-  Then the request is rejected with a validation error
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: Replace accepts a file with the same extension
-  Given an asset with s3_key ending in .jpg
-  When replace is submitted with another .jpg file
-  Then the asset's content is updated and the response succeeds
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: Replace matches by s3_key extension, not filename extension
-  Given an asset whose filename and s3_key extensions differ
-  When replace is submitted
-  Then the s3_key's extension is the one enforced
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: Replace accepts a file with a different-case extension
-  Given an asset with s3_key ending in .jpg
-  When replace is submitted with a .JPG file
-  Then the case-insensitive extension match succeeds
+  When replace is submitted with <file>
+  Then <outcome>
+  Examples:
+    | file                                               | outcome                         |
+    | a .png file                                        | a validation error              |
+    | another .jpg file                                  | the content is updated          |
+    | a .JPG file                                        | accepted                        |
+    | a file matching the filename but not the s3_key ext | the s3_key's extension is enforced |
 # pinned by: tests/Feature/AssetTest.php
 
 Scenario: Replace preserves tags after the file is swapped
@@ -122,33 +102,18 @@ Scenario: Replace preserves tags after the file is swapped
   Then the same tags remain attached afterward
 # pinned by: tests/Feature/AssetTest.php
 
-Scenario: Guests cannot access or perform replace
-  Given an unauthenticated request
-  When it hits the replace form or replace action
+Scenario: Guests and api-role users cannot replace (REQ-3)
+  Given an unauthenticated request to the replace form or action
   Then it is redirected to login
+  And an api-role user submitting replace gets 403 and the file is not swapped
 # pinned by: tests/Feature/AssetTest.php
 
-Scenario: An api-role user cannot replace an asset
-  Given an authenticated user with role "api"
-  When they submit the replace action for an asset
-  Then the response status is 403 and the asset's file is not swapped
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: storeThumbnail uploads a base64 thumbnail for a video asset
+Scenario: storeThumbnail stores a client-generated thumbnail (REQ-5)
   Given a video asset and a base64-encoded thumbnail image
   When storeThumbnail is called
-  Then the asset's thumbnail_s3_key is set and thumbnail_url reflects it
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: storeThumbnail deletes the old thumbnail before uploading the new one
-  Given an asset with an existing thumbnail_s3_key
-  When storeThumbnail is called again
-  Then the old S3 thumbnail object is deleted before the new one is stored
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: storeThumbnail requires authentication and a thumbnail field
-  Given a guest request, or a request missing the thumbnail field
-  Then the request is rejected (redirect to login, or a validation error)
+  Then thumbnail_s3_key is set and thumbnail_url reflects it
+  And an existing thumbnail object is deleted before the new one is stored
+  And a guest request, or one missing the thumbnail field, is rejected
 # pinned by: tests/Feature/AssetTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
@@ -159,37 +124,26 @@ Scenario: A replacement with the wrong extension never reaches the server
   Then an error is shown in the page and no upload is offered
 # pinned by: tests/e2e/asset-replace.spec.js
 
-Scenario: A staged replacement can be cleared
+Scenario: A staged replacement can be cleared, and cancelling replaces nothing
   Given a staged replacement file
   When Clear is clicked
   Then the drop zone returns to its empty state
-# pinned by: tests/e2e/asset-replace.spec.js
-
-Scenario: Cancelling the confirmation does not replace anything
-  Given a staged replacement file
-  When Replace File is clicked and the confirmation cancelled
-  Then the modal closes, the file stays staged, and nothing was uploaded
+  And cancelling the Replace File confirmation keeps the file staged and uploads nothing
 # pinned by: tests/e2e/asset-replace.spec.js
 
 Scenario: Confirming replaces the file and returns to the edit page
   Given a staged replacement file and a reachable bucket
   When the replacement is confirmed
-  Then the edit page is shown with the replaced marker in the URL
-  And the transient success panel is not what proves it — the module redirects
-    after ~2 seconds
+  Then the edit page is shown with the replaced marker in the URL (the module redirects after ~2s)
 # pinned by: tests/e2e/asset-replace.spec.js
 ```
 
 ## Tests & verification
 
-- Feature: `tests/Feature/AssetTest.php` (replace + storeThumbnail scenarios)
-- E2E: `tests/e2e/asset-replace.spec.js` — the client-side extension guard,
-  staging/clearing and the confirmation modal run without a bucket; the successful
-  replace is guarded by `requiresS3()`.
+- Feature: `tests/Feature/AssetTest.php`
+- E2E: `tests/e2e/asset-replace.spec.js` — the successful replace needs a bucket (`requiresS3()`).
 - Run: `php artisan config:clear && php artisan test`; `npm run test:e2e`
 
 ## Open questions / future
 
-- `download()`'s RFC 5987 filename-encoding/header-injection-guard logic has no
-  dedicated test asserting the `Content-Disposition` header shape for a
-  crafted filename.
+- Coverage gap: no test asserts `download()`'s `Content-Disposition` shape for a crafted filename.

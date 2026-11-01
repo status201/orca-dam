@@ -17,29 +17,23 @@ source:
 
 ## Background / Why
 
-External systems (an RTE, a CMS) may want to embed ORCA's asset browser in an
-`<iframe>`. Browsers block framing by default (`X-Frame-Options: SAMEORIGIN`, set
-by [`features/security-headers.md`](security-headers.md)); ORCA needs an
-explicit, admin-controlled allow-list of frame ancestors rather than opening
-framing to everyone. `GET /assets/embed` is the embeddable browser itself — the
-same asset grid as the index page, minus navigation/footer chrome, driven by the
-same query params.
+External systems (an RTE, a CMS) may embed ORCA's asset browser in an `<iframe>`. Framing is blocked
+by default (`X-Frame-Options: SAMEORIGIN`, [`security-headers.md`](security-headers.md)); an
+admin-controlled allow-list of frame ancestors opens it selectively. `GET /assets/embed` is the
+embeddable browser — the index grid without nav/footer chrome, driven by the same query params.
 
 ## Requirements
 
 - **REQ-1** — When `Setting::get('embed_allowed_domains')` is a non-empty array,
   the response gets `Content-Security-Policy: frame-ancestors 'self' <domains>` and
-  `X-Frame-Options` is removed (a CSP `frame-ancestors` directive supersedes it in
-  modern browsers, but leaving both would be contradictory).
+  `X-Frame-Options` is removed (leaving both would be contradictory).
 - **REQ-2** — When the list is empty, neither header is touched — the
   `SecurityHeaders` baseline (`X-Frame-Options: SAMEORIGIN`) stands, so framing is
   blocked by default.
 - **REQ-3** — Each configured domain is validated against a host/origin regex
   (`AllowEmbedding::isValidAncestor()`) before being interpolated into the CSP
-  directive. A malformed entry (whitespace, quotes, semicolons, or anything that
-  doesn't match an optional-scheme + hostname + optional-wildcard-label +
-  optional-port shape) is silently dropped rather than injected — a bad DB value
-  can't be used to smuggle extra CSP directives.
+  directive. A malformed entry (anything not optional-scheme + hostname + optional wildcard label +
+  optional port) is silently dropped, so a bad DB value cannot smuggle CSP directives.
 - **REQ-4** — `embed_allowed_domains` may be stored as a JSON-encoded string or a
   native array (`Setting::get`'s `json` type decodes it, but the middleware
   defensively `json_decode`s again if it comes back as a string).
@@ -57,7 +51,6 @@ same query params.
 
 ```yaml
 AllowEmbedding::handle(Request, Closure): Response
-AllowEmbedding::isValidAncestor(string $domain): bool   # private; regex gate
 GET /assets/embed   -> AssetController::embed   # web, session-auth required, no nav/footer chrome
 ```
 
@@ -72,13 +65,10 @@ value: ["https://rte.example.com", "https://cms.example.com"]   # array of origi
 
 ### Layer touchpoints & ordering
 
-Runs in the web group after `SetLocale`, before `SecurityHeaders` — see
-[`architecture.md`](../architecture.md#middleware-stack). It only acts on the
-*response* (reads the setting after `$next($request)`), so it can override a header
-`SecurityHeaders` already set on the way out. `GET /assets/embed` shares
-`AssetController`'s `buildIndexData()` with the regular index — the grid partial
-(`resources/views/assets/partials/grid.blade.php`) is the shared markup between the
-two.
+Runs in the web group after `SetLocale`, before `SecurityHeaders`
+([`architecture.md`](../architecture.md#middleware-stack)); it acts on the response, after
+`$next($request)`. `GET /assets/embed` shares `AssetController::buildIndexData()` and the grid
+partial (`resources/views/assets/partials/grid.blade.php`) with the index.
 
 ### Persistence
 
@@ -149,14 +139,6 @@ Scenario: Search and type filters work inside the embed and keep the embed route
 
 ## Tests & verification
 
-- Feature: `tests/Feature/EmbedTest.php` (embed route access, filters, no
-  nav/footer, CSP presence/absence), `tests/Feature/Middleware/AllowEmbeddingTest.php`
-  (CSP construction, JSON-string domains, X-Frame-Options removal),
-  `tests/Feature/SecurityRemediationTest.php` (malformed-domain rejection)
-- Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/embed.spec.js` — the embed view in a real browser (no app nav, `frame-ancestors` header, filters).
-
-## Open questions / future
-
-- None open — allow-list construction, malformed-input rejection, empty-list
-  default, and the embed route itself all have direct test coverage.
+- Feature: `tests/Feature/EmbedTest.php`, `tests/Feature/Middleware/AllowEmbeddingTest.php`,
+  `tests/Feature/SecurityRemediationTest.php` — `php artisan config:clear && php artisan test`
+- E2E: `tests/e2e/embed.spec.js` — `npm run test:e2e`

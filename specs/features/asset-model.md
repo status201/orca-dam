@@ -23,12 +23,10 @@ source:
 
 ## Background / Why
 
-`Asset` is the central entity of ORCA DAM: every uploaded/discovered file, its S3
-location, its derived thumbnail/resize keys, its licensing metadata, and its tags
-hang off this one Eloquent model. Nearly every other feature spec in this folder
-(`asset-upload`, `asset-search`, `asset-trash`, `bulk-operations`, `csv-export-import`,
-…) reads or writes through this model's relations, scopes, and computed attributes,
-so its contract is documented once here rather than re-derived per feature.
+`Asset` is the central entity of ORCA DAM: every uploaded/discovered file, its S3 location, its
+derived thumbnail/resize keys, its licensing metadata and its tags hang off this one Eloquent
+model. Nearly every other feature reads or writes through its relations, scopes and computed
+attributes, so its contract is documented once here.
 
 ## Requirements
 
@@ -43,12 +41,11 @@ so its contract is documented once here rather than re-derived per feature.
 - **REQ-5** — All computed URLs (`url`, `thumbnail_url`, `resize_*_url`) resolve
   through `S3Service::getPublicBaseUrl()` so a `custom_domain` setting change
   applies everywhere without touching stored data.
-- **REQ-6** — `scopeOfType` is deliberately lenient: an unrecognised value leaves
-  the query untouched rather than erroring, so a stale bookmark or a hand-built API
-  query still returns results. The cost is that a wrong value filters *nothing*,
-  silently — so the valid values are published as `Asset::typeCategories()` and
-  every caller that offers a type filter must both source its options from it and
-  reject anything else at its own boundary.
+- **REQ-6** — `scopeOfType` is deliberately lenient: an unrecognised value leaves the query
+  untouched rather than erroring, so a stale bookmark still returns results. The cost is that a
+  wrong value filters *nothing*, silently — so the valid values are published as
+  `Asset::typeCategories()` and every caller offering a type filter must source its options from
+  it and reject anything else at its own boundary.
 
 ## Technical design
 
@@ -60,36 +57,30 @@ Relations: `user(): BelongsTo`, `modifier(): BelongsTo` (`last_modified_by`),
 user → reference → ai), `userTags()`/`aiTags()`/`referenceTags()` (filtered
 `tags()` by `type`).
 
-Methods: `syncTagsWithAttribution(array $tagIds, string $attachedBy): void`,
-`syncTagsPreservingAi(?array $userTagIds, ?array $referenceTagIds): void` (a null list
-leaves that type untouched, an array — even empty — becomes its complete set; AI pivots are
-always kept verbatim), `wasModified(): bool`, `isImage()`/`isVideo()`/`isPdf()`/`isSvg()`/`isEps()`/
-`isMathMl()`/`isTex()`, `getFileIcon()`/`getIconColorClass()`,
-`licenseTypes(): array` (static), `getLicenseLabel(): string`,
-`typeCategories(): array<string>` (static) and
+Methods: `syncTagsWithAttribution(array $tagIds, string $attachedBy): void` and
+`syncTagsPreservingAi(?array $userTagIds, ?array $referenceTagIds): void` (the only ways to
+write the pivot — mechanics in [`tags.md`](tags.md)), `wasModified(): bool`,
+`isImage()`/`isVideo()`/`isPdf()`/`isSvg()`/`isEps()`/`isMathMl()`/`isTex()`,
+`getFileIcon()`/`getIconColorClass()`, `licenseTypes(): array` (static),
+`getLicenseLabel(): string`, `typeCategories(): array<string>` (static),
 `typeCategoryFor(string $mimeType): ?string` (static).
 
-**The type categories are `document`, `image`, `video`, `audio`** — not mime
-prefixes. `application/pdf` is a `document`, so a prefix like `application` is
-*not* a valid filter value, and `scopeOfType` ignores values it does not
-recognise (see REQ-6). Anything building a type filter must therefore source its
-options from `Asset::typeCategories()` and map a mime type with
-`Asset::typeCategoryFor()`, never from `explode('/', $mimeType)[0]`.
+**The type categories are `document`, `image`, `video`, `audio`** — not mime prefixes
+(`application/pdf` is a `document`). Type filters source options from `Asset::typeCategories()`
+and map a mime type with `Asset::typeCategoryFor()`, never `explode('/', $mimeType)[0]`.
 
-Scopes: `scopeSearch($query, ?string $search)` (delegates to
-`AssetSearchParser::apply`), `scopeWithTags($query, array $tagIds)`,
-`scopeOfType($query, ?string $type)` (accepts `images`/`videos`/`documents`
-aliases in addition to the canonical categories), `scopeByUser($query, ?int $userId)`,
-`scopeInFolder($query, ?string $folder)`, `scopeApplySort($query, ?string $sort)`,
-`scopeMissing($query)`, `scopeDuplicateOf($query, ?string $etag)` (the one definition of
-"same bytes" — see [`duplicate-detection.md`](duplicate-detection.md); callers add
-`withTrashed()`).
+Scopes: `scopeSearch($query, ?string $search)` (delegates to `AssetSearchParser::apply` —
+[`asset-search.md`](asset-search.md)), `scopeWithTags($query, array $tagIds)`,
+`scopeOfType($query, ?string $type)` (also accepts `images`/`videos`/`documents` aliases),
+`scopeByUser($query, ?int $userId)`, `scopeInFolder($query, ?string $folder)`,
+`scopeApplySort($query, ?string $sort)`, `scopeMissing($query)`
+([`s3-integrity.md`](s3-integrity.md)), `scopeDuplicateOf($query, ?string $etag)`
+([`duplicate-detection.md`](duplicate-detection.md); callers add `withTrashed()`).
 
 **Sorting.** `App\Support\AssetSort` is a string-backed enum of the ten sort keys
-(`date_desc` … `s3key_desc`). Each case owns its ordering (`apply()`) and its translated
-label (`label()`); `AssetSort::fromInput(?string)` maps an unknown **or empty** value to
-`date_desc`. `scopeApplySort`, the cycle-nav summary and the grid's sort `<select>` all read
-it — three hand-kept copies of the same list before.
+(`date_desc` … `s3key_desc`); each case owns its ordering (`apply()`) and translated label
+(`label()`). `AssetSort::fromInput(?string)` maps an unknown, null **or empty** value to
+`date_desc`. `scopeApplySort`, the cycle-nav summary and the grid's sort `<select>` all read it.
 
 **Listing.** `App\Support\AssetFilter` applies every list filter once:
 
@@ -99,14 +90,12 @@ new AssetFilter(search?, tagIds=[], type?, folder?, userId?, missingOnly=false, 
 AssetFilter::tagIds(mixed $raw): array   # the `tags` param as an array or a comma-separated string
 ```
 
-The web index/embed/cycle-nav query (`AssetController::buildFilteredAssetQuery()`) and the
-REST `index`/`search` endpoints each build one. Each maps its own request parameters and
-decides its own `user` filter (web: an admin, or the viewer filtering by themselves; REST:
-admins only) — the filter applies what it is given.
+The web index/embed/cycle-nav query (`AssetController::buildFilteredAssetQuery()`) and the REST
+`index`/`search` endpoints each build one, mapping their own parameters and deciding their own
+`user` filter (web: an admin, or the viewer filtering by themselves; REST: admins only).
 
-**Derived S3 objects.** The thumbnail and resize columns are named once, as constants, and
-every caller that deletes, purges, resets or fills them reads from here rather than spelling
-the four columns out:
+**Derived S3 objects.** Every caller that deletes, purges, resets or fills the derived columns
+reads them from here:
 
 ```yaml
 Asset::RESIZE_KEY_COLUMNS:  { s: resize_s_s3_key, m: resize_m_s3_key, l: resize_l_s3_key }
@@ -116,136 +105,84 @@ Asset::resizeKeyAttributes(array $resizedKeys)   # generateResizedImages() resul
 $asset->derivedS3Keys(bool $resizesOnly = false) # the non-empty derived keys, thumbnail first
 ```
 
-Computed attributes (accessors): `url`, `thumbnail_url` (falls back to `url` for
-GIF/SVG when no `thumbnail_s3_key`), `resize_s_url`/`resize_m_url`/`resize_l_url`
-(null when the corresponding key is unset), `formatted_size`, `folder` (derived
-from `s3_key`, falls back to `S3Service::getRootFolder()` for a root-level key),
-`is_missing` (`s3_missing_at !== null`). `Asset::APPEND_FIELDS` is the canonical
-list of computed fields to `append()` before serializing an asset to JSON.
+Computed attributes: `url`, `thumbnail_url` (falls back to `url` for GIF/SVG without
+`thumbnail_s3_key`), `resize_s_url`/`resize_m_url`/`resize_l_url` (null when the key is unset),
+`formatted_size`, `folder` (derived from `s3_key`; `S3Service::getRootFolder()` for a root-level
+key), `is_missing` (`s3_missing_at !== null`). `Asset::APPEND_FIELDS` is the canonical list to
+`append()` before serializing to JSON.
 
 ### Data shapes
 
 ```yaml
 Asset:
   id: int
-  s3_key: string(1024)    # IMMUTABLE (REQ-1); widened from 255 — input-validation.md REQ-10
-  s3_key_hash: char(64)   # sha256 of s3_key — carries the UNIQUE, which the wide column cannot;
-                          # NOT fillable, $hidden, set by a saving hook. input-validation.md REQ-11
-  etag: ?string           # S3 etag — dedup key, see duplicate-detection.md
-  filename: string(500)   # editable display name; the browser's original name, stored verbatim.
-                          # Widened from 255 — input-validation.md REQ-13
+  s3_key: string(1024)    # IMMUTABLE (REQ-1) — input-validation.md REQ-10
+  s3_key_hash: char(64)   # sha256 of s3_key, carries the UNIQUE; not fillable, $hidden,
+                          # set by a saving hook — input-validation.md REQ-11
+  etag: ?string           # dedup key — duplicate-detection.md
+  filename: string(500)   # editable display name; browser's original name, stored verbatim
   mime_type: string
   size: int
   width / height: int|null
-  thumbnail_s3_key / resize_{s,m,l}_s3_key: string(1024)|null   # widened from 255 — REQ-10
-  alt_text / caption: text|null    # TEXT, not varchar — rules cap characters, see input-validation.md
-  license_type: enum      # see Asset::licenseTypes()
-  license_expiry_date: date|null   # cast 'date'. RETIRED from the edit form — column, API
-                                   # field and CSV column stay so stored values survive and
-                                   # integrations keep working; the detail page still shows it
-  date_obtained: date|null         # cast 'date' — when the asset was purchased/obtained
-  copyright / copyright_source: string(500)|null   # widened from 255 — input-validation.md REQ-5
-  user_id: int            # belongsTo User (uploader)
-  last_modified_by: int|null   # belongsTo User (modifier())
-  parent_id: int|null     # nullable self-FK, nullOnDelete
-  s3_missing_at: datetime|null   # cast 'datetime' — set by VerifyAssetIntegrity
+  thumbnail_s3_key / resize_{s,m,l}_s3_key: string(1024)|null
+  alt_text / caption: text|null    # TEXT; rules cap characters — input-validation.md
+  license_type: enum      # Asset::licenseTypes()
+  license_expiry_date: date|null   # cast 'date'. Retired from the edit form; column, API field,
+                                   # CSV column and detail-page display stay
+  date_obtained: date|null         # cast 'date'
+  copyright / copyright_source: string(500)|null
+  user_id: int            # uploader
+  last_modified_by: int|null   # modifier()
+  parent_id: int|null     # self-FK, nullOnDelete
+  s3_missing_at: datetime|null   # set by VerifyAssetIntegrity
   deleted_at: datetime|null      # soft delete
 ```
-
-### Layer touchpoints & ordering
-
-`AssetSearchParser::apply()` builds the WHERE clauses for `scopeSearch`; the
-model's scope is a thin delegator so search-parsing logic stays independently
-testable (see [`asset-search.md`](asset-search.md)). `syncTagsWithAttribution()`
-does a `syncWithoutDetaching` followed by a single bulk `UPDATE` over
-`asset_tag` (not N per-tag updates) to set `attached_by` — callers
-(`AssetController`, `AssetBulkController`, `ImportController`, `Api\AssetApiController`,
-`AssetProcessingService`, `RekognitionService`) all funnel through this one method
-rather than touching the pivot directly.
-`syncTagsPreservingAi()` is the *replacing* counterpart used by the two metadata-update
-endpoints (`AssetController::update`, `Api\AssetApiController::update`, both via
-`UpdateAssetRequest::userTagIds()` / `referenceTagIds()`). It was a 35-line block copied
-into each controller, and the two copies had already drifted apart (see
-[`tag-input.md`](tag-input.md) REQ-4).
 
 ## Scenarios (BDD)
 
 ```gherkin
-Scenario: An asset belongs to its uploading user
-  Given an asset created with a user_id
+Scenario: Relations resolve
+  Given an asset created with a user_id, and a .tex asset with a render whose parent_id points at it
   Then asset.user resolves to that User
+  And the render's parent() is the .tex asset and the .tex asset's children() includes the render
+  And force-deleting the parent nulls the child's parent_id (nullOnDelete)
 # pinned by: tests/Unit/AssetTest.php
 
-Scenario: A derived asset links back to its source via parent/children
-  Given a .tex asset and a rendered asset with parent_id pointing at it
-  Then the render's parent() resolves to the .tex asset
-  And the .tex asset's children() includes the render
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: Deleting a parent nulls parent_id on its children
-  Given a parent asset with a child asset
-  When the parent asset is force-deleted
-  Then the child's parent_id becomes null (nullOnDelete)
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: Tags attach with attribution
-  Given an asset
-  When a tag is synced via syncTagsWithAttribution($ids, 'user')
-  Then the asset_tag pivot's attached_by is 'user'
-# pinned by: tests/Feature/TagAttributionTest.php
-
-Scenario: Last attacher wins on re-attachment
+Scenario: Tags attach with attribution and the last attacher wins
   Given a tag attached to an asset with attached_by 'ai'
-  When the same tag is synced again with attached_by 'user'
+  When the same tag is synced via syncTagsWithAttribution($ids, 'user')
   Then the pivot's attached_by becomes 'user'
 # pinned by: tests/Feature/TagAttributionTest.php
 
+Scenario: Replacing user tags keeps AI and reference tags with their attribution
+  Given an asset with an AI tag, a reference tag and a user tag
+  When syncTagsPreservingAi([newUserTag], null) runs
+  Then the AI and reference pivots survive unchanged and the user set is exactly [newUserTag]
+  And syncTagsPreservingAi(null, []) clears only the reference tags
+# pinned by: tests/Unit/AssetTest.php
+
 Scenario: Soft delete keeps the model recoverable
-  Given an asset
-  When it is deleted() (soft)
+  When an asset is deleted() (soft)
   Then it is excluded from default queries but recoverable via withTrashed()
 # pinned by: tests/Unit/AssetTest.php
 
-Scenario: url and thumbnail_url honor a configured custom_domain
+Scenario: Computed attributes
   Given the custom_domain setting is set
-  Then asset.url and asset.thumbnail_url use that domain instead of the S3 bucket URL
+  Then url and thumbnail_url use that domain instead of the S3 bucket URL
+  And a GIF or SVG without thumbnail_s3_key has thumbnail_url equal to url
+  And an asset with s3_key "assets/marketing/uuid.jpg" has folder "assets/marketing"
+  And license_expiry_date and date_obtained cast to Carbon dates; getLicenseLabel() is translated
 # pinned by: tests/Unit/AssetTest.php
 
-Scenario: thumbnail_url falls back to the original for GIF/SVG without a thumbnail key
-  Given a GIF (or SVG) asset with no thumbnail_s3_key
-  Then thumbnail_url returns the same value as url
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: folder accessor derives the parent path from s3_key
-  Given an asset with s3_key "assets/marketing/uuid.jpg"
-  Then asset.folder is "assets/marketing"
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: scopeOfType accepts plural/friendly aliases
-  Given assets of various mime types
-  When querying ofType('images')
-  Then only image/* assets are returned
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: Every allowlisted non-raster type has a file icon (regression)
+Scenario: Every allowlisted non-raster type has a file icon
   Given an asset of each type config/uploads.php maps an extension to, raster images aside
   Then getFileIcon() returns a specific icon, not the generic fa-file
-# Regression: once assets recorded the extension's type instead of the sniffed one, .md became
-# text/markdown (was text/plain) and lost its icon; m4a/aac/flac, mml and the ODF types had none.
 # pinned by: tests/Unit/AssetTest.php
 
-Scenario: A mime type maps to its category, not its prefix
-  Given the mime type application/pdf
-  When Asset::typeCategoryFor() is called
-  Then it returns "document", because "application" is not a filter value
-  And Asset::typeCategories() lists document, image, video and audio
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: An unrecognised type value filters nothing rather than erroring
-  Given assets of various mime types
-  When querying ofType('application')
-  Then every asset is returned, because the value is not a known category
-  And this is why callers must offer only Asset::typeCategories() (REQ-6)
+Scenario: Type filtering uses categories, and an unknown value filters nothing (REQ-6)
+  Then Asset::typeCategoryFor('application/pdf') is "document" and typeCategories() lists document, image, video, audio
+  And ofType('images') returns only image/* assets
+  And ofType('application') returns every asset
 # pinned by: tests/Unit/AssetTest.php
 
 Scenario: scopeWithTags filters by tag id
@@ -254,62 +191,32 @@ Scenario: scopeWithTags filters by tag id
   Then only assets carrying that tag are returned
 # pinned by: tests/Unit/AssetTest.php
 
-Scenario: scopeApplySort falls back to date_desc for an unknown value
-  Given assets with varying updated_at
-  When applySort('bogus') is applied
-  Then the result is ordered exactly as date_desc (latest updated_at first)
+Scenario: Every sort key has one ordering and one label; unknown falls back to date_desc
+  Then each AssetSort case applies its own ordering and has a translated label
+  And applySort('bogus') and AssetSort::fromInput() of null or '' order as date_desc
 # pinned by: tests/Unit/AssetSortScopeTest.php
+
+Scenario: An empty sort parameter falls back to the default order
+  When GET /assets?sort= and GET /api/assets?sort= are requested as an admin
+  Then both respond 200, ordered as date_desc
+# pinned by: tests/Feature/AssetTest.php
 
 Scenario: scopeMissing returns only assets flagged missing on S3
   Given one asset with s3_missing_at set and one without
-  When querying missing()
-  Then only the flagged asset is returned
+  Then missing() returns only the flagged asset
 # pinned by: tests/Feature/IntegrityTest.php
 
-Scenario: license fields round-trip through casts and labels
-  Given an asset with a license_type and license_expiry_date
-  Then license_expiry_date casts to a Carbon date
-  And getLicenseLabel() returns the translated label for the type
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: date_obtained casts to a date and round-trips through the edit form
+Scenario: date_obtained round-trips through the edit form; license expiry is display-only
   Given an asset edited with a date_obtained of 2026-05-01
-  Then date_obtained casts to a Carbon date holding 2026-05-01
-  And the detail page shows it under "Date Obtained"
-# pinned by: tests/Unit/AssetTest.php
+  Then the detail page shows it under "Date Obtained"
+  And the edit form renders no license expiry input, while the detail page still shows a stored one
 # pinned by: tests/Feature/AssetTest.php
-
-Scenario: the edit form no longer offers a license expiry input
-  Given the edit page for an asset carrying a license_expiry_date
-  Then no license expiry input is rendered
-  But the detail page still shows the stored expiry date
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: An empty sort parameter falls back to the default order (regression)
-  Given an authenticated admin
-  When GET /assets?sort= and GET /api/assets?sort= are requested
-  Then both respond 200, ordered as date_desc
-  # ConvertEmptyStringsToNull turns ?sort= into null, which reached the non-nullable
-  # string $sort of scopeApplySort and threw a TypeError (500) on both endpoints.
-# pinned by: tests/Feature/AssetTest.php
-
-Scenario: Every sort key has one ordering and one label
-  Then each AssetSort case applies its own ordering and has a translated label
-  And AssetSort::fromInput() maps an unknown, null or empty value to date_desc
-# pinned by: tests/Unit/AssetSortScopeTest.php
 
 Scenario: The derived-key helpers name the same four columns in a fixed order
   Given an asset with a thumbnail and only an S resize
   Then derivedS3Keys() lists the thumbnail key then the S key, and derivedS3Keys(true) only the S key
   And derivedKeyResetAttributes() nulls all four derived columns
   And resizeKeyAttributes(['s' => k]) maps k to resize_s_s3_key and nulls M and L
-# pinned by: tests/Unit/AssetTest.php
-
-Scenario: Replacing user tags keeps AI and reference tags with their attribution
-  Given an asset with an AI tag, a reference tag and a user tag
-  When syncTagsPreservingAi([newUserTag], null) runs
-  Then the AI and reference pivots survive unchanged and the user set is exactly [newUserTag]
-  And syncTagsPreservingAi(null, []) clears only the reference tags
 # pinned by: tests/Unit/AssetTest.php
 
 Scenario: duplicateOf matches by etag and never matches a missing etag
@@ -338,16 +245,11 @@ Scenario: An asset card opens its detail page
   `tests/Unit/Services/AssetSearchParserTest.php`
 - Feature: `tests/Feature/TagAttributionTest.php`, `tests/Feature/IntegrityTest.php`
 - Run: `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/asset-detail.spec.js` — the metadata fields round-tripping through
-  the real edit form, and a grid card opening its detail page.
+- E2E: `tests/e2e/asset-detail.spec.js`
 
 ## Open questions / future
 
-- `filename` vs. `s3_key` immutability (REQ-1) is enforced only by convention —
-  `UpdateAssetRequest` simply never lists `s3_key` among its updatable fields —
-  there is no test that asserts a submitted `s3_key` is ignored. Worth a explicit
-  regression test if this has ever regressed.
-- `scopeByUser` and `scopeInFolder` have no dedicated `Asset`-level unit test;
-  they're only exercised indirectly through `tests/Feature/AssetTest.php`'s
-  index-filtering scenarios (`assets index can filter by user for admins`,
-  `assets index uses user home folder preference as default`).
+- REQ-1 is enforced only by `UpdateAssetRequest` not listing `s3_key`; no test asserts a
+  submitted `s3_key` is ignored.
+- `scopeByUser` and `scopeInFolder` have no dedicated unit test — only indirect coverage via
+  `tests/Feature/AssetTest.php` index filtering.
