@@ -631,15 +631,16 @@ cd /var/www/orca-dam
 # Put application in maintenance mode
 php artisan down
 
-# Pull latest changes
+# Pull latest changes, and the release tags the System page's ORCA version is read from
 git pull origin main
+git fetch --tags
 
 # Update dependencies
 # NOTE: drop --no-dev on environments that use the System → Tests web runner
 # (it needs pest/phpunit). See the warning under "Install Dependencies" above.
 composer install --no-dev --optimize-autoloader
 npm install
-npm run build   # also stamps the ORCA version shown on System → Overview (tags arrive with git pull)
+npm run build   # also stamps the ORCA version shown on System → Overview
 
 # Run migrations
 php artisan migrate --force
