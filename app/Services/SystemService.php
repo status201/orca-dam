@@ -76,7 +76,7 @@ class SystemService
 
     /**
      * The ORCA version stamped by `npm run build` (scripts/build-version.mjs):
-     * {tag, codename, ahead, sha, branch, built_at}, or null when unstamped (REQ-orca-version-shown).
+     * {tag, codename, ahead (int|null), sha, branch, built_at}, or null when unstamped (REQ-orca-version-shown).
      */
     public function getOrcaVersion(?string $path = null): ?array
     {
@@ -97,7 +97,8 @@ class SystemService
         return [
             'tag' => $stamp['tag'],
             'codename' => is_string($stamp['codename'] ?? null) ? $stamp['codename'] : null,
-            'ahead' => is_int($stamp['ahead'] ?? null) && $stamp['ahead'] > 0 ? $stamp['ahead'] : 0,
+            // null: the commit count is unknown (local tags older than the CHANGELOG's release)
+            'ahead' => is_int($stamp['ahead'] ?? null) ? max(0, $stamp['ahead']) : null,
             'sha' => is_string($stamp['sha'] ?? null) ? $stamp['sha'] : null,
             'branch' => is_string($stamp['branch'] ?? null) ? $stamp['branch'] : null,
             'built_at' => is_string($stamp['built_at'] ?? null) ? $stamp['built_at'] : null,

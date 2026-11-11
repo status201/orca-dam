@@ -523,6 +523,9 @@
                             </p>
                             @if ($orcaVersion['ahead'] > 0)
                                 <p class="text-xs text-gray-500">+{{ $orcaVersion['ahead'] }} {{ __('unreleased') }}@if ($orcaVersion['sha']) · <span class="font-mono">{{ $orcaVersion['sha'] }}</span>@endif</p>
+                            @elseif ($orcaVersion['ahead'] === null && $orcaVersion['sha'])
+                                {{-- Commit count unknown: the build's local tags were older than its CHANGELOG --}}
+                                <p class="text-xs text-gray-500 font-mono">{{ $orcaVersion['sha'] }}</p>
                             @endif
                             @if ($orcaVersion['branch'])
                                 <p class="text-xs text-gray-500 font-mono truncate" title="{{ $orcaVersion['branch'] }}">{{ $orcaVersion['branch'] }}</p>

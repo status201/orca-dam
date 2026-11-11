@@ -3,7 +3,7 @@
 ```yaml
 id: system-admin
 status: implemented
-version: 8
+version: 9
 owner: core
 related:
   - architecture
@@ -67,7 +67,9 @@ four narrow services (`SystemService`, `ArtisanCommandRunner`, `QueueService`,
   `bootstrap/cache/orca-version.json` by `npm run build` (`scripts/build-version.mjs`) from
   `git describe --tags --long --match "v[0-9]*"` and the tag's CHANGELOG codename. It reads
   `v1.9.0 "Eye Patch"`, then `+N unreleased · <sha>` when commits follow the tag, then the branch
-  unless `main`/detached; unstamped, "Unknown". Never fails a build.
+  unless `main`/`master` or detached. A CHANGELOG release newer than the
+  local tags (never fetched) shows instead, with the sha and no count. Without git, "Unknown".
+  Never fails a build.
 - **REQ-6** — **The PHP CLI binary is resolved through config, never `env()`.**
   `PHP_BINARY` can point at php-fpm or CGI, which cannot run `artisan test`, so an operator
   must be able to override it — `PHP_CLI_PATH` in `.env`, surfaced as
@@ -303,6 +305,11 @@ Scenario: The Overview shows the ORCA version (REQ-orca-version-shown)
   And unstamped, "Unknown"
 # pinned by: tests/Feature/SystemTest.php
 
+Scenario: Stale local tags on a local master (REQ-orca-version-shown) (regression)
+  Given local tags older than the CHANGELOG's newest release, on branch master
+  Then the stamp carries that release, the sha, no commit count and no branch
+# pinned by: tests/Unit/BuildVersionScriptTest.php
+
 # — browser-level (see e2e-testing.md for the harness) —
 
 Scenario: The system page and its queue/log endpoints answer for an admin
@@ -317,6 +324,7 @@ Scenario: The system page and its queue/log endpoints answer for an admin
 - Feature: `tests/Feature/SystemTest.php` — routes, setting validation matrix, test-run
   dispatch/status/abort, version — `php artisan config:clear && php artisan test`
 - Unit: `tests/Unit/TestRunnerServiceTest.php` (output parsing, UTF-8 scrubbing),
+  `tests/Unit/BuildVersionScriptTest.php` (version stamp, temp git repo),
   `tests/Unit/Jobs/RunTestSuiteJobTest.php`, `tests/Unit/QueueServiceTest.php`,
   `tests/Unit/Policies/SystemPolicyTest.php`
 - E2E: `tests/e2e/system-settings.spec.js` — the settings UI and the queue/log endpoints.

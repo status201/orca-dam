@@ -491,7 +491,7 @@ test('getOrcaVersion returns null for a missing or malformed stamp', function ()
     expect($service->getOrcaVersion(sys_get_temp_dir().'/does-not-exist.json'))->toBeNull()
         ->and($service->getOrcaVersion($garbage))->toBeNull()
         ->and($service->getOrcaVersion($noTag))->toBeNull()
-        ->and($service->getOrcaVersion($badAhead)['ahead'])->toBe(0);
+        ->and($service->getOrcaVersion($badAhead)['ahead'])->toBeNull();
 });
 
 test('the overview shows the ORCA version with unreleased commits and branch', function () {
@@ -514,4 +514,16 @@ test('the overview shows Unknown when the ORCA version is not stamped', function
     $this->actingAs($admin)->get(route('system.index'))
         ->assertOk()
         ->assertSeeInOrder(['ORCA Version', 'Unknown', 'Run npm run build to stamp it', 'PHP Version']);
+});
+
+test('the overview shows the sha without a count when the commit count is unknown', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $this->partialMock(SystemService::class)
+        ->shouldReceive('getOrcaVersion')
+        ->andReturn(['tag' => 'v1.9.0', 'codename' => 'Eye Patch', 'ahead' => null, 'sha' => 'eab78e4', 'branch' => null, 'built_at' => null]);
+
+    $this->actingAs($admin)->get(route('system.index'))
+        ->assertOk()
+        ->assertSeeInOrder(['v1.9.0', 'Eye Patch', 'eab78e4', 'PHP Version'], false)
+        ->assertDontSee('unreleased');
 });
