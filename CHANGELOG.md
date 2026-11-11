@@ -7,6 +7,9 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Security
+- **Symfony 8.1.10 → 8.1.11 (lock-only), clearing 11 advisories in six components published since 2026-11-04.** The affected components are `http-foundation` (4), `serializer` (3), `filesystem`, `http-kernel`, `routing` and `yaml` (CVE-2026-123792, YAML parse times). `http-foundation`, `http-kernel` and `routing` sit under every Laravel request. The app doesn't call the trusted-proxies `private_ranges` shortcut, Symfony's YAML or Serializer components, or `Filesystem\Path` directly; they arrive through framework and dev dependencies. The update also moves the 3.x contracts packages to 3.8.1 and `doctrine/deprecations` to 1.2.0. `composer audit --locked`, the CI gate these advisories had turned red, passes again.
+
 ---
 
 ## [v1.9.0] — 2026-11 — Eye Patch
