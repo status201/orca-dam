@@ -60,7 +60,14 @@
 
     <!-- Filter tabs -->
     <div class="mb-6 border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8">
+        {{-- gap, not space-x: the v3-style space-x margin (ADR-019) would override the Reference tab's ml-auto. --}}
+        <nav class="-mb-px flex items-stretch gap-8">
+            <button @click="changeType('all')" data-testid="tags-tab-all"
+               :class="type === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+               class="py-4 px-1 border-b-2 font-medium text-sm">
+                {{ __('All Tags') }} <span x-show="type === 'all'" x-cloak>(<span x-text="total"></span>)</span>
+                <span x-show="type !== 'all'" x-cloak>(<span x-text="typeCounts.all"></span>)</span>
+            </button>
             <button @click="changeType('user')" data-testid="tags-tab-user"
                :class="type === 'user' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                class="attention py-4 px-1 border-b-2 font-medium text-sm">
@@ -73,18 +80,17 @@
                 {{ __('AI Tags') }} <span x-show="type === 'ai'" x-cloak>(<span x-text="total"></span>)</span>
                 <span x-show="type !== 'ai'" x-cloak>(<span x-text="typeCounts.ai"></span>)</span>
             </button>
-            <button @click="changeType('reference')" data-testid="tags-tab-reference"
-               :class="type === 'reference' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-               class="attention py-4 px-1 border-b-2 font-medium text-sm">
-                {{ __('Reference Tags') }} <span x-show="type === 'reference'" x-cloak>(<span x-text="total"></span>)</span>
-                <span x-show="type !== 'reference'" x-cloak>(<span x-text="typeCounts.reference"></span>)</span>
-            </button>
-            <button @click="changeType('all')" data-testid="tags-tab-all"
-               :class="type === 'all' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-               class="py-4 px-1 border-b-2 font-medium text-sm">
-                {{ __('All Tags') }} <span x-show="type === 'all'" x-cloak>(<span x-text="total"></span>)</span>
-                <span x-show="type !== 'all'" x-cloak>(<span x-text="typeCounts.all"></span>)</span>
-            </button>
+            {{-- Reference tags track usage by external systems and are not part of All Tags:
+                 their tab sits apart on the far right (tags.md REQ-reference-tags-kept-apart). --}}
+            <div class="ml-auto flex items-stretch gap-8">
+                <span class="self-center h-6 border-l border-gray-300" aria-hidden="true"></span>
+                <button @click="changeType('reference')" data-testid="tags-tab-reference"
+                   :class="type === 'reference' ? 'border-orange-500 text-orange-600' : 'border-transparent text-orange-500 hover:text-orange-700 hover:border-orange-300'"
+                   class="attention py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-link mr-1"></i>{{ __('Reference Tags') }} <span x-show="type === 'reference'" x-cloak>(<span x-text="total"></span>)</span>
+                    <span x-show="type !== 'reference'" x-cloak>(<span x-text="typeCounts.reference"></span>)</span>
+                </button>
+            </div>
         </nav>
     </div>
 
@@ -278,7 +284,8 @@ window.__pageData = window.__pageData || {};
 window.__pageData.tagConfig = {
     type: @json($activeType),
     sort: @json(request('sort', 'name_asc')),
-    typeCounts: @json($typeCounts)
+    typeCounts: @json($typeCounts),
+    generalTypes: @json(\App\Models\Tag::GENERAL_TYPES)
 };
 window.__pageData.translations = {
     tagUpdated: @js(__('Tag updated successfully')),

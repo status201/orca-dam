@@ -69,7 +69,7 @@
                         <div class="p-2 border-b border-gray-300 flex items-center gap-2">
                             <select x-model="tagType" @change="onFilterTagTypeChange()" data-testid="export-tag-type"
                                     class="pr-dropdown text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orca-black focus:border-transparent">
-                                <option value="">{{ __('All Types') }}</option>
+                                <option value="all">{{ __('All Tags') }}</option>
                                 <option value="user">{{ __('User') }}</option>
                                 <option value="ai">{{ __('AI') }}</option>
                                 <option value="reference">{{ __('Reference') }}</option>

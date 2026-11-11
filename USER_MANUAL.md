@@ -208,7 +208,7 @@ Tags are labels that help you organize and find assets. They come in three types
 
 **Bulk tagging:** Select multiple assets (use Shift+click for ranges), then use the bulk tag toolbar to add or remove tags across all selected assets at once.
 
-**Browsing tags:** The Tags page opens on **User Tags**, followed by the **AI Tags** and **Reference Tags** tabs; **All Tags** is the last tab. The **Filter Tags** panel on the Assets page works the same way: its type dropdown starts on User Tags, with All Tags as the last option. This keeps the many machine-named reference tags out of the way until you ask for them.
+**Browsing tags:** The Tags page opens on **All Tags**, followed by the **User Tags** and **AI Tags** tabs. **All Tags** means user and AI tags: reference tags serve a different purpose, so they have their own **Reference Tags** tab, set apart on the right. The **Filter Tags** panel on the Assets page and the tag filter on the Export to CSV page work the same way: their type dropdown starts on All Tags, with Reference Tags as the last option. The dashboard's tag totals also count user and AI tags only.
 
 **Bulk delete tags:** On the Tags page, select tags with checkboxes (Shift+click for ranges), then click **Delete selected** in the toolbar to remove them all at once. This removes the tags from all assets they were attached to.
 

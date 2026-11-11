@@ -3,7 +3,7 @@
 ```yaml
 id: dashboard
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -26,8 +26,8 @@ viewer's role (nobody is shown a link that would 403).
 ## Requirements
 
 - **REQ-1** — Statistics are computed for the viewer, not globally cached: total
-  assets, total/user/AI tags, the viewer's own asset count, and total storage in
-  human-readable units. Soft-deleted assets are excluded from every count except
+  assets, total/user/AI tags (total = user + AI, no reference tags —
+  [`tags.md`](tags.md)), the viewer's own asset count, and total storage in human-readable units. Soft-deleted assets are excluded from every count except
   `trashed_assets`.
 - **REQ-2** — Admins additionally see total users and trashed assets. Non-admins
   instead see their own tag counts and their effective results-per-page, flagged
@@ -106,6 +106,12 @@ Scenario: A non-admin sees their own statistics instead
   Then their own tag counts and results-per-page are shown
   And total users is not
 
+Scenario: Tag totals leave reference tags out
+  Given user, ai and reference tags on an editor's asset
+  When the editor opens /dashboard
+  Then total_tags and my_tags are both 2
+# pinned by: tests/Feature/DashboardTest.php
+
 # — browser-level (see e2e-testing.md for the harness) —
 
 Scenario: The tour renders one dot per slide
@@ -136,13 +142,14 @@ Scenario: The autoplay control toggles both ways
 
 ## Tests & verification
 
+- Feature: `tests/Feature/DashboardTest.php` (tag totals)
 - E2E: `tests/e2e/dashboard-tour.spec.js` (slide counts asserted relative to the page, never
   hardcoded — REQ-3), `tests/e2e/role-matrix.spec.js` (each role lands on a dashboard naming them).
 - `npm run test:e2e`; `php artisan config:clear && php artisan test`.
 
 ## Open questions / future
 
-- The statistics (REQ-1/REQ-2) have no Pest coverage; the three statistics scenarios are unpinned.
-  A Feature test asserting `stats` for a seeded library would pin them.
+- Beyond the tag totals, the statistics (REQ-1/REQ-2) have no Pest coverage; the three general
+  statistics scenarios are unpinned.
 - The carousel has no "seen it" state and restarts on every login (distinct from guided-demo
   completion, [`guided-demos.md`](guided-demos.md) REQ-11).
