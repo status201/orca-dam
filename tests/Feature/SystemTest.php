@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\ArtisanCommandRunner;
 use App\Services\S3Service;
+use App\Services\SystemService;
 use App\Services\TestRunnerService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -462,4 +463,55 @@ test('the System page stays up when S3 is not configured (regression)', function
         ->assertOk()
         ->assertJsonPath('success', false)
         ->assertJsonStructure(['error']);
+});
+
+function writeOrcaVersionStamp(array|string $stamp): string
+{
+    $path = tempnam(sys_get_temp_dir(), 'orca-version');
+    file_put_contents($path, is_string($stamp) ? $stamp : json_encode($stamp));
+    // Removed after the test even when an assertion fails
+    test()->beforeApplicationDestroyed(fn () => @unlink($path));
+
+    return $path;
+}
+
+test('getOrcaVersion reads the build stamp', function () {
+    $path = writeOrcaVersionStamp(['tag' => 'v1.9.0', 'codename' => 'Eye Patch', 'ahead' => 0, 'sha' => 'abc1234', 'branch' => null]);
+
+    expect(app(SystemService::class)->getOrcaVersion($path))
+        ->toMatchArray(['tag' => 'v1.9.0', 'codename' => 'Eye Patch', 'ahead' => 0, 'sha' => 'abc1234', 'branch' => null]);
+});
+
+test('getOrcaVersion returns null for a missing or malformed stamp', function () {
+    $service = app(SystemService::class);
+    $garbage = writeOrcaVersionStamp('not json');
+    $noTag = writeOrcaVersionStamp(['codename' => 'Eye Patch']);
+    $badAhead = writeOrcaVersionStamp(['tag' => 'v1.9.0', 'ahead' => ['x']]);
+
+    expect($service->getOrcaVersion(sys_get_temp_dir().'/does-not-exist.json'))->toBeNull()
+        ->and($service->getOrcaVersion($garbage))->toBeNull()
+        ->and($service->getOrcaVersion($noTag))->toBeNull()
+        ->and($service->getOrcaVersion($badAhead)['ahead'])->toBe(0);
+});
+
+test('the overview shows the ORCA version with unreleased commits and branch', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $this->partialMock(SystemService::class)
+        ->shouldReceive('getOrcaVersion')
+        ->andReturn(['tag' => 'v1.9.0', 'codename' => 'Eye Patch', 'ahead' => 8, 'sha' => '6e26fb5', 'branch' => 'feature/x', 'built_at' => null]);
+
+    $this->actingAs($admin)->get(route('system.index'))
+        ->assertOk()
+        ->assertSeeInOrder(['ORCA Version', 'v1.9.0', 'Eye Patch', '+8 unreleased', '6e26fb5', 'feature/x', 'PHP Version'], false);
+});
+
+test('the overview shows Unknown when the ORCA version is not stamped', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $this->partialMock(SystemService::class)
+        ->shouldReceive('getOrcaVersion')
+        ->andReturn(null);
+
+    $this->actingAs($admin)->get(route('system.index'))
+        ->assertOk()
+        ->assertSeeInOrder(['ORCA Version', 'Unknown', 'Run npm run build to stamp it', 'PHP Version']);
 });
