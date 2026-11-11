@@ -409,7 +409,7 @@ return [
 GET /api/assets?search=keyword&tags[]=1&tags[]=2&type=image&per_page=24
 GET /api/assets/{id}
 GET /api/assets/search?q=keyword&tags=1,2&type=image
-GET /api/tags?type=user            # type: user | ai | reference
+GET /api/tags?type=user            # type: user | ai | reference | all (= user + ai); omit for every type
 DELETE /api/assets/{id}            # 403 for the api role — see authorization-policies.md
 ```
 

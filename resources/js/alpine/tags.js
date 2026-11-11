@@ -4,6 +4,8 @@ import { requestHeaders } from '../http';
 export function tagManager() {
     const t = window.__pageData?.translations || {};
     const config = window.__pageData?.tagConfig || {};
+    // What the All tab covers (Tag::GENERAL_TYPES): reference tags are kept apart.
+    const generalTypes = config.generalTypes || ['user', 'ai'];
 
     return {
         showEditModal: false,
@@ -11,7 +13,7 @@ export function tagManager() {
         editingTagName: '',
         searchQuery: '',
         activeSearch: '',
-        type: config.type || 'user',
+        type: config.type || 'all',
         sort: config.sort || 'name_asc',
         typeCounts: config.typeCounts || { all: 0, user: 0, ai: 0, reference: 0 },
 
@@ -71,7 +73,7 @@ export function tagManager() {
                 params.set('page', page);
                 params.set('per_page', '60');
                 params.set('sort', this.sort);
-                if (this.type) params.set('type', this.type);
+                params.set('type', this.type); // always explicit: an absent type is unfiltered (incl. reference)
                 if (this.activeSearch) params.set('search', this.activeSearch);
 
                 const response = await fetch(`/tags?${params.toString()}`, {
@@ -123,8 +125,8 @@ export function tagManager() {
 
         updateUrl() {
             const params = new URLSearchParams();
-            // 'user' is the default tab, so it keeps the URL bare; 'all' must be explicit.
-            if (this.type && this.type !== 'user') params.set('type', this.type);
+            // 'all' is the default tab, so it keeps the URL bare.
+            if (this.type && this.type !== 'all') params.set('type', this.type);
             if (this.sort && this.sort !== 'name_asc') params.set('sort', this.sort);
             const qs = params.toString();
             history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
@@ -179,13 +181,9 @@ export function tagManager() {
 
                 if (response.ok) {
                     const deletedIds = new Set(this.selected);
-                    // Update type counts
                     this.tags.forEach(tag => {
-                        if (deletedIds.has(tag.id) && this.typeCounts[tag.type] !== undefined) {
-                            this.typeCounts[tag.type]--;
-                        }
+                        if (deletedIds.has(tag.id)) this._decrementTypeCount(tag.type);
                     });
-                    this.typeCounts.all -= deletedIds.size;
                     // Remove from local array
                     this.tags = this.tags.filter(tag => !deletedIds.has(tag.id));
                     this.total -= data.count;
@@ -200,6 +198,11 @@ export function tagManager() {
             } finally {
                 this.bulkDeleting = false;
             }
+        },
+
+        _decrementTypeCount(type) {
+            if (this.typeCounts[type] !== undefined) this.typeCounts[type]--;
+            if (generalTypes.includes(type)) this.typeCounts.all--;
         },
 
         editTag(id, name) {
@@ -255,11 +258,7 @@ export function tagManager() {
                     // Remove from local array instead of reloading
                     this.tags = this.tags.filter(tag => tag.id !== id);
                     this.total--;
-                    // Update type counts
-                    if (this.typeCounts[type] !== undefined) {
-                        this.typeCounts[type]--;
-                    }
-                    this.typeCounts.all--;
+                    this._decrementTypeCount(type);
                     // Remove from selection if selected
                     const selIdx = this.selected.indexOf(id);
                     if (selIdx !== -1) this.selected.splice(selIdx, 1);

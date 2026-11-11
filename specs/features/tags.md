@@ -3,7 +3,7 @@
 ```yaml
 id: tags
 status: implemented
-version: 6
+version: 7
 owner: core
 related:
   - architecture
@@ -61,13 +61,13 @@ spec links to.
   name, normalizes it with `Tag::normalizeName()` — trimmed and `mb_strtolower`ed, the same rule
   `TagInputParser` applies: resolving names to ids (user, reference, AI), renaming a tag,
   `reference-tag:create`, and removing reference tags by name. Never byte-wise `strtolower`.
-- **REQ-tag-pickers-lead-with-user-tags** — Tag-type pickers lead with **User** tags (reference
-  tags are machine-named and numerous). The Tags page tabs and the asset grid's *Filter Tags* type
-  dropdown are ordered **User → AI → Reference → All** and both default to **User**. On the Tags
-  page `/tags` means User and `?type=all` means All (an unrecognised `type` falls back to User);
-  switching tabs rewrites the URL the same way, omitting `type` for the default. `GET /tags` as
-  JSON treats `type=all` like an absent `type` (unfiltered). The CSV Export page's tag-type
-  selector deliberately keeps all types first as its default.
+- **REQ-reference-tags-kept-apart** — Reference tags track usage by external systems, so tag
+  overviews keep them apart: **All Tags** means user + AI tags (`Tag::GENERAL_TYPES`), never
+  reference. The Tags page tabs, the asset grid's *Filter Tags* and the CSV Export tag-type
+  dropdowns are ordered **All → User → AI → Reference** and default to **All**; the Reference tab
+  sits apart at the far right. `/tags` means All, `?type=user|ai|reference` selects a tab, an
+  unrecognised `type` falls back to All, and switching tabs omits `type` for All. `GET /tags` JSON:
+  `type=all` = user + AI; an absent `type` stays unfiltered (API compatibility).
 
 ## Technical design
 
@@ -81,7 +81,9 @@ Tag (app/Models/Tag.php):
   resolveUserTagIds(array $names): array     # firstOrCreate as type=user; reuses existing tag as-is
   resolveReferenceTagIds(array $names): array # same, type=reference
   resolveAiTagIds(array $names): array       # same, type=ai — RekognitionService::autoTagAsset()
+  GENERAL_TYPES: ['user', 'ai']              # = All Tags
   scopeUserTags / scopeAiTags / scopeReferenceTags
+  scopeGeneral                               # type in GENERAL_TYPES
   scopeSearch(?string $search)               # name LIKE %search%
 
 Asset (app/Models/Asset.php):
@@ -93,8 +95,8 @@ Asset (app/Models/Asset.php):
     # null leaves that type untouched, an array (even empty) becomes its complete set; AI pivots kept
 
 TagController:
-  index(Request)          # GET /tags — paginated JSON (expectsJson; ?type=user|ai|reference, 'all'/absent = unfiltered)
-                          #   or view with typeCounts + activeType (user|ai|reference|all, default user)
+  index(Request)          # GET /tags — paginated JSON (expectsJson; ?type=user|ai|reference, 'all' = user+ai, absent = unfiltered)
+                          #   or view with typeCounts (all = user+ai) + activeType (all|user|ai|reference, default all)
   search(Request)          # GET /tags/search — autocomplete, ?type= or ?types=a,b
   show(string $ids)        # GET /api/tags/{ids} (API only) — single object (1 id) or array (2-200 ids)
   byIds(Request)           # POST /tags/by-ids — resolve ids[] to Tag rows
@@ -219,10 +221,12 @@ Scenario: Bulk add/remove/list operate across multiple assets and require authen
   And a bulk add refused (403) for one asset creates no tag
 # pinned by: tests/Feature/TagTest.php
 
-Scenario: The tags page opens on user tags; type=all selects every type (REQ-tag-pickers-lead-with-user-tags)
-  When GET /tags is rendered with no type, with type=all, and with type=bogus
-  Then the view's activeType is "user", "all" and "user" respectively
-  And GET /tags as JSON with type=all returns tags of every type
+Scenario: All Tags means user and AI tags; reference tags stay apart (REQ-reference-tags-kept-apart)
+  Given a user, an ai and a reference tag
+  When GET /tags is rendered with no type, with type=reference, and with type=bogus
+  Then the view's activeType is "all", "reference" and "all", and typeCounts.all omits reference
+  And GET /tags as JSON with type=all returns the user and ai tags only
+  And GET /tags as JSON with no type returns all three
 # pinned by: tests/Feature/TagTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
@@ -234,19 +238,25 @@ Scenario: The tags page manages tags by type
   And a tag card links into the asset grid filtered to that tag
 # pinned by: tests/e2e/tags.spec.js
 
-Scenario: The tags page tabs lead with User and end with All (REQ-tag-pickers-lead-with-user-tags)
+Scenario: The tags page opens on All and ends with a separate Reference tab (REQ-reference-tags-kept-apart)
   When the tags page opens
-  Then the tabs read User, AI, Reference, All and only user tags are listed
-  When the All tab is clicked
-  Then the ai and reference tags are listed too and the URL carries type=all
+  Then the tabs read All, User, AI, Reference and the reference tag is not listed
+  When the Reference tab is clicked
+  Then the reference tag is listed and the URL carries type=reference
+  And clicking All again leaves a bare URL
 # pinned by: tests/e2e/tags.spec.js
 
-Scenario: The grid's tag filter lists user tags until All is chosen (REQ-tag-pickers-lead-with-user-tags)
+Scenario: The grid's tag filter lists all but reference tags until Reference is chosen (REQ-reference-tags-kept-apart)
   Given the asset grid's tag filter panel is open
-  Then its type dropdown is on User and the seeded ai tag is not listed
-  When All is chosen
-  Then the ai tag is listed
+  Then its type dropdown is on All, Reference last, and the reference tag is not listed
+  When Reference is chosen
+  Then the reference tag is listed
 # pinned by: tests/e2e/asset-grid.spec.js
+
+Scenario: The CSV Export tag-type dropdown defaults to All with Reference last (REQ-reference-tags-kept-apart)
+  When the export page opens
+  Then its tag-type dropdown reads All, User, AI, Reference and is on All
+# pinned by: tests/e2e/csv-import-export.spec.js
 
 Scenario: A tag added on the edit page appears on the asset and is removable inline
   Given the edit page for a seeded asset
@@ -261,4 +271,5 @@ Scenario: A tag added on the edit page appears on the asset and is removable inl
 - Unit: `tests/Unit/TagTest.php`
 - Feature: `tests/Feature/TagTest.php`, `tests/Feature/TagAttributionTest.php` (web, API, CSV
   import, `applyUploadMetadata`) — `php artisan config:clear && php artisan test`
-- E2E: `tests/e2e/tags.spec.js`, `tests/e2e/asset-grid.spec.js`, `tests/e2e/asset-detail.spec.js`
+- E2E: `tests/e2e/tags.spec.js`, `tests/e2e/asset-grid.spec.js`, `tests/e2e/asset-detail.spec.js`,
+  `tests/e2e/csv-import-export.spec.js`

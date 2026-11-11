@@ -34,7 +34,7 @@ export function assetGrid() {
         perPage: config.perPage || '24',
         tagSearch: '',
         tagSort: 'name_asc',
-        tagType: 'user', // '' = all types; user first so reference tags don't crowd the list
+        tagType: 'all', // 'all' = user + ai; reference tags are kept apart (tags.md REQ-reference-tags-kept-apart)
         folderCount: config.folderCount || 1,
 
         // Lazy-loaded tag filter state
@@ -187,7 +187,7 @@ export function assetGrid() {
                 params.set('per_page', '60');
                 params.set('sort', this.tagSort);
                 if (this.tagSearch.trim()) params.set('search', this.tagSearch.trim());
-                if (this.tagType) params.set('type', this.tagType);
+                params.set('type', this.tagType); // always explicit: an absent type is unfiltered (incl. reference)
 
                 const response = await fetch(`/tags?${params.toString()}`, {
                     headers: { 'Accept': 'application/json' }

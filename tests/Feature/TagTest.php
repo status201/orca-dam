@@ -202,22 +202,21 @@ test('tags index web view returns type counts', function () {
     $response = $this->actingAs($user)->get(route('tags.index'));
 
     $response->assertOk();
+    // 'all' is user + ai: reference tags are kept apart (tags.md REQ-reference-tags-kept-apart).
     $response->assertViewHas('typeCounts', [
-        'all' => 6,
+        'all' => 5,
         'user' => 3,
         'ai' => 2,
         'reference' => 1,
     ]);
 });
 
-test('tags index web view opens on user tags and honours type=all', function () {
+// tags.md REQ-reference-tags-kept-apart: All Tags = user + ai (counts pinned above).
+test('tags index web view opens on all tags', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get(route('tags.index'))
         ->assertOk()
-        ->assertViewHas('activeType', 'user');
-
-    $this->actingAs($user)->get(route('tags.index', ['type' => 'all']))
         ->assertViewHas('activeType', 'all');
 
     $this->actingAs($user)->get(route('tags.index', ['type' => 'reference']))
@@ -225,21 +224,24 @@ test('tags index web view opens on user tags and honours type=all', function () 
 
     // A stale or hand-edited value falls back to the default rather than an empty tab.
     $this->actingAs($user)->get(route('tags.index', ['type' => 'bogus']))
-        ->assertViewHas('activeType', 'user');
+        ->assertViewHas('activeType', 'all');
 });
 
-test('tags index JSON treats type=all as unfiltered', function () {
+test('tags index JSON: type=all is user and ai tags, no type is every tag', function () {
     $user = User::factory()->create();
     Tag::factory()->user()->create();
     Tag::factory()->ai()->create();
     Tag::factory()->reference()->create();
 
-    $response = $this->actingAs($user)->getJson(route('tags.index', ['type' => 'all']));
+    $all = $this->actingAs($user)->getJson(route('tags.index', ['type' => 'all']));
+    $all->assertOk()->assertJsonPath('total', 2);
+    expect(collect($all->json('data'))->pluck('type')->sort()->values()->all())
+        ->toBe(['ai', 'user']);
 
-    $response->assertOk();
-    $response->assertJsonPath('total', 3);
-    expect(collect($response->json('data'))->pluck('type')->sort()->values()->all())
-        ->toBe(['ai', 'reference', 'user']);
+    // Absent type stays unfiltered: /api/tags consumers rely on it.
+    $this->actingAs($user)->getJson(route('tags.index'))
+        ->assertOk()
+        ->assertJsonPath('total', 3);
 });
 
 test('tags by-ids returns correct tags', function () {

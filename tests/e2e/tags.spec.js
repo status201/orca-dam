@@ -7,43 +7,46 @@ test.describe('tags page', () => {
     test.beforeAll(reseed);
 
     test('the seeded tags are listed with their type badges', async ({ page }) => {
-        await page.goto('/tags?type=all');
+        await page.goto('/tags');
         await expect(page.locator(testid('tags-page'))).toBeVisible();
 
         await expect(tagCard(page, 'e2e-shared')).toBeVisible();
         await expect(tagCard(page, 'e2e-ai-tag')).toContainText('ai');
+
+        await page.goto('/tags?type=reference');
         await expect(tagCard(page, 'e2e-reference-tag')).toContainText('ref');
     });
 
-    // specs/features/tags.md REQ-tag-pickers-lead-with-user-tags — machine-named reference tags must not crowd the default view.
-    test('the tabs lead with user tags and end with all', async ({ page }) => {
+    // specs/features/tags.md REQ-reference-tags-kept-apart — All Tags is user + ai; reference tags get their own last tab.
+    test('the tabs open on all tags and end with a separate reference tab', async ({ page }) => {
         await page.goto('/tags');
 
         const tabs = await page.locator('[data-testid^="tags-tab-"]')
             .evaluateAll((els) => els.map((el) => el.dataset.testid));
-        expect(tabs).toEqual(['tags-tab-user', 'tags-tab-ai', 'tags-tab-reference', 'tags-tab-all']);
+        expect(tabs).toEqual(['tags-tab-all', 'tags-tab-user', 'tags-tab-ai', 'tags-tab-reference']);
 
         await expect(tagCard(page, 'e2e-shared')).toBeVisible();
-        await expect(tagCard(page, 'e2e-ai-tag')).toHaveCount(0);
+        await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
         await expect(tagCard(page, 'e2e-reference-tag')).toHaveCount(0);
 
-        await page.click(testid('tags-tab-all'));
-        await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
+        await page.click(testid('tags-tab-reference'));
         await expect(tagCard(page, 'e2e-reference-tag')).toBeVisible();
-        await expect(page).toHaveURL(/[?&]type=all\b/);
+        await expect(tagCard(page, 'e2e-shared')).toHaveCount(0);
+        await expect(page).toHaveURL(/[?&]type=reference\b/);
 
-        // The URL is the state: a reload stays on All.
+        // The URL is the state: a reload stays on Reference.
         await page.reload();
-        await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
+        await expect(tagCard(page, 'e2e-reference-tag')).toBeVisible();
 
         // And back to the default leaves a bare URL.
-        await page.click(testid('tags-tab-user'));
-        await expect(tagCard(page, 'e2e-ai-tag')).toHaveCount(0);
+        await page.click(testid('tags-tab-all'));
+        await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
+        await expect(tagCard(page, 'e2e-reference-tag')).toHaveCount(0);
         await expect(page).not.toHaveURL(/type=/);
     });
 
     test('an ai tag offers no rename control', async ({ page }) => {
-        await page.goto('/tags?type=all');
+        await page.goto('/tags');
 
         await expect(tagCard(page, 'e2e-ai-tag')).toBeVisible();
         await expect(tagCard(page, 'e2e-ai-tag').locator(testid('tag-card-edit'))).toHaveCount(0);

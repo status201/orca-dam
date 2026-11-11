@@ -5,7 +5,7 @@ export function exportAssets() {
         selectedTags: [],
         tagSearch: '',
         tagSort: 'name_asc',
-        tagType: '',
+        tagType: 'all', // 'all' = user + ai; reference tags are kept apart (tags.md REQ-reference-tags-kept-apart)
 
         // Lazy-loaded tag filter state
         filterTags: [],
@@ -58,7 +58,7 @@ export function exportAssets() {
                 params.set('per_page', '60');
                 params.set('sort', this.tagSort);
                 if (this.tagSearch.trim()) params.set('search', this.tagSearch.trim());
-                if (this.tagType) params.set('type', this.tagType);
+                params.set('type', this.tagType); // always explicit: an absent type is unfiltered (incl. reference)
 
                 const response = await fetch(`/tags?${params.toString()}`, {
                     headers: { 'Accept': 'application/json' }
@@ -116,7 +116,7 @@ export function exportAssets() {
             this.selectedTags = [];
             this.pinnedTags = [];
             this.tagSearch = '';
-            this.tagType = '';
+            this.tagType = 'all';
             this.tagSort = 'name_asc';
             this.loadFilterTags(1);
         }

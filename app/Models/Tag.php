@@ -26,6 +26,12 @@ class Tag extends Model
      */
     public const MAX_NAME_LENGTH = 100;
 
+    /**
+     * The types "All Tags" covers. Reference tags track usage by external systems and are
+     * kept apart from every all-types overview (tags.md REQ-reference-tags-kept-apart).
+     */
+    public const GENERAL_TYPES = ['user', 'ai'];
+
     protected $fillable = [
         'name',
         'type',
@@ -67,6 +73,14 @@ class Tag extends Model
     public function scopeReferenceTags($query)
     {
         return $query->where('type', 'reference');
+    }
+
+    /**
+     * Scope: what "All Tags" means — user and AI tags, never reference tags
+     */
+    public function scopeGeneral($query)
+    {
+        return $query->whereIn('type', self::GENERAL_TYPES);
     }
 
     /**

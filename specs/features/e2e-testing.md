@@ -346,7 +346,7 @@ npm run test:e2e -- tests/e2e/asset-grid.spec.js   # one file
 npm run e2e:down
 ```
 
-145 tests across 21 spec files (loop-generated cases in `tools.spec.js` included), plus the
+146 tests across 21 spec files (loop-generated cases in `tools.spec.js` included), plus the
 4 in `global.setup.js`. `npm run spec:lint` counts loop-generated tests and errors on a loop it
 cannot size, so generated tests must iterate an array literal or a named `const`. 7 tests skip
 without a bucket.

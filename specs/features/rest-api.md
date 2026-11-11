@@ -3,7 +3,7 @@
 ```yaml
 id: rest-api
 status: implemented
-version: 8
+version: 9
 owner: core
 related:
   - architecture
@@ -81,7 +81,7 @@ GET    /api/assets/search:   AssetApiController::search
 GET    /api/assets/{asset}:  AssetApiController::show
 PATCH  /api/assets/{asset}:  AssetApiController::update
 DELETE /api/assets/{asset}:  AssetApiController::destroy      # authorize('delete', $asset)
-GET    /api/tags:            TagController::index             # ?type=
+GET    /api/tags:            TagController::index             # ?type=user|ai|reference|all (user+ai); none = every type
 GET    /api/tags/search:     TagController::search
 GET    /api/tags/{ids}:      TagController::show              # single id or comma-list, max 200
 GET    /api/folders:         FolderController::index           # see folder-management.md

@@ -42,13 +42,17 @@ class TagController extends Controller
      */
     public function index(Request $request)
     {
-        $type = $request->input('type'); // 'user' or 'ai' or 'reference'; 'all' or null for all
+        // 'user', 'ai' or 'reference'; 'all' = user + ai (reference tags are kept apart);
+        // absent = unfiltered, which API consumers of /api/tags rely on.
+        $type = $request->input('type');
         $sort = $request->input('sort', 'name_asc');
         $search = $request->input('search');
 
         $query = Tag::withCount('assets');
 
-        if ($type && $type !== 'all') {
+        if ($type === 'all') {
+            $query->general();
+        } elseif ($type) {
             $query->where('type', $type);
         }
 
@@ -75,15 +79,14 @@ class TagController extends Controller
         // For web view, only pass type counts and config — no tags collection
         $counts = Tag::selectRaw('type, COUNT(*) as count')->groupBy('type')->pluck('count', 'type');
         $typeCounts = [
-            'all' => $counts->sum(),
+            'all' => $counts->only(Tag::GENERAL_TYPES)->sum(),
             'user' => $counts->get('user', 0),
             'ai' => $counts->get('ai', 0),
             'reference' => $counts->get('reference', 0),
         ];
 
-        // The page opens on user tags: machine-named reference tags would otherwise
-        // crowd the top of an all-types list sorted by name.
-        $activeType = in_array($type, ['user', 'ai', 'reference', 'all'], true) ? $type : 'user';
+        // Each tab is a key of $typeCounts; anything else falls back to the default tab.
+        $activeType = in_array($type, array_keys($typeCounts), true) ? $type : 'all';
 
         return view('tags.index', compact('typeCounts', 'activeType'));
     }

@@ -208,7 +208,7 @@ Tags zijn labels waarmee je assets organiseert en vindt. Er zijn drie typen:
 
 **Bulksgewijs taggen:** Selecteer meerdere assets (gebruik Shift+klik voor reeksen) en gebruik de bulktag-werkbalk om tags toe te voegen aan of te verwijderen van alle geselecteerde assets tegelijk.
 
-**Tags bekijken:** De Tags-pagina opent op **Gebruikerstags**, gevolgd door de tabbladen **AI-tags** en **Referentietags**; **Alle tags** is het laatste tabblad. Het paneel **Tags filteren** op de Assets-pagina werkt net zo: de type-keuzelijst begint bij Gebruikerstags, met Alle tags als laatste optie. Zo blijven de vele automatisch benoemde referentietags uit beeld tot je erom vraagt.
+**Tags bekijken:** De Tags-pagina opent op **Alle tags**, gevolgd door de tabbladen **Gebruikerstags** en **AI-tags**. **Alle tags** betekent gebruikers- en AI-tags: referentietags dienen een ander doel en hebben daarom een eigen tabblad **Referentietags**, apart aan de rechterkant. Het paneel **Tags filteren** op de Assets-pagina en het tagfilter op de pagina Exporteren naar CSV werken net zo: de type-keuzelijst begint bij Alle tags, met Referentietags als laatste optie. Ook de tagtotalen op het dashboard tellen alleen gebruikers- en AI-tags.
 
 **Bulksgewijs tags verwijderen:** Op de Tags-pagina selecteer je tags met checkboxes (Shift+klik voor reeksen) en klik je op **Selectie verwijderen** in de werkbalk om ze allemaal tegelijk te verwijderen. Dit verwijdert de tags van alle assets waaraan ze gekoppeld waren.
 

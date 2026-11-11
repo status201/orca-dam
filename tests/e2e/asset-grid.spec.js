@@ -121,16 +121,20 @@ test.describe('asset grid', () => {
         const panel = page.locator(testid('grid-tag-filter-panel'));
         await expect(panel).toBeVisible();
 
-        // specs/features/tags.md REQ-tag-pickers-lead-with-user-tags: the type dropdown opens on user tags, with All last.
-        await expect(page.locator(testid('grid-tag-type'))).toHaveValue('user');
+        // specs/features/tags.md REQ-reference-tags-kept-apart: the type dropdown opens on All (user + ai), Reference last.
+        await expect(page.locator(testid('grid-tag-type'))).toHaveValue('all');
         const optionValues = await page.locator(`${testid('grid-tag-type')} option`)
             .evaluateAll((els) => els.map((el) => el.value));
-        expect(optionValues).toEqual(['user', 'ai', 'reference', '']);
+        expect(optionValues).toEqual(['all', 'user', 'ai', 'reference']);
         await expect(panel.getByText('e2e-shared', { exact: true })).toBeVisible();
-        await expect(panel.getByText('e2e-ai-tag', { exact: true })).toHaveCount(0);
-
-        await page.selectOption(testid('grid-tag-type'), '');
         await expect(panel.getByText('e2e-ai-tag', { exact: true })).toBeVisible();
+        await expect(panel.getByText('e2e-reference-tag', { exact: true })).toHaveCount(0);
+
+        await page.selectOption(testid('grid-tag-type'), 'reference');
+        await expect(panel.getByText('e2e-reference-tag', { exact: true })).toBeVisible();
+        await expect(panel.getByText('e2e-shared', { exact: true })).toHaveCount(0);
+
+        await page.selectOption(testid('grid-tag-type'), 'all');
 
         const tag = panel.getByText('e2e-shared', { exact: true });
         await expect(tag).toBeVisible();

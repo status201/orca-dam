@@ -117,6 +117,23 @@ test.describe('csv asset export', () => {
         await expect(page.locator(testid('export-tags-empty'))).toBeHidden();
     });
 
+    // specs/features/tags.md REQ-reference-tags-kept-apart — same order and default as the grid's tag filter.
+    test('the tag-type dropdown defaults to all tags with reference last', async ({ page }) => {
+        await page.goto('/export');
+        const select = page.locator(testid('export-tag-type'));
+        await expect(select).toHaveValue('all');
+        const optionValues = await page.locator(`${testid('export-tag-type')} option`)
+            .evaluateAll((els) => els.map((el) => el.value));
+        expect(optionValues).toEqual(['all', 'user', 'ai', 'reference']);
+
+        const tag = (name) => page.locator(`${testid('export-tag')}[data-tag-name="${name}"]`);
+        await expect(tag('e2e-ai-tag')).toBeVisible();
+        await expect(tag('e2e-reference-tag')).toHaveCount(0);
+
+        await page.selectOption(testid('export-tag-type'), 'reference');
+        await expect(tag('e2e-reference-tag')).toBeVisible();
+    });
+
     test('a tag-filtered export contains only the assets carrying that tag', async ({ page }) => {
         await page.goto('/export');
         const tag = page.locator(`${testid('export-tag')}[data-tag-name="e2e-export-only"]`);

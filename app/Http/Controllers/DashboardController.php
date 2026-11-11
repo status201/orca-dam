@@ -18,14 +18,15 @@ class DashboardController extends Controller
             [Auth::id()]
         );
 
-        // Consolidated tag stats: 1 query instead of 3 (total + user + ai)
+        // Consolidated tag stats in one query. The total is user + ai: reference tags are
+        // kept apart from all-tags figures (tags.md REQ-reference-tags-kept-apart).
         $tagCounts = DB::selectOne(
-            "SELECT COUNT(*) as total, SUM(CASE WHEN type = 'user' THEN 1 ELSE 0 END) as user_tags, SUM(CASE WHEN type = 'ai' THEN 1 ELSE 0 END) as ai_tags FROM tags"
+            "SELECT SUM(CASE WHEN type = 'user' THEN 1 ELSE 0 END) as user_tags, SUM(CASE WHEN type = 'ai' THEN 1 ELSE 0 END) as ai_tags FROM tags"
         );
 
         $stats = [
             'total_assets' => (int) $assetStats->total,
-            'total_tags' => (int) $tagCounts->total,
+            'total_tags' => (int) $tagCounts->user_tags + (int) $tagCounts->ai_tags,
             'user_tags' => (int) $tagCounts->user_tags,
             'ai_tags' => (int) $tagCounts->ai_tags,
             'my_assets' => (int) $assetStats->mine,
@@ -42,7 +43,7 @@ class DashboardController extends Controller
 
         // Editor-only stats
         if (! $isAdmin) {
-            $myTags = Tag::whereHas('assets', fn ($q) => $q->where('user_id', $user->id))->get();
+            $myTags = Tag::general()->whereHas('assets', fn ($q) => $q->where('user_id', $user->id))->get();
             $stats['my_tags'] = $myTags->count();
             $stats['my_user_tags'] = $myTags->where('type', 'user')->count();
             $stats['my_ai_tags'] = $myTags->where('type', 'ai')->count();

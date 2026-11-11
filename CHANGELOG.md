@@ -7,6 +7,9 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Changed
+- **Reference tags are kept apart from All Tags.** Reference tags track usage by external systems, so **All Tags** now means user and AI tags only. The Tags page opens on All Tags again, with tabs All, User, AI and a separate **Reference Tags** tab on the far right. The asset grid's *Filter Tags* and the Export page's tag-type dropdowns follow the same order and default to All Tags. The dashboard's tag totals leave reference tags out. `GET /tags` and `GET /api/tags` accept `type=all` for user + AI; without `type` they still return every tag, so API integrations are unaffected. Spec: [tags.md](specs/features/tags.md) REQ-reference-tags-kept-apart.
+
 ### Security
 - **Symfony 8.1.10 → 8.1.11 (lock-only), clearing 11 advisories in six components published since 2026-11-04.** The affected components are `http-foundation` (4), `serializer` (3), `filesystem`, `http-kernel`, `routing` and `yaml` (CVE-2026-123792, YAML parse times). `http-foundation`, `http-kernel` and `routing` sit under every Laravel request. The app doesn't call the trusted-proxies `private_ranges` shortcut, Symfony's YAML or Serializer components, or `Filesystem\Path` directly; they arrive through framework and dev dependencies. The update also moves the 3.x contracts packages to 3.8.1 and `doctrine/deprecations` to 1.2.0. `composer audit --locked`, the CI gate these advisories had turned red, passes again.
 
