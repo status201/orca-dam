@@ -50,7 +50,7 @@ npm run spec:lint                        # spec structure + documented facts
 ### Testing
 
 ```bash
-php artisan config:clear && php artisan test          # 1335 tests, in-memory SQLite
+php artisan config:clear && php artisan test          # 1340 tests, in-memory SQLite
 php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
@@ -250,7 +250,7 @@ orca-dam/
 │       ├── layouts/
 │       └── ...
 ├── routes/                                # web.php, api.php, auth.php, console.php
-├── scripts/                               # sdd-guard.mjs, spec-lint.mjs, e2e-storage.mjs, npm-audit.mjs
+├── scripts/                               # sdd-guard.mjs, spec-lint.mjs, e2e-storage.mjs, npm-audit.mjs, build-version.mjs
 ├── specs/                                 # the behavioural source of truth
 │   ├── features/                          # 49 feature specs
 │   ├── decisions/                         # 20 ADRs

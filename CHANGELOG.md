@@ -7,6 +7,9 @@ Dates are in ISO 8601 (YYYY-MM-DD). Entries are grouped by release milestone.
 
 ## [Unreleased]
 
+### Added
+- **ORCA version on the System overview.** The first card on System → Overview now shows the release the build is based on, e.g. `v1.9.0 "Eye Patch"`. A build with commits after that release adds `+8 unreleased · 6e26fb5`, and a build from a branch other than `main` also shows the branch. `npm run build` stamps the version from `git describe` and the CHANGELOG codename; without a stamp the card reads *Unknown*. Spec: [system-admin.md](specs/features/system-admin.md) REQ-orca-version-shown.
+
 ### Changed
 - **Reference tags are kept apart from All Tags.** Reference tags track usage by external systems, so **All Tags** now means user and AI tags only. The Tags page opens on All Tags again, with tabs All, User, AI and a separate **Reference Tags** tab on the far right. The asset grid's *Filter Tags* and the Export page's tag-type dropdowns follow the same order and default to All Tags. The dashboard's tag totals leave reference tags out. `GET /tags` and `GET /api/tags` accept `type=all` for user + AI; without `type` they still return every tag, so API integrations are unaffected. Spec: [tags.md](specs/features/tags.md) REQ-reference-tags-kept-apart.
 

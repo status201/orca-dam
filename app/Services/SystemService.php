@@ -50,6 +50,7 @@ class SystemService
     public function getSystemInfo(): array
     {
         return [
+            'orca_version' => $this->getOrcaVersion(),
             'php_version' => PHP_VERSION,
             'laravel_version' => app()->version(),
             'environment' => app()->environment(),
@@ -70,6 +71,36 @@ class SystemService
             'cloudflare_enabled' => config('cloudflare.enabled') && config('cloudflare.api_token') !== '' && config('cloudflare.zone_id') !== '',
             's3_bucket_endpoint' => $this->getS3BucketEndpoint(),
             's3_versioning' => $this->getS3Versioning(),
+        ];
+    }
+
+    /**
+     * The ORCA version stamped by `npm run build` (scripts/build-version.mjs):
+     * {tag, codename, ahead, sha, branch, built_at}, or null when unstamped (REQ-orca-version-shown).
+     */
+    public function getOrcaVersion(?string $path = null): ?array
+    {
+        $path ??= base_path('bootstrap/cache/orca-version.json');
+
+        if (! File::exists($path)) {
+            return null;
+        }
+
+        $stamp = json_decode((string) File::get($path), true);
+
+        if (! is_array($stamp) || ! is_string($stamp['tag'] ?? null) || $stamp['tag'] === '') {
+            Log::warning('Ignoring malformed ORCA version stamp', ['path' => $path]);
+
+            return null;
+        }
+
+        return [
+            'tag' => $stamp['tag'],
+            'codename' => is_string($stamp['codename'] ?? null) ? $stamp['codename'] : null,
+            'ahead' => is_int($stamp['ahead'] ?? null) && $stamp['ahead'] > 0 ? $stamp['ahead'] : 0,
+            'sha' => is_string($stamp['sha'] ?? null) ? $stamp['sha'] : null,
+            'branch' => is_string($stamp['branch'] ?? null) ? $stamp['branch'] : null,
+            'built_at' => is_string($stamp['built_at'] ?? null) ? $stamp['built_at'] : null,
         ];
     }
 

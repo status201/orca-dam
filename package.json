@@ -4,7 +4,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build",
+        "build": "node scripts/build-version.mjs && vite build",
         "spec:lint": "node scripts/spec-lint.mjs",
         "spec:tighten": "node scripts/spec-lint.mjs tighten",
         "spec:version": "node scripts/sdd-guard.mjs version",

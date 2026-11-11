@@ -506,7 +506,35 @@
     <!-- Overview Tab -->
     <div x-show="activeTab === 'overview'" x-cloak class="space-y-6">
         <!-- System Info Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            <!-- ORCA Version -->
+            @php($orcaVersion = $systemInfo['orca_version'] ?? null)
+            <div class="bg-white rounded-lg shadow-sm p-6" data-testid="orca-version">
+                {{-- Top-aligned: the extra version lines must not push the logo below the other cards' icons --}}
+                <div class="flex items-start">
+                    <div class="shrink-0 bg-sky-100 rounded-lg p-3">
+                        <x-application-logo class="h-8 w-8" />
+                    </div>
+                    <div class="ml-4 mt-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-500">{{ __('ORCA Version') }}</p>
+                        @if ($orcaVersion)
+                            <p class="text-lg font-semibold text-gray-900" @if ($orcaVersion['built_at']) title="{{ __('Built') }} {{ $orcaVersion['built_at'] }}" @endif>
+                                {{ $orcaVersion['tag'] }}@if ($orcaVersion['codename']) <span class="font-normal">"{{ $orcaVersion['codename'] }}"</span>@endif
+                            </p>
+                            @if ($orcaVersion['ahead'] > 0)
+                                <p class="text-xs text-gray-500">+{{ $orcaVersion['ahead'] }} {{ __('unreleased') }}@if ($orcaVersion['sha']) · <span class="font-mono">{{ $orcaVersion['sha'] }}</span>@endif</p>
+                            @endif
+                            @if ($orcaVersion['branch'])
+                                <p class="text-xs text-gray-500 font-mono truncate" title="{{ $orcaVersion['branch'] }}">{{ $orcaVersion['branch'] }}</p>
+                            @endif
+                        @else
+                            <p class="text-lg font-semibold text-gray-900">{{ __('Unknown') }}</p>
+                            <p class="text-xs text-gray-500">{{ __('Run npm run build to stamp it') }}</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
             <!-- PHP Version -->
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex items-center">

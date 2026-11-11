@@ -639,7 +639,7 @@ git pull origin main
 # (it needs pest/phpunit). See the warning under "Install Dependencies" above.
 composer install --no-dev --optimize-autoloader
 npm install
-npm run build
+npm run build   # also stamps the ORCA version shown on System → Overview (tags arrive with git pull)
 
 # Run migrations
 php artisan migrate --force
