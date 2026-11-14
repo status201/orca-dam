@@ -240,7 +240,8 @@ Scenario: The tools overview lists every tool and every tool page boots
   Given the tools overview
   Then a card is present for each tool, including the deprecated tikz-svg/tikz-png entries
   And following each card renders the tool's root element with no page error
-    (Alpine's benign "Transition was skipped" rejection is filtered; rendering is not driven)
+    (the benign skipped-view-transition rejection is filtered — "Transition was skipped", or on
+    Chromium 159+ "…ViewTransition opt-in disabled", see guided-demos.md; rendering is not driven)
 # pinned by: tests/e2e/tools.spec.js
 
 Scenario: A forged render message from outside the iframe is ignored (REQ-7)

@@ -55,7 +55,7 @@ php artisan config:clear && php artisan test --testsuite=Unit
 php artisan config:clear && php artisan test --filter="asset"
 ./vendor/bin/pest --filter="can update"
 
-npm run test:e2e:install                 # once: Chromium + OS deps
+npm run test:e2e:install                 # once, and again after a Playwright bump: Chromium + OS deps
 npm run e2e:up                           # RustFS on :9100 (skip → S3 specs skip)
 npm run test:e2e                         # 146 Playwright tests, 21 spec files
 npm run test:e2e -- tests/e2e/asset-grid.spec.js

@@ -17,12 +17,11 @@ const tools = [
     { card: 'tools-card-tikz-png', root: 'tool-tikz-png', url: /tools\/tikz-png$/ },
 ];
 
-// Alpine rejects its transition promise when an element is removed mid-transition
-// and logs "Transition was skipped" as an uncaught error. It is noise, not a fault.
-// Chromium 159 (Playwright 1.65) reports a skipped cross-document view transition as
-// "Transition was aborted because of invalid state. ViewTransition opt-in disabled"
-// instead. The cause is the same (see collectPageErrors in guided-demo.spec.js), only
-// the wording changed, and Chromium 151 passes these tests against the same build.
+// app.css opts into cross-document view transitions, and clicking a tool card navigates
+// in a way that gets the transition skipped. Chromium reports the rejected promise as an
+// uncaught "Transition was skipped" (Chromium 159 / Playwright 1.65 words it "Transition
+// was aborted because of invalid state. ViewTransition opt-in disabled"). It is noise,
+// not a fault; see collectPageErrors in guided-demo.spec.js and guided-demos.md.
 const BENIGN = /Transition was skipped|Transition was aborted because of invalid state\. ViewTransition opt-in disabled/;
 
 test.describe('tools', () => {

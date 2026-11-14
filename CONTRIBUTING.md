@@ -116,7 +116,7 @@ If you touched Blade views or anything under `resources/js/`, also run the brows
 suite — it is a blocking CI job:
 
 ```bash
-npm run test:e2e:install     # once: Chromium + OS deps
+npm run test:e2e:install     # once, and again after a Playwright bump: Chromium + OS deps
 npm run e2e:up               # RustFS stands in for S3 — Docker if you have it, else a
 npm run test:e2e             #   downloaded binary; without either, the storage specs skip
 ```
