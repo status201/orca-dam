@@ -88,8 +88,9 @@ templates depend on them, so the migration changes no pixels it does not have to
 - **Supported browsers:** Safari 16.4+, Chrome and Edge 111+, Firefox 128+.
 - **Verification:** before/after full-page screenshots of every page and key UI state at 1440px and
   390px, diffed pixel by pixel against a baseline taken on Tailwind v3. 81 of 85 came out
-  pixel-identical. The other four differ only by live data, the Font Awesome 6.7.2 Laravel glyph,
-  palette shifts of at most 9 per colour channel, and a 1px table-column rounding.
+  pixel-identical. The other four differ only by live data, the Laravel glyph from Font
+  Awesome's 6.7.2 release, palette shifts of at most 9 per colour channel, and a 1px
+  table-column rounding.
 
 ## Alternatives considered
 
