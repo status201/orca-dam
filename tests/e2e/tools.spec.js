@@ -17,9 +17,12 @@ const tools = [
     { card: 'tools-card-tikz-png', root: 'tool-tikz-png', url: /tools\/tikz-png$/ },
 ];
 
-// Alpine rejects its transition promise when an element is removed mid-transition
-// and logs "Transition was skipped" as an uncaught error. It is noise, not a fault.
-const BENIGN = /Transition was skipped/;
+// app.css opts into cross-document view transitions, and clicking a tool card navigates
+// in a way that gets the transition skipped. Chromium reports the rejected promise as an
+// uncaught "Transition was skipped" (Chromium 159 / Playwright 1.65 words it "Transition
+// was aborted because of invalid state. ViewTransition opt-in disabled"). It is noise,
+// not a fault; see collectPageErrors in guided-demo.spec.js and guided-demos.md.
+const BENIGN = /Transition was skipped|Transition was aborted because of invalid state\. ViewTransition opt-in disabled/;
 
 test.describe('tools', () => {
     test('the overview lists every tool card', async ({ page }) => {

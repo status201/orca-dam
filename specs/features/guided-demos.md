@@ -308,6 +308,8 @@ Scenario: The Welcome demo is playable by a non-admin and offered by the carouse
 - The `sessionStorage` breadcrumb recovery has no test; an `advanceOn` step on the grid's
   folder/type filter would cover it.
 - Script-driven navigations (including the hand-off) log "Transition was skipped" from
-  cross-document view transitions; the E2E spec filters it. App-wide, not demo-specific.
+  cross-document view transitions (Chromium 159+: "Transition was aborted because of invalid
+  state. ViewTransition opt-in disabled"); `guided-demo.spec.js` and `tools.spec.js` filter both
+  wordings. App-wide, not demo-specific.
 - `reveal` has no primitive for multi-step disclosures (a modal inside a panel).
 - On mobile, desktop nav steps resolve to mobile counterparts only when the menu is open.

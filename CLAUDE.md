@@ -24,7 +24,7 @@ php artisan config:clear && php artisan test tests/Feature/AssetTest.php
 vendor/bin/phpunit --filter=test_name
 
 # Browser E2E (Playwright — boots `artisan serve --env=e2e` itself; see specs/features/e2e-testing.md)
-npm run test:e2e:install                 # once: Chromium + OS deps
+npm run test:e2e:install                 # once, and again after a Playwright bump: Chromium + OS deps
 npm run e2e:up                           # RustFS on :9100 (stands in for S3; skip → S3 specs skip)
 npm run test:e2e                         # whole suite
 npm run test:e2e -- tests/e2e/asset-grid.spec.js

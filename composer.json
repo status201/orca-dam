@@ -5,15 +5,15 @@
     "keywords": ["dam", "s3", "laravel", "asset-management"],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4.1",
         "aws/aws-sdk-php": "^3.379",
         "bacon/bacon-qr-code": "^3.0",
         "enshrined/svg-sanitize": "^1.0.0",
         "firebase/php-jwt": "^7.0",
-        "guzzlehttp/guzzle": "^7.15.2",
+        "guzzlehttp/guzzle": "^8.5",
         "intervention/image": "^4.2",
         "laravel/framework": "^13.0",
-        "laravel/passkeys": "~0.2.1",
+        "laravel/passkeys": "~0.3.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "pragmarx/google2fa-laravel": "^3.0"
@@ -27,8 +27,8 @@
         "laravel/sail": "^1.26",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
-        "pestphp/pest": "^4.0",
-        "phpunit/phpunit": "^12.0"
+        "pestphp/pest": "^5.0",
+        "phpunit/phpunit": "^13.0"
     },
     "autoload": {
         "psr-4": {
@@ -73,7 +73,7 @@
             "php-http/discovery": true
         },
         "audit": {
-            "ignore-abandoned": ["dragon-code/pretty-array", "dragon-code/support"]
+            "ignore-abandoned": ["dragon-code/contracts", "dragon-code/support"]
         }
     },
     "minimum-stability": "stable",

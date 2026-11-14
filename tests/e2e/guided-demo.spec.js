@@ -34,11 +34,18 @@ const spotlitTarget = (page) => overlay(page).getAttribute('data-target');
  * app already navigates this way in eight places, `assetGrid.applyFilters` among them, so
  * every grid filter change does it today. Nothing to do with the demo, so it is filtered
  * rather than asserted; anything else still fails the test.
+ *
+ * Chromium 159 (Playwright 1.65) words the same skip as "Transition was aborted because
+ * of invalid state. ViewTransition opt-in disabled". Both wordings are filtered. The
+ * failing tests pass on Chromium 151 against the same app build.
  */
+const SKIPPED_VIEW_TRANSITION =
+    /Transition was skipped|Transition was aborted because of invalid state\. ViewTransition opt-in disabled/;
+
 function collectPageErrors(page) {
     const errors = [];
     page.on('pageerror', (error) => {
-        if (!/Transition was skipped/.test(error.message)) errors.push(error.message);
+        if (!SKIPPED_VIEW_TRANSITION.test(error.message)) errors.push(error.message);
     });
 
     return errors;

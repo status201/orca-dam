@@ -339,7 +339,7 @@ Scenario: A spec can reach a state no HTTP route exposes, as a last resort
 
 ```bash
 npm ci && npm run build            # the @vite manifest must exist
-npm run test:e2e:install           # once — Chromium + OS deps
+npm run test:e2e:install           # once, and again after a Playwright bump — Chromium + OS deps
 npm run e2e:up                     # RustFS on :9100 (skippable, see REQ-8)
 npm run test:e2e                   # boots artisan serve itself
 npm run test:e2e -- tests/e2e/asset-grid.spec.js   # one file
