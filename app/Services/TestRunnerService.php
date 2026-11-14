@@ -474,19 +474,57 @@ class TestRunnerService
         $currentSuite = '';
 
         foreach ($lines as $line) {
-            if (preg_match('/^\s*(PASS|FAIL)\s+(.+)$/i', $line, $matches)) {
+            // Pest heads each file with PASS, FAIL, or WARN (a file with skipped/risky tests).
+            // The suite is a single class name, which keeps a free-text "WARN …" notice from
+            // being mistaken for a header.
+            if (preg_match('/^\s*(PASS|FAIL|WARN)\s+(\S+)\s*$/i', $line, $matches)) {
                 $currentSuite = trim($matches[2]);
             }
 
+            // Every per-test line ends in its duration; that is what tells a "- skipped" line
+            // apart from a "- Expected" line in an assertion diff.
             if (preg_match('/^\s*[✓✔]\s*(.+?)\s+[\d\.]+s\s*$/u', $line, $matches)) {
                 $stats['tests'][] = ['name' => trim($matches[1]), 'suite' => $currentSuite, 'status' => 'passed'];
             } elseif (preg_match('/^\s*[✗✘×⨯]\s*(.+?)\s+[\d\.]+s\s*$/u', $line, $matches)) {
                 $stats['tests'][] = ['name' => trim($matches[1]), 'suite' => $currentSuite, 'status' => 'failed'];
+            } elseif (preg_match('/^\s*-\s+(.+?)\s+[\d\.]+s\s*$/u', $line, $matches)) {
+                // "- name → reason": the reason is not part of the name.
+                $name = trim(preg_replace('/\s+→.*$/u', '', $matches[1]));
+                $stats['tests'][] = ['name' => $name, 'suite' => $currentSuite, 'status' => 'skipped'];
             } elseif (preg_match('/^\s*FAILED\s+(.+?)\s*>\s*(.+?)\s*$/i', $line, $matches)) {
-                $stats['tests'][] = ['name' => trim($matches[2]), 'suite' => trim($matches[1]), 'status' => 'failed'];
+                $this->recordFailedSummary($stats['tests'], trim($matches[1]), trim($matches[2]));
             }
         }
 
         return $stats;
+    }
+
+    /**
+     * Record a test from Pest's closing "FAILED  Suite > name" block.
+     *
+     * The same test was usually already listed from its "⨯ name" line, which Pest truncates
+     * with "…" when it is long. That entry is completed with the full name rather than listed
+     * a second time; only a failure with no "⨯" line of its own gets a new entry.
+     *
+     * @param  array<int, array{name: string, suite: string, status: string}>  $tests
+     */
+    private function recordFailedSummary(array &$tests, string $suite, string $name): void
+    {
+        foreach ($tests as $i => $test) {
+            if ($test['status'] !== 'failed' || $test['suite'] !== $suite) {
+                continue;
+            }
+
+            $shown = $test['name'];
+            $truncated = str_ends_with($shown, '…') && str_starts_with($name, rtrim(mb_substr($shown, 0, -1)));
+
+            if ($shown === $name || $truncated) {
+                $tests[$i]['name'] = $name;
+
+                return;
+            }
+        }
+
+        $tests[] = ['name' => $name, 'suite' => $suite, 'status' => 'failed'];
     }
 }

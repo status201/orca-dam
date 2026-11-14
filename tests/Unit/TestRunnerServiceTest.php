@@ -187,3 +187,77 @@ test('parseTestOutput replaces suite name for tests in second suite', function (
     expect($stats['tests'][0]['suite'])->toBe('Tests\\Unit\\Suite1');
     expect($stats['tests'][1]['suite'])->toBe('Tests\\Unit\\Suite2');
 });
+
+// Modelled on real Pest 5 output (`artisan test`, ANSI already stripped): a FAIL file, a WARN
+// file (it has a skipped test), the closing FAILED block, and the summary.
+function realisticPestOutput(): string
+{
+    return implode("\n", [
+        '   FAIL  Tests\\Unit\\ProbeTest',
+        '  ✓ probe passes                                                     1.12s  ',
+        '  ⨯ probe fails with a name long enough that Pest cuts it off with an e… 0.06s  ',
+        '  - probe skipped → not on this driver                                 0.03s  ',
+        '',
+        '   WARN  Tests\\Unit\\TagTest',
+        '  ✓ tag can have many assets                                           0.13s  ',
+        '  - a name the collation already holds reuses that tag (regression) → SQ… 0.04s  ',
+        '  ────────────────────────────────────────────────────────────────────────────  ',
+        '   FAILED  Tests\\Unit\\ProbeTest > probe fails with a name long enough that Pest cuts it off with an ellipsis',
+        '  Failed asserting that 1 is identical to 2.',
+        '',
+        '  - Expected  - 1',
+        '  + Received  + 3',
+        '',
+        '  Tests:    1 failed, 2 skipped, 2 passed (4 assertions)',
+        '  Duration: 1.52s',
+    ]);
+}
+
+test('parseTestOutput lists a failed test once, with the full name from the FAILED block (regression)', function () {
+    $failed = array_values(array_filter(parseOutput(realisticPestOutput())['tests'], fn ($t) => $t['status'] === 'failed'));
+
+    expect($failed)->toHaveCount(1);
+    expect($failed[0]['name'])->toBe('probe fails with a name long enough that Pest cuts it off with an ellipsis');
+    expect($failed[0]['suite'])->toBe('Tests\\Unit\\ProbeTest');
+});
+
+test('parseTestOutput attributes tests after a WARN header to that file (regression)', function () {
+    $tests = collect(parseOutput(realisticPestOutput())['tests']);
+
+    expect($tests->firstWhere('name', 'tag can have many assets')['suite'])->toBe('Tests\\Unit\\TagTest');
+    expect($tests->firstWhere('name', 'probe passes')['suite'])->toBe('Tests\\Unit\\ProbeTest');
+});
+
+test('parseTestOutput lists skipped tests without their reason (regression)', function () {
+    $skipped = collect(parseOutput(realisticPestOutput())['tests'])->where('status', 'skipped')->values();
+
+    expect($skipped->pluck('name')->all())->toBe([
+        'probe skipped',
+        'a name the collation already holds reuses that tag (regression)',
+    ]);
+    expect($skipped->pluck('suite')->all())->toBe(['Tests\\Unit\\ProbeTest', 'Tests\\Unit\\TagTest']);
+});
+
+test('parseTestOutput lists every test exactly once and keeps the summary counts', function () {
+    $stats = parseOutput(realisticPestOutput());
+
+    expect($stats['tests'])->toHaveCount(5);
+    expect(collect($stats['tests'])->countBy('status')->all())->toBe(['passed' => 2, 'failed' => 1, 'skipped' => 2]);
+    expect([$stats['passed'], $stats['failed'], $stats['skipped'], $stats['assertions']])->toBe([2, 1, 2, 4]);
+});
+
+test('parseTestOutput ignores assertion-diff lines that start with a dash', function () {
+    $output = "  FAIL  Tests\\Unit\\X\n  - Expected  - 1\n  - Array []";
+
+    expect(parseOutput($output)['tests'])->toBe([]);
+});
+
+test('parseTestOutput does not treat a free-text WARN notice as a suite header', function () {
+    $output = implode("\n", [
+        '   PASS  Tests\\Unit\\Real',
+        '   WARN  Metadata found in doc-comment for method Foo::bar()',
+        '  ✓ still in the real suite 0.01s',
+    ]);
+
+    expect(parseOutput($output)['tests'][0]['suite'])->toBe('Tests\\Unit\\Real');
+});

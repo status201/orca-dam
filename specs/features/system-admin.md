@@ -269,10 +269,11 @@ Scenario: RunTestSuiteJob marks the run failed and re-throws on exception
   And the exception propagates
 # pinned by: tests/Unit/Jobs/RunTestSuiteJobTest.php
 
-Scenario: parseTestOutput extracts pass/fail/skip/assertion counts and per-test results
-  Given raw Pest console output with PASS/FAIL suite headers and checkmark/x-mark test lines
+Scenario: parseTestOutput extracts the counts and lists each test once, in its own suite
+  Given Pest output with PASS/FAIL/WARN headers, ✓/⨯/- (skipped) lines and a FAILED block
   When parseTestOutput is called
-  Then passed/failed/skipped/assertions are extracted and each test is attributed to its suite
+  Then the counts are extracted and each test appears once, under its own suite
+  And (regression) the FAILED block does not repeat a ⨯ test, and skips are listed
 # pinned by: tests/Unit/TestRunnerServiceTest.php
 
 Scenario: toUtf8 scrubs a truncated multi-byte tail so JSON encoding never fails
