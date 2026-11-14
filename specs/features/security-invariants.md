@@ -3,7 +3,7 @@
 ```yaml
 id: security-invariants
 status: implemented
-version: 4
+version: 5
 owner: core
 related:
   - architecture
@@ -100,7 +100,7 @@ until a human edits that allowlist.
   composer: an **abandoned** package (exit 2) may be exempted by name in `composer.json`'s
   `config.audit.ignore-abandoned` only when it is transitive, no replacement is possible because a
   dependent still requires it, and the dependent's latest release still does. Advisories against it
-  still fail. Current entries: `dragon-code/support` and `dragon-code/pretty-array` (dev-only, via
+  still fail. Current entries: `dragon-code/support` and `dragon-code/contracts` (dev-only, via
   `laravel-lang/common`); they go when laravel-lang drops them or `lang:safe-update` no longer needs
   `laravel-lang/common`.
 
