@@ -26,9 +26,16 @@ source:
 ## Background / Why
 
 Passkeys give admins and editors passwordless, phishing-resistant login (WebAuthn / FIDO2) via
-`laravel/passkeys` ~0.2.1. ORCA keeps the package's model and event plumbing but owns the URLs
+`laravel/passkeys` ~0.3.0. ORCA keeps the package's model and event plumbing but owns the URLs
 (`/passkey/*`, `/profile/passkeys/*`) and storage (a custom `App\Models\Passkey`). API users are
 excluded — passkeys, like 2FA, are a browser-session concept.
+
+The 0.3.0 upgrade changed two package behaviours with no ORCA code change. New registrations get
+a hex-encoded user handle (iOS Safari corrupted binary ones); existing passkeys keep working
+because an assertion is checked against the handle stored with the credential. A WebAuthn
+assertion failure (bad signature, mismatched handle) now arrives as `InvalidPasskeyException`
+instead of a raw library exception, so ORCA's login controller answers it like any failed
+passkey: a 422 with its own translated message, counted by the rate limiter.
 
 ## Requirements
 
