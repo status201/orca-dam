@@ -60,11 +60,11 @@ map outcomes to status codes (see
 ## Tech stack
 
 ```yaml
-language: PHP                   # 8.3+ (CI runs 8.4)
+language: PHP                   # 8.4.1+ (locked Symfony 8 requires it; CI runs 8.4)
 framework: laravel/framework    # ^13
 frontend: Blade + Alpine.js     # Alpine 3.4, Tailwind 4.3 (CSS-first, ADR-019), Font Awesome 6.7 (bundled)
 build: Vite                     # 8
-tests: pestphp/pest             # 4 (on PHPUnit 12) — in-memory SQLite, sync queue
+tests: pestphp/pest             # 5 (on PHPUnit 13) — in-memory SQLite, sync queue
 style: laravel/pint             # 1.13
 aws: aws/aws-sdk-php            # 3.379 (S3, Rekognition, Translate)
 images: intervention/image      # 4 (GD driver)

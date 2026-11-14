@@ -143,7 +143,7 @@ Adding a class to the `exec` list is a claim that its arguments cannot originate
 
 ## Visual aids
 
-Tooling versions: `pestphp/pest-plugin-arch` (installed with Pest `^4.0`),
+Tooling versions: `pestphp/pest-plugin-arch` (installed with Pest `^5.0`),
 `github/codeql-action@v4`.
 
 ## Scenarios (BDD)

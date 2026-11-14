@@ -86,7 +86,7 @@ npm run dev && php artisan serve
 ```
 
 ### Prerequisites
-- PHP 8.3+ (`composer.json` requires `^8.3`; 8.4 recommended) with `memory_limit` ≥ 256M
+- PHP 8.4.1+ (`composer.json` requires `^8.4.1`, which the locked Symfony 8 packages need) with `memory_limit` ≥ 256M
 - Composer, Node.js & NPM
 - MariaDB (see [ADR-008](specs/decisions/adr-008-sqlite-tests.md)); SQLite works for small deployments
 - An AWS account with an S3 bucket
