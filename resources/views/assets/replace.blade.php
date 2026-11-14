@@ -119,7 +119,7 @@
 
                     <template x-if="selectedFile && !uploading">
                         <div class="space-y-4">
-                            <i class="attention fas fa-file-check text-5xl text-green-500"></i>
+                            <i class="attention fas fa-file-circle-check text-5xl text-green-500"></i>
                             <div>
                                 <p class="text-lg font-medium text-gray-700" data-testid="replace-selected-name" x-text="selectedFile.name"></p>
                                 <p class="text-sm text-gray-500" x-text="formatFileSize(selectedFile.size)"></p>

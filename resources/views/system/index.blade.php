@@ -1459,7 +1459,7 @@
                                         <div class="px-4 py-2 flex items-center gap-3 text-sm"
                                              :class="test.status === 'failed' ? 'bg-red-50' : ''">
                                             <i class="attention fas"
-                                               :class="test.status === 'passed' ? 'fa-check text-green-500' : 'fa-times text-red-500'"></i>
+                                               :class="test.status === 'passed' ? 'fa-check text-green-500' : (test.status === 'skipped' ? 'fa-forward text-yellow-500' : 'fa-times text-red-500')"></i>
                                             <span :class="test.status === 'failed' ? 'text-red-700 font-medium' : 'text-gray-700'" x-text="test.name"></span>
                                         </div>
                                     </template>
