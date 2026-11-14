@@ -296,6 +296,14 @@ function checkVersions(errors, docFiles) {
 
   for (const file of docFiles) {
     if (!existsSync(file)) continue;
+    // A decided ADR is an append-only record of what was true when it was written ("the
+    // diff showed the Font Awesome 6.7.2 glyph"), the same reasoning as released CHANGELOG
+    // entries. Holding it to today's manifest would force a rewrite the SDD guard forbids.
+    // A `proposed` ADR is still being written, so it is checked.
+    if (ADR_FILE.test(path.basename(file))) {
+      const status = topKey(metadataBlock(readFileSync(file, 'utf8')) ?? '', 'status');
+      if (status !== 'proposed') continue;
+    }
     const r = rel(file);
     checkableText(file).split(/\r?\n/).forEach((line, i) => {
       for (const { label, pkg, re } of matchers) {

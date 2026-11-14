@@ -267,7 +267,8 @@ gate. `scripts/spec-lint.mjs` (`npm run spec:lint`) checks, over `specs/**` and 
 - **Test paths** — every `tests/…` path on a `# pinned by:` line or in a backticked
   `## Tests & verification` bullet resolves (`## Open questions / future` is exempt).
 - **Dependency versions** match the *constraints* in `composer.json` / `package.json` (never the
-  lockfiles); coarser is fine, contradicting is not.
+  lockfiles); coarser is fine, contradicting is not. ADRs past `proposed` are exempt: like a
+  released CHANGELOG entry, they record what was true then, and they are append-only.
 - **Hand-counted totals** — feature specs, ADRs, Alpine modules, services, console commands,
   `*Test.php` files, Pest tests, and Playwright tests + spec files (loop-generated cases counted).
 - **The `QUICK_REFERENCE.md` file tree** names every `app/Services/` and `app/Console/Commands/`
