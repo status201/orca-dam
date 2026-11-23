@@ -14,11 +14,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
-    "@wordpress/env": "^12.1.0",
-    "@wordpress/scripts": "^37.1.0"
+    "@wordpress/env": "^12.2.0",
+    "@wordpress/scripts": "^37.2.0"
   },
   "dependencies": {
-    "@wordpress/components": "^44.0.0",
+    "@wordpress/components": "^45.0.0",
     "@wordpress/element": "^10.0.0",
     "@wordpress/i18n": "^7.0.0"
   },
