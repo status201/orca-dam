@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\SetLocale;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Asset;
 use App\Models\Setting;
 use App\Services\FolderRegistry;
 use App\Services\S3Service;
@@ -72,6 +73,15 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        // assets.user_id is RESTRICT, and only an admin delete can transfer assets — refuse
+        // before logging out, so a refusal leaves the user signed in
+        // (specs/features/user-management.md REQ-self-delete-refused-with-assets).
+        if (Asset::withTrashed()->where('user_id', $user->id)->exists()) {
+            return back()->withErrors([
+                'password' => __('You still own assets. Ask an administrator to delete your account and transfer them.'),
+            ], 'userDeletion');
+        }
 
         Auth::logout();
 

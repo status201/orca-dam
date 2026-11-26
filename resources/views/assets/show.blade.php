@@ -503,10 +503,11 @@
                     @can('delete', $asset)
                     <form action="{{ route('assets.destroy', $asset) }}"
                           method="POST"
-                          onsubmit="return confirm('{{ __('Are you sure you want to delete') }} {{$asset->filename}}?')">
+                          x-data="{ submitting: false }"
+                          @submit="if (submitting || !confirm(@js(__('Are you sure you want to delete').' '.$asset->filename.'?'))) { $event.preventDefault(); return; } submitting = true">
                         @csrf
                         @method('DELETE')
-                        <button type="submit"
+                        <button type="submit" :disabled="submitting"
                                 data-testid="asset-detail-delete" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
                             <i class="fas fa-trash mr-2"></i> {{ __('Delete Asset') }}
                         </button>

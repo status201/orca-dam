@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -96,6 +97,31 @@ class ProfileTest extends TestCase
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_user_who_owns_assets_cannot_delete_their_account(): void
+    {
+        // user-management.md REQ-self-delete-refused-with-assets
+        $user = User::factory()->create(['role' => 'editor']);
+        $active = Asset::factory()->create(['user_id' => $user->id]);
+        $trashed = Asset::factory()->create(['user_id' => $user->id]);
+        $trashed->delete();
+
+        $response = $this
+            ->actingAs($user)
+            ->from('/profile')
+            ->delete('/profile', [
+                'password' => 'password',
+            ]);
+
+        $response
+            ->assertSessionHasErrorsIn('userDeletion', 'password')
+            ->assertRedirect('/profile');
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertNotNull($user->fresh());
+        $this->assertNotNull(Asset::withTrashed()->find($active->id));
+        $this->assertNotNull(Asset::withTrashed()->find($trashed->id));
     }
 
     public function test_profile_page_shows_preferences_form(): void

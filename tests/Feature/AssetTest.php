@@ -387,6 +387,33 @@ test('only admins can force delete assets', function () {
     expect(Asset::withTrashed()->find($assetId))->toBeNull();
 });
 
+test('a repeated trash, restore or force-delete form lands on the list, not a 404', function () {
+    // asset-trash.md REQ-repeat-trash-redirects
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $trashed = Asset::factory()->create();
+    $this->actingAs($admin)->delete(route('assets.destroy', $trashed))->assertRedirect(route('assets.index'));
+    $this->actingAs($admin)->delete(route('assets.destroy', $trashed->id))->assertRedirect(route('assets.index'));
+
+    $gone = Asset::factory()->create();
+    $gone->delete();
+    $this->actingAs($admin)->delete(route('assets.force-delete', $gone->id))->assertRedirect(route('assets.trash'));
+    $this->actingAs($admin)->delete(route('assets.force-delete', $gone->id))->assertRedirect(route('assets.trash'));
+    $this->actingAs($admin)->post(route('assets.restore', $gone->id))->assertRedirect(route('assets.trash'));
+});
+
+test('a repeated trash or force-delete over JSON is still a 404', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $asset = Asset::factory()->create();
+    $asset->delete();
+
+    $this->actingAs($admin)->deleteJson(route('assets.destroy', $asset->id))->assertNotFound();
+
+    $asset->forceDelete();
+    $this->actingAs($admin)->deleteJson(route('assets.force-delete', $asset->id))->assertNotFound();
+    $this->actingAs($admin)->postJson(route('assets.restore', $asset->id))->assertNotFound();
+});
+
 test('asset detail shows license expiry date', function () {
     $user = User::factory()->create();
     $asset = Asset::factory()->create([

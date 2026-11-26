@@ -3,7 +3,7 @@
 ```yaml
 id: asset-cycle-navigation
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -63,6 +63,9 @@ either carries its context or degrades cleanly to a plain deeplink.
   appended (the REQ-1 `CONTEXT_KEYS` allowlist, canonical order, empties dropped) — never the
   whole query string. Why: any other parameter can reactivate an unrelated feature on the detail
   page (e.g. a leaked `?demo=` — [`guided-demos.md`](guided-demos.md) REQ-6a).
+- **REQ-live-neighbours** — `prev`/`next` never point at a trashed or deleted asset. When a
+  neighbour from the cached ID list no longer loads, the cache entry is dropped and the list is
+  rebuilt once from the live query before `position`, `total` and the neighbours are computed.
 
 ## Technical design
 
@@ -106,7 +109,8 @@ entry:
 
 The ID list is resolved **before** paging is considered (prev/next must cross page boundaries);
 `perPage` only recomputes each neighbour's `page` (REQ-4). Both neighbours are loaded in one
-`Asset::whereIn()` — never N+1.
+`Asset::whereIn()` — never N+1. A neighbour missing from that load forgets the cache key and
+rebuilds the list once (REQ-live-neighbours).
 
 ### Persistence
 
@@ -153,6 +157,12 @@ Scenario: No cycle nav for an excluded asset or a single-asset result (REQ-3)
   Then cycleNav is null
 # pinned by: tests/Feature/AssetCycleNavigationTest.php
 
+Scenario: A neighbour trashed after the list was cached is skipped (REQ-live-neighbours)
+  Given the cycle list for a context has been cached
+  When the current asset's next neighbour is trashed and the page is opened again
+  Then next points at the following live asset and the total drops by one
+# pinned by: tests/Feature/AssetCycleNavigationTest.php
+
 Scenario: The back link round-trips the context, or falls back without it (REQ-6)
   Given a show page opened with context params
   Then the back URL carries those same params
@@ -191,5 +201,6 @@ Scenario: The block that builds $showSuffix never leaks into the page (REQ-7)
 ## Open questions / future
 
 - No E2E coverage of the cycling itself (keyboard + prefetch in `asset-detail.js`).
-- The 60s ID-list cache can show a stale `total` for up to a minute after an upload or trash.
+- The 60s ID-list cache can show a stale `total` for up to a minute after an upload, or after a
+  trash elsewhere in the list that is not a neighbour.
 - The full ID list is cached with no explicit cap; folder scoping bounds it in practice.

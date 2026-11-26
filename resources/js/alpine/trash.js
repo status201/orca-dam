@@ -14,9 +14,18 @@ function trashPage() {
         bulkRestoreShowSummary: false,
         bulkDeleteShowSummary: false,
 
+        // Set once a single restore / force-delete form is on its way, so a second click
+        // cannot send a repeat request (asset-trash.md REQ-repeat-trash-redirects).
+        submitting: false,
+
         init() {
             // Clear stale selections from other pages
             Alpine.store('bulkSelection').clear();
+
+            // A page restored from the back/forward cache keeps its JS state; re-arm the buttons.
+            window.addEventListener('pageshow', (event) => {
+                if (event.persisted) this.submitting = false;
+            });
         },
 
         saveViewMode() {
@@ -28,7 +37,9 @@ function trashPage() {
         },
 
         restoreAsset(id) {
+            if (this.submitting) return;
             if (confirm(window.__pageData.confirmRestore)) {
+                this.submitting = true;
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/assets/${id}/restore`;
@@ -45,7 +56,9 @@ function trashPage() {
         },
 
         confirmDelete(id) {
+            if (this.submitting) return;
             if (confirm(window.__pageData.confirmPermanentDelete)) {
+                this.submitting = true;
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = `/assets/${id}/force-delete`;
