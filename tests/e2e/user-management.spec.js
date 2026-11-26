@@ -91,6 +91,7 @@ test.describe('user management', () => {
         release();
 
         await expect(page).toHaveURL(/\/users$/);
+        await expect(page.locator(testid('flash-success'))).toBeVisible();
         await expect(userRow(page, users.editor.email)).toHaveCount(0);
     });
 });

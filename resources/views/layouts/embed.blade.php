@@ -39,6 +39,7 @@
         <div class="min-h-screen bg-gray-100 flex flex-col">
             <!-- Page Content -->
             <main class="grow py-4 px-4 sm:px-6">
+                <x-alert-messages />
                 @yield('content')
             </main>
         </div>

@@ -182,7 +182,7 @@ Scenario: Deleting a user and transferring their assets returns to the user list
   Given a user who owns assets
   When an admin picks a transfer target and confirms the delete
   Then the confirm button is disabled while the request runs
-  And the admin lands on /users with the user gone
+  And the admin lands on /users with the success message and the user gone
 # pinned by: tests/e2e/user-management.spec.js
 
 Scenario: The users table lists the seeded accounts with their roles

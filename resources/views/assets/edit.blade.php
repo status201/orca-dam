@@ -16,8 +16,6 @@
     <div class="bg-white rounded-lg shadow-lg p-6">
         <h1 class="text-3xl font-bold mb-6">{{ __('Edit Asset') }}</h1>
 
-        <x-alert-messages />
-
         @if($asset->is_missing)
         <div class="attention mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg">
             <i class="fas fa-triangle-exclamation mr-2"></i>

@@ -21,8 +21,6 @@
         </div>
     </div>
 
-    <x-alert-messages />
-
     @if($asset->is_missing)
     <div class="attention mb-6 p-4 border border-red-200 text-red-800 rounded-lg">
         <i class="fas fa-triangle-exclamation mr-2"></i>
