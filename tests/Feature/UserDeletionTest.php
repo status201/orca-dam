@@ -122,3 +122,13 @@ test('a repeated delete of an already-deleted user redirects to the user list', 
     $this->actingAs($admin)->get(route('users.edit', $user))
         ->assertRedirect(route('users.index'));
 });
+
+test('a missing user keeps the 404 for JSON clients and redirects clearing passkeys', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $user = User::factory()->create(['role' => 'editor']);
+    $user->delete();
+
+    $this->actingAs($admin)->deleteJson(route('users.destroy', $user->id))->assertNotFound();
+    $this->actingAs($admin)->delete(route('users.passkeys.clear', $user->id))
+        ->assertRedirect(route('users.index'));
+});

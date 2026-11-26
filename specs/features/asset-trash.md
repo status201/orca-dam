@@ -69,6 +69,7 @@ POST   assets/bulk/trash:                     AssetTrashController::bulkTrash   
 POST   assets/trash/bulk-restore:             AssetTrashController::bulkRestore        # assets.trash.bulk-restore
 DELETE assets/{asset}/force-delete:           AssetTrashController::forceDelete        # assets.force-delete (withTrashed)
 DELETE assets/trash/bulk-force-delete:        AssetTrashController::bulkForceDeleteTrashed  # assets.trash.bulk-force-delete
+# destroy, restore, force-delete: a missing {asset} → RedirectWhenGone (REQ-repeat-trash-redirects)
 ```
 
 Policy abilities: `delete`, `bulkTrash`, `restore`, `bulkRestore` (admin+editor), `forceDelete`

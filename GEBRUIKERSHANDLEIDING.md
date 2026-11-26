@@ -321,6 +321,8 @@ Ben je al je passkey-apparaten kwijt? Dan kan een admin je passkeys wissen via d
 
 > Passkeys vereisen HTTPS in je browser. Lokale ontwikkeling op `localhost` werkt ook, maar custom hostnames hebben TLS nodig.
 
+**Je account verwijderen:** **Profiel → Account verwijderen** werkt alleen zolang je geen assets bezit, ook geen assets in de prullenbak, want je uploads moeten bij iemand blijven. Heb je wel assets, vraag dan een admin: die verwijdert je via de pagina Gebruikers en draagt je assets over aan een andere gebruiker.
+
 ---
 
 ## Bestanden verplaatsen (de omweg)

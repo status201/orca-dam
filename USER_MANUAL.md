@@ -321,6 +321,8 @@ If you lose all your passkey-bearing devices, an admin can clear your passkeys f
 
 > Passkeys require HTTPS in your browser. Local development on `localhost` works too, but custom hostnames need TLS.
 
+**Deleting your account:** **Profile → Delete Account** works only while you own no assets, trashed ones included, because your uploads must stay with someone. If you do own assets, ask an admin: deleting you from the Users page transfers your assets to another user.
+
 ---
 
 ## Moving Files (The Long Way)

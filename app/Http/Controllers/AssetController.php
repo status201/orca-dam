@@ -384,9 +384,10 @@ class AssetController extends Controller
         ksort($cacheKeyContext);
         $cacheKey = 'asset-cycle:'.Auth::id().':'.sha1((string) json_encode($cacheKeyContext));
 
-        // Two passes at most: when a cached neighbour no longer loads (trashed or deleted since
-        // the list was cached), drop the entry and rebuild it from the live query once, so
-        // prev/next never link to a 404 (specs/features/asset-cycle-navigation.md REQ-live-neighbours).
+        // Two passes at most. The cached list can be stale either way: a neighbour trashed since
+        // (prev/next would 404) or the current asset added since (no nav at all). Either drops
+        // the entry and rebuilds it from the live query once
+        // (specs/features/asset-cycle-navigation.md REQ-live-neighbours).
         for ($attempt = 0; ; $attempt++) {
             $idList = Cache::remember(
                 $cacheKey,
@@ -395,13 +396,15 @@ class AssetController extends Controller
             );
 
             $total = count($idList);
-            if ($total <= 1) {
-                return null;
-            }
-
             $index = array_search($asset->id, $idList, false);
-            if ($index === false) {
-                return null;
+
+            if ($total <= 1 || $index === false) {
+                if ($attempt > 0) {
+                    return null;
+                }
+                Cache::forget($cacheKey);
+
+                continue;
             }
 
             $prevId = $index > 0 ? $idList[$index - 1] : null;

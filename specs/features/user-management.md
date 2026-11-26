@@ -39,14 +39,15 @@ and the asset reassignment required before deleting a user who owns assets. Prof
 - **REQ-5** — `UserController::clearPasskeys` is a distinct admin recovery action, gated by
   `UserPolicy::clearPasskeys` with the same self-action prohibition as `delete` — see
   [passkeys.md](passkeys.md).
-- **REQ-repeat-delete-redirects** — A `/users/{user}` request for a user that no longer exists
-  redirects to `/users` instead of a 404 (`->missing()` on the resource route): a second click on
-  "Delete User", or a stale edit link. The delete modal disables its confirm button once
-  submitted, so one click sends one request.
+- **REQ-repeat-delete-redirects** — A `/users/{user}` request (incl. `/passkeys`) for a user that no
+  longer exists redirects to `/users` instead of a 404 (`RedirectWhenGone`): a second "Delete User"
+  click, or a stale edit link. A JSON request keeps the 404. The delete modal disables its confirm
+  button once submitted, so one click sends one request.
 - **REQ-self-delete-refused-with-assets** — Self-service account deletion (`DELETE /profile`,
   `ProfileController::destroy`) is refused with a `userDeletion` error while the user owns any
   asset, trashed included. The check runs before logout, so a refusal leaves the user signed in
-  and the account intact; only an admin delete (REQ-4) transfers assets.
+  and the account intact; a delete that still trips the RESTRICT key signs them back in and refuses
+  the same way. Only an admin delete (REQ-4) transfers assets; an admin is pointed to another admin.
 
 ## Technical design
 
@@ -143,6 +144,7 @@ Scenario: A repeated delete of the same user lands on the user list
   When the same DELETE /users/{target} arrives again
   Then the response redirects to /users, not a 404
   And GET /users/{target}/edit redirects to /users as well
+  But with Accept: application/json the response is a 404
 # pinned by: tests/Feature/UserDeletionTest.php
 
 Scenario: A user who owns assets cannot delete their own account
@@ -150,6 +152,7 @@ Scenario: A user who owns assets cannot delete their own account
   When they DELETE /profile with their correct password
   Then the response has a userDeletion error
   And they are still signed in and their account and assets still exist
+  And an admin is pointed to another administrator; an asset landing mid-delete is refused alike
 # pinned by: tests/Feature/ProfileTest.php
 
 Scenario Outline: An invalid transfer target blocks deletion

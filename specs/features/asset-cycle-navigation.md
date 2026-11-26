@@ -63,9 +63,10 @@ either carries its context or degrades cleanly to a plain deeplink.
   appended (the REQ-1 `CONTEXT_KEYS` allowlist, canonical order, empties dropped) — never the
   whole query string. Why: any other parameter can reactivate an unrelated feature on the detail
   page (e.g. a leaked `?demo=` — [`guided-demos.md`](guided-demos.md) REQ-6a).
-- **REQ-live-neighbours** — `prev`/`next` never point at a trashed or deleted asset. When a
-  neighbour from the cached ID list no longer loads, the cache entry is dropped and the list is
-  rebuilt once from the live query before `position`, `total` and the neighbours are computed.
+- **REQ-live-neighbours** — `prev`/`next` never point at a trashed or deleted asset, and a stale
+  cache never hides the nav. When a cached neighbour no longer loads, or the current asset is not in
+  the cached list (or the list has one entry), the entry is dropped and rebuilt once from the live
+  query; REQ-3's `null` applies only to that rebuilt list.
 
 ## Technical design
 
@@ -109,8 +110,8 @@ entry:
 
 The ID list is resolved **before** paging is considered (prev/next must cross page boundaries);
 `perPage` only recomputes each neighbour's `page` (REQ-4). Both neighbours are loaded in one
-`Asset::whereIn()` — never N+1. A neighbour missing from that load forgets the cache key and
-rebuilds the list once (REQ-live-neighbours).
+`Asset::whereIn()` — never N+1. A stale list (missing neighbour, or current asset absent) forgets
+the cache key and rebuilds once (REQ-live-neighbours).
 
 ### Persistence
 
@@ -161,6 +162,7 @@ Scenario: A neighbour trashed after the list was cached is skipped (REQ-live-nei
   Given the cycle list for a context has been cached
   When the current asset's next neighbour is trashed and the page is opened again
   Then next points at the following live asset and the total drops by one
+  And an asset added after the cache was built still gets its position and neighbours
 # pinned by: tests/Feature/AssetCycleNavigationTest.php
 
 Scenario: The back link round-trips the context, or falls back without it (REQ-6)

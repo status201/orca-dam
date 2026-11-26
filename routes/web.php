@@ -170,8 +170,9 @@ Route::middleware(['auth'])->group(function () {
         // A missing {user} — a second "Delete User" click, a stale edit link — lands back on the
         // list instead of a 404 (specs/features/user-management.md REQ-repeat-delete-redirects).
         Route::resource('users', UserController::class)->except(['show'])
-            ->missing(fn () => redirect()->route('users.index'));
+            ->missing(RedirectWhenGone::to('users.index'));
         Route::delete('users/{user}/passkeys', [UserController::class, 'clearPasskeys'])
+            ->missing(RedirectWhenGone::to('users.index'))
             ->name('users.passkeys.clear');
     });
 

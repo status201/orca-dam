@@ -502,6 +502,7 @@
                     <form action="{{ route('assets.destroy', $asset) }}"
                           method="POST"
                           x-data="{ submitting: false }"
+                          @pageshow.window="if ($event.persisted) submitting = false"
                           @submit="if (submitting || !confirm(@js(__('Are you sure you want to delete').' '.$asset->filename.'?'))) { $event.preventDefault(); return; } submitting = true">
                         @csrf
                         @method('DELETE')
