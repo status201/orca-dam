@@ -139,6 +139,12 @@ Scenario: Every translatable string has a Dutch entry
   Then each one resolves to a translation
 # pinned by: tests/Feature/TranslationIntegrityTest.php
 
+Scenario: Every translation key a JS module reads is injected by a view
+  Given a translation key read by a module in resources/js/
+  Then some view injects it via @js()/@json(), so Dutch never falls back to English
+  And a confirm naming an asset uses a :filename placeholder
+# pinned by: tests/Feature/TranslationIntegrityTest.php
+
 # — browser-level (see e2e-testing.md for the harness) —
 
 Scenario: Switching the interface language translates the chrome
@@ -163,5 +169,5 @@ Scenario: The grid keeps working in Dutch and data-testid locators are unaffecte
 
 ## Open questions / future
 
-- No test asserts that a view injects the JS translation keys its Alpine module reads (beyond the
-  blanket `__()` extraction).
+- The JS-key check is global: it proves a key is injected by *some* view, not by the view that
+  loads the module.

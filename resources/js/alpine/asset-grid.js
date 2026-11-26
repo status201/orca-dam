@@ -473,7 +473,7 @@ export function assetGrid() {
         async bulkTrash() {
             const translations = window.assetTranslations || {};
             const count = Alpine.store('bulkSelection').selected.length;
-            if (!confirm(translations.bulkTrashConfirm || `Move ${count} asset(s) to trash?`)) {
+            if (!confirm((translations.bulkTrashConfirm || 'Move :count asset(s) to trash?').replace(':count', count))) {
                 return;
             }
 
@@ -515,7 +515,7 @@ export function assetGrid() {
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to download assets');
+                    throw new Error(errorData.message || translations.bulkDownloadFailed || 'Failed to download assets');
                 }
 
                 const blob = await response.blob();
@@ -533,7 +533,7 @@ export function assetGrid() {
                 window.showToast(translations.downloadSuccess || 'Download started', 'success');
             } catch (error) {
                 console.error('Bulk download failed:', error);
-                window.showToast(error.message || translations.downloadFailed || 'Failed to download assets', 'error');
+                window.showToast(error.message || translations.bulkDownloadFailed || 'Failed to download assets', 'error');
             } finally {
                 this.bulkDownloading = false;
             }

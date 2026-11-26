@@ -88,3 +88,60 @@ test('every translatable string has a Dutch translation', function () {
         'Untranslated string(s) found — add Dutch entries to lang/nl.json: '.implode(' | ', array_slice($missing, 0, 20))
     );
 });
+
+test('every translation key a JS module reads is injected by a view', function () {
+    $filesIn = function (string $dir, string $suffix): array {
+        $files = [];
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)) as $file) {
+            if ($file->isFile() && str_ends_with($file->getFilename(), $suffix)) {
+                $files[] = $file->getPathname();
+            }
+        }
+
+        return $files;
+    };
+
+    // Keys the views hand to JS: `key: @js(__(…))` object entries and `….key = @js(…)` assignments.
+    $injected = [];
+    foreach ($filesIn(resource_path('views'), '.blade.php') as $view) {
+        $source = (string) file_get_contents($view);
+        preg_match_all('/(\w+)\s*:\s*@(?:js|json)\(/', $source, $entries);
+        preg_match_all('/\.(\w+)\s*=\s*@(?:js|json)\(/', $source, $assignments);
+        foreach ([...$entries[1], ...$assignments[1]] as $key) {
+            $injected[$key] = true;
+        }
+    }
+
+    $missing = [];
+    foreach ($filesIn(resource_path('js'), '.js') as $module) {
+        if (str_contains(str_replace('\\', '/', $module), '/vendor/')) {
+            continue;
+        }
+
+        $source = (string) file_get_contents($module);
+        // `t` counts only where the module binds it to a translations object.
+        $holders = 'translations|assetTranslations|appTranslations';
+        if (preg_match('/const t = [^;]*[tT]ranslations/', $source)) {
+            $holders .= '|t';
+        }
+
+        preg_match_all('/\b(?:'.$holders.')\??\.(\w+)/', $source, $reads);
+        foreach (array_unique($reads[1]) as $key) {
+            // `translations` is the holder itself (pageData.translations); `id` is a `t => t.id` callback.
+            if (in_array($key, ['translations', 'id'], true) || isset($injected[$key])) {
+                continue;
+            }
+            $missing[] = basename($module).": {$key}";
+        }
+    }
+
+    expect($missing)->toBe([]);
+});
+
+test('the asset delete confirm puts the filename in a placeholder', function () {
+    $show = (string) file_get_contents(resource_path('views/assets/show.blade.php'));
+
+    expect($show)->toContain("__('Are you sure you want to delete :filename?', ['filename' => \$asset->filename])")
+        ->and(__('Are you sure you want to delete :filename?', ['filename' => 'logo.png'], 'nl'))
+        ->toBe('Weet je zeker dat je logo.png wilt verwijderen?');
+});
