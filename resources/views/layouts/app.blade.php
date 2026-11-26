@@ -47,6 +47,9 @@
 
             <!-- Page Content -->
             <main class="grow py-8 px-4 sm:px-6 lg:px-8">
+                <div class="max-w-7xl mx-auto">
+                    <x-alert-messages />
+                </div>
                 @yield('content')
             </main>
 

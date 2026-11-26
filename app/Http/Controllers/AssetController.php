@@ -384,30 +384,45 @@ class AssetController extends Controller
         ksort($cacheKeyContext);
         $cacheKey = 'asset-cycle:'.Auth::id().':'.sha1((string) json_encode($cacheKeyContext));
 
-        $idList = Cache::remember(
-            $cacheKey,
-            60,
-            fn () => $this->buildFilteredAssetQuery($request)->pluck('id')->all()
-        );
+        // Two passes at most. The cached list can be stale either way: a neighbour trashed since
+        // (prev/next would 404) or the current asset added since (no nav at all). Either drops
+        // the entry and rebuilds it from the live query once
+        // (specs/features/asset-cycle-navigation.md REQ-live-neighbours).
+        for ($attempt = 0; ; $attempt++) {
+            $idList = Cache::remember(
+                $cacheKey,
+                60,
+                fn () => $this->buildFilteredAssetQuery($request)->pluck('id')->all()
+            );
 
-        $total = count($idList);
-        if ($total <= 1) {
-            return null;
-        }
+            $total = count($idList);
+            $index = array_search($asset->id, $idList, false);
 
-        $index = array_search($asset->id, $idList, false);
-        if ($index === false) {
-            return null;
+            if ($total <= 1 || $index === false) {
+                if ($attempt > 0) {
+                    return null;
+                }
+                Cache::forget($cacheKey);
+
+                continue;
+            }
+
+            $prevId = $index > 0 ? $idList[$index - 1] : null;
+            $nextId = $index < $total - 1 ? $idList[$index + 1] : null;
+
+            $neighbourIds = array_values(array_filter([$prevId, $nextId]));
+            $neighbours = $neighbourIds
+                ? Asset::whereIn('id', $neighbourIds)->get()->keyBy('id')
+                : collect();
+
+            if ($attempt > 0 || $neighbours->count() === count($neighbourIds)) {
+                break;
+            }
+
+            Cache::forget($cacheKey);
         }
 
         $perPage = $this->resolvePerPage($request);
-        $prevId = $index > 0 ? $idList[$index - 1] : null;
-        $nextId = $index < $total - 1 ? $idList[$index + 1] : null;
-
-        $neighbourIds = array_filter([$prevId, $nextId]);
-        $neighbours = $neighbourIds
-            ? Asset::whereIn('id', $neighbourIds)->get()->keyBy('id')
-            : collect();
 
         return [
             'position' => $index + 1,

@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\SetLocale;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Asset;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\FolderRegistry;
 use App\Services\S3Service;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -73,14 +76,44 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // assets.user_id is RESTRICT, and only an admin delete can transfer assets — refuse
+        // before logging out, so a refusal leaves the user signed in
+        // (specs/features/user-management.md REQ-self-delete-refused-with-assets).
+        if (Asset::withTrashed()->where('user_id', $user->id)->exists()) {
+            return $this->refuseSelfDelete($user);
+        }
+
+        // Logout must come first: it saves the remember token, which would re-insert a deleted
+        // row. An upload landing between the check and the delete trips the RESTRICT FK — sign
+        // the user back in and refuse the same way.
         Auth::logout();
 
-        $user->delete();
+        try {
+            $user->delete();
+        } catch (QueryException $e) {
+            Auth::login($user);
+
+            if (Asset::withTrashed()->where('user_id', $user->id)->exists()) {
+                return $this->refuseSelfDelete($user);
+            }
+
+            throw $e;
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    private function refuseSelfDelete(User $user): RedirectResponse
+    {
+        // An admin cannot delete themselves from the Users page either, so point at another admin.
+        $message = $user->isAdmin()
+            ? __('You still own assets. Another administrator can delete your account from the Users page and transfer them.')
+            : __('You still own assets. Ask an administrator to delete your account and transfer them.');
+
+        return back()->withErrors(['password' => $message], 'userDeletion');
     }
 
     /**

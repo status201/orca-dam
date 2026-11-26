@@ -8,11 +8,13 @@
     deleteUserName: '',
     deleteUserAssetCount: 0,
     transferToUserId: '',
+    submitting: false,
     confirmDelete(id, name, assetCount) {
         this.deleteUserId = id;
         this.deleteUserName = name;
         this.deleteUserAssetCount = assetCount;
         this.transferToUserId = '';
+        this.submitting = false;
         $dispatch('open-modal', 'confirm-user-delete');
     }
 }">
@@ -139,7 +141,9 @@
 </div>
 
 <x-modal name="confirm-user-delete" maxWidth="md" focusable>
-    <form :action="'{{ url('users') }}/' + deleteUserId" method="POST" class="p-6">
+    {{-- One click, one request: a second DELETE for the just-deleted user would 404 (user-management.md REQ-repeat-delete-redirects) --}}
+    <form :action="'{{ url('users') }}/' + deleteUserId" method="POST" class="p-6"
+          @submit="if (submitting) { $event.preventDefault(); return; } submitting = true">
         @csrf
         @method('DELETE')
 
@@ -189,7 +193,7 @@
 
             <x-danger-button data-testid="user-delete-confirm" class="warning ms-3"
                 :disabled="false"
-                x-bind:disabled="deleteUserAssetCount > 0 && !transferToUserId">
+                x-bind:disabled="submitting || (deleteUserAssetCount > 0 && !transferToUserId)">
                 {{ __('Delete User') }}
             </x-danger-button>
         </div>

@@ -3,7 +3,7 @@
 ```yaml
 id: asset-trash
 status: implemented
-version: 2
+version: 3
 owner: core
 related:
   - architecture
@@ -17,6 +17,7 @@ source:
   - app/Policies/AssetPolicy.php
   - app/Support/BulkAssetIds.php
   - app/Http/Concerns/ForceDeletesAssets.php
+  - app/Support/RedirectWhenGone.php
 ```
 
 ## Background / Why
@@ -48,6 +49,11 @@ flag — makes the destructive path impossible to reach by accident (see
   (operating on *live* assets, see [`bulk-operations.md`](bulk-operations.md))
   does. This is a deliberate asymmetry: trashed assets are already presumed
   gone from active use.
+- **REQ-repeat-trash-redirects** — A form-submitted `destroy`, `restore` or `forceDelete` whose
+  asset is already gone (a second click, a refresh) redirects to the page the first request
+  would have landed on — `assets.index` for `destroy`, `assets.trash` for the other two —
+  instead of a 404 (`->missing()` on the route). A request that `expectsJson()` still gets
+  the 404. The show page's Delete button and the trash page's permanent delete submit once.
 
 ## Technical design
 
@@ -63,6 +69,7 @@ POST   assets/bulk/trash:                     AssetTrashController::bulkTrash   
 POST   assets/trash/bulk-restore:             AssetTrashController::bulkRestore        # assets.trash.bulk-restore
 DELETE assets/{asset}/force-delete:           AssetTrashController::forceDelete        # assets.force-delete (withTrashed)
 DELETE assets/trash/bulk-force-delete:        AssetTrashController::bulkForceDeleteTrashed  # assets.trash.bulk-force-delete
+# destroy, restore, force-delete: a missing {asset} → RedirectWhenGone (REQ-repeat-trash-redirects)
 ```
 
 Policy abilities: `delete`, `bulkTrash`, `restore`, `bulkRestore` (admin+editor), `forceDelete`
@@ -108,6 +115,13 @@ Scenario: Bulk force-delete of trashed assets (REQ-6)
   And live ids in the same request are untouched
   And an editor or api-role user gets 403
 # pinned by: tests/Feature/BulkTrashTest.php
+
+Scenario: A repeated trash, restore or force-delete lands on the list, not a 404
+  Given an asset that has just been trashed, restored or force-deleted
+  When the same form request arrives again
+  Then it redirects to /assets (trash) or /assets/trash/index (restore, force-delete)
+  But the same request with Accept: application/json is a 404
+# pinned by: tests/Feature/AssetTest.php
 
 # — browser-level (see e2e-testing.md for the harness) —
 

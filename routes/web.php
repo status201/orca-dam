@@ -22,6 +22,7 @@ use App\Http\Controllers\TokenController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\SetLocale;
+use App\Support\RedirectWhenGone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -85,7 +86,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Asset CRUD (destroy moved to AssetTrashController)
     Route::resource('assets', AssetController::class)->except(['destroy']);
-    Route::delete('assets/{asset}', [AssetTrashController::class, 'destroy'])->name('assets.destroy');
+    // A repeat of an already-applied trash/restore/force-delete form redirects to where the first
+    // request landed (RedirectWhenGone; specs/features/asset-trash.md REQ-repeat-trash-redirects).
+    Route::delete('assets/{asset}', [AssetTrashController::class, 'destroy'])
+        ->missing(RedirectWhenGone::to('assets.index'))
+        ->name('assets.destroy');
 
     // Asset download
     Route::get('assets/{asset}/download', [AssetReplaceController::class, 'download'])->name('assets.download');
@@ -97,7 +102,9 @@ Route::middleware(['auth'])->group(function () {
     // Trash routes — restore (editors + admins)
     Route::middleware(['can:restore,App\Models\Asset'])->group(function () {
         Route::get('assets/trash/index', [AssetTrashController::class, 'index'])->name('assets.trash');
-        Route::post('assets/{asset}/restore', [AssetTrashController::class, 'restore'])->withTrashed()->name('assets.restore');
+        Route::post('assets/{asset}/restore', [AssetTrashController::class, 'restore'])->withTrashed()
+            ->missing(RedirectWhenGone::to('assets.trash'))
+            ->name('assets.restore');
         Route::post('assets/trash/bulk-restore', [AssetTrashController::class, 'bulkRestore'])
             ->middleware('can:bulkRestore,App\Models\Asset')
             ->name('assets.trash.bulk-restore');
@@ -105,7 +112,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Trash routes — force delete (admins only)
     Route::middleware(['can:forceDelete,App\Models\Asset'])->group(function () {
-        Route::delete('assets/{asset}/force-delete', [AssetTrashController::class, 'forceDelete'])->withTrashed()->name('assets.force-delete');
+        Route::delete('assets/{asset}/force-delete', [AssetTrashController::class, 'forceDelete'])->withTrashed()
+            ->missing(RedirectWhenGone::to('assets.trash'))
+            ->name('assets.force-delete');
         Route::delete('assets/trash/bulk-force-delete', [AssetTrashController::class, 'bulkForceDeleteTrashed'])->name('assets.trash.bulk-force-delete');
     });
 
@@ -158,8 +167,12 @@ Route::middleware(['auth'])->group(function () {
     // so a new method added without one would have been reachable by any editor session.
     // See specs/features/security-invariants.md REQ-3.
     Route::middleware(['can:viewAny,App\Models\User'])->group(function () {
-        Route::resource('users', UserController::class)->except(['show']);
+        // A missing {user} — a second "Delete User" click, a stale edit link — lands back on the
+        // list instead of a 404 (specs/features/user-management.md REQ-repeat-delete-redirects).
+        Route::resource('users', UserController::class)->except(['show'])
+            ->missing(RedirectWhenGone::to('users.index'));
         Route::delete('users/{user}/passkeys', [UserController::class, 'clearPasskeys'])
+            ->missing(RedirectWhenGone::to('users.index'))
             ->name('users.passkeys.clear');
     });
 

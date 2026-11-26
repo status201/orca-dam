@@ -107,3 +107,28 @@ test('admin cannot delete themselves', function () {
     $response->assertForbidden();
     $this->assertDatabaseHas('users', ['id' => $admin->id]);
 });
+
+test('a repeated delete of an already-deleted user redirects to the user list', function () {
+    // Pins user-management.md REQ-repeat-delete-redirects: a second click on "Delete User"
+    // must not end on a 404 at /users/{id}.
+    $admin = User::factory()->create(['role' => 'admin']);
+    $user = User::factory()->create(['role' => 'editor']);
+
+    $this->actingAs($admin)->delete(route('users.destroy', $user))
+        ->assertRedirect(route('users.index'));
+
+    $this->actingAs($admin)->delete(route('users.destroy', $user))
+        ->assertRedirect(route('users.index'));
+    $this->actingAs($admin)->get(route('users.edit', $user))
+        ->assertRedirect(route('users.index'));
+});
+
+test('a missing user keeps the 404 for JSON clients and redirects clearing passkeys', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $user = User::factory()->create(['role' => 'editor']);
+    $user->delete();
+
+    $this->actingAs($admin)->deleteJson(route('users.destroy', $user->id))->assertNotFound();
+    $this->actingAs($admin)->delete(route('users.passkeys.clear', $user->id))
+        ->assertRedirect(route('users.index'));
+});

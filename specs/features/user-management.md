@@ -3,7 +3,7 @@
 ```yaml
 id: user-management
 status: implemented
-version: 1
+version: 2
 owner: core
 related:
   - architecture
@@ -12,6 +12,7 @@ related:
   - user-preferences
 source:
   - app/Http/Controllers/UserController.php
+  - app/Http/Controllers/ProfileController.php
   - app/Policies/UserPolicy.php
   - app/Models/User.php
   - routes/web.php
@@ -38,6 +39,15 @@ and the asset reassignment required before deleting a user who owns assets. Prof
 - **REQ-5** — `UserController::clearPasskeys` is a distinct admin recovery action, gated by
   `UserPolicy::clearPasskeys` with the same self-action prohibition as `delete` — see
   [passkeys.md](passkeys.md).
+- **REQ-repeat-delete-redirects** — A `/users/{user}` request (incl. `/passkeys`) for a user that no
+  longer exists redirects to `/users` instead of a 404 (`RedirectWhenGone`): a second "Delete User"
+  click, or a stale edit link. A JSON request keeps the 404. The delete modal disables its confirm
+  button once submitted, so one click sends one request.
+- **REQ-self-delete-refused-with-assets** — Self-service account deletion (`DELETE /profile`,
+  `ProfileController::destroy`) is refused with a `userDeletion` error while the user owns any
+  asset, trashed included. The check runs before logout, so a refusal leaves the user signed in
+  and the account intact; a delete that still trips the RESTRICT key signs them back in and refuses
+  the same way. Only an admin delete (REQ-4) transfers assets; an admin is pointed to another admin.
 
 ## Technical design
 
@@ -52,6 +62,8 @@ routes (web.php, Route::resource('users', ...)->except(['show']), admin-only):
   PUT    /users/{user}      UserController::update
   DELETE /users/{user}      UserController::destroy
   DELETE /users/{user}/passkeys  UserController::clearPasskeys
+  # a missing {user} on any of these redirects to /users (REQ-repeat-delete-redirects)
+DELETE /profile                 ProfileController::destroy   # self-service, password-confirmed
 ```
 
 Abilities: `UserPolicy` in [authorization-policies.md](authorization-policies.md).
@@ -127,6 +139,22 @@ Scenario: Deleting a user with assets reassigns all of them, trashed included
   And both assets belong to the transfer target
 # pinned by: tests/Feature/UserManagementTest.php, tests/Feature/UserDeletionTest.php
 
+Scenario: A repeated delete of the same user lands on the user list
+  Given an admin has just deleted a user
+  When the same DELETE /users/{target} arrives again
+  Then the response redirects to /users, not a 404
+  And GET /users/{target}/edit redirects to /users as well
+  But with Accept: application/json the response is a 404
+# pinned by: tests/Feature/UserDeletionTest.php
+
+Scenario: A user who owns assets cannot delete their own account
+  Given an editor who owns one active and one soft-deleted asset
+  When they DELETE /profile with their correct password
+  Then the response has a userDeletion error
+  And they are still signed in and their account and assets still exist
+  And an admin is pointed to another administrator; an asset landing mid-delete is refused alike
+# pinned by: tests/Feature/ProfileTest.php
+
 Scenario Outline: An invalid transfer target blocks deletion
   Given a target user who owns assets
   When an admin DELETEs /users/{target} with transfer_to_user_id <value>
@@ -153,6 +181,13 @@ Scenario: An admin creates, re-roles and deletes a user
   Then each step is reflected in the users table
 # pinned by: tests/e2e/user-management.spec.js
 
+Scenario: Deleting a user and transferring their assets returns to the user list
+  Given a user who owns assets
+  When an admin picks a transfer target and confirms the delete
+  Then the confirm button is disabled while the request runs
+  And the admin lands on /users with the success message and the user gone
+# pinned by: tests/e2e/user-management.spec.js
+
 Scenario: The users table lists the seeded accounts with their roles
   Given the users page as an admin
   Then each seeded account appears with its role
@@ -169,7 +204,8 @@ Scenario: Deleting a user who owns assets demands a transfer target in the UI
 ## Tests & verification
 
 - Feature: `tests/Feature/UserManagementTest.php` (CRUD surface),
-  `tests/Feature/UserDeletionTest.php` (deletion/transfer in depth).
+  `tests/Feature/UserDeletionTest.php` (deletion/transfer in depth),
+  `tests/Feature/ProfileTest.php` (self-service deletion).
 - Unit: `tests/Unit/Policies/UserPolicyTest.php`.
 - Run: `php artisan config:clear && php artisan test`
 - E2E: `tests/e2e/user-management.spec.js` — `npm run test:e2e -- tests/e2e/user-management.spec.js`.

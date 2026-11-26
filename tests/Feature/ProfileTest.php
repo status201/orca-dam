@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Asset;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -95,6 +96,62 @@ class ProfileTest extends TestCase
             ->assertSessionHasErrorsIn('userDeletion', 'password')
             ->assertRedirect('/profile');
 
+        $this->assertNotNull($user->fresh());
+    }
+
+    public function test_user_who_owns_assets_cannot_delete_their_account(): void
+    {
+        // user-management.md REQ-self-delete-refused-with-assets
+        $user = User::factory()->create(['role' => 'editor']);
+        $active = Asset::factory()->create(['user_id' => $user->id]);
+        $trashed = Asset::factory()->create(['user_id' => $user->id]);
+        $trashed->delete();
+
+        $response = $this
+            ->actingAs($user)
+            ->from('/profile')
+            ->delete('/profile', [
+                'password' => 'password',
+            ]);
+
+        $response
+            ->assertSessionHasErrorsIn('userDeletion', 'password')
+            ->assertRedirect('/profile');
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertNotNull($user->fresh());
+        $this->assertNotNull(Asset::withTrashed()->find($active->id));
+        $this->assertNotNull(Asset::withTrashed()->find($trashed->id));
+    }
+
+    public function test_admin_who_owns_assets_is_pointed_to_another_administrator(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Asset::factory()->create(['user_id' => $admin->id]);
+
+        $this->actingAs($admin)->from('/profile')->delete('/profile', ['password' => 'password'])
+            ->assertSessionHasErrorsIn('userDeletion', [
+                'password' => __('You still own assets. Another administrator can delete your account from the Users page and transfer them.'),
+            ]);
+
+        $this->assertAuthenticatedAs($admin);
+    }
+
+    public function test_an_asset_landing_between_check_and_delete_is_refused_and_keeps_the_user_signed_in(): void
+    {
+        // The RESTRICT key fires after logout; the user is signed back in and refused.
+        $user = User::factory()->create(['role' => 'editor']);
+        User::deleting(function (User $deleting) use ($user) {
+            if ($deleting->is($user)) {
+                Asset::factory()->create(['user_id' => $user->id]);
+            }
+        });
+
+        $this->actingAs($user)->from('/profile')->delete('/profile', ['password' => 'password'])
+            ->assertSessionHasErrorsIn('userDeletion', 'password')
+            ->assertRedirect('/profile');
+
+        $this->assertAuthenticatedAs($user);
         $this->assertNotNull($user->fresh());
     }
 

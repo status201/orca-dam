@@ -303,3 +303,41 @@ test('non-context params do not ride the card links or the return url', function
     expect($returnUrl)->toContain('sort=name_asc');
     expect($returnUrl)->not->toContain('demo');
 });
+
+test('a neighbour trashed after the list was cached is skipped', function () {
+    // asset-cycle-navigation.md REQ-live-neighbours
+    $user = User::factory()->create();
+    $assets = makeOrderedAssets(4);
+
+    // Prime the 60s ID-list cache for this context.
+    $first = $this->actingAs($user)->get(route('assets.show', $assets[1]).'?sort=name_asc');
+    expect($first->viewData('cycleNav')['total'])->toBe(4);
+
+    $assets[2]->delete();
+
+    $cycleNav = $this->actingAs($user)
+        ->get(route('assets.show', $assets[1]).'?sort=name_asc')
+        ->viewData('cycleNav');
+
+    expect($cycleNav['total'])->toBe(3)
+        ->and($cycleNav['next']['url'])->toContain(route('assets.show', $assets[3]))
+        ->and($cycleNav['next']['filename'])->toBe('d.jpg');
+});
+
+test('an asset added after the list was cached still gets its cycle nav', function () {
+    // asset-cycle-navigation.md REQ-live-neighbours
+    $user = User::factory()->create();
+    $assets = makeOrderedAssets(3);
+
+    $this->actingAs($user)->get(route('assets.show', $assets[0]).'?sort=name_asc');
+
+    $late = Asset::factory()->image()->create(['filename' => 'z.jpg', 's3_key' => 'assets/z.jpg']);
+
+    $cycleNav = $this->actingAs($user)
+        ->get(route('assets.show', $late).'?sort=name_asc')
+        ->viewData('cycleNav');
+
+    expect($cycleNav)->not->toBeNull()
+        ->and($cycleNav['position'])->toBe(4)
+        ->and($cycleNav['total'])->toBe(4);
+});

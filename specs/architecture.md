@@ -289,13 +289,13 @@ The *why* behind the choices above — and the alternatives each rejected — li
 
 ## Tests & verification
 
-- `php artisan config:clear && php artisan test` — the full Pest suite (1351 tests,
-  103 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
+- `php artisan config:clear && php artisan test` — the full Pest suite (1365 tests,
+  104 files: `tests/Feature/` incl. `Auth/`,`Console/`,`Middleware/`; `tests/Unit/`
   incl. `Jobs/`,`Policies/`,`Services/`,`Support/`; `tests/Security/`). In-memory SQLite, sync queue.
 - `php artisan config:clear && php artisan test --testsuite=Security` — the security
   invariants and exploit probes on their own, as the CI job runs them. See
   [security-invariants.md](features/security-invariants.md).
-- `npm run test:e2e` — the Playwright browser suite (146 tests across 21 spec files)
+- `npm run test:e2e` — the Playwright browser suite (147 tests across 21 spec files)
   against a real `artisan serve` + a local RustFS bucket. See [e2e-testing.md](features/e2e-testing.md).
 - `./vendor/bin/pint --test` — code style.
 - `npm run spec:lint` — spec structure (metadata, pins resolve, indexes complete) plus

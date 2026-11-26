@@ -3,7 +3,7 @@
 ```yaml
 id: error-handling
 status: implemented
-version: 3
+version: 4
 owner: core
 related:
   - architecture
@@ -21,6 +21,7 @@ source:
   - resources/js/http-errors.js
   - resources/views/errors/500.blade.php
   - resources/views/errors/4xx.blade.php
+  - resources/views/components/alert-messages.blade.php
   - resources/js/http.js
   - resources/js/format.js
 ```
@@ -84,6 +85,9 @@ ours, the user gets a reference to quote. This spec is the backstop behind
   (`bootstrap.js` refreshes it every 15 minutes).
 - **REQ-12** — A toast message is inserted as text, never HTML. `window.showToast` has exactly one
   definition (`resources/js/app.js`); no layout may define an `innerHTML`-interpolating copy.
+- **REQ-flash-messages-shown** — A redirect's `success`, `error` or `warning` flash is shown once atop
+  every `layouts/app` or `layouts/embed` page (`<x-alert-messages />`, not per view).
+  Why: `Controller::successResponse()` and the responder's non-keyed branch report only this way.
 
 ## Technical design
 
@@ -227,6 +231,11 @@ Scenario: An api-role caller sees no exception detail through clientError
   When clientError() builds the message
   Then it returns only the generic text
 # pinned by: tests/Unit/DatabaseErrorTest.php, tests/Feature/SecurityRemediationTest.php
+
+Scenario: A redirect's flash message is shown once (REQ-flash-messages-shown)
+  Given an admin deletes a user, or trashes an asset
+  Then the list page it lands on shows the success message exactly once
+# pinned by: tests/Feature/FlashMessagesTest.php, tests/e2e/user-management.spec.js
 ```
 
 ## Tests & verification
@@ -234,7 +243,8 @@ Scenario: An api-role caller sees no exception detail through clientError
 - Unit: `tests/Unit/DatabaseErrorTest.php` — classifier dataset (MySQL 22001 synthesised via
   `PDOException::$errorInfo`), degradation, leak assertions, `ErrorAudience`.
 - Feature: `tests/Feature/DatabaseErrorBackstopTest.php` — end to end, including real SQLite `23000`
-  errors; `tests/Feature/SecurityRemediationTest.php` — role-aware detail.
+  errors; `tests/Feature/SecurityRemediationTest.php` — role-aware detail;
+  `tests/Feature/FlashMessagesTest.php`.
 - `php artisan config:clear && php artisan test tests/Unit/DatabaseErrorTest.php tests/Feature/DatabaseErrorBackstopTest.php`
 - Style: `./vendor/bin/pint --test`; JS: `npm run build`.
 

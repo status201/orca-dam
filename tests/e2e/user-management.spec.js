@@ -63,4 +63,35 @@ test.describe('user management', () => {
         await expect(userRow(page, users.admin.email)).toContainText('(');
         await expect(userRow(page, users.admin.email).locator(testid('user-row-delete'))).toHaveCount(0);
     });
+
+    // Last in the file: it deletes the seeded editor (assets go to the admin).
+    test('deleting a user and transferring their assets returns to the user list', async ({ page }) => {
+        await page.goto('/users');
+        await userRow(page, users.editor.email).locator(testid('user-row-delete')).click();
+        const adminOption = page.locator('#transfer_to_user_id option', { hasText: users.admin.email });
+        await page.selectOption('#transfer_to_user_id', await adminOption.getAttribute('value'));
+
+        // Hold the DELETE in flight long enough to observe the button while it runs.
+        let release;
+        const held = new Promise((resolve) => { release = resolve; });
+        await page.route('**/users/*', async (route) => {
+            if (route.request().method() === 'POST') await held;
+            await route.continue();
+        });
+
+        // Read the button from inside the page: with the request held the page is mid-navigation,
+        // which Playwright's locators wait out rather than query.
+        const disabledWhileInFlight = await page.evaluate(async (selector) => {
+            const button = document.querySelector(selector);
+            button.click();
+            await new Promise((resolve) => setTimeout(resolve, 50)); // let Alpine re-render
+            return button.disabled;
+        }, testid('user-delete-confirm'));
+        expect(disabledWhileInFlight).toBe(true);
+        release();
+
+        await expect(page).toHaveURL(/\/users$/);
+        await expect(page.locator(testid('flash-success'))).toBeVisible();
+        await expect(userRow(page, users.editor.email)).toHaveCount(0);
+    });
 });
